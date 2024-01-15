@@ -10,3 +10,7 @@ ports:
       enabled: true
 additionalArguments:
   - --serversTransport.insecureSkipVerify=true
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: true
