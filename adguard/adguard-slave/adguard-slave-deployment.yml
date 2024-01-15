@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adguard-slave
+  namespace: adguard
+spec:
+  selector:
+    matchLabels:
+      app: adguard-slave
+  template:
+    metadata:
+      labels:
+        app: adguard-slave
+    spec:
+      affinity:
+        podAntiAffinity: 
+          preferredDuringSchedulingIgnoredDuringExecution: 
+          - weight: 100  
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app 
+                  operator: In
+                  values:
+                  - adguard
+              topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: adguard-slave-init
+        image: busybox
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 755 /config/AdGuardHome.yaml"]
+        volumeMounts:
+          - mountPath: /home
+            name: adguard-slave-secret
+          - mountPath: /config
+            name: adguard-slave-conf
+      containers:
+      - name: adguard-home
+        image: adguard/adguardhome:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 53
+          name: dns
+          protocol: UDP
+        - containerPort: 53
+          name: dnstcp
+          protocol: TCP
+        - containerPort: 3000
+          name: http-initial
+          protocol: TCP
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: adguard-slave-data
+          mountPath: /opt/adguardhome/work
+        - name: adguard-slave-conf
+          mountPath: /opt/adguardhome/conf
+      - name: adguard-sync
+        image: lscr.io/linuxserver/adguardhome-sync:latest
+        imagePullPolicy: IfNotPresent
+        env:
+          - name: CONFIGFILE
+            value: /config/adguardhome-sync.yaml
+          - name: TZ
+            value: America/Chicago
+        volumeMounts:
+        - name: adguard-sync-conf
+          mountPath: /config
+      volumes:
+      - emptyDir: {}
+        name: adguard-slave-data
+      - emptyDir: {}
+        name: adguard-slave-conf
+      - name: adguard-sync-conf
+        secret:
+          secretName: adguard-sync-secret
+      - name: adguard-slave-secret
+        secret:
+          secretName: adguard-slave-secret

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: gravity
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: gravity
+    app.kubernetes.io/part-of: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      metrics: gravity
+  namespaceSelector:
+    matchNames:
+      - gravity
+  endpoints:
+    - port: http-metrics
+      interval: 21s

@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hass
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: hass
+  template:
+    metadata:
+      labels:
+        app: hass
+    spec:
+      containers:
+      - name: hass
+        image: ghcr.io/home-assistant/home-assistant:stable
+        env:
+          - name: DISABLE_JEMALLOC
+            value: 'true'
+        ports:
+        - containerPort: 8123 #web gui
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: hass-data
+          mountPath: /config
+      volumes:
+      - name: hass-data
+        persistentVolumeClaim:
+          claimName: hass-pvc

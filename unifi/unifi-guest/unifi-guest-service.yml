@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: unifi-guest
+  namespace: unifi
+  annotations:
+    traefik.ingress.kubernetes.io/service.passhostheader: "true"
+    traefik.ingress.kubernetes.io/service.serversscheme: https
+spec:
+  selector:
+    app: unifi
+  ports:
+  - protocol: TCP
+    port: 8843
+    name: guestportaltls
+  type: ClusterIP
+  clusterIP: None

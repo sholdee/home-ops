@@ -1,0 +1,37 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hass
+  namespace: hass
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/server-snippets: |
+     location / {
+      proxysetheader Upgrade $httpupgrade;
+      proxyhttpversion 1.1;
+      proxysetheader X-Forwarded-Host $httphost;
+      proxysetheader X-Forwarded-Proto $scheme;
+      proxysetheader X-Forwarded-For $remoteaddr;
+      proxysetheader Host $host;
+      proxysetheader Connection "upgrade";
+      proxycachebypass $httpupgrade;
+      }
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hass.mgmt.sholdee.net
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: hass
+              port:
+                number: 8123
+  tls:
+  - hosts:
+    - hass.mgmt.sholdee.net
+    secretName: hass-tls-secret

@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zwaveui-proxy
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: zwaveui-proxy
+  template:
+    metadata:
+      labels:
+        app: zwaveui-proxy
+    spec:
+      initContainers:
+      - name: zwaveui-proxy-conf-init
+        image: busybox
+        command: ["sh", "-c", "cp /home/zwaveui-proxy-secret/zwaveui-proxy.conf /home/zwaveui-proxy-config/default.conf;chmod 644 /home/zwaveui-proxy-config/default.conf"]
+        volumeMounts:
+          - mountPath: /home/zwaveui-proxy-config
+            name: zwaveui-proxy-config
+          - mountPath: /home/zwaveui-proxy-secret
+            name: zwaveui-proxy-secret
+      containers:
+      - name: zwaveui-proxy
+        image: nginx:stable
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        volumeMounts:
+          - mountPath: /etc/nginx/conf.d/
+            name: zwaveui-proxy-config
+      volumes:
+      - emptyDir: {}
+        name: zwaveui-proxy-config
+      - name: zwaveui-proxy-secret
+        secret:
+          secretName: zwaveui-proxy

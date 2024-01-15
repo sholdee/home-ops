@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      containers:
+      - name: mosquitto
+        image: eclipse-mosquitto
+        ports:
+        - containerPort: 1883
+          name: mqtt
+          protocol: TCP
+        volumeMounts:
+        - name: mosquitto-data
+          mountPath: /mosquitto
+      - name: mqtt-venstar-bridge
+        image: ghcr.io/terafin/mqtt-venstar-bridge:latest
+        env:
+          - name: TZ
+            value: America/Chicago
+          - name: LOGGING_NAME
+            value: mqtt-venstar-bridge
+          - name: TOPIC_PREFIX
+            value: home/nodes/venstar
+          - name: VENSTAR_HOST
+            value: "192.168.99.251"
+          - name: VENSTAR_QUERY_INTERVAL
+            value: "7"
+          - name: MQTT_HOST
+            value: mqtt://localhost
+          - name: MQTT_USER
+            value: admin
+          - name: MQTT_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mosquitto
+                key: pass
+      volumes:
+      - name: mosquitto-data
+        persistentVolumeClaim:
+          claimName: mosquitto-pvc

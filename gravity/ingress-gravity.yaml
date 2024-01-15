@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gravity
+  namespace: gravity
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gravity.mgmt.sholdee.net
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: gravity-http
+              port:
+                name: http
+  tls:
+  - hosts:
+    - gravity.mgmt.sholdee.net
+    secretName: gravity-tls-secret

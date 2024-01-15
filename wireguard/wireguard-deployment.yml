@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireguard
+  namespace: wireguard
+spec:
+  selector:
+    matchLabels:
+      app: wireguard
+  template:
+    metadata:
+      labels:
+        app: wireguard
+    spec:
+      initContainers:
+      - name: wireguard-conf-init
+        image: busybox
+        command: ["sh", "-c", "ROUTE=$(ip route get 1.1.1.1 | grep 1.1.1.1); ENI=$(echo $ROUTE | awk '{print $5}'); sed \"s/ENI/$ENI/g\" /etc/wireguard-secret/wg0.conf.template > /home/wg0-eni.conf; DGW=$(echo $ROUTE | awk '{print $3}'); sed \"s/DGW/$DGW/g\" /home/wg0-eni.conf > /home/wg0.conf; chmod 400 /home/wg0.conf"]
+        volumeMounts:
+          - mountPath: /home
+            name: wireguard-config
+          - mountPath: /etc/wireguard-secret
+            name: wireguard-secret
+      containers:
+      - name: wireguard
+        image: lscr.io/linuxserver/wireguard:latest
+        env:
+          - name: TZ
+            value: America/Chicago
+          - name: PEERS
+            value: peer1,peer2
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+            - SYS_MODULE
+        ports:
+        - containerPort: 443
+          protocol: UDP
+        volumeMounts:
+          - mountPath: /home
+            name: wireguard-config
+        lifecycle:
+          postStart:
+            exec:
+              command: ["sh", "-c", "sleep 20; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
+      volumes:
+      - emptyDir: {}
+        name: wireguard-config
+      - name: wireguard-secret
+        secret:
+          secretName: wireguard

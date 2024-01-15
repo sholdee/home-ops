@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unifi
+  namespace: unifi
+spec:
+  selector:
+    matchLabels:
+      app: unifi
+  template:
+    metadata:
+      labels:
+        app: unifi
+    spec:
+      containers:
+      - name: unifi
+        image: lscr.io/linuxserver/unifi-network-application:latest
+        env:
+          - name: MONGO_DBNAME
+            value: unifi
+          - name: MONGO_HOST
+            value: unifi-db
+          - name: MONGO_PASS
+            value: 6qP7m9E4oOxe
+          - name: MONGO_PORT
+            value: "27017"
+          - name: MONGO_USER
+            value: unifi
+          - name: PGID
+            value: "1000"
+          - name: PUID
+            value: "1000"
+          - name: TZ
+            value: America/Chicago
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
+        - containerPort: 8880
+          protocol: TCP
+        - containerPort: 8843
+        volumeMounts:
+          - mountPath: /config
+            name: unifi-data
+      volumes:
+      - name: unifi-data
+        persistentVolumeClaim:
+          claimName: unifi-pvc

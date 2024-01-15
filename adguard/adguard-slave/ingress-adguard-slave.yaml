@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: adguard-slave
+  namespace: adguard
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: adguard-slave.mgmt.sholdee.net
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: adguard-slave-http
+              port:
+                name: http
+  tls:
+  - hosts:
+    - adguard-slave.mgmt.sholdee.net
+    secretName: adguard-slave-tls-secret

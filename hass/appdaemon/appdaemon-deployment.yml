@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appdaemon
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: appdaemon
+  template:
+    metadata:
+      labels:
+        app: appdaemon
+    spec:
+      containers:
+      - name: appdaemon
+        image: acockburn/appdaemon:latest
+        env:
+          - name: HA_URL
+            value: http://hass:8123
+          - name: TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: appdaemon
+                key: token
+          - name: TZ
+            value: America/Chicago
+        ports:
+        - containerPort: 5050
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: appdaemon-data
+          mountPath: /conf
+      volumes:
+      - name: appdaemon-data
+        persistentVolumeClaim:
+          claimName: appdaemon-pvc

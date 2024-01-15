@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: appdaemon
+  namespace: hass
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: appdaemon.mgmt.sholdee.net
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: appdaemon
+              port:
+                number: 5050
+  tls:
+  - hosts:
+    - appdaemon.mgmt.sholdee.net
+    secretName: appdaemon-tls-secret

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hass
+  namespace: hass
+  labels:
+    app: hass
+spec:
+  selector:
+    app: hass
+  ports:
+  - protocol: TCP
+    port: 8123
+    targetPort: 8123
+    name: http
+  type: ClusterIP
+  clusterIP: None

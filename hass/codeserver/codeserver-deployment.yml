@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codeserver
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: codeserver
+  template:
+    metadata:
+      labels:
+        app: codeserver
+    spec:
+      containers:
+      - name: codeserver
+        image: lscr.io/linuxserver/code-server:latest
+        env:
+          - name: TZ
+            value: America/Chicago
+          - name: DEFAULT_WORKSPACE
+            value: /home
+        ports:
+        - containerPort: 8443
+          name: http
+          protocol: TCP
+        volumeMounts:
+        - name: codeserver-data
+          mountPath: /config
+        - name: appdaemon-data
+          mountPath: /home/appdaemon-data
+        - name: hass-data
+          mountPath: /home/hass-data
+        - name: mosquitto-data
+          mountPath: /home/mosquitto-data
+        - name: portainer-data
+          mountPath: /home/portainer-data
+      volumes:
+      - name: codeserver-data
+        persistentVolumeClaim:
+          claimName: codeserver-pvc
+      - name: appdaemon-data
+        persistentVolumeClaim:
+          claimName: appdaemon-pvc
+      - name: hass-data
+        persistentVolumeClaim:
+          claimName: hass-pvc
+      - name: mosquitto-data
+        persistentVolumeClaim:
+          claimName: mosquitto-pvc
+      - name: portainer-data
+        persistentVolumeClaim:
+          claimName: portainer-pvc
