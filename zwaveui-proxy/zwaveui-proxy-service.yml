@@ -10,6 +10,10 @@ spec:
     app: zwaveui-proxy
   ports:
   - protocol: TCP
+    port: 3000
+    targetPort: 3000
+    name: websocket
+  - protocol: TCP
     port: 8080
     targetPort: 8080
     name: http
