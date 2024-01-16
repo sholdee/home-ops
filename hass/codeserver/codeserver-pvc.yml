@@ -10,3 +10,16 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: "longhorn" # your storage class name
+---
+  apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: codeserver-repos-pvc
+  namespace: hass
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: "longhorn" # your storage class name

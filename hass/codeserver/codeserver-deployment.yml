@@ -27,6 +27,8 @@ spec:
         volumeMounts:
         - name: codeserver-data
           mountPath: /config
+        - name: codeserver-repos-data
+          mountPath: /home/source-repos
         - name: appdaemon-data
           mountPath: /home/appdaemon-data
         - name: hass-data
@@ -39,6 +41,9 @@ spec:
       - name: codeserver-data
         persistentVolumeClaim:
           claimName: codeserver-pvc
+      - name: codeserver-repos-data
+        persistentVolumeClaim:
+          claimName: codeserver-repos-pvc
       - name: appdaemon-data
         persistentVolumeClaim:
           claimName: appdaemon-pvc
