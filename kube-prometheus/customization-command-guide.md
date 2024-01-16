@@ -27,7 +27,8 @@ mkdir my-kube-prometheus; cd my-kube-prometheus
 # Install jssonnet
 go install github.com/google/go-jsonnet/cmd/jsonnet@latest
 
-GO111MODULE="on"
+# Go will use the modules system for dependency management, regardless of whether the code is inside or outside the GOPATH
+export GO111MODULE="on"
 
 # Install jsonnet-bundler
 go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
@@ -36,11 +37,11 @@ go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
 jb init
 
 # Install kube-prometheus project libraries
-jb install github.com/prometheus-operator/kube-prometheus/jsonnet/kube-prometheus@main
+jb install github.com/prometheus-operator/kube-prometheus/jsonnet/kube-prometheus@release-0.13
 
 # Get base configuration file and yaml build script
-wget https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/example.jsonnet -O example.jsonnet
-wget https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/build.sh -O build.sh
+wget https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/release-0.13/example.jsonnet -O example.jsonnet
+wget https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/release-0.13/build.sh -O build.sh
 
 # Copy base config to working file
 cp example.jsonnet main.jsonnet
