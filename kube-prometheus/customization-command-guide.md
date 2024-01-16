@@ -25,18 +25,18 @@ export PATH=$PATH:$(go env GOPATH)/bin
 mkdir my-kube-prometheus; cd my-kube-prometheus
 
 # Install jssonnet
-sudo go install github.com/google/go-jsonnet/cmd/jsonnet@latest
+go install github.com/google/go-jsonnet/cmd/jsonnet@latest
 
 GO111MODULE="on"
 
 # Install jsonnet-bundler
-sudo go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
+go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
 
 # Initialize our project
 jb init
 
 # Install kube-prometheus project libraries
-sudo jb install github.com/prometheus-operator/kube-prometheus/jsonnet/kube-prometheus@main
+jb install github.com/prometheus-operator/kube-prometheus/jsonnet/kube-prometheus@main
 
 # Get base configuration file and yaml build script
 wget https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/main/example.jsonnet -O example.jsonnet
@@ -52,7 +52,7 @@ nano main.jsonnet
 chmod +x build.sh
 
 # Install json to yaml conversion script dependency
-sudo go install github.com/brancz/gojsontoyaml@latest
+go install github.com/brancz/gojsontoyaml@latest
 
 # Execute build script to create customized manifests
 ./build.sh main.jsonnet
@@ -70,7 +70,7 @@ kubectl wait \
 kubectl apply -f manifests/
 
 # If updating existing install, run this instead
-sudo kubectl replace -f manifests/
+kubectl replace -f manifests/
 ```
 
 ## Finding the prometheus datasource uid in grafana for custom dashboards exported from older versions
