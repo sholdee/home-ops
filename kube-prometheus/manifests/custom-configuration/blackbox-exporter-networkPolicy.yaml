@@ -3,10 +3,10 @@ kind: NetworkPolicy
 metadata:
   labels:
     app.kubernetes.io/component: exporter
-    app.kubernetes.io/name: node-exporter
+    app.kubernetes.io/name: blackbox-exporter
     app.kubernetes.io/part-of: kube-prometheus
-    app.kubernetes.io/version: 1.6.1
-  name: node-exporter
+    app.kubernetes.io/version: 0.24.0
+  name: blackbox-exporter
   namespace: monitoring
 spec:
   egress:
@@ -17,12 +17,14 @@ spec:
         matchLabels:
           app.kubernetes.io/name: prometheus
     ports:
-    - port: 9100
+    - port: 9115
+      protocol: TCP
+    - port: 19115
       protocol: TCP
   podSelector:
     matchLabels:
       app.kubernetes.io/component: exporter
-      app.kubernetes.io/name: node-exporter
+      app.kubernetes.io/name: blackbox-exporter
       app.kubernetes.io/part-of: kube-prometheus
   policyTypes:
   - Egress

@@ -3,44 +3,45 @@ kind: Deployment
 metadata:
   labels:
     app.kubernetes.io/component: exporter
-    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/name: blackbox-exporter
     app.kubernetes.io/part-of: kube-prometheus
-    app.kubernetes.io/version: 2.9.2
-  name: kube-state-metrics
+    app.kubernetes.io/version: 0.24.0
+  name: blackbox-exporter
   namespace: monitoring
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/component: exporter
-      app.kubernetes.io/name: kube-state-metrics
+      app.kubernetes.io/name: blackbox-exporter
       app.kubernetes.io/part-of: kube-prometheus
   template:
     metadata:
       annotations:
-        kubectl.kubernetes.io/default-container: kube-state-metrics
+        kubectl.kubernetes.io/default-container: blackbox-exporter
       labels:
         app.kubernetes.io/component: exporter
-        app.kubernetes.io/name: kube-state-metrics
+        app.kubernetes.io/name: blackbox-exporter
         app.kubernetes.io/part-of: kube-prometheus
-        app.kubernetes.io/version: 2.9.2
+        app.kubernetes.io/version: 0.24.0
     spec:
       automountServiceAccountToken: true
       containers:
       - args:
-        - --host=127.0.0.1
-        - --port=8081
-        - --telemetry-host=127.0.0.1
-        - --telemetry-port=8082
-        image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2
-        name: kube-state-metrics
+        - --config.file=/etc/blackbox_exporter/config.yml
+        - --web.listen-address=:19115
+        image: quay.io/prometheus/blackbox-exporter:v0.24.0
+        name: blackbox-exporter
+        ports:
+        - containerPort: 19115
+          name: http
         resources:
           limits:
-            cpu: 100m
-            memory: 250Mi
+            cpu: 20m
+            memory: 40Mi
           requests:
             cpu: 10m
-            memory: 190Mi
+            memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -49,23 +50,21 @@ spec:
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 65534
-          seccompProfile:
-            type: RuntimeDefault
+        volumeMounts:
+        - mountPath: /etc/blackbox_exporter/
+          name: config
+          readOnly: true
       - args:
-        - --secure-listen-address=:8443
-        - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
-        - --upstream=http://127.0.0.1:8081/
-        image: quay.io/brancz/kube-rbac-proxy:v0.14.2
-        name: kube-rbac-proxy-main
-        ports:
-        - containerPort: 8443
-          name: https-main
+        - --webhook-url=http://localhost:19115/-/reload
+        - --volume-dir=/etc/blackbox_exporter/
+        image: jimmidyson/configmap-reload:v0.5.0
+        name: module-configmap-reloader
         resources:
           limits:
-            cpu: 40m
+            cpu: 20m
             memory: 40Mi
           requests:
-            cpu: 20m
+            cpu: 10m
             memory: 20Mi
         securityContext:
           allowPrivilegeEscalation: false
@@ -73,18 +72,23 @@ spec:
             drop:
             - ALL
           readOnlyRootFilesystem: true
-          runAsGroup: 65532
           runAsNonRoot: true
-          runAsUser: 65532
+          runAsUser: 65534
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/blackbox_exporter/
+          name: config
+          readOnly: true
       - args:
-        - --secure-listen-address=:9443
+        - --secure-listen-address=:9115
         - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305
-        - --upstream=http://127.0.0.1:8082/
+        - --upstream=http://127.0.0.1:19115/
         image: quay.io/brancz/kube-rbac-proxy:v0.14.2
-        name: kube-rbac-proxy-self
+        name: kube-rbac-proxy
         ports:
-        - containerPort: 9443
-          name: https-self
+        - containerPort: 9115
+          name: https
         resources:
           limits:
             cpu: 20m
@@ -103,4 +107,8 @@ spec:
           runAsUser: 65532
       nodeSelector:
         kubernetes.io/os: linux
-      serviceAccountName: kube-state-metrics
+      serviceAccountName: blackbox-exporter
+      volumes:
+      - configMap:
+          name: blackbox-exporter-configuration
+        name: config

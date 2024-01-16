@@ -28,7 +28,6 @@ spec:
     requests:
       cpu: 4m
       memory: 100Mi
-  secrets: []
   securityContext:
     fsGroup: 2000
     runAsNonRoot: true
