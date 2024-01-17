@@ -14,4 +14,4 @@ spec:
     port: 8443
     name: gui
   type: LoadBalancer
-  loadBalancerIP: 192.168.99.21
+  loadBalancerIP: 192.168.77.21

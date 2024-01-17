@@ -14,4 +14,4 @@ spec:
     targetPort: 1883
     name: mqtt
   type: LoadBalancer
-  loadBalancerIP: 192.168.99.25
+  loadBalancerIP: 192.168.77.25

@@ -20,4 +20,4 @@ spec:
     targetPort: 53
     name: dnstcp
   type: LoadBalancer
-  loadBalancerIP: 192.168.99.54
+  loadBalancerIP: 192.168.77.54
