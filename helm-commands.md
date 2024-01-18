@@ -21,7 +21,7 @@ helm upgrade --install sealed-secrets-controller sealed-secrets/sealed-secrets -
 
 helm upgrade --install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace --set defaultSettings.defaultDataLocality="best-effort"
 
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace --set service.ui.loadBalancerIP="192.168.99.20" --set controller.metrics.enabled=true --set-string controller.podAnnotations."prometheus\.io/scrape"="true" --set-string controller.podAnnotations."prometheus\.io/port"="10254"
+helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace --set service.ui.loadBalancerIP="192.168.77.20" --set controller.metrics.enabled=true --set-string controller.podAnnotations."prometheus\.io/scrape"="true" --set-string controller.podAnnotations."prometheus\.io/port"="10254"
 
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 
