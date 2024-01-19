@@ -25,7 +25,7 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ing
 
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 
-helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true
+helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --set extraArgs='{--dns01-recursive-nameservers-only=true,--dns01-recursive-nameservers=1.1.1.1:53\,1.0.0.1:53}'
 
 helm upgrade --install traefik traefik/traefik --create-namespace --namespace=traefik --values=traefik-values.yml
 ```
