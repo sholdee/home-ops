@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: DaemonSet
 metadata:
   name: gravity
   namespace: gravity
@@ -8,26 +8,11 @@ spec:
   selector:
     matchLabels:
       app: gravity
-  updateStrategy:
-    type: RollingUpdate
-  replicas: 3
   template:
     metadata:
       labels:
         app: gravity
     spec:
-      affinity:
-        podAntiAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - gravity
-              topologyKey: kubernetes.io/hostname
       containers:
       - name: etcd
         image: quay.io/coreos/etcd:v3.5.11
@@ -94,5 +79,5 @@ spec:
       accessModes: [ "ReadWriteOnce" ]
       resources:
         requests:
-          storage: 2Gi
-      storageClassName: "longhorn"
+          storage: 1Gi
+      storageClassName: "local-path"
