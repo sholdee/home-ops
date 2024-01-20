@@ -71,13 +71,7 @@ spec:
         - containerPort: 68
           name: dhcp-alt
           protocol: TCP
-
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 1Gi
-      storageClassName: "local-path"
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: gravity-pvc
