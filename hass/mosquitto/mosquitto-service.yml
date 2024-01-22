@@ -15,4 +15,4 @@ spec:
     name: mqtt
   type: LoadBalancer
   loadBalancerIP: 192.168.77.25
-  externalTrafficPolicy: Local
+  externalTrafficPolicy: Cluster
