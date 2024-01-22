@@ -4,6 +4,7 @@ metadata:
   name: hubble-ui
   namespace: kube-system
   annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "http"
     cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
