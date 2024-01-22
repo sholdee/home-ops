@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: hubble-ui
+  namespace: kube-system
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: hubble.mgmt.sholdee.net
+    http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: hubble-ui 
+              port:
+                number: 80
+  tls:
+  - hosts:
+    - hubble.mgmt.sholdee.net
+    secretName: hubble-tls-secret
