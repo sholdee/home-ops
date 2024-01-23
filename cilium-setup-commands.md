@@ -3,7 +3,8 @@
 ```bash
 cilium install --set=ipam.operator.clusterPoolIPv4PodCIDRList=10.52.0.0/16 --set k8sServiceHost=192.168.99.77 --set k8sServicePort=6443
 
-cilium config set cluster-name sholdee-k3s
+cilium hubble enable --ui
+
 cilium config set enable-bgp-control-plane true
 cilium config set auto-direct-node-routes true
 cilium config set routing-mode native
