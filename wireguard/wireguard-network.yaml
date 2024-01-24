@@ -30,27 +30,37 @@ spec:
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
         - ports:
             - port: "80"
+              protocol: TCP
         - ports:
             - port: "53"
+              protocol: UDP
         - ports:
             - port: "8443"
+              protocol: TCP
     - toCIDRSet:
         - cidr: 192.168.99.0/24
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
         - ports:
             - port: "80"
+              protocol: TCP
         - ports:
             - port: "22"
+              protocol: TCP
         - ports:
             - port: "53"
+              protocol: UDP
     - toCIDRSet:
         - cidr: 10.2.0.0/24
       toPorts:
         - ports:
             - port: "443"
+              protocol: TCP
         - ports:
             - port: "5001"
+              protocol: TCP
