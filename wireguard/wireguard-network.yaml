@@ -47,3 +47,10 @@ spec:
             - port: "22"
         - ports:
             - port: "53"
+    - toCIDRSet:
+        - cidr: 10.2.0.0/24
+      toPorts:
+        - ports:
+            - port: "443"
+        - ports:
+            - port: "5001"
