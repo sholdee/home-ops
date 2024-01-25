@@ -34,10 +34,6 @@ spec:
               matchLabels:
                 component: apiserver
             namespace: default
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
     - toEndpoints:
         - matchLabels:
             k8s-app: hubble-relay
