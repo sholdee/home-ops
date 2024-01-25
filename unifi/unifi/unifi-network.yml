@@ -17,6 +17,12 @@ spec:
         - ports:
             - port: "8443"
               protocol: TCP
+    - fromCIDRSet:
+        - cidr: 10.52.0.0/16
+      toPorts:
+        - ports:
+            - port: "8443"
+              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: traefik
