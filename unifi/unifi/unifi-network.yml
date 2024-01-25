@@ -8,21 +8,6 @@ spec:
     matchLabels:
       app: unifi
   ingress:
-    - fromCIDRSet:
-        - cidr: 192.168.99.0/24
-      toPorts:
-        - ports:
-            - port: "8080"
-              protocol: TCP
-        - ports:
-            - port: "8443"
-              protocol: TCP
-    - fromCIDRSet:
-        - cidr: 10.52.0.0/16
-      toPorts:
-        - ports:
-            - port: "8443"
-              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             app.kubernetes.io/name: traefik
@@ -39,3 +24,10 @@ spec:
         - ports:
             - port: "8443"
               protocol: TCP
+    - fromEntities:
+        - world
+      toPorts:
+        - ports:
+            - port: "8080"
+        - ports:
+            - port: "8443"
