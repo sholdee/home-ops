@@ -50,3 +50,5 @@ spec:
         - ports:
             - port: "53"
               protocol: UDP
+            - port: "443"
+              protocol: TCP
