@@ -1,0 +1,54 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: unifi
+  namespace: unifi
+spec:
+  endpointSelector:
+    matchLabels:
+      app: unifi
+  ingress:
+    - fromCIDRSet:
+        - cidr: 192.168.99.0/24
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+        - ports:
+            - port: "8443"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: traefik
+            io.kubernetes.pod.namespace: traefik
+      toPorts:
+        - ports:
+            - port: "8843"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: hass
+            io.kubernetes.pod.namespace: hass
+      toPorts:
+        - ports:
+            - port: "8443"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            app: unifi-db
+      toPorts:
+        - ports:
+            - port: "27017"
+              protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
