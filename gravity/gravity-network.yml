@@ -1,0 +1,56 @@
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: gravity
+  namespace: gravity
+spec:
+  endpointSelector:
+    matchLabels:
+      app: gravity
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: gravity
+      toPorts:
+        - ports:
+            - port: "2380"
+              protocol: TCP
+    - fromCIDRSet:
+        - cidr: 192.168.99.0/24
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ingress-nginx
+            io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "8008"
+              protocol: TCP
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            app: gravity
+      toPorts:
+        - ports:
+            - port: "2380"
+              protocol: TCP
+    - toCIDRSet:
+        - cidr: 192.168.77.54/31
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
