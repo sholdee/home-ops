@@ -17,20 +17,5 @@ spec:
             - port: "8443"
               protocol: TCP
   egress:
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
-      toPorts:
-        - ports:
-            - port: "53"
-              protocol: UDP
-          rules:
-            dns:
-              - matchPattern: "*"
-    - toServices:
-        - k8sServiceSelector:
-            selector:
-              matchLabels:
-                component: apiserver
-            namespace: default
+    - toEntities:
+        - cluster
