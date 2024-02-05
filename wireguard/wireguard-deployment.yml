@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
       - name: wireguard-conf-init
-        image: busybox
+        image: busybox:1.35.0
         command: ["sh", "-c", "ROUTE=$(ip route get 1.1.1.1 | grep 1.1.1.1); ENI=$(echo $ROUTE | awk '{print $5}'); sed \"s/ENI/$ENI/g\" /etc/wireguard-secret/wg0.conf.template > /home/wg0-eni.conf; DGW=$(echo $ROUTE | awk '{print $3}'); sed \"s/DGW/$DGW/g\" /home/wg0-eni.conf > /home/wg0.conf; chmod 400 /home/wg0.conf"]
         volumeMounts:
           - mountPath: /home
@@ -23,7 +23,7 @@ spec:
             name: wireguard-secret
       containers:
       - name: wireguard
-        image: lscr.io/linuxserver/wireguard:latest
+        image: lscr.io/linuxserver/wireguard:v1.0.20210914-ls20
         env:
           - name: TZ
             value: America/Chicago

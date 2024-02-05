@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: codeserver
-        image: lscr.io/linuxserver/code-server:latest
+        image: lscr.io/linuxserver/code-server:4.21.0-ls194
         env:
           - name: TZ
             value: America/Chicago

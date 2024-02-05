@@ -14,7 +14,7 @@ spec:
     spec:
       initContainers:
       - name: zwaveui-proxy-conf-init
-        image: busybox
+        image: busybox:1.35.0
         command: ["sh", "-c", "cp /home/zwaveui-proxy-secret/zwaveui-proxy.conf /home/zwaveui-proxy-config/default.conf;chmod 644 /home/zwaveui-proxy-config/default.conf"]
         volumeMounts:
           - mountPath: /home/zwaveui-proxy-config
@@ -23,7 +23,7 @@ spec:
             name: zwaveui-proxy-secret
       containers:
       - name: zwaveui-proxy
-        image: nginx:stable
+        image: nginx:1.24.0
         ports:
         - containerPort: 8080
           protocol: TCP
