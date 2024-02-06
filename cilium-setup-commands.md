@@ -9,24 +9,27 @@
 * [cilium-agent cmd reference](https://docs.cilium.io/en/stable/cmdref/cilium-agent/)
 
 ```bash
-cilium install --set=ipam.operator.clusterPoolIPv4PodCIDRList=10.52.0.0/16 --set k8sServiceHost=192.168.99.77 --set k8sServicePort=6443
-
-cilium hubble enable --ui
-
-cilium config set enable-bgp-control-plane true
-cilium config set auto-direct-node-routes true
-cilium config set routing-mode native
-cilium config set ipv4-native-routing-cidr 10.52.0.0/16
-cilium config set kube-proxy-replacement strict
-cilium config set enable-bpf-masquerade true
-cilium config set install-no-conntrack-iptables-rules true
-cilium config set bpf-lb-mode hybrid
-cilium config set bpf-lb-algorithm maglev
+cilium install --version "v1.14.6" \
+  --helm-set operator.replicas="1" \
+  --helm-set ipam.operator.clusterPoolIPv4PodCIDRList="10.52.0.0/16" \
+  --helm-set ipv4NativeRoutingCIDR="10.52.0.0/16" \
+  --helm-set k8sServiceHost="127.0.0.1" \
+  --helm-set k8sServicePort="6444" \
+  --helm-set routingMode="native" \
+  --helm-set autoDirectNodeRoutes="true" \
+  --helm-set kubeProxyReplacement="true" \
+  --helm-set bpf.masquerade="true" \
+  --helm-set enableIPv4Masquerade="false" \
+  --helm-set bgpControlPlane.enabled="true" \
+  --helm-set hubble.enabled="true" \
+  --helm-set hubble.relay.enabled="true" \
+  --helm-set hubble.ui.enabled="true" \
+  --helm-set bpf.loadBalancer.algorithm="maglev" \
+  --helm-set bpf.loadBalancer.mode="hybrid" \
+  --helm-set installNoConntrackIptablesRules="true"
 ```
 
 ```bash
-sudo kubectl delete pods --all -A
-
 sudo kubectl apply -f CiliumBGPPeeringPolicy.yml
 
 sudo nano /etc/systemd/system/k3s.service
