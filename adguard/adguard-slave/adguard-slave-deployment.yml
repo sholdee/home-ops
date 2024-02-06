@@ -36,7 +36,7 @@ spec:
             name: adguard-slave-conf
       containers:
       - name: adguard-home
-        image: adguard/adguardhome:v0.107.43
+        image: adguard/adguardhome:v0.107.44
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 53
