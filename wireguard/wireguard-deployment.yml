@@ -13,14 +13,27 @@ spec:
         app: wireguard
     spec:
       initContainers:
-      - name: wireguard-conf-init
+      - name: init-setup
         image: busybox:1.36.1
-        command: ["sh", "-c", "ROUTE=$(ip route get 1.1.1.1 | grep 1.1.1.1); ENI=$(echo $ROUTE | awk '{print $5}'); sed \"s/ENI/$ENI/g\" /etc/wireguard-secret/wg0.conf.template > /home/wg0-eni.conf; DGW=$(echo $ROUTE | awk '{print $3}'); sed \"s/DGW/$DGW/g\" /home/wg0-eni.conf > /home/wg0.conf; chmod 400 /home/wg0.conf"]
+        command: 
+        - "sh"
+        - "-c"
+        - |
+          ROUTE=$(ip route get 1.1.1.1 | grep 1.1.1.1);
+          ENI=$(echo $ROUTE | awk '{print $5}');
+          sed "s/ENI/$ENI/g" /etc/wireguard-secret/wg0.conf.template > /home/wg0-eni.conf;
+          DGW=$(echo $ROUTE | awk '{print $3}');
+          sed "s/DGW/$DGW/g" /home/wg0-eni.conf > /home/wg0.conf;
+          chmod 400 /home/wg0.conf;
+          cp /config/scripts/wg-check.sh /home/wg-check.sh;
+          chmod +x /home/wg-check.sh;
         volumeMounts:
           - mountPath: /home
             name: wireguard-config
           - mountPath: /etc/wireguard-secret
             name: wireguard-secret
+          - mountPath: /config/scripts
+            name: wireguard-check
       containers:
       - name: wireguard
         image: lscr.io/linuxserver/wireguard:v1.0.20210914-ls20
@@ -49,7 +62,7 @@ spec:
               command: ["sh", "-c", "sleep 15; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
         livenessProbe:
           exec:
-            command: ["/bin/bash", "-c", "/config/scripts/wg-check.sh"]
+            command: ["/bin/bash", "-c", "/home/wg-check.sh"]
           initialDelaySeconds: 30
           periodSeconds: 30
       volumes:
