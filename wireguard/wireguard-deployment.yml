@@ -41,13 +41,23 @@ spec:
         volumeMounts:
           - mountPath: /home
             name: wireguard-config
+          - mountPath: /config/scripts
+            name: wireguard-check
         lifecycle:
           postStart:
             exec:
-              command: ["sh", "-c", "sleep 20; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
+              command: ["sh", "-c", "sleep 15; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
+        livenessProbe:
+          exec:
+            command: ["/bin/bash", "-c", "/config/scripts/wg-check.sh"]
+          initialDelaySeconds: 30
+          periodSeconds: 30
       volumes:
       - emptyDir: {}
         name: wireguard-config
       - name: wireguard-secret
         secret:
           secretName: wireguard
+      - name: wireguard-check
+        secret:
+          secretName: wireguard-check

@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wireguard-check
+  namespace: wireguard
+type: Opaque
+stringData:
+  wg-check.sh: |
+    #!/bin/bash
+    
+    # Initialize a failure flag
+    failure=0
+    
+    # Check for the specific public key in the `wg show` output
+    if wg show | grep -q "public key: I5P73tGjZVZmBw7VS/upDwvUWq5ivfmi9sb7KSnq6EA="; then
+        echo "Public key check passed."
+    else
+        echo "Public key check failed."
+        failure=1
+    fi
+    
+    # Check for the existence of a default route
+    if ip route | grep -q "default"; then
+        echo "Default route check passed."
+    else
+        echo "Default route check failed."
+        failure=1
+    fi
+    
+    # Execute corrective action if any check failed
+    if [ $failure -eq 1 ]; then
+        echo "Executing corrective action."
+        wg-quick down wg0; wg-quick up /home/wg0.conf
+        exit 1
+    fi
+    
+    # If the script reaches this point, both checks have passed
+    echo "All checks passed."
