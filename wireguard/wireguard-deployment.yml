@@ -44,7 +44,7 @@ spec:
         lifecycle:
           postStart:
             exec:
-              command: ["sh", "-c", "sleep 20; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
+              command: ["sh", "-c", "sleep 20; wg-quick down wg0; wg-quick up /home/wg0.conf"]
       volumes:
       - emptyDir: {}
         name: wireguard-config
