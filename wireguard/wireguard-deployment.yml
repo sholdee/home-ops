@@ -54,8 +54,6 @@ spec:
         volumeMounts:
           - mountPath: /home
             name: wireguard-config
-          - mountPath: /config/scripts
-            name: wireguard-check
         lifecycle:
           postStart:
             exec:
