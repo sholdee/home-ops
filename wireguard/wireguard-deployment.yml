@@ -36,7 +36,7 @@ spec:
             name: wireguard-check
       containers:
       - name: wireguard
-        image: lscr.io/linuxserver/wireguard:v1.0.20210914-ls20
+        image: lscr.io/linuxserver/wireguard:v1.0.20210914-ls22
         env:
           - name: TZ
             value: America/Chicago
