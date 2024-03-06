@@ -5,8 +5,6 @@ metadata:
   namespace: unifi
 spec:
   replicas: 1
-  updateStrategy:
-    type: OnDelete
   selector:
     matchLabels:
       app: unifi-db
@@ -17,7 +15,7 @@ spec:
     spec:
       containers:
       - name: unifi-db
-        image: docker.io/mongo:4.4
+        image: docker.io/mongo:4.4.29
         ports:
         - containerPort: 27017
           name: mongodb
