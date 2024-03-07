@@ -57,10 +57,3 @@ spec:
               protocol: UDP
     - toCIDRSet:
         - cidr: 10.2.0.0/24
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-        - ports:
-            - port: "5001"
-              protocol: TCP
