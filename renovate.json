@@ -3,6 +3,12 @@
   "extends": [
     "config:base"
   ],
+  "packageRules": [
+    {
+      "packagePatterns": ["^ghcr.io\\/linuxserver\\/"],
+      "versioning": "regex:^(?<compatibility>.*?)-(?<major>v?\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)[\\.-]*r?(?<build>\\d+)*-*r?(?<release>\\w+)*"
+    }
+  ],
   "kubernetes": {
     "fileMatch": ["\\.(yaml|yml)$"]
   },
