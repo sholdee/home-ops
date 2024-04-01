@@ -5,7 +5,7 @@ metadata:
   namespace: hass
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
@@ -18,7 +18,7 @@ metadata:
   namespace: hass
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
