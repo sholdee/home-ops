@@ -12,6 +12,18 @@ spec:
       labels:
         app: unifi
     spec:
+      affinity:
+        podAffinity: 
+          preferredDuringSchedulingIgnoredDuringExecution: 
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app 
+                  operator: In
+                  values:
+                  - unifi-db
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: unifi
         image: ghcr.io/linuxserver/unifi-network-application:8.1.113-ls36
