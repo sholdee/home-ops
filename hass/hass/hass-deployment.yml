@@ -12,6 +12,16 @@ spec:
       labels:
         app: hass
     spec:
+      affinity:
+        podAffinity: 
+          requiredDuringSchedulingIgnoredDuringExecution: 
+          - labelSelector:
+              matchExpressions:
+              - key: app 
+                operator: In
+                values:
+                - codeserver
+            topologyKey: kubernetes.io/hostname
       containers:
       - name: hass
         image: ghcr.io/home-assistant/home-assistant:2024.3.3
