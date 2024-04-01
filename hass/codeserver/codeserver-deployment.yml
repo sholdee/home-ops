@@ -15,15 +15,13 @@ spec:
       affinity:
         podAffinity: 
           requiredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app 
-                  operator: In
-                  values:
-                  - hass
-              topologyKey: kubernetes.io/hostname
+          - labelSelector:
+              matchExpressions:
+              - key: app 
+                operator: In
+                values:
+                - hass
+            topologyKey: kubernetes.io/hostname
       containers:
       - name: codeserver
         image: ghcr.io/linuxserver/code-server:4.22.1-ls202
