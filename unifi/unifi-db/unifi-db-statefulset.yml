@@ -13,6 +13,12 @@ spec:
       labels:
         app: unifi-db
     spec:
+      initContainers:
+      - name: sysctl
+        image: busybox
+        command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        securityContext:
+          privileged: true
       containers:
       - name: unifi-db
         image: docker.io/mongo:7.0.7
