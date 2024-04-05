@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: adguard-home
-        image: adguard/adguardhome:v0.107.46
+        image: adguard/adguardhome:v0.107.47
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 53
