@@ -20,8 +20,10 @@ spec:
           name: mqtt
           protocol: TCP
         volumeMounts:
-        - name: mosquitto-data
-          mountPath: /mosquitto
+        - name: mosquitto-conf
+          mountPath: /mosquitto/config
+        - name: mosquitto-pass
+          mountPath: /mosquitto/config/pwd
       - name: mqtt-venstar-bridge
         image: ghcr.io/terafin/mqtt-venstar-bridge:latest
         env:
@@ -45,6 +47,9 @@ spec:
                 name: mosquitto
                 key: pass
       volumes:
-      - name: mosquitto-data
-        persistentVolumeClaim:
-          claimName: mosquitto-pvc
+      - name: mosquitto-conf
+        configMap:
+          name: mosquitto
+      - name: mosquitto-pass
+        secret:
+          secretName: mosquitto-pass
