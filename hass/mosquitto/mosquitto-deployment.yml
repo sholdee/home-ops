@@ -12,6 +12,20 @@ spec:
       labels:
         app: mosquitto
     spec:
+      initContainers:
+      - name: set-permissions
+        image: busybox
+        command:
+          - sh
+          - -c
+          - >
+            find /mosquitto/config -type d -exec chmod 500 {} \; &&
+            find /mosquitto/config -type f -exec chmod 400 {} \;
+        volumeMounts:
+          - name: mosquitto-conf
+            mountPath: /mosquitto/config
+          - name: mosquitto-pass
+            mountPath: /mosquitto/config/pwd
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
