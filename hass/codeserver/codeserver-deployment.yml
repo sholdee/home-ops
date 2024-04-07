@@ -45,8 +45,6 @@ spec:
           mountPath: /home/appdaemon-data
         - name: hass-data
           mountPath: /home/hass-data
-        - name: mosquitto-data
-          mountPath: /home/mosquitto-data
         - name: portainer-data
           mountPath: /home/portainer-data
       volumes:
@@ -62,9 +60,6 @@ spec:
       - name: hass-data
         persistentVolumeClaim:
           claimName: hass-pvc
-      - name: mosquitto-data
-        persistentVolumeClaim:
-          claimName: mosquitto-pvc
       - name: portainer-data
         persistentVolumeClaim:
           claimName: portainer-pvc
