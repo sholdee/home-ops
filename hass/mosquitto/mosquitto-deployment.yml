@@ -13,19 +13,22 @@ spec:
         app: mosquitto
     spec:
       initContainers:
-      - name: init-setup
+      - name: init-config
         image: busybox:1.36.1
         command: 
         - "sh"
         - "-c"
         - |
-          cp /tmp/mosquitto/config/pwd/password.txt /mosquitto/config/pwd/password.txt;
-          chmod 400 /mosquitto/config/pwd/password.txt;
-          chown 1883:1883 /mosquitto/config/pwd/password.txt;
+          cp /tmp/mosquitto/conf/mosquitto.conf /mosquitto/config/mosquitto.conf;
+          cp /tmp/mosquitto/pass/password.txt /mosquitto/config/password.txt;
+          chmod 400 /mosquitto/config/password.txt;
+          chown 1883:1883 /mosquitto/config/password.txt;
         volumeMounts:
-          - mountPath: /mosquitto/config/pwd
-            name: mosquitto-pass
-          - mountPath: /tmp/mosquitto/config/pwd
+          - mountPath: /mosquitto/config
+            name: mosquitto-conf
+          - mountPath: /tmp/mosquitto/conf
+            name: mosquitto-conf-tmp
+          - mountPath: /tmp/mosquitto/pass
             name: mosquitto-pass-tmp
       containers:
       - name: mosquitto
@@ -37,8 +40,6 @@ spec:
         volumeMounts:
         - name: mosquitto-conf
           mountPath: /mosquitto/config
-        - name: mosquitto-pass
-          mountPath: /mosquitto/config/pwd
       - name: mqtt-venstar-bridge
         image: ghcr.io/terafin/mqtt-venstar-bridge:latest
         env:
@@ -62,11 +63,11 @@ spec:
                 name: mosquitto
                 key: pass
       volumes:
-      - name: mosquitto-conf
+      - name: mosquitto-conf-tmp
         configMap:
           name: mosquitto
       - name: mosquitto-pass-tmp
         secret:
           secretName: mosquitto-pass
       - emptyDir: {}
-        name: mosquitto-pass
+        name: mosquitto-conf
