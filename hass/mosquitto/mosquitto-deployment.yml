@@ -13,19 +13,25 @@ spec:
         app: mosquitto
     spec:
       initContainers:
-      - name: set-permissions
+      - name: copy-config
         image: busybox
         command:
           - sh
           - -c
           - >
-            find /mosquitto/config -type d -exec chmod 500 {} \; &&
-            find /mosquitto/config -type f -exec chmod 400 {} \;
+            cp -a /mosquitto/source-config/. /mosquitto/target-config/ &&
+            cp -a /mosquitto/source-pwd/. /mosquitto/target-pwd/ &&
+            chown -R 1883:1883 /mosquitto/target-config /mosquitto/target-pwd &&
+            chmod -R 400 /mosquitto/target-config /mosquitto/target-pwd;
         volumeMounts:
+          - name: mosquitto-source-conf
+            mountPath: /mosquitto/source-config
+          - name: mosquitto-source-pass
+            mountPath: /mosquitto/source-pwd
           - name: mosquitto-conf
-            mountPath: /mosquitto/config
+            mountPath: /mosquitto/target-config
           - name: mosquitto-pass
-            mountPath: /mosquitto/config/pwd
+            mountPath: /mosquitto/target-pwd
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
@@ -61,9 +67,13 @@ spec:
                 name: mosquitto
                 key: pass
       volumes:
-      - name: mosquitto-conf
+      - name: mosquitto-source-conf
         configMap:
-          name: mosquitto
-      - name: mosquitto-pass
+          name: mosquitto-config
+      - name: mosquitto-source-pass
         secret:
           secretName: mosquitto-pass
+      - name: mosquitto-conf
+        emptyDir: {}
+      - name: mosquitto-pass
+        emptyDir: {}
