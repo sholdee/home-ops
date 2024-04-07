@@ -12,6 +12,10 @@ spec:
       labels:
         app: mosquitto
     spec:
+      securityContext:
+        fsGroup: 1883
+        runAsUser: 1883
+        runAsGroup: 1883
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
