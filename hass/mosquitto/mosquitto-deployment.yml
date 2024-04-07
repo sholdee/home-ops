@@ -12,6 +12,21 @@ spec:
       labels:
         app: mosquitto
     spec:
+      initContainers:
+      - name: init-setup
+        image: busybox:1.36.1
+        command: 
+        - "sh"
+        - "-c"
+        - |
+          cp /tmp/mosquitto/config/pwd/password.txt /mosquitto/config/pwd/password.txt;
+          chmod 400 /mosquitto/config/pwd/password.txt;
+          chown 1883:1883 /mosquitto/config/pwd/password.txt;
+        volumeMounts:
+          - mountPath: /mosquitto/config/pwd
+            name: mosquitto-pass
+          - mountPath: /tmp/mosquitto/config/pwd
+            name: mosquitto-pass-tmp
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
@@ -50,6 +65,8 @@ spec:
       - name: mosquitto-conf
         configMap:
           name: mosquitto
-      - name: mosquitto-pass
+      - name: mosquitto-pass-tmp
         secret:
           secretName: mosquitto-pass
+      - emptyDir: {}
+        name: mosquitto-pass
