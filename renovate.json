@@ -14,5 +14,8 @@
   "kubernetes": {
     "fileMatch": ["\\.(yaml|yml)$"]
   },
+  "argocd": {
+    "fileMatch": ["argocd/argocd\\-.*\\.(yaml|yml)$"]
+  },
   "ignorePaths": ["**/kube-prometheus/**"]
 }
