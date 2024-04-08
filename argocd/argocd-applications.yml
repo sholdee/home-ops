@@ -1,0 +1,695 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: k3s
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  description: Home automation and management
+  destinations:
+  - name: in-cluster
+    namespace: '*'
+    server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  sourceRepos:
+  - git@github.com:sholdee/k3s-app-manifests.git
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: adguard
+spec:
+  destination:
+    name: in-cluster
+    namespace: adguard
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: adguard/adguard
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: adguard-slave
+spec:
+  destination:
+    name: in-cluster
+    namespace: adguard
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: adguard/adguard-slave
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: appdaemon
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/appdaemon
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - PruneLast=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd
+spec:
+  destination:
+    name: in-cluster
+    namespace: argocd
+  project: k3s
+  source:
+    chart: argo-cd
+    repoURL: https://argoproj.github.io/argo-helm
+    targetRevision: 6.7.10
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-conf
+spec:
+  destination:
+    name: in-cluster
+    namespace: argocd
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: argocd
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+spec:
+  destination:
+    name: in-cluster
+    namespace: cert-manager
+  project: k3s
+  source:
+    chart: cert-manager
+    helm:
+      parameters:
+      - name: installCRDs
+        value: "true"
+      - name: dns01RecursiveNameservers
+        value: 1.1.1.1:53,1.0.0.1:53
+      - name: dns01RecursiveNameserversOnly
+        value: "true"
+    repoURL: https://charts.jetstack.io
+    targetRevision: v1.14.4
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager-conf
+spec:
+  destination:
+    name: in-cluster
+    namespace: cert-manager
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: cert-manager
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-conf
+spec:
+  destination:
+    name: in-cluster
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: cilium
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cluster-issuer
+spec:
+  destination:
+    name: in-cluster
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: cluster-issuer
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: codeserver
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/codeserver
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: docker-hub-key
+spec:
+  destination:
+    name: in-cluster
+    namespace: default
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: docker-hub-key
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gravity
+spec:
+  destination:
+    name: in-cluster
+    namespace: gravity
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: gravity
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hass
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/hass
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: hass-db
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/hass-db
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ingress-nginx
+spec:
+  destination:
+    name: in-cluster
+    namespace: ingress-nginx
+  project: k3s
+  source:
+    chart: ingress-nginx
+    helm:
+      parameters:
+      - name: controller.service.internal.loadBalancerIP
+        value: 192.168.77.20
+      - name: controller.metrics.enabled
+        value: "true"
+      - name: controller.service.externalTrafficPolicy
+        value: Cluster
+      - name: controller.replicaCount
+        value: "1"
+      values: |-
+        controller.podAnnotations."prometheus\.io/scrape": 'true'
+        controller.podAnnotations."prometheus\.io/port": '10254'
+        controller:
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 100
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                      - ingress-nginx
+                    - key: app.kubernetes.io/instance
+                      operator: In
+                      values:
+                      - ingress-nginx
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                      - controller
+                  topologyKey: kubernetes.io/hostname
+    repoURL: https://kubernetes.github.io/ingress-nginx
+    targetRevision: 4.10.0
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+spec:
+  destination:
+    name: in-cluster
+    namespace: kubernetes-dashboard
+  ignoreDifferences:
+  - group: '*'
+    jsonPointers:
+    - /data
+    kind: ConfigMap
+  project: k3s
+  source:
+    chart: kubernetes-dashboard
+    repoURL: https://kubernetes.github.io/dashboard/
+    targetRevision: 7.2.0
+  syncPolicy:
+    syncOptions:
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard-conf
+spec:
+  destination:
+    name: in-cluster
+    namespace: kubernetes-dashboard
+  ignoreDifferences:
+  - group: '*'
+    jsonPointers:
+    - /metadata/labels
+    kind: ConfigMap
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: kubernetes-dashboard
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+spec:
+  destination:
+    name: in-cluster
+    namespace: longhorn-system
+  project: k3s
+  source:
+    chart: longhorn
+    helm:
+      parameters:
+      - name: defaultSettings.defaultDataLocality
+        value: best-effort
+    repoURL: https://charts.longhorn.io
+    targetRevision: 1.6.1
+  syncPolicy:
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn-conf
+spec:
+  destination:
+    name: in-cluster
+    namespace: longhorn-system
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: longhorn
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mosquitto
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/mosquitto
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portainer
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/portainer
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sealed-secrets-controller
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  project: k3s
+  source:
+    chart: sealed-secrets
+    repoURL: https://bitnami-labs.github.io/sealed-secrets
+    targetRevision: 2.15.3
+  syncPolicy:
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: traefik
+spec:
+  destination:
+    name: in-cluster
+    namespace: traefik
+  project: k3s
+  source:
+    chart: traefik
+    helm:
+      values: "service:\n  spec:\n    loadBalancerIP: 192.168.77.22\n    externalTrafficPolicy:
+        Cluster\nports:\n  web:\n    redirectTo: \n        port: websecure\n  websecure:\n
+        \   tls:\n      enabled: true\nadditionalArguments:\n  - --serversTransport.insecureSkipVerify=true\nproviders:\n
+        \ kubernetesIngress:\n    publishedService:\n      enabled: true"
+    repoURL: https://helm.traefik.io/traefik
+    targetRevision: 27.0.0
+  syncPolicy:
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: unifi
+spec:
+  destination:
+    name: in-cluster
+    namespace: unifi
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: unifi/unifi
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: unifi-db
+spec:
+  destination:
+    name: in-cluster
+    namespace: unifi
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: unifi/unifi-db
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: unifi-guest
+spec:
+  destination:
+    name: in-cluster
+    namespace: unifi
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: unifi/unifi-guest
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: wireguard
+spec:
+  destination:
+    name: in-cluster
+    namespace: wireguard
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: wireguard
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zwaveui-proxy
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: hass/zwaveui-proxy
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated: {}
+    syncOptions:
+    - PruneLast=true
+    - RespectIgnoreDifferences=true
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
