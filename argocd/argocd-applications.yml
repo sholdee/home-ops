@@ -34,12 +34,11 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
-    - PruneLast=true
     - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -58,12 +57,11 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
-    - PruneLast=true
     - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -79,7 +77,8 @@ spec:
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 6.7.10
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -101,7 +100,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -128,7 +128,8 @@ spec:
     repoURL: https://charts.jetstack.io
     targetRevision: v1.14.4
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -150,7 +151,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -171,10 +173,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -194,7 +195,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
@@ -216,12 +218,11 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -240,7 +241,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
 ---
@@ -261,10 +263,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -285,12 +286,11 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -309,10 +309,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -364,7 +363,8 @@ spec:
     repoURL: https://kubernetes.github.io/ingress-nginx
     targetRevision: 4.10.0
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -388,11 +388,12 @@ spec:
     repoURL: https://kubernetes.github.io/dashboard/
     targetRevision: 7.2.0
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -416,7 +417,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -461,7 +463,8 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -483,10 +486,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -507,10 +509,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 ---
@@ -528,7 +529,8 @@ spec:
     repoURL: https://bitnami-labs.github.io/sealed-secrets
     targetRevision: 2.15.3
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
 ---
@@ -551,7 +553,8 @@ spec:
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 27.0.0
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -573,10 +576,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -597,10 +599,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
@@ -621,10 +622,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 ---
@@ -645,10 +645,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 ---
@@ -669,10 +668,9 @@ spec:
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
-    automated: {}
+    automated:
+      prune: true
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 ---
