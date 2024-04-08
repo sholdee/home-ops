@@ -30,39 +30,16 @@ spec:
     directory:
       jsonnet: {}
       recurse: true
-    path: adguard/adguard
-    repoURL: git@github.com:sholdee/k3s-app-manifests.git
-    targetRevision: master
-  syncPolicy:
-    syncOptions:
-    - CreateNamespace=true
-    - PruneLast=true
-    - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: adguard-slave
-spec:
-  destination:
-    name: in-cluster
-    namespace: adguard
-  project: k3s
-  source:
-    directory:
-      jsonnet: {}
-      recurse: true
-    path: adguard/adguard-slave
+    path: adguard
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
     automated: {}
     syncOptions:
-    - PruneLast=true
-    - RespectIgnoreDifferences=true
     - CreateNamespace=true
+    - PruneLast=true
     - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application

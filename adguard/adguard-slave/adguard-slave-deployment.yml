@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: adguard-slave
   namespace: adguard
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   selector:
     matchLabels:
