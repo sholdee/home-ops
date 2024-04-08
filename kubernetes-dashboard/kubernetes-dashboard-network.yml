@@ -6,7 +6,7 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      app.kubernetes.io/name: kubernetes-dashboard
+      app.kubernetes.io/component: app
   ingress:
     - fromEndpoints:
         - matchLabels:
