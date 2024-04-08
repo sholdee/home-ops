@@ -57,7 +57,7 @@ spec:
         - name: adguard-slave-conf
           mountPath: /opt/adguardhome/conf
       - name: adguard-sync
-        image: ghcr.io/linuxserver/adguardhome-sync:v0.6.8-ls95
+        image: ghcr.io/linuxserver/adguardhome-sync:v0.6.9-ls96
         imagePullPolicy: IfNotPresent
         env:
           - name: CONFIGFILE
