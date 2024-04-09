@@ -114,3 +114,16 @@ metadata:
   name: repo-826269661
 type: Opaque
 ---
+apiVersion: v1
+data:
+  name: dm13YXJlLXRhbnp1
+  project: azNz
+  type: aGVsbQ==
+  url: aHR0cHM6Ly92bXdhcmUtdGFuenUuZ2l0aHViLmlvL2hlbG0tY2hhcnRz
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-velero
+type: Opaque
+---
