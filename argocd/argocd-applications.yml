@@ -707,7 +707,7 @@ spec:
         
         configuration:
           backupStorageLocation:
-            - name: aws
+            - name: default
               provider: aws
               bucket: sholdee-velero
               default: true
