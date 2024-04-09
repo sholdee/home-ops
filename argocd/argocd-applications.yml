@@ -546,10 +546,24 @@ spec:
   source:
     chart: traefik
     helm:
-      values: "service:\n  spec:\n    loadBalancerIP: 192.168.77.22\n    externalTrafficPolicy:
-        Cluster\nports:\n  web:\n    redirectTo: \n        port: websecure\n  websecure:\n
-        \   tls:\n      enabled: true\nadditionalArguments:\n  - --serversTransport.insecureSkipVerify=true\nproviders:\n
-        \ kubernetesIngress:\n    publishedService:\n      enabled: true"
+      values: |-
+        service:
+          spec:
+            loadBalancerIP: 192.168.77.22
+            externalTrafficPolicy: Cluster
+        ports:
+          web:
+            redirectTo: 
+                port: websecure
+          websecure:
+            tls:
+              enabled: true
+        additionalArguments:
+          - --serversTransport.insecureSkipVerify=true
+        providers:
+          kubernetesIngress:
+            publishedService:
+              enabled: true
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 27.0.0
   syncPolicy:
