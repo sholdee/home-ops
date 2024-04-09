@@ -688,3 +688,69 @@ spec:
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero
+spec:
+  destination:
+    name: in-cluster
+    namespace: velero
+  project: k3s
+  source:
+    chart: velero
+    helm:
+      values: |-
+        namespace: velero
+        createNamespace: true
+        snapshotsEnabled: false
+        credentials:
+          existingSecret: cloud-credentials
+        
+        configuration:
+          backupStorageLocation:
+            - name: aws
+              provider: aws
+              bucket: sholdee-velero
+              config:
+                region: "us-west-002,s3ForcePathStyle=true,s3Url=https://s3.us-west-002.backblazeb2.com"
+        
+        initContainers:
+          - name: velero-plugin-for-aws
+            image: velero/velero-plugin-for-aws:v1.9.1
+            imagePullPolicy: IfNotPresent
+            volumeMounts:
+              - mountPath: /target
+                name: plugins
+    repoURL: https://vmware-tanzu.github.io/helm-charts
+    targetRevision: 6.0.0
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: velero-conf
+spec:
+  destination:
+    name: in-cluster
+    namespace: velero
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: velero
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
