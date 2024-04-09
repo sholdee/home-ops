@@ -26,7 +26,7 @@ spec:
               topologyKey: kubernetes.io/hostname
       containers:
       - name: codeserver
-        image: ghcr.io/linuxserver/code-server:4.22.1-ls202
+        image: ghcr.io/linuxserver/code-server:4.23.0-ls205
         env:
           - name: TZ
             value: America/Chicago
