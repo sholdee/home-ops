@@ -701,8 +701,6 @@ spec:
     chart: velero
     helm:
       values: |-
-        namespace: velero
-        createNamespace: true
         snapshotsEnabled: false
         credentials:
           existingSecret: cloud-credentials
