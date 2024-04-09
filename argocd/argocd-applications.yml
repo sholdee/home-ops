@@ -730,22 +730,22 @@ spec:
             useOwnerReferencesInBackup: true
             template:
               storageLocation: default
-              excludeResources:
-              - persistentvolumes
-              - persistentvolumeclaims
-              - backuptargets.longhorn.io
-              - backupvolumes.longhorn.io
-              - backups.longhorn.io
-              - nodes.longhorn.io
-              - volumes.longhorn.io
-              - engines.longhorn.io
-              - replicas.longhorn.io
-              - backingimagedatasources.longhorn.io
-              - backingimagemanagers.longhorn.io
-              - backingimages.longhorn.io
-              - sharemanagers.longhorn.io
-              - instancemanagers.longhorn.io
-              - engineimages.longhorn.io
+              excludedResources:
+                - persistentvolumes
+                - persistentvolumeclaims
+                - backuptargets.longhorn.io
+                - backupvolumes.longhorn.io
+                - backups.longhorn.io
+                - nodes.longhorn.io
+                - volumes.longhorn.io
+                - engines.longhorn.io
+                - replicas.longhorn.io
+                - backingimagedatasources.longhorn.io
+                - backingimagemanagers.longhorn.io
+                - backingimages.longhorn.io
+                - sharemanagers.longhorn.io
+                - instancemanagers.longhorn.io
+                - engineimages.longhorn.io
     repoURL: https://vmware-tanzu.github.io/helm-charts
     targetRevision: 6.0.0
   syncPolicy:
