@@ -8,7 +8,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-1364261689
+  name: repo-sealed-secrets-controller
 type: Opaque
 ---
 apiVersion: v1
@@ -21,7 +21,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-2335308354
+  name: repo-argocd
 type: Opaque
 ---
 apiVersion: v1
@@ -34,7 +34,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-2488487572
+  name: repo-cert-manager
 type: Opaque
 ---
 apiVersion: v1
@@ -47,7 +47,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-2904359118
+  name: repo-ingress-nginx
 type: Opaque
 ---
 apiVersion: v1
@@ -60,7 +60,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-3139010772
+  name: repo-awx-operator
 type: Opaque
 ---
 apiVersion: v1
@@ -73,7 +73,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-452920422
+  name: repo-longhorn
 type: Opaque
 ---
 apiVersion: v1
@@ -86,7 +86,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-52235125
+  name: repo-kubernetes-dashboard
 type: Opaque
 ---
 apiVersion: v1
@@ -99,7 +99,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-789874201
+  name: repo-traefik
 type: Opaque
 ---
 apiVersion: v1
@@ -111,7 +111,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-826269661
+  name: repo-kube-prometheus
 type: Opaque
 ---
 apiVersion: v1
