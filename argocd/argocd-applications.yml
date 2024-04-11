@@ -379,9 +379,19 @@ spec:
     namespace: kubernetes-dashboard
   ignoreDifferences:
   - group: '*'
+    kind: ConfigMap
+    name: kubernetes-dashboard-web-settings
     jsonPointers:
     - /data
-    kind: ConfigMap
+  - group: '*'
+    kind: Secret
+    name: kubernetes-dashboard-csrf
+    jsonPointers:
+    - /data/private.key
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/template/metadata/annotations/checksum~1config
   project: k3s
   source:
     chart: kubernetes-dashboard
