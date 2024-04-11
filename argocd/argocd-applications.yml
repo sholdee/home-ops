@@ -413,11 +413,6 @@ spec:
   destination:
     name: in-cluster
     namespace: kubernetes-dashboard
-  ignoreDifferences:
-  - group: '*'
-    jsonPointers:
-    - /metadata/labels
-    kind: ConfigMap
   project: k3s
   source:
     directory:
@@ -432,7 +427,6 @@ spec:
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
