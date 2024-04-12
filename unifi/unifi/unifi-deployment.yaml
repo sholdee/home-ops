@@ -12,18 +12,6 @@ spec:
       labels:
         app: unifi
     spec:
-      affinity:
-        podAntiAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app 
-                  operator: In
-                  values:
-                  - hass
-              topologyKey: kubernetes.io/hostname
       containers:
       - name: unifi
         image: ghcr.io/linuxserver/unifi-network-application:8.1.113@sha256:b384d0c9ecc985738a0988933ee8708ee53812926234165b9b81153239eb366f

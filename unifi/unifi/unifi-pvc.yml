@@ -5,7 +5,7 @@ metadata:
   namespace: unifi
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteMany
   resources:
     requests:
       storage: 2Gi
