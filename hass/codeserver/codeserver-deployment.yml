@@ -4,6 +4,9 @@ metadata:
   name: codeserver
   namespace: hass
 spec:
+  replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: codeserver
