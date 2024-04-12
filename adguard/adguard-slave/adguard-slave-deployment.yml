@@ -59,10 +59,13 @@ spec:
         - name: adguard-slave-conf
           mountPath: /opt/adguardhome/conf
       - name: adguard-sync
-        image: ghcr.io/bakito/adguardhome-sync:v0.6.9
+        image: ghcr.io/linuxserver/adguardhome-sync:v0.6.9-ls96
         imagePullPolicy: IfNotPresent
-        command: ["run"]
-        args: ["--config", "/config/adguardhome-sync.yaml"]
+        env:
+          - name: CONFIGFILE
+            value: /config/adguardhome-sync.yaml
+          - name: TZ
+            value: America/Chicago
         volumeMounts:
         - name: adguard-sync-conf
           mountPath: /config
