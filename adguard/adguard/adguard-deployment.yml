@@ -14,6 +14,18 @@ spec:
       labels:
         app: adguard
     spec:
+      affinity:
+        podAntiAffinity: 
+          preferredDuringSchedulingIgnoredDuringExecution: 
+          - weight: 100  
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app 
+                  operator: In
+                  values:
+                  - adguard
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: adguard-home
         image: adguard/adguardhome:v0.107.48
@@ -36,10 +48,15 @@ spec:
           mountPath: /opt/adguardhome/work
         - name: adguard-conf
           mountPath: /opt/adguardhome/conf
+        resources:
+          requests:
+            memory: 120Mi
+            cpu: "7m"
+          limits:
+            memory: 220Mi
       volumes:
-      - name: adguard-data
-        persistentVolumeClaim:
-          claimName: adguard-data-pvc
+      - emptyDir: {}
+        name: adguard-data
       - name: adguard-conf
         persistentVolumeClaim:
           claimName: adguard-conf-pvc
