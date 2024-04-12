@@ -12,18 +12,6 @@ spec:
       labels:
         app: hass
     spec:
-      affinity:
-        podAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app 
-                  operator: In
-                  values:
-                  - codeserver
-              topologyKey: kubernetes.io/hostname
       containers:
       - name: hass
         image: ghcr.io/home-assistant/home-assistant:2024.4.2
@@ -37,6 +25,12 @@ spec:
         volumeMounts:
         - name: hass-data
           mountPath: /config
+        resources:
+          requests:
+            memory: 420Mi
+            cpu: "15m"
+          limits:
+            memory: 700Mi
       volumes:
       - name: hass-data
         persistentVolumeClaim:

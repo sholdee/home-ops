@@ -12,21 +12,9 @@ spec:
       labels:
         app: codeserver
     spec:
-      affinity:
-        podAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app 
-                  operator: In
-                  values:
-                  - hass
-              topologyKey: kubernetes.io/hostname
       containers:
       - name: codeserver
-        image: ghcr.io/linuxserver/code-server:4.23.0-ls205
+        image: ghcr.io/linuxserver/code-server:4.23.0@sha256:6f4781b93cd22dd18f662556639be629d0351e686c0af8e2deeadaecf9df7dbc
         env:
           - name: TZ
             value: America/Chicago
@@ -47,6 +35,12 @@ spec:
           mountPath: /home/hass-data
         - name: portainer-data
           mountPath: /home/portainer-data
+        resources:
+          requests:
+            memory: 170Mi
+            cpu: "7m"
+          limits:
+            memory: 270Mi
       volumes:
       - name: codeserver-data
         persistentVolumeClaim:
