@@ -61,6 +61,8 @@ spec:
       - name: adguard-sync
         image: ghcr.io/bakito/adguardhome-sync:v0.6.9
         imagePullPolicy: IfNotPresent
+        command: ["run"]
+        args: ["--config", "/config/adguardhome-sync.yaml"]
         volumeMounts:
         - name: adguard-sync-conf
           mountPath: /config
