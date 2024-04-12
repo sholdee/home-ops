@@ -46,6 +46,12 @@ spec:
         volumeMounts:
           - mountPath: /config
             name: unifi-data
+        resources:
+          requests:
+            memory: 700Mi
+            cpu: "15m"
+          limits:
+            memory: 1400Mi
       volumes:
       - name: unifi-data
         persistentVolumeClaim:
