@@ -569,7 +569,7 @@ spec:
             publishedService:
               enabled: true
     repoURL: https://helm.traefik.io/traefik
-    targetRevision: 27.0.1
+    targetRevision: 27.0.2
   syncPolicy:
     automated:
       prune: true
