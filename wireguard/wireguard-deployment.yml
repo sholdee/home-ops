@@ -4,6 +4,7 @@ metadata:
   name: wireguard
   namespace: wireguard
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: wireguard
@@ -13,62 +14,47 @@ spec:
         app: wireguard
     spec:
       initContainers:
-      - name: init-setup
-        image: busybox:1.36.1
-        command: 
-        - "sh"
-        - "-c"
-        - |
-          ROUTE=$(ip route get 1.1.1.1 | grep 1.1.1.1);
-          ENI=$(echo $ROUTE | awk '{print $5}');
-          sed "s/ENI/$ENI/g" /etc/wireguard-secret/wg0.conf.template > /home/wg0-eni.conf;
-          DGW=$(echo $ROUTE | awk '{print $3}');
-          sed "s/DGW/$DGW/g" /home/wg0-eni.conf > /home/wg0.conf;
-          chmod 400 /home/wg0.conf;
-          cp /config/scripts/wg-check.sh /home/wg-check.sh;
-          chmod +x /home/wg-check.sh;
-        volumeMounts:
-          - mountPath: /home
-            name: wireguard-config
-          - mountPath: /etc/wireguard-secret
-            name: wireguard-secret
-          - mountPath: /config/scripts
-            name: wireguard-check
+        - name: sysctls
+          image: busybox:1.36.1
+          command:
+          - sh
+          - -c
+          - sysctl -w net.ipv4.ip_forward=1 && sysctl -w net.ipv4.conf.all.forwarding=1
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+            privileged: true
       containers:
-      - name: wireguard
-        image: ghcr.io/linuxserver/wireguard:v1.0.20210914-ls27
-        env:
-          - name: TZ
-            value: America/Chicago
-          - name: PEERS
-            value: peer1,peer2
-        securityContext:
-          privileged: true
-          capabilities:
-            add:
-            - NET_ADMIN
-            - SYS_MODULE
-        ports:
-        - containerPort: 443
-          protocol: UDP
-        volumeMounts:
-          - mountPath: /home
-            name: wireguard-config
-        lifecycle:
-          postStart:
-            exec:
-              command: ["sh", "-c", "sleep 15; ip route delete default; wg-quick down wg0; wg-quick up /home/wg0.conf"]
-        livenessProbe:
-          exec:
-            command: ["/bin/bash", "-c", "/home/wg-check.sh"]
-          initialDelaySeconds: 30
-          periodSeconds: 30
+        - name: wireguard
+          image: masipcat/wireguard-go:0.0.20230223
+          command:
+          - sh
+          - -c
+          - /entrypoint.sh
+          ports:
+          - containerPort: 443
+            protocol: UDP
+            name: wireguard
+          env:
+          - name: LOG_LEVEL
+            value: info
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+            privileged: true
+          resources:
+            requests:
+              memory: 64Mi
+              cpu: "100m"
+            limits:
+              memory: 256Mi
+          volumeMounts:
+          - name: secret
+            mountPath: /etc/wireguard/wg0.conf
+            subPath: wg0.conf
       volumes:
-      - emptyDir: {}
-        name: wireguard-config
-      - name: wireguard-secret
+      - name: secret
         secret:
-          secretName: wireguard
-      - name: wireguard-check
-        secret:
-          secretName: wireguard-check
+          secretName: wg-secret
