@@ -41,7 +41,7 @@ spec:
         - name: mosquitto-conf
           mountPath: /mosquitto/config
       - name: mqtt-venstar-bridge
-        image: ghcr.io/terafin/mqtt-venstar-bridge:latest
+        image: ghcr.io/terafin/mqtt-venstar-bridge:latest@sha256:04cec258c3046c49fbd47cc415385574de17adcd14403a074ca9378a4a75951d
         env:
           - name: TZ
             value: America/Chicago
