@@ -60,10 +60,10 @@ spec:
           mountPath: /opt/adguardhome/conf
         resources:
           requests:
-            memory: 120Mi
-            cpu: "7m"
+            memory: 150Mi
+            cpu: "15m"
           limits:
-            memory: 220Mi
+            memory: 400Mi
       - name: adguard-sync
         image: ghcr.io/linuxserver/adguardhome-sync:0.6.9@sha256:0e9c9ea0fd80b16ed64db9cb6d0542acfd3998637c21e7f7d7825a4fce80bfb8
         imagePullPolicy: IfNotPresent

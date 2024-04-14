@@ -53,10 +53,10 @@ spec:
           mountPath: /opt/adguardhome/conf
         resources:
           requests:
-            memory: 120Mi
-            cpu: "7m"
+            memory: 150Mi
+            cpu: "15m"
           limits:
-            memory: 220Mi
+            memory: 400Mi
       volumes:
       - emptyDir: {}
         name: adguard-data
