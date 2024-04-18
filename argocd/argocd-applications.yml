@@ -719,6 +719,7 @@ spec:
                 region: us-west-002
                 s3ForcePathStyle: true
                 s3Url: https://s3.us-west-002.backblazeb2.com
+                checksumAlgorithm: ""
         
         initContainers:
           - name: velero-plugin-for-aws
