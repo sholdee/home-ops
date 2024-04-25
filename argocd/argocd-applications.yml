@@ -126,7 +126,7 @@ spec:
       - name: dns01RecursiveNameserversOnly
         value: "true"
     repoURL: https://charts.jetstack.io
-    targetRevision: v1.14.4
+    targetRevision: v1.14.5
   syncPolicy:
     automated:
       prune: true
