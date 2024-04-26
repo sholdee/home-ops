@@ -361,7 +361,7 @@ spec:
                       - controller
                   topologyKey: kubernetes.io/hostname
     repoURL: https://kubernetes.github.io/ingress-nginx
-    targetRevision: 4.10.0
+    targetRevision: 4.10.1
   syncPolicy:
     automated:
       prune: true
