@@ -9,7 +9,7 @@
 * [cilium-agent cmd reference](https://docs.cilium.io/en/stable/cmdref/cilium-agent/)
 
 ```bash
-cilium install --version "v1.14.6" \
+cilium install --version "v1.15.3" \
   --helm-set operator.replicas="1" \
   --helm-set ipam.operator.clusterPoolIPv4PodCIDRList="10.52.0.0/16" \
   --helm-set ipv4NativeRoutingCIDR="10.52.0.0/16" \
@@ -18,7 +18,7 @@ cilium install --version "v1.14.6" \
   --helm-set routingMode="native" \
   --helm-set autoDirectNodeRoutes="true" \
   --helm-set kubeProxyReplacement="true" \
-  --helm-set bpf.masquerade="true" \
+  --helm-set bpf.masquerade="false" \
   --helm-set enableIPv4Masquerade="false" \
   --helm-set bgpControlPlane.enabled="true" \
   --helm-set hubble.enabled="true" \
