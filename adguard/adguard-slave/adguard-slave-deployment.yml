@@ -65,7 +65,7 @@ spec:
           limits:
             memory: 400Mi
       - name: adguard-sync
-        image: ghcr.io/linuxserver/adguardhome-sync:0.6.9@sha256:95ccb8e633ee5840cf33908081c45eff3e330ccd88afbea3c3ba2463ec7df950
+        image: ghcr.io/linuxserver/adguardhome-sync:0.6.10@sha256:01f49636091ad0fd38780398c16778d38167e3edf95e5a21e09fcb30a366ac83
         imagePullPolicy: IfNotPresent
         env:
           - name: CONFIGFILE
