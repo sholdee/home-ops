@@ -25,6 +25,23 @@ spec:
           rules:
             dns:
               - matchPattern: "*"
+    - toEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: ingress-nginx
+            app.kubernetes.io/component: controller
+            io.kubernetes.pod.namespace: ingress-nginx
+      toPorts:
+        - ports:
+            - port: "443"
+        - ports:
+            - port: "80"
+    - toEndpoints:
+        - matchLabels:
+            app: unifi
+            io.kubernetes.pod.namespace: unifi
+      toPorts:
+        - ports:
+            - port: "8443"
     - toCIDRSet:
         - cidr: 192.168.77.0/24
     - toCIDRSet:
