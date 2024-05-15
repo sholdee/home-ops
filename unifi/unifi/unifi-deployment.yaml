@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: unifi
-        image: ghcr.io/linuxserver/unifi-network-application:8.1.127@sha256:90b58e91776b44d82f0bea3d8c0c824abdfedc8358822c15c0de2dcfe317cb5e
+        image: ghcr.io/linuxserver/unifi-network-application:8.1.127@sha256:71d499639bed82e2b4c55176d674138a8af43868630cd589dfa4bb6059afd802
         env:
           - name: MONGO_DBNAME
             value: unifi
