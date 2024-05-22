@@ -36,7 +36,7 @@
     {
       "fileMatch": ["system\\-upgrade\\-controller/system\\-upgrade\\-controller\\.(yaml|yml)$"],
       "matchStrings": [
-        "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>.+)"
+        "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE:\\s*(?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
       ],
       "depNameTemplate": "{{depName}}",
       "versioningTemplate": "docker"
