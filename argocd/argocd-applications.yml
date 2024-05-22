@@ -783,3 +783,26 @@ spec:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: system-upgrade-controller
+spec:
+  destination:
+    name: in-cluster
+    namespace: system-upgrade
+  project: k3s
+  source:
+    directory:
+      jsonnet: {}
+      recurse: true
+    path: system-upgrade-controller
+    repoURL: git@github.com:sholdee/k3s-app-manifests.git
+    targetRevision: master
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
