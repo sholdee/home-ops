@@ -11,5 +11,35 @@
   "argocd": {
     "fileMatch": ["argocd/argocd\\-applications\\.(yaml|yml)$"]
   },
-  "ignorePaths": ["**/kube-prometheus/**"]
+  "ignorePaths": ["**/kube-prometheus/**"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "fileMatch": ["system\\-upgrade\\-controller/k3s\\-upgrade\\-plan\\.(yaml|yml)$"],
+      "matchStrings": [
+        "version: (?<currentValue>v[\\d\\.\\+\\w-]+)"
+      ],
+      "depNameTemplate": "k3s",
+      "versioningTemplate": "semver-coerced",
+      "datasourceTemplate": "custom.k3s"
+    }
+  ],
+  "customDatasources": {
+    "k3s": {
+      "defaultRegistryUrlTemplate": "https://update.k3s.io/v1-release/channels",
+      "transformTemplates": [
+        "{\"releases\":[{\"version\": $$.(data[id = 'stable'].latest),\"sourceUrl\":\"https://github.com/k3s-io/k3s\",\"changelogUrl\":$join([\"https://github.com/k3s-io/k3s/releases/tag/\",data[id = 'stable'].latest])}],\"sourceUrl\": \"https://github.com/k3s-io/k3s\",\"homepage\": \"https://k3s.io/\"}"
+      ]
+    }
+  },
+  "regexManagers": [
+    {
+      "fileMatch": ["system\\-upgrade\\-controller/system\\-upgrade\\-controller\\.(yaml|yml)$"],
+      "matchStrings": [
+        "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>.+)"
+      ],
+      "depNameTemplate": "{{depName}}",
+      "versioningTemplate": "docker"
+    }
+  ]
 }
