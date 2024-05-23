@@ -454,7 +454,7 @@ spec:
       - name: defaultSettings.backupTargetCredentialSecret
         value: longhorn-s3-key
     repoURL: https://charts.longhorn.io
-    targetRevision: 1.6.1
+    targetRevision: 1.6.2
   syncPolicy:
     automated:
       prune: true
