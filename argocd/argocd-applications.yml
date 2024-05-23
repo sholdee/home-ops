@@ -444,7 +444,7 @@ spec:
       - name: defaultSettings.defaultDataLocality
         value: best-effort
       - name: defaultSettings.concurrentAutomaticEngineUpgradePerNodeLimit
-        value: 1
+        value: "1"
       - name: defaultSettings.nodeDownPodDeletionPolicy
         value: delete-both-statefulset-and-deployment-pod
       - name: defaultSettings.nodeDrainPolicy
