@@ -444,7 +444,7 @@ spec:
       - name: defaultSettings.defaultDataLocality
         value: best-effort
     repoURL: https://charts.longhorn.io
-    targetRevision: 1.6.1
+    targetRevision: 1.6.2
   syncPolicy:
     syncOptions:
     - ApplyOutOfSyncOnly=true
