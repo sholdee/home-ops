@@ -443,9 +443,21 @@ spec:
       parameters:
       - name: defaultSettings.defaultDataLocality
         value: best-effort
+      - name: defaultSettings.concurrentAutomaticEngineUpgradePerNodeLimit
+        value: 1
+      - name: defaultSettings.nodeDownPodDeletionPolicy
+        value: delete-both-statefulset-and-deployment-pod
+      - name: defaultSettings.nodeDrainPolicy
+        value: block-if-contains-last-replica
+      - name: defaultSettings.backupTarget
+        value: "s3://sholdee-longhorn@us-west-002/"
+      - name: defaultSettings.backupTargetCredentialSecret
+        value: longhorn-s3-key
     repoURL: https://charts.longhorn.io
     targetRevision: 1.6.1
   syncPolicy:
+    automated:
+      prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
