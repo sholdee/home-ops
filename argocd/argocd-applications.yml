@@ -76,9 +76,6 @@ spec:
     chart: argo-cd
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 6.11.1
-  directory:
-    kustomize:
-      path: .
   syncPolicy:
     automated:
       prune: true
