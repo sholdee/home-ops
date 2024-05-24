@@ -50,10 +50,10 @@ spec:
           mountPath: /home/portainer-data
         resources:
           requests:
-            memory: 170Mi
+            memory: 250Mi
             cpu: "7m"
           limits:
-            memory: 270Mi
+            memory: 500Mi
       volumes:
       - name: codeserver-data
         persistentVolumeClaim:
