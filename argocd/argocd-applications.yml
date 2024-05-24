@@ -78,7 +78,7 @@ spec:
     targetRevision: 6.11.1
   directory:
     kustomize:
-      path: overlay
+      path: .
   syncPolicy:
     automated:
       prune: true
@@ -98,7 +98,7 @@ spec:
   source:
     directory:
       jsonnet: {}
-      recurse: false
+      recurse: true
     path: argocd
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
