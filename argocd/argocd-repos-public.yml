@@ -127,3 +127,16 @@ metadata:
   name: repo-velero
 type: Opaque
 ---
+apiVersion: v1
+data:
+  name: Y2lsaXVt
+  project: azNz
+  type: aGVsbQ==
+  url: aHR0cHM6Ly9oZWxtLmNpbGl1bS5pby8=
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-cilium
+type: Opaque
+---
