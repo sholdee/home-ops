@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: hass
-        image: ghcr.io/home-assistant/home-assistant:2024.5.4
+        image: ghcr.io/home-assistant/home-assistant:2024.5.5
         env:
           - name: DISABLE_JEMALLOC
             value: 'true'
