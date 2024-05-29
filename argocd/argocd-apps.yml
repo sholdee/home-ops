@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: k3s-apps
+spec:
+  generators:
+    - git:
+        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        revision: master
+        directories:
+          - path: 'apps/**'
+  template:
+    metadata:
+      name: '{{path.basename}}'
+    spec:
+      project: k3s
+      source:
+        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        path: '{{path}}'
+      destination:
+        server: 'https://kubernetes.default.svc'
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true
