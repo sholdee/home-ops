@@ -8,7 +8,7 @@ spec:
         repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
         revision: master
         directories:
-          - path: 'apps/**'
+          - path: 'apps/*'
   template:
     metadata:
       name: '{{path.basename}}'
