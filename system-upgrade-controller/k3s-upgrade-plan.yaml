@@ -10,10 +10,10 @@ spec:
   version: v1.29.5+k3s1
   nodeSelector:
     matchExpressions:
-      - {key: k3s-upgrade, operator: Exists}
-      - {key: k3s-upgrade, operator: NotIn, values: ["disabled", "false"]}
-      - {key: k3os.io/mode, operator: DoesNotExist}
-      - {key: node-role.kubernetes.io/control-plane, operator: Exists}
+    - key: node-role.kubernetes.io/control-plane
+      operator: In
+      values:
+      - "true"
   serviceAccountName: system-upgrade
   drain:
     force: true
@@ -33,10 +33,8 @@ spec:
   version: v1.29.5+k3s1
   nodeSelector:
     matchExpressions:
-      - {key: k3s-upgrade, operator: Exists}
-      - {key: k3s-upgrade, operator: NotIn, values: ["disabled", "false"]}
-      - {key: k3os.io/mode, operator: DoesNotExist}
-      - {key: node-role.kubernetes.io/control-plane, operator: DoesNotExist}
+    - key: node-role.kubernetes.io/control-plane
+      operator: DoesNotExist
   serviceAccountName: system-upgrade
   prepare:
     # Defaults to the same "resolved" tag that is used for the `upgrade` container, NOT `latest`
