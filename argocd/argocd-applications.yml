@@ -448,7 +448,7 @@ spec:
       - name: defaultSettings.nodeDownPodDeletionPolicy
         value: delete-both-statefulset-and-deployment-pod
       - name: defaultSettings.nodeDrainPolicy
-        value: block-if-contains-last-replica
+        value: allow-if-replica-is-stopped
       - name: defaultSettings.backupTarget
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret
