@@ -9,6 +9,7 @@ spec:
         revision: master
         directories:
           - path: 'apps/**'
+          - path: 'apps/*/*'
   template:
     metadata:
       name: '{{path.basename}}'
