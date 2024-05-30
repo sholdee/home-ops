@@ -22,6 +22,8 @@ kind: ApplicationSet
 metadata:
   name: k3s-apps
 spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
         repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
@@ -30,18 +32,18 @@ spec:
           - path: 'apps/*'
   template:
     metadata:
-      name: '{{path.basename}}'
+      name: '{{.path.basename}}'
     spec:
       project: k3s
       source:
         repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
         targetRevision: master
-        path: '{{path}}'
+        path: '{{.path.path}}'
         directory:
           recurse: true
       destination:
         name: in-cluster
-        namespace: '{{path.basename}}'
+        namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
       syncPolicy:
         automated:
           prune: true
