@@ -20,29 +20,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: adguard
-spec:
-  destination:
-    name: in-cluster
-    namespace: adguard
-  project: k3s
-  source:
-    directory:
-      jsonnet: {}
-      recurse: true
-    path: adguard
-    repoURL: git@github.com:sholdee/k3s-app-manifests.git
-    targetRevision: master
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: appdaemon
 spec:
   destination:
