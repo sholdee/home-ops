@@ -9,20 +9,23 @@ spec:
         revision: master
         directories:
           - path: 'apps/*'
-          - path: 'apps/*/*'
   template:
     metadata:
-      name: '{{path.basename}}'
+      name: '{{.path.basename}}'
     spec:
       project: k3s
       source:
         repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
-        path: '{{path}}'
+        targetRevision: master
+        path: '{{.path.path}}'
+        directory:
+          recurse: true
       destination:
-        server: 'https://kubernetes.default.svc'
+        name: in-cluster
+        namespace: '{{.path.basename}}'
       syncPolicy:
         automated:
           prune: true
         syncOptions:
-          - CreateNamespace=true
-          - ApplyOutOfSyncOnly=true
+        - CreateNamespace=true
+        - ApplyOutOfSyncOnly=true
