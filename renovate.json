@@ -6,7 +6,7 @@
   ],
   "commitMessagePrefix": ":arrow_up:",
   "kubernetes": {
-    "fileMatch": ["\\.(yaml|yml)$"]
+    "fileMatch": ["apps/.*\\.(yaml|yml)$"]
   },
   "argocd": {
     "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"]
