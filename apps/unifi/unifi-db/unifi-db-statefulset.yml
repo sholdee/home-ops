@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: unifi-db
+  namespace: unifi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: unifi-db
+  template:
+    metadata:
+      labels:
+        app: unifi-db
+    spec:
+      containers:
+      - name: unifi-db
+        image: docker.io/mongo:7.0.9
+        ports:
+        - containerPort: 27017
+          name: mongodb
+          protocol: TCP
+        volumeMounts:
+        - name: unifi-db-data
+          mountPath: /data/db
+        - name: unifi-db-init
+          mountPath: /docker-entrypoint-initdb.d
+      volumes:
+      - name: unifi-db-init
+        secret:
+          secretName: unifi-db-init
+  volumeClaimTemplates:
+  - metadata:
+      name: unifi-db-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+      storageClassName: "longhorn"

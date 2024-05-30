@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unifi
+  namespace: unifi
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: unifi
+  template:
+    metadata:
+      labels:
+        app: unifi
+    spec:
+      containers:
+      - name: unifi
+        image: ghcr.io/linuxserver/unifi-network-application:8.1.127@sha256:90fcca5fa29eb6a5b2c984b3294e331957b5381f09cb5db99aa03086293f2b62
+        env:
+          - name: MONGO_DBNAME
+            value: unifi
+          - name: MONGO_HOST
+            value: unifi-db
+          - name: MONGO_PASS
+            valueFrom:
+              secretKeyRef:
+                name: unifi
+                key: mongopass
+          - name: MONGO_PORT
+            value: "27017"
+          - name: MONGO_USER
+            value: unifi
+          - name: PGID
+            value: "1000"
+          - name: PUID
+            value: "1000"
+          - name: TZ
+            value: America/Chicago
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+        - containerPort: 8443
+          protocol: TCP
+        - containerPort: 8880
+          protocol: TCP
+        - containerPort: 8843
+        volumeMounts:
+          - mountPath: /config
+            name: unifi-data
+        resources:
+          requests:
+            memory: 700Mi
+            cpu: "15m"
+          limits:
+            memory: 1400Mi
+      volumes:
+      - name: unifi-data
+        persistentVolumeClaim:
+          claimName: unifi-pvc

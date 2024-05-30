@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unifi-landing
+  namespace: unifi
+spec:
+  selector:
+    matchLabels:
+      app: unifi-landing
+  template:
+    metadata:
+      labels:
+        app: unifi-landing
+    spec:
+      initContainers:
+      - name: unifi-landing-conf-init
+        image: busybox:1.36.1
+        command: ["sh", "-c", "cp /home/unifi-landing-secret/unifi-landing.conf /home/unifi-landing-config/default.conf;chmod 644 /home/unifi-landing-config/default.conf"]
+        volumeMounts:
+          - mountPath: /home/unifi-landing-config
+            name: unifi-landing-config
+          - mountPath: /home/unifi-landing-secret
+            name: unifi-landing-secret
+      containers:
+      - name: unifi-landing
+        image: nginx:1.26.0
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        volumeMounts:
+          - mountPath: /etc/nginx/conf.d/
+            name: unifi-landing-config
+          - mountPath: /var/www
+            name: unifi-landing-static-secret
+      volumes:
+      - emptyDir: {}
+        name: unifi-landing-config
+      - name: unifi-landing-secret
+        secret:
+          secretName: unifi-landing
+      - name: unifi-landing-static-secret
+        secret:
+          secretName: unifi-landing-static
