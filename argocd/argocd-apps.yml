@@ -11,18 +11,18 @@ spec:
           - path: 'apps/*'
   template:
     metadata:
-      name: '{{.path.basename}}'
+      name: '{{path.basename}}'
     spec:
       project: k3s
       source:
         repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
         targetRevision: master
-        path: '{{.path.path}}'
+        path: '{{path}}'
         directory:
           recurse: true
       destination:
         name: in-cluster
-        namespace: '{{.path.basename}}'
+        namespace: '{{path.basename}}'
       syncPolicy:
         automated:
           prune: true
