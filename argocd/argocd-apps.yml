@@ -50,6 +50,38 @@ spec:
         - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: k3s-apps-test
+spec:
+  generators:
+    - git:
+        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        revision: master
+        directories:
+          - path: 'test/*'
+  template:
+    metadata:
+      name: '{{path.basename}}'
+    spec:
+      project: k3s
+      source:
+        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        targetRevision: master
+        path: '{{path}}'
+        directory:
+          recurse: true
+      destination:
+        name: in-cluster
+        namespace: '{{ regexReplaceAll "-conf$" path.basename "" }}'
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+        - CreateNamespace=true
+        - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: argocd
