@@ -1,23 +1,4 @@
 apiVersion: argoproj.io/v1alpha1
-kind: AppProject
-metadata:
-  name: k3s
-spec:
-  clusterResourceWhitelist:
-  - group: '*'
-    kind: '*'
-  description: Home automation and management
-  destinations:
-  - name: in-cluster
-    namespace: '*'
-    server: https://kubernetes.default.svc
-  namespaceResourceWhitelist:
-  - group: '*'
-    kind: '*'
-  sourceRepos:
-  - git@github.com:sholdee/k3s-app-manifests.git
----
-apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: argocd
@@ -102,28 +83,6 @@ spec:
       jsonnet: {}
       recurse: true
     path: cert-manager
-    repoURL: git@github.com:sholdee/k3s-app-manifests.git
-    targetRevision: master
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: cilium-conf
-spec:
-  destination:
-    name: in-cluster
-  project: k3s
-  source:
-    directory:
-      jsonnet: {}
-      recurse: true
-    path: cilium
     repoURL: git@github.com:sholdee/k3s-app-manifests.git
     targetRevision: master
   syncPolicy:
