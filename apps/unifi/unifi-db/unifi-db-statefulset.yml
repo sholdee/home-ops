@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: unifi-db
-        image: docker.io/mongo:7.0.9
+        image: docker.io/mongo:7.0.11
         ports:
         - containerPort: 27017
           name: mongodb
