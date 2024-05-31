@@ -1,0 +1,82 @@
+name: Verify ARM64 image availability
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+jobs:
+  check-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Title for Docker Image Update
+        id: check_title
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if echo "$PR_TITLE" | grep -E -q 'Update .* Docker (tag|digest)'; then
+            echo "matched=true" >> $GITHUB_ENV
+          else
+            echo "matched=false" >> $GITHUB_ENV
+          fi
+
+  check-arm64-image:
+    needs: check-title
+    if: env.matched == 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up jq
+        run: sudo apt-get install jq
+
+      - name: Set up GitHub CLI
+        uses: cli/cli-action@v2
+
+      - name: Extract Image, Tag, and Digest from PR Diff
+        id: extract_image_tag_digest
+        run: |
+          PR_NUMBER=${{ github.event.number }}
+          DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files"
+          DIFF_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $DIFF_URL)
+          
+          IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP 'image: \K.*' | head -n 1)
+          IMAGE=$(echo $IMAGE_TAG | cut -d'@' -f1 | cut -d':' -f1-2)
+          TAG=$(echo $IMAGE_TAG | cut -d':' -f3 | cut -d'@' -f1)
+          DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
+
+          echo "::set-output name=image::$IMAGE"
+          echo "::set-output name=tag::$TAG"
+          echo "::set-output name=digest::$DIGEST"
+
+      - name: Check for Arm64 Image
+        run: |
+          IMAGE=${{ steps.extract_image_tag_digest.outputs.image }}
+          TAG=${{ steps.extract_image_tag_digest.outputs.tag }}
+          DIGEST=${{ steps.extract_image_tag_digest.outputs.digest }}
+          ./check-arm64-availability.sh $IMAGE $TAG $DIGEST
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Add `donotmerge` Label if Arm64 Not Available
+        if: failure()
+        run: |
+          gh pr edit ${{ github.event.number }} --add-label "donotmerge"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove `donotmerge` Label if Arm64 Available
+        if: success()
+        run: |
+          gh pr edit ${{ github.event.number }} --remove-label "donotmerge"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
