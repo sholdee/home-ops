@@ -15,20 +15,22 @@ permissions:
 jobs:
   check-title:
     runs-on: ubuntu-latest
+    outputs:
+      matched: ${{ steps.check_title.outputs.matched }}
     steps:
       - name: Check PR Title for Docker Image Update
         id: check_title
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
           if echo "$PR_TITLE" | grep -E -q 'Update .* Docker (tag|digest)'; then
-            echo "matched=true" >> $GITHUB_ENV
+            echo "::set-output name=matched::true"
           else
-            echo "matched=false" >> $GITHUB_ENV
+            echo "::set-output name=matched::false"
           fi
 
   check-arm64-image:
     needs: check-title
-    if: env.matched == 'true'
+    if: needs.check-title.outputs.matched == 'true'
     runs-on: ubuntu-latest
 
     steps:
