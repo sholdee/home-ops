@@ -23,10 +23,12 @@ jobs:
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
           if echo "$PR_TITLE" | grep -E -q 'Update .* Docker (tag|digest)'; then
-            echo "::set-output name=matched::true"
+            echo "matched=true" >> $GITHUB_ENV
           else
-            echo "::set-output name=matched::false"
+            echo "matched=false" >> $GITHUB_ENV
           fi
+        env:
+          GITHUB_ENV: $GITHUB_ENV
 
   check-arm64-image:
     needs: check-title
@@ -41,7 +43,7 @@ jobs:
         run: sudo apt-get install jq
 
       - name: Set up GitHub CLI
-        uses: cli/cli-action@v2
+        uses: actions/github-script@v6
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
@@ -55,15 +57,15 @@ jobs:
           TAG=$(echo $IMAGE_TAG | cut -d':' -f3 | cut -d'@' -f1)
           DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
 
-          echo "::set-output name=image::$IMAGE"
-          echo "::set-output name=tag::$TAG"
-          echo "::set-output name=digest::$DIGEST"
+          echo "image=$IMAGE" >> $GITHUB_ENV
+          echo "tag=$TAG" >> $GITHUB_ENV
+          echo "digest=$DIGEST" >> $GITHUB_ENV
 
       - name: Check for Arm64 Image
         run: |
-          IMAGE=${{ steps.extract_image_tag_digest.outputs.image }}
-          TAG=${{ steps.extract_image_tag_digest.outputs.tag }}
-          DIGEST=${{ steps.extract_image_tag_digest.outputs.digest }}
+          IMAGE=${{ env.image }}
+          TAG=${{ env.tag }}
+          DIGEST=${{ env.digest }}
           ./check-arm64-availability.sh $IMAGE $TAG $DIGEST
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
