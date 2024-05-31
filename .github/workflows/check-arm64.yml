@@ -42,6 +42,9 @@ jobs:
       - name: Set up jq
         run: sudo apt-get install jq
 
+      - name: Make script executable
+        run: chmod +x .github/scripts/check-arm64-availability.sh
+
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
         run: |
