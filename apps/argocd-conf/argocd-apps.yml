@@ -273,7 +273,7 @@ spec:
             publishedService:
               enabled: true
     repoURL: https://helm.traefik.io/traefik
-    targetRevision: 28.1.0
+    targetRevision: 28.2.0
   syncPolicy:
     automated:
       prune: true
