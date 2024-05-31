@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: hass-db
-        image: mariadb:11.3.2
+        image: mariadb:11.3.2@sha256:33853971b00531e388b348a7ea5c80149c831877b9b9987be2e5b983ac130825
         env:
         - name: MYSQL_ROOT_PASSWORD
           valueFrom:
