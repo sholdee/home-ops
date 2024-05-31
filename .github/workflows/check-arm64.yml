@@ -49,21 +49,21 @@ jobs:
           DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files"
           DIFF_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $DIFF_URL)
           
-          IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP 'image: \K.*' | head -n 1)
-          IMAGE=$(echo $IMAGE_TAG | cut -d'@' -f1 | cut -d':' -f1-2)
-          TAG=$(echo $IMAGE_TAG | cut -d':' -f3 | cut -d'@' -f1)
+          IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP '\+ *image: \K.*' | head -n 1)
+          IMAGE=$(echo $IMAGE_TAG | cut -d':' -f1)
+          TAG=$(echo $IMAGE_TAG | cut -d':' -f2 | cut -d'@' -f1)
           DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
 
-          echo "image=$IMAGE" >> $GITHUB_ENV
-          echo "tag=$TAG" >> $GITHUB_ENV
-          echo "digest=$DIGEST" >> $GITHUB_ENV
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          echo "DIGEST=$DIGEST" >> $GITHUB_ENV
 
-      - name: Check for Arm64 Image
+      - name: Run Arm64 Availability Check
         run: |
-          IMAGE=${{ env.image }}
-          TAG=${{ env.tag }}
-          DIGEST=${{ env.digest }}
-          ./check-arm64-availability.sh $IMAGE $TAG $DIGEST
+          IMAGE=${{ env.IMAGE }}
+          TAG=${{ env.TAG }}
+          DIGEST=${{ env.DIGEST }}
+          .github/scripts/check-arm64-availability.sh $IMAGE $TAG $DIGEST
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
