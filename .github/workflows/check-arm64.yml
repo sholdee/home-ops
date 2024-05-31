@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
   issues: write
 
 jobs:
@@ -46,22 +46,20 @@ jobs:
 
       - name: Set up GitHub CLI
         uses: actions/github-script@v7
+        with:
+          script: |
+            PR_NUMBER=${{ github.event.number }}
+            DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files"
+            DIFF_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $DIFF_URL)
+            
+            IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP 'image: \K.*' | head -n 1)
+            IMAGE=$(echo $IMAGE_TAG | cut -d'@' -f1 | cut -d':' -f1-2)
+            TAG=$(echo $IMAGE_TAG | cut -d':' -f3 | cut -d'@' -f1)
+            DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
 
-      - name: Extract Image, Tag, and Digest from PR Diff
-        id: extract_image_tag_digest
-        run: |
-          PR_NUMBER=${{ github.event.number }}
-          DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files"
-          DIFF_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $DIFF_URL)
-          
-          IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP 'image: \K.*' | head -n 1)
-          IMAGE=$(echo $IMAGE_TAG | cut -d'@' -f1 | cut -d':' -f1-2)
-          TAG=$(echo $IMAGE_TAG | cut -d':' -f3 | cut -d'@' -f1)
-          DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
-
-          echo "image=$IMAGE" >> $GITHUB_ENV
-          echo "tag=$TAG" >> $GITHUB_ENV
-          echo "digest=$DIGEST" >> $GITHUB_ENV
+            echo "image=$IMAGE" >> $GITHUB_ENV
+            echo "tag=$TAG" >> $GITHUB_ENV
+            echo "digest=$DIGEST" >> $GITHUB_ENV
 
       - name: Check for Arm64 Image
         run: |
