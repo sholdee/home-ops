@@ -43,7 +43,7 @@ jobs:
         run: sudo apt-get install jq
 
       - name: Set up GitHub CLI
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
