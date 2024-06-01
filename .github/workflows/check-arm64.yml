@@ -39,34 +39,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up jq
-        run: sudo apt-get install jq
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
 
-      - name: Make script executable
-        run: chmod +x .github/scripts/check-arm64.sh
+      - name: Install dependencies
+        run: |
+          python -m pip install requests
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
+        env:
+          PR_NUMBER: ${{ github.event.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          PR_NUMBER=${{ github.event.number }}
-          DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${PR_NUMBER}/files"
-          DIFF_RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" $DIFF_URL)
-          
-          IMAGE_TAG=$(echo $DIFF_RESPONSE | jq -r '.[] | select(.filename | endswith(".yaml", ".yml")) | .patch' | grep -oP '\+ *image: \K.*' | head -n 1)
-          IMAGE=$(echo $IMAGE_TAG | cut -d':' -f1)
-          TAG=$(echo $IMAGE_TAG | cut -d':' -f2 | cut -d'@' -f1)
-          DIGEST=$(echo $IMAGE_TAG | grep -oP '@sha256:\K.*' || echo "")
+          python .github/scripts/extract_image_info.py
 
-          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
-          echo "TAG=$TAG" >> $GITHUB_ENV
-          echo "DIGEST=$DIGEST" >> $GITHUB_ENV
-
-      - name: Run Arm64 Availability Check
+      - name: Run ARM64 Availability Check
         run: |
-          IMAGE=${{ env.IMAGE }}
-          TAG=${{ env.TAG }}
-          DIGEST=${{ env.DIGEST }}
-          .github/scripts/check-arm64.sh $IMAGE $TAG $DIGEST
+          python .github/scripts/check_arm64.py "${{ env.IMAGE }}" "${{ env.TAG }}" "${{ env.DIGEST }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
