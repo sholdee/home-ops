@@ -23,11 +23,9 @@ jobs:
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
           if echo "$PR_TITLE" | grep -E -q 'Update .* Docker (tag|digest)'; then
-            echo "matched=true" >> $GITHUB_ENV
-            echo "::set-output name=matched::true"
+            echo "matched=true" >> $GITHUB_OUTPUT
           else
-            echo "matched=false" >> $GITHUB_ENV
-            echo "::set-output name=matched::false"
+            echo "matched=false" >> $GITHUB_OUTPUT
           fi
 
   check-arm64-image:
