@@ -38,7 +38,7 @@ get_dockerhub_token() {
 get_ghcr_token() {
   local image=$1
   local USER_IMAGE=${image#ghcr.io/}
-  TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:${USER_IMAGE}:pull" | awk -F'"' '$0=$4')
+  TOKEN=$(curl -s "https://ghcr.io/token?scope=repository:${USER_IMAGE}:pull" | jq -r .token)
   echo "$TOKEN $USER_IMAGE"
 }
 
