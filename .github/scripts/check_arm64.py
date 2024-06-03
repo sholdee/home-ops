@@ -13,19 +13,37 @@ def get_dockerhub_token(image):
     auth_service = 'registry.docker.io'
     auth_scope = f'repository:{image}:pull'
     token_response = requests.get(f'https://auth.docker.io/token?service={auth_service}&scope={auth_scope}')
-    token = token_response.json().get('token')
+    
+    try:
+        token = token_response.json().get('token')
+    except json.JSONDecodeError as e:
+        print(f"Error decoding DockerHub token response: {e}")
+        return None, image
+    
     return token, image
 
 def get_ghcr_token(image):
     user_image = image[len('ghcr.io/'):]
     token_response = requests.get(f'https://ghcr.io/token?scope=repository:{user_image}:pull')
-    token = token_response.json().get('token')
+    
+    try:
+        token = token_response.json().get('token')
+    except json.JSONDecodeError as e:
+        print(f"Error decoding GHCR token response: {e}")
+        return None, user_image
+    
     return token, user_image
 
 def get_quay_token(image):
     user_image = image[len('quay.io/'):]
     token_response = requests.get(f'https://quay.io/v2/auth?service=quay.io&scope=repository:{user_image}:pull')
-    token = token_response.json().get('token')
+    
+    try:
+        token = token_response.json().get('token')
+    except json.JSONDecodeError as e:
+        print(f"Error decoding Quay token response: {e}")
+        return None, user_image
+    
     return token, user_image
 
 def main(image, tag, digest):
@@ -39,6 +57,10 @@ def main(image, tag, digest):
         token, image_name = get_dockerhub_token(image)
         manifest_url = f'https://registry-1.docker.io/v2/{image_name}/manifests/{digest or tag}'
     
+    if not token:
+        print("Failed to get token for the image registry")
+        sys.exit(1)
+    
     headers = {
         'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.docker.distribution.manifest.v2+json'
@@ -47,10 +69,19 @@ def main(image, tag, digest):
     response = requests.get(manifest_url, headers=headers)
     
     if response.status_code != 200:
-        print(f"Error fetching manifest: {response.json()}")
+        try:
+            error_message = response.json()
+        except json.JSONDecodeError:
+            error_message = response.text
+        print(f"Error fetching manifest: {error_message}")
         sys.exit(1)
     
-    manifests = response.json().get('manifests', [])
+    try:
+        manifests = response.json().get('manifests', [])
+    except json.JSONDecodeError as e:
+        print(f"Error decoding manifest response: {e}")
+        sys.exit(1)
+    
     arm64_exists = any(manifest['platform']['architecture'] == 'arm64' for manifest in manifests)
     
     if arm64_exists:
