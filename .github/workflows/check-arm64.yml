@@ -56,11 +56,12 @@ jobs:
           python .github/scripts/extract_image_info.py
 
       - name: Run ARM64 Availability Check
+        id: arm64_check
         run: |
           python .github/scripts/check_arm64.py "${{ env.IMAGE }}" "${{ env.TAG }}" "${{ env.DIGEST }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Add `donotmerge` Label if Arm64 Not Available
         if: failure()
