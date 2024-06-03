@@ -68,6 +68,10 @@ def main(image, tag, digest):
     
     response = requests.get(manifest_url, headers=headers)
     
+    if response.status_code == 404:
+        print(f"Error fetching manifest: 404 Not Found. The manifest URL '{manifest_url}' could not be found.")
+        sys.exit(1)
+    
     if response.status_code != 200:
         try:
             error_message = response.json()
