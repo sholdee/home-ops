@@ -180,7 +180,7 @@ spec:
   source:
     chart: kubernetes-dashboard
     repoURL: https://kubernetes.github.io/dashboard/
-    targetRevision: 7.4.0
+    targetRevision: 7.5.0
   syncPolicy:
     automated:
       prune: true
