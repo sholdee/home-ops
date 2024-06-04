@@ -94,7 +94,14 @@ spec:
         - containerPort: 68
           name: dhcp-alt
           protocol: TCP
-
+        livenessProbe:
+          httpGet:
+            path: /healthz/live
+            port: http-metrics
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: http-metrics
   volumeClaimTemplates:
   - metadata:
       name: data
