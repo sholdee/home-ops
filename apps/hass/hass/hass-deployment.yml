@@ -34,6 +34,16 @@ spec:
             cpu: "15m"
           limits:
             memory: 700Mi
+        livenessProbe:
+          httpGet:
+            path: /manifest.json
+            port: http
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /manifest.json
+            port: http
+          initialDelaySeconds: 30
       volumes:
       - name: hass-data
         persistentVolumeClaim:
