@@ -43,6 +43,12 @@ spec:
         volumeMounts:
         - name: mosquitto-conf
           mountPath: /mosquitto/config
+        resources:
+          requests:
+            memory: 70Mi
+            cpu: "5m"
+          limits:
+            memory: 140Mi
         livenessProbe:
           exec:
             command:
