@@ -35,12 +35,12 @@ spec:
           httpGet:
             path: /
             port: https
-            scheme: https
+            scheme: HTTPS
         readinessProbe:
           httpGet:
             path: /
             port: https
-            scheme: https
+            scheme: HTTPS
       volumes:
       - name: portainer-data
         persistentVolumeClaim:
