@@ -54,13 +54,13 @@ spec:
             command:
             - /bin/sh
             - -c
-            - "mosquitto_sub -t '/status/mqtt_venstar_bridge' -p 1884 -C 1 -q 1 || exit 1"
+            - "pgrep mosquitto || exit 1"
         readinessProbe:
           exec:
             command:
             - /bin/sh
             - -c
-            - "mosquitto_sub -t '$SYS/#' -p 1884 -C 1 -q 1 || exit 1"
+            - "mosquitto_sub -t '/status/mqtt_venstar_bridge' -p 1884 -C 1 -q 1 || exit 1"
       - name: mqtt-venstar-bridge
         image: ghcr.io/terafin/mqtt-venstar-bridge:latest@sha256:04cec258c3046c49fbd47cc415385574de17adcd14403a074ca9378a4a75951d
         env:
