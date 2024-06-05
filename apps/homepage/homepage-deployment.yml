@@ -47,10 +47,10 @@ spec:
           readinessProbe: *probe
           resources:
             requests:
-              memory: 150Mi
+              memory: 200Mi
               cpu: "5m"
             limits:
-              memory: 150Mi
+              memory: 200Mi
           volumeMounts:
             - mountPath: /app/config/custom.js
               name: homepage-config
