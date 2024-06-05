@@ -39,14 +39,11 @@ spec:
             cpu: "5m"
           limits:
             memory: 50Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /landing
             port: http
-        readinessProbe:
-          httpGet:
-            path: /landing
-            port: http
+        readinessProbe: *probe
       volumes:
       - emptyDir: {}
         name: unifi-landing-config
