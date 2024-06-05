@@ -5,7 +5,11 @@ metadata:
   namespace: hass
 data:
   mosquitto.conf: |
-    listener 1883
+    listener 1883 0.0.0.0
     ## Authentication ##
     allow_anonymous false
     password_file /mosquitto/config/password.txt
+    
+    # Additional configuration for local unauthenticated access
+    listener 1883 localhost
+    allow_anonymous true
