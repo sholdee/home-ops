@@ -51,12 +51,14 @@ spec:
             - /bin/sh
             - -c
             - mariadb --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" -e "SELECT 1"
+          initialDelaySeconds: 10
         readinessProbe:
           exec:
             command:
             - /bin/sh
             - -c
-            - mariadb --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" -e "SELECT 1"
+            - 'mariadb --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" -e "SELECT 1" || exit 1'
+          initialDelaySeconds: 10
   volumeClaimTemplates:
   - metadata:
       name: hass-db-data
