@@ -25,6 +25,26 @@ spec:
           mountPath: /data/db
         - name: unifi-db-init
           mountPath: /docker-entrypoint-initdb.d
+        resources:
+          requests:
+            memory: 400Mi
+            cpu: "10m"
+          limits:
+            memory: 800Mi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep mongod || exit 1"
+          initialDelaySeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"
+          initialDelaySeconds: 10
       volumes:
       - name: unifi-db-init
         secret:
