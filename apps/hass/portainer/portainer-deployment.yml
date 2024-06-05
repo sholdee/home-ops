@@ -31,16 +31,12 @@ spec:
             cpu: "5m"
           limits:
             memory: 200Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /
             port: https
             scheme: HTTPS
-        readinessProbe:
-          httpGet:
-            path: /
-            port: https
-            scheme: HTTPS
+        readinessProbe: *probe
       volumes:
       - name: portainer-data
         persistentVolumeClaim:

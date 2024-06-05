@@ -54,16 +54,12 @@ spec:
             cpu: "7m"
           limits:
             memory: 500Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /healthz
             port: http
           initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: http
-          initialDelaySeconds: 10
+        readinessProbe: *probe
       volumes:
       - name: codeserver-data
         persistentVolumeClaim:

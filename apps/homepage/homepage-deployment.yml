@@ -40,14 +40,11 @@ spec:
           ports:
             - containerPort: 3000
               name: http
-          readinessProbe:
+          livenessProbe: &probe
             httpGet:
               path: /
               port: http
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
+          readinessProbe: *probe
           resources:
             requests:
               memory: 150Mi

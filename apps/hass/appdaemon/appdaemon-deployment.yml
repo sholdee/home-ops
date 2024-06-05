@@ -41,16 +41,12 @@ spec:
             cpu: "20m"
           limits:
             memory: 100Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /api
             port: http
           initialDelaySeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /api
-            port: http
-          initialDelaySeconds: 10
+        readinessProbe: *probe
       volumes:
       - name: appdaemon-data
         persistentVolumeClaim:

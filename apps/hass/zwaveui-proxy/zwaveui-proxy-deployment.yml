@@ -40,14 +40,11 @@ spec:
             cpu: "5m"
           limits:
             memory: 50Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /
             port: http
-        readinessProbe:
-          httpGet:
-            path: /
-            port: http
+        readinessProbe: *probe
       volumes:
       - emptyDir: {}
         name: zwaveui-proxy-config
