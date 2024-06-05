@@ -6,7 +6,7 @@ metadata:
 data:
   mosquitto.conf: |
     per_listener_settings true
-    listener 1883 0.0.0.0
+    port 1883
     ## Authentication ##
     allow_anonymous false
     password_file /mosquitto/config/password.txt
