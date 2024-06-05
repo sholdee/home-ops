@@ -11,5 +11,5 @@ data:
     password_file /mosquitto/config/password.txt
     
     # Additional configuration for local unauthenticated access
-    listener 1883 localhost
+    listener 1884 localhost
     allow_anonymous true
