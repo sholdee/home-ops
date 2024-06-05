@@ -70,6 +70,12 @@ spec:
           httpGet:
             path: /readyz
             port: 2379
+        resources:
+          requests:
+            memory: 60Mi
+            cpu: "10m"
+          limits:
+            memory: 60Mi
       - name: gravity
         image: ghcr.io/beryju/gravity:v0.9.0
         env:
@@ -102,6 +108,12 @@ spec:
           httpGet:
             path: /healthz/ready
             port: http-metrics
+        resources:
+          requests:
+            memory: 60Mi
+            cpu: "5m"
+          limits:
+            memory: 60Mi
   volumeClaimTemplates:
   - metadata:
       name: data
