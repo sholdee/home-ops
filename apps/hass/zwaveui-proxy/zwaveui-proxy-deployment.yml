@@ -27,9 +27,27 @@ spec:
         ports:
         - containerPort: 8080
           protocol: TCP
+          name: http
+        - containerPort: 3000
+          protocol: TCP
+          name: websocket
         volumeMounts:
           - mountPath: /etc/nginx/conf.d/
             name: zwaveui-proxy-config
+        resources:
+          requests:
+            memory: 10Mi
+            cpu: "5m"
+          limits:
+            memory: 50Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
       volumes:
       - emptyDir: {}
         name: zwaveui-proxy-config
