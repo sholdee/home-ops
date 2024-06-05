@@ -39,6 +39,24 @@ spec:
           mountPath: /var/lib/mysql
         command: ["docker-entrypoint.sh"]
         args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+        resources:
+          requests:
+            memory: 400Mi
+            cpu: "10m"
+          limits:
+            memory: 800Mi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mariadb --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" -e "SELECT 1"
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - mariadb --user="$MYSQL_USER" --password="$MYSQL_PASSWORD" -e "SELECT 1"
   volumeClaimTemplates:
   - metadata:
       name: hass-db-data
