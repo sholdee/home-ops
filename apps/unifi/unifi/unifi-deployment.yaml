@@ -55,6 +55,16 @@ spec:
             cpu: "15m"
           limits:
             memory: 1400Mi
+        livenessProbe:
+          httpGet:
+            path: /manage/account/login
+            port: 8443
+          initialDelaySeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /manage/account/login
+            port: 8443
+          initialDelaySeconds: 30
       volumes:
       - name: unifi-data
         persistentVolumeClaim:
