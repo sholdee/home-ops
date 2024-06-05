@@ -110,10 +110,10 @@ spec:
             port: http-metrics
         resources:
           requests:
-            memory: 60Mi
+            memory: 70Mi
             cpu: "5m"
           limits:
-            memory: 60Mi
+            memory: 70Mi
   volumeClaimTemplates:
   - metadata:
       name: data
