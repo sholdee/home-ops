@@ -25,6 +25,22 @@ spec:
         volumeMounts:
         - name: portainer-data
           mountPath: /data
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: "5m"
+          limits:
+            memory: 200Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: https
+            scheme: https
+        readinessProbe:
+          httpGet:
+            path: /
+            port: https
+            scheme: https
       volumes:
       - name: portainer-data
         persistentVolumeClaim:
