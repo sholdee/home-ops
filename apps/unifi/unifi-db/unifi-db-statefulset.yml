@@ -31,7 +31,7 @@ spec:
             cpu: "10m"
           limits:
             memory: 800Mi
-        livenessProbe:
+        livenessProbe: &probe
           exec:
             command:
             - /bin/sh
@@ -41,16 +41,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 3
           failureThreshold: 3
-        readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "mongosh unifi --eval 'db.stats()'"
-          initialDelaySeconds: 10
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 3
+        readinessProbe: *probe
       volumes:
       - name: unifi-db-init
         secret:
