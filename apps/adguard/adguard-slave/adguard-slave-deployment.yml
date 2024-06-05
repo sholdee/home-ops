@@ -64,6 +64,16 @@ spec:
             cpu: "15m"
           limits:
             memory: 400Mi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - nslookup localhost 127.0.0.1
+        readinessProbe:
+          httpGet:
+            path: /login.html
+            port: http
       - name: adguard-sync
         image: ghcr.io/linuxserver/adguardhome-sync:0.6.11@sha256:96f89569a87f7cde878a7ed9c939ca3a2720fdf13bccf835268e3b31e4088760
         imagePullPolicy: IfNotPresent
