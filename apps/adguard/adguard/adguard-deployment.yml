@@ -57,6 +57,16 @@ spec:
             cpu: "15m"
           limits:
             memory: 400Mi
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - nslookup localhost 127.0.0.1
+        readinessProbe:
+          httpGet:
+            path: /login.html
+            port: http
       volumes:
       - emptyDir: {}
         name: adguard-data
