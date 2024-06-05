@@ -59,13 +59,15 @@ spec:
           httpGet:
             path: /manage/account/login
             port: 8443
-          initialDelaySeconds: 90
+            scheme: HTTPS
+          initialDelaySeconds: 60
           timeoutSeconds: 3
         readinessProbe:
           httpGet:
             path: /manage/account/login
             port: 8443
-          initialDelaySeconds: 90
+            scheme: HTTPS
+          initialDelaySeconds: 60
           timeoutSeconds: 3
       volumes:
       - name: unifi-data
