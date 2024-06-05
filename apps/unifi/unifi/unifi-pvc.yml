@@ -5,8 +5,8 @@ metadata:
   namespace: unifi
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 2Gi
-  storageClassName: "longhorn-static" # your storage class name
+  storageClassName: "longhorn" # your storage class name
