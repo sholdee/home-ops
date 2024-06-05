@@ -55,20 +55,14 @@ spec:
             cpu: "15m"
           limits:
             memory: 1400Mi
-        livenessProbe:
+        livenessProbe: &probe
           httpGet:
             path: /manage/account/login
             port: 8443
             scheme: HTTPS
           initialDelaySeconds: 60
           timeoutSeconds: 3
-        readinessProbe:
-          httpGet:
-            path: /manage/account/login
-            port: 8443
-            scheme: HTTPS
-          initialDelaySeconds: 60
-          timeoutSeconds: 3
+        readinessProbe: *probe
       volumes:
       - name: unifi-data
         persistentVolumeClaim:
