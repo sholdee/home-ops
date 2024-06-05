@@ -54,6 +54,18 @@ spec:
           - name: secret
             mountPath: /etc/wireguard/wg0.conf
             subPath: wg0.conf
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "wg show | grep -q 'I5P73tGjZVZmBw7VS/upDwvUWq5ivfmi9sb7KSnq6EA=' || exit 1"
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "wg show | grep -q 'I5P73tGjZVZmBw7VS/upDwvUWq5ivfmi9sb7KSnq6EA=' || exit 1"
       volumes:
       - name: secret
         secret:
