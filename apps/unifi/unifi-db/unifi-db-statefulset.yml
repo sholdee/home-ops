@@ -36,14 +36,14 @@ spec:
             command:
             - /bin/sh
             - -c
-            - "pgrep mongod || exit 1"
+            - "mongosh unifi --eval 'db.adminCommand(\"ping\")' || exit 1"
           initialDelaySeconds: 10
         readinessProbe:
           exec:
             command:
             - /bin/sh
             - -c
-            - "mongosh --eval 'db.adminCommand(\"ping\")' || exit 1"
+            - "mongosh unifi --eval 'db.stats()'"
           initialDelaySeconds: 10
       volumes:
       - name: unifi-db-init
