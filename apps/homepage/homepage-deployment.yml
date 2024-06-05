@@ -48,6 +48,12 @@ spec:
             httpGet:
               path: /
               port: http
+          resources:
+            requests:
+              memory: 150Mi
+              cpu: "5m"
+            limits:
+              memory: 150Mi
           volumeMounts:
             - mountPath: /app/config/custom.js
               name: homepage-config
