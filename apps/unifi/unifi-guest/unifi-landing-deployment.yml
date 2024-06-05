@@ -41,11 +41,11 @@ spec:
             memory: 50Mi
         livenessProbe:
           httpGet:
-            path: /
+            path: /landing
             port: http
         readinessProbe:
           httpGet:
-            path: /
+            path: /landing
             port: http
       volumes:
       - emptyDir: {}
