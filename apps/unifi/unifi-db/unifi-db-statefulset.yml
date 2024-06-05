@@ -31,7 +31,17 @@ spec:
             cpu: "10m"
           limits:
             memory: 800Mi
-        livenessProbe: &probe
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "pgrep mongod || exit 1"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
           exec:
             command:
             - /bin/sh
@@ -41,7 +51,6 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 3
           failureThreshold: 3
-        readinessProbe: *probe
       volumes:
       - name: unifi-db-init
         secret:
