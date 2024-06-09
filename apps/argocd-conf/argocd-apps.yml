@@ -153,9 +153,8 @@ spec:
     targetRevision: 1.15.5
   syncPolicy:
     automated:
-      prune: false
+      prune: true
     syncOptions:
-    - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
