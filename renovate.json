@@ -9,10 +9,7 @@
     "fileMatch": ["apps/.*\\.(yaml|yml)$"]
   },
   "argocd": {
-    "fileMatch": [
-      "apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$",
-      "test/test\\-apps\\.(yaml|yml)$"
-    ]
+    "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"]
   },
   "customManagers": [
     {
