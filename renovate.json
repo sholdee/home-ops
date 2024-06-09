@@ -11,27 +11,27 @@
   "argocd": {
     "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"]
   },
-  "packageRules": [
+  "customManagers": [
     {
-      "matchPaths": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
+      "customType": "regex",
+      "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
       "matchStrings": [
         "name: cilium\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
       ],
       "depNameTemplate": "cilium",
-      "datasourceTemplate": "helm",
-      "groupName": "cilium"
+      "versioningTemplate": "semver",
+      "datasourceTemplate": "helm"
     },
     {
-      "matchPaths": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
+      "customType": "regex",
+      "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
       "matchStrings": [
         "name: cilium-preflight\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
       ],
       "depNameTemplate": "cilium",
-      "datasourceTemplate": "helm",
-      "groupName": "cilium-preflight"
-    }
-  ],
-  "customManagers": [
+      "versioningTemplate": "semver",
+      "datasourceTemplate": "helm"
+    },
     {
       "customType": "regex",
       "fileMatch": ["apps/system\\-upgrade/k3s\\-upgrade\\-plan\\.(yaml|yml)$"],
