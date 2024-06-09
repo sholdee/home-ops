@@ -14,26 +14,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
-      "matchStrings": [
-        "chart: cilium\\s*repoURL: .+\\s*targetRevision: (?<currentValue>.+)"
-      ],
-      "depNameTemplate": "cilium",
-      "versioningTemplate": "semver",
-      "datasourceTemplate": "helm"
-    },
-    {
-      "customType": "regex",
-      "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
-      "matchStrings": [
-        "chart: cilium-preflight\\s*repoURL: .+\\s*targetRevision: (?<currentValue>.+)"
-      ],
-      "depNameTemplate": "cilium-preflight",
-      "versioningTemplate": "semver",
-      "datasourceTemplate": "helm"
-    },
-    {
-      "customType": "regex",
       "fileMatch": ["apps/system\\-upgrade/k3s\\-upgrade\\-plan\\.(yaml|yml)$"],
       "matchStrings": [
         "version: (?<currentValue>v[\\d\\.\\+\\w-]+)"
