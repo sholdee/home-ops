@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: cilium-ca
+      jsonPointers:
+      - /data/ca.crt
+      - /data/ca.key
+    - group: ""
+      kind: Secret
+      name: hubble-ca-cert
+      jsonPointers:
+      - /data/ca.crt
+    - group: ""
+      kind: Secret
+      name: hubble-relay-client-certs
+      jsonPointers:
+      - /data/ca.crt
+      - /data/tls.crt
+      - /data/tls.key
+    - group: ""
+      kind: Secret
+      name: hubble-server-certs
+      jsonPointers:
+      - /data/ca.crt
+      - /data/tls.crt
+      - /data/tls.key
+  project: k3s
+  source:
+    chart: cilium
+    helm:
+      values: |-
+        operator:
+          replicas: "1"
+        ipam:
+          operator:
+            clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
+        ipv4NativeRoutingCIDR: "10.52.0.0/16"
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+        routingMode: "native"
+        autoDirectNodeRoutes: true
+        kubeProxyReplacement: true
+        bpf:
+          masquerade: false
+          loadBalancer:
+            algorithm: "maglev"
+            mode: "hybrid"
+        enableIPv4Masquerade: false
+        bgpControlPlane:
+          enabled: true
+        hubble:
+          enabled: true
+          relay:
+            enabled: true
+          ui:
+            enabled: true
+        installNoConntrackIptablesRules: true
+    repoURL: https://helm.cilium.io/
+    targetRevision: 1.15.4
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-preflight
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  project: k3s
+  source:
+    chart: cilium
+    repoURL: https://helm.cilium.io/
+    targetRevision: 1.15.4
+    helm:
+      values: |-
+        preflight:
+          enabled: true
+        agent: false
+        operator:
+          enabled: false
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
