@@ -62,6 +62,17 @@ spec:
   project: k3s
   source:
     chart: argo-cd
+    helm:
+      values: |-
+        configs:
+          cm:
+            resource.exclusions: |
+             - apiGroups:
+                 - cilium.io
+               kinds:
+                 - CiliumIdentity
+               clusters:
+                 - "*"
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 7.1.2
   syncPolicy:
