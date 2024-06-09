@@ -177,6 +177,7 @@ spec:
       prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
+    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
