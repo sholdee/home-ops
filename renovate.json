@@ -11,6 +11,26 @@
   "argocd": {
     "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"]
   },
+  "packageRules": [
+    {
+      "matchPaths": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
+      "matchStrings": [
+        "name: cilium\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
+      ],
+      "depNameTemplate": "cilium",
+      "datasourceTemplate": "helm",
+      "groupName": "cilium"
+    },
+    {
+      "matchPaths": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
+      "matchStrings": [
+        "name: cilium-preflight\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
+      ],
+      "depNameTemplate": "cilium",
+      "datasourceTemplate": "helm",
+      "groupName": "cilium-preflight"
+    }
+  ],
   "customManagers": [
     {
       "customType": "regex",
