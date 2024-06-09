@@ -113,6 +113,56 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: cilium
+spec:
+  destination:
+    name: in-cluster
+    namespace: cilium
+  project: k3s
+  source:
+    chart: cilium
+    helm:
+      values: |-
+        operator:
+          replicas: 1
+        
+        ipam:
+          operator:
+            clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
+        
+        ipv4NativeRoutingCIDR: "10.52.0.0/16"
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+        routingMode: "native"
+        autoDirectNodeRoutes: true
+        kubeProxyReplacement: true
+        bpf:
+          masquerade: false
+          loadBalancer:
+            algorithm: "maglev"
+            mode: "hybrid"
+        enableIPv4Masquerade: false
+        bgpControlPlane:
+          enabled: true
+        hubble:
+          enabled: true
+          relay:
+            enabled: true
+          ui:
+            enabled: true
+        installNoConntrackIptablesRules: true
+    repoURL: https://helm.cilium.io/
+    targetRevision: 1.15.5
+  syncPolicy:
+    automated:
+      prune: false
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: ingress-nginx
 spec:
   destination:
