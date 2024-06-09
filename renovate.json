@@ -16,7 +16,7 @@
       "customType": "regex",
       "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
       "matchStrings": [
-        "name: cilium\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
+        "chart: cilium\\s*repoURL: .+\\s*targetRevision: (?<currentValue>.+)"
       ],
       "depNameTemplate": "cilium",
       "versioningTemplate": "semver",
@@ -26,9 +26,9 @@
       "customType": "regex",
       "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$"],
       "matchStrings": [
-        "name: cilium-preflight\\n(?:[^\\n]+\\n)+?[ \\t]*targetRevision: (?<currentValue>.+)"
+        "chart: cilium-preflight\\s*repoURL: .+\\s*targetRevision: (?<currentValue>.+)"
       ],
-      "depNameTemplate": "cilium",
+      "depNameTemplate": "cilium-preflight",
       "versioningTemplate": "semver",
       "datasourceTemplate": "helm"
     },
