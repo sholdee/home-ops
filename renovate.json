@@ -16,20 +16,11 @@
   },
   "packageRules": [
     {
-      "description": "Separate PRs for cilium",
-      "matchFileNames": [
-        "apps/argocd-conf/argocd-apps\\.(yaml|yml)$"
-      ],
-      "matchPackageNames": ["cilium"],
-      "additionalBranchPrefix": "cilium-",
-      "commitMessageSuffix": " [cilium]"
-    },
-    {
       "description": "Separate PRs for cilium-preflight",
       "matchFileNames": [
         "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
       ],
-      "matchPackageNames": ["cilium"],
+      "matchManagers": ["argocd"],
       "additionalBranchPrefix": "cilium-preflight-",
       "commitMessageSuffix": " [cilium-preflight]"
     }
