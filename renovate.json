@@ -10,7 +10,11 @@
   },
   "argocd": {
     "fileMatch": [
-      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
+      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$"
+    ]
+  },
+  "helm": {
+    "fileMatch": [
       "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
     ]
   },
@@ -18,7 +22,7 @@
     {
       "description": "Separate PRs for cilium-preflight",
       "matchFileNames": [
-        "**/cilium-preflight\\.(yaml|yml)$"
+        "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
       ],
       "matchDatasources": ["helm"],
       "matchPackageNames": ["cilium"],
