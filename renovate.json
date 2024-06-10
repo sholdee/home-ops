@@ -11,7 +11,7 @@
   "argocd": {
     "fileMatch": [
       "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
-      "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
+      "apps/argocd-conf/cilium-preflight\\.(yaml|yml)$"
     ]
   },
   "packageRules": [
