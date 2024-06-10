@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-preflight
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  project: k3s
+  source:
+    chart: cilium
+    repoURL: https://helm.cilium.io/
+    targetRevision: 1.15.5
+    helm:
+      values: |-
+        preflight:
+          enabled: true
+        agent: false
+        operator:
+          enabled: false
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
