@@ -9,24 +9,27 @@
     "fileMatch": ["apps/.*\\.(yaml|yml)$"]
   },
   "argocd": {
-    "fileMatch": ["apps/argocd\\-conf/argocd\\-apps\\.(yaml|yml)$", "apps/kube\\-system/cilium/cilium\\-preflight\\.(yaml|yml)$"]
+    "fileMatch": [
+      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
+      "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
+    ]
   },
   "packageRules": [
     {
-      "description": ["Separate PRs for cilium"],
+      "description": "Separate PRs for cilium",
       "matchFileNames": [
-        "argocd-apps.yml"
+        "apps/argocd-conf/argocd-apps\\.(yaml|yml)$"
       ],
       "matchPackageNames": ["cilium"],
       "additionalBranchPrefix": "cilium-",
       "commitMessageSuffix": " [cilium]"
     },
     {
-      "description": ["Separate PRs for cilium-preflight"],
+      "description": "Separate PRs for cilium-preflight",
       "matchFileNames": [
-        "cilium-preflight.yml"
+        "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
       ],
-      "matchPackageNames": ["cilium-preflight"],
+      "matchPackageNames": ["cilium"],
       "additionalBranchPrefix": "cilium-preflight-",
       "commitMessageSuffix": " [cilium-preflight]"
     }
@@ -34,7 +37,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["apps/system\\-upgrade/k3s\\-upgrade\\-plan\\.(yaml|yml)$"],
+      "fileMatch": ["apps/system-upgrade/k3s-upgrade-plan\\.(yaml|yml)$"],
       "matchStrings": [
         "version: (?<currentValue>v[\\d\\.\\+\\w-]+)"
       ],
@@ -44,7 +47,7 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["apps/system\\-upgrade/system\\-upgrade\\-controller\\.(yaml|yml)$"],
+      "fileMatch": ["apps/system-upgrade/system-upgrade-controller\\.(yaml|yml)$"],
       "matchStrings": [
         "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
       ],
