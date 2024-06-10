@@ -2,6 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cilium-preflight
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
