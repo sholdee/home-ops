@@ -18,7 +18,7 @@
     {
       "description": "Separate PRs for cilium",
       "matchFileNames": [
-        "apps/argocd-conf/argocd-apps\\.(yaml|yml)$"
+        "**/argocd-apps.yml"
       ],
       "matchManagers": ["argocd"],
       "matchPackageNames": ["cilium"],
@@ -28,7 +28,7 @@
     {
       "description": "Separate PRs for cilium-preflight",
       "matchFileNames": [
-        "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
+        "**/cilium-preflight.yml"
       ],
       "matchManagers": ["argocd"],
       "matchPackageNames": ["cilium"],
