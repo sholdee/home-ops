@@ -26,6 +26,7 @@
       "matchFileNames": [
         "apps/kube\\-system/cilium/cilium\\-preflight\\.(yaml|yml)$"
       ],
+      "matchPackageNames": ["cilium-preflight"],
       "additionalBranchPrefix": "cilium-preflight-",
       "commitMessageSuffix": " [cilium-preflight]"
     }
