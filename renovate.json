@@ -13,11 +13,6 @@
       "apps/argocd-conf/argocd-apps\\.(yaml|yml)$"
     ]
   },
-  "helm": {
-    "fileMatch": [
-      "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
-    ]
-  },
   "packageRules": [
     {
       "description": "Separate PRs for cilium-preflight",
