@@ -172,7 +172,7 @@ spec:
             enabled: true
         installNoConntrackIptablesRules: true
     repoURL: https://helm.cilium.io/
-    targetRevision: 1.15.5
+    targetRevision: 1.15.6
   syncPolicy:
     automated:
       prune: true
