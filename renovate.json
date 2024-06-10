@@ -8,12 +8,6 @@
   "kubernetes": {
     "fileMatch": ["apps/.*\\.(yaml|yml)$"]
   },
-  "argocd": {
-    "fileMatch": [
-      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
-      "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
-    ]
-  },
   "packageRules": [
     {
       "description": "Separate PRs for cilium",
@@ -34,6 +28,12 @@
       "commitMessageSuffix": " [cilium-preflight]"
     }
   ],
+  "argocd": {
+    "fileMatch": [
+      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
+      "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
+    ]
+  },
   "customManagers": [
     {
       "customType": "regex",
