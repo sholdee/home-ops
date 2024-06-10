@@ -17,7 +17,7 @@
     {
       "description": "Separate PRs for cilium-preflight",
       "matchFileNames": [
-        "apps/kube-system/cilium/cilium-preflight\\.(yaml|yml)$"
+        "**/cilium-preflight.yml"
       ],
       "matchDatasources": ["helm"],
       "matchPackageNames": ["cilium"],
