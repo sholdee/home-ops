@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zwave
+  namespace: hass
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: zwave
+  template:
+    metadata:
+      labels:
+        app: zwave
+    spec:
+      containers:
+      - name: zwave
+        image: ghcr.io/zwave-js/zwave-js-ui:9.13.4
+        resources:
+          limits:
+            sholdee.net/zwave: 1
+        env:
+          - name: SESSION_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: zwave
+                key: pass
+          - name: ZWAVEJS_EXTERNAL_CONFIG
+            value: /usr/src/app/store/.config-db
+          - name: TZ
+            value: America/Chicago
+        ports:
+        - containerPort: 8091
+          name: http
+          protocol: TCP
+        - containerPort: 3000
+          name: websocket
+          protocol: TCP
+        volumeMounts:
+        - name: zwave-data
+          mountPath: /usr/src/app/store
+      volumes:
+      - name: zwave-data
+        persistentVolumeClaim:
+          claimName: zwave-pvc

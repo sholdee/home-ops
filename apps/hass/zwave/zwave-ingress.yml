@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: zwavejs2mqtt
+  name: zwave
   namespace: hass
   annotations:
     cert-manager.io/cluster-issuer: cloudflare
@@ -15,9 +15,9 @@ spec:
           pathType: Prefix
           backend:
             service:
-              name: zwaveui-proxy
+              name: zwave
               port:
-                number: 8080
+                number: 8091
   tls:
   - hosts:
     - zwave.mgmt.sholdee.net
