@@ -21,7 +21,7 @@ spec:
       - operator: "Exists"
         effect: "NoSchedule"
       containers:
-      - image: ghcr.io/squat/generic-device-plugin@sha265:36bfc606bba2064de6ede0ff2764cbb52edff70d
+      - image: ghcr.io/squat/generic-device-plugin:latest@sha265:36bfc606bba2064de6ede0ff2764cbb52edff70d
         args:
         - --domain
         - "sholdee.net"
