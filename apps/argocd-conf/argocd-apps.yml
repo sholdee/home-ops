@@ -296,7 +296,7 @@ spec:
               - name: "longhorn.rules"
                 rules:
                   - alert: LonghornVolumeUsageHigh
-                    expr: (longhorn_volume_usage_percentage > 85)
+                    expr: longhorn_volume_usage_percentage > 85
                     for: 2m
                     labels:
                       severity: warning
