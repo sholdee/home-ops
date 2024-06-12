@@ -261,6 +261,35 @@ spec:
                       storage: 50Gi
         alertmanager:
           alertmanagerSpec:
+            config:
+              global:
+                resolve_timeout: 5m
+              route:
+                receiver: 'telegram-notifications'
+                group_by: ['alertname', 'severity']
+                group_wait: 30s
+                group_interval: 5m
+                repeat_interval: 3h
+              receivers:
+                - name: 'telegram-notifications'
+                  webhook_configs:
+                    - url: 'https://api.telegram.org/bot$(BOT_TOKEN)/sendMessage'
+                      send_resolved: true
+                      http_config:
+                        headers:
+                          Content-Type: 'application/json'
+                        body: |
+                          {
+                            "chat_id": "$(CHAT_ID)",
+                            "text": "*Alert:* {{ .CommonLabels.alertname }}\n*Severity:* {{ .CommonLabels.severity }}\n*Description:* {{ .CommonAnnotations.description }}",
+                            "parse_mode": "Markdown"
+                          }
+              inhibit_rules:
+                - source_match:
+                    severity: 'critical'
+                  target_match:
+                    severity: 'warning'
+                  equal: ['alertname', 'namespace', 'instance']
             storage:
               volumeClaimTemplate:
                 spec:
@@ -269,6 +298,17 @@ spec:
                   resources:
                     requests:
                       storage: 10Gi
+            extraEnv:
+              - name: BOT_TOKEN
+                valueFrom:
+                  secretKeyRef:
+                    name: telegram-alert-secret
+                    key: botToken
+              - name: CHAT_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: telegram-alert-secret
+                    key: chatID
         grafana:
           persistence:
             enabled: true
