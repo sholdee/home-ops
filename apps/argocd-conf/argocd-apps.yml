@@ -237,6 +237,101 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: kube-prometheus-stack
+spec:
+  destination:
+    name: in-cluster
+    namespace: monitoring
+  project: k3s
+  source:
+    chart: kube-prometheus-stack
+    helm:
+      values: |-
+        prometheus:
+          prometheusSpec:
+            retention: 10d
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: longhorn
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 50Gi
+        alertmanager:
+          alertmanagerSpec:
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: longhorn
+                  accessModes: ["ReadWriteOnce"]
+                  resources:
+                    requests:
+                      storage: 10Gi
+        grafana:
+          adminPassword: "admin"
+          persistence:
+            enabled: true
+            storageClassName: longhorn
+            accessModes: ["ReadWriteOnce"]
+            size: 10Gi
+          plugins:
+            - grafana-piechart-panel
+            - grafana-simple-json-datasource
+        prometheusOperator:
+          createCustomResource: true
+        kubeStateMetrics:
+          enabled: true
+        nodeExporter:
+          enabled: true
+        alertmanager:
+          enabled: true
+        prometheus:
+          enabled: true
+        grafana:
+          enabled: true
+        additionalPrometheusRules:
+          - name: "longhorn.rules"
+            groups:
+              - name: "longhorn.rules"
+                rules:
+                  - alert: LonghornVolumeUsageHigh
+                    expr: (longhorn_volume_usage_percentage > 85)
+                    for: 2m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Longhorn volume usage is over 85% ({{ $labels.volume }})"
+                      description: "Volume usage is above 85%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+          - name: "kube.rules"
+            groups:
+              - name: "kube.rules"
+                rules:
+                  - alert: NodeDiskRunningFull
+                    expr: (node_filesystem_free_bytes{mountpoint=\"/\"} / node_filesystem_size_bytes{mountpoint=\"/\"}) < 0.15
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Node root filesystem is running full"
+                      description: "Node root filesystem is running full (< 15% left)\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+        rbac:
+          create: true
+        serviceMonitor:
+          selfMonitor: true
+          additionalEndpoints: []
+    repoURL: https://prometheus-community.github.io/helm-charts
+    targetRevision: 60.0.2
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: kubernetes-dashboard
 spec:
   destination:
