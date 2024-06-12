@@ -29,6 +29,8 @@ spec:
                 key: pass
           - name: ZWAVEJS_EXTERNAL_CONFIG
             value: /usr/src/app/store/.config-db
+          - name: TRUST_PROXY
+            value: "10.52.0.0/16"
           - name: TZ
             value: America/Chicago
         ports:
