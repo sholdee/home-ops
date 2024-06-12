@@ -249,7 +249,6 @@ spec:
       values: |-
         prometheus:
           prometheusSpec:
-            retention: 10d
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -269,32 +268,11 @@ spec:
                     requests:
                       storage: 10Gi
         grafana:
-          adminPassword: "admin"
           persistence:
             enabled: true
             storageClassName: longhorn
             accessModes: ["ReadWriteOnce"]
             size: 10Gi
-          plugins:
-            - grafana-piechart-panel
-            - grafana-simple-json-datasource
-        prometheusOperator:
-          createCustomResource: true
-        kubeStateMetrics:
-          enabled: true
-        nodeExporter:
-          enabled: true
-        alertmanager:
-          enabled: true
-        prometheus:
-          enabled: true
-        grafana:
-          enabled: true
-        rbac:
-          create: true
-        serviceMonitor:
-          selfMonitor: true
-          additionalEndpoints: []
     repoURL: https://prometheus-community.github.io/helm-charts
     targetRevision: 60.0.2
   syncPolicy:
