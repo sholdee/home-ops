@@ -17,7 +17,7 @@ I was running various self-hosted services in Docker and decided to learn Kubern
 - **Cluster Type**: Home Operations
     - HA with embedded etcd
 - **Kubernetes Distribution**: K3s
-- **Hardware**: RPi 5 8gb with 512GB NVMe SSD via PCIe hat x3
+- **Hardware**: RPi 5 8gb with 512GB NVMe SSD via PCIe hat x4
 - **Primary Applications**:
   - Home Assistant and related services
   - Unifi
