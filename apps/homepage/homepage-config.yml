@@ -60,11 +60,11 @@ data:
         - Portainer:
             icon: portainer.svg
             href: {{HOMEPAGE_VAR_PORTAINER_URL}}
-            description: z-wave
+            description: SEi12 Pro
             widget:
                 type: portainer
                 url: {{HOMEPAGE_VAR_PORTAINER_URL}}
-                env: 13
+                env: 14
                 key: {{HOMEPAGE_VAR_PORTAINER_API_KEY}}
     - DNS:
         - Adguard Master:
