@@ -24,7 +24,10 @@ spec:
           - name: DEFAULT_WORKSPACE
             value: /home
           - name: SUDO_PASSWORD
-            value: sudo
+            valueFrom:
+              secretKeyRef:
+                name: zwave
+                key: pass
         ports:
         - containerPort: 8443
           name: http
