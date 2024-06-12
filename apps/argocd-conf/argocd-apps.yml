@@ -269,8 +269,6 @@ spec:
                   resources:
                     requests:
                       storage: 10Gi
-            useExistingSecret: true
-            configSecret: alertmanager-secret
         grafana:
           persistence:
             enabled: true
