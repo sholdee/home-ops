@@ -270,9 +270,10 @@ spec:
         grafana:
           persistence:
             enabled: true
+            type: sts
             storageClassName: longhorn
             accessModes: ["ReadWriteOnce"]
-            size: 10Gi
+            size: 20Gi
     repoURL: https://prometheus-community.github.io/helm-charts
     targetRevision: 60.0.2
   syncPolicy:
