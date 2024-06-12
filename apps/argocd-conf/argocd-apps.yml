@@ -269,25 +269,8 @@ spec:
                   resources:
                     requests:
                       storage: 10Gi
-            secrets:
-              - telegram-alert-secret
-          config:
-            route:
-              receiver: 'telegram-notifications'
-            receivers:
-              - name: 'telegram-notifications'
-                webhook_configs:
-                  - url: 'https://api.telegram.org/bot$(BOT_TOKEN)/sendMessage'
-                    send_resolved: true
-                    http_config:
-                      headers:
-                        Content-Type: 'application/json'
-                      body: |
-                        {
-                          "chat_id": "$(CHAT_ID)",
-                          "text": "*Alert:* {{ .CommonLabels.alertname }}\n*Severity:* {{ .CommonLabels.severity }}\n*Description:* {{ .CommonAnnotations.description }}",
-                          "parse_mode": "Markdown"
-                        }
+            useExistingSecret: true
+            configSecret: alertmanager-secret
         grafana:
           persistence:
             enabled: true
