@@ -72,7 +72,7 @@ spec:
             - nslookup localhost 127.0.0.1
         readinessProbe: *probe
       - name: adguard-sync
-        image: ghcr.io/linuxserver/adguardhome-sync:0.6.11@sha256:96f89569a87f7cde878a7ed9c939ca3a2720fdf13bccf835268e3b31e4088760
+        image: ghcr.io/linuxserver/adguardhome-sync:0.6.11@sha256:67962a0e15bf1a41e4bc0083d93d7e0268ad6431482c337ef49d5f2673c36c71
         imagePullPolicy: IfNotPresent
         env:
           - name: CONFIGFILE
