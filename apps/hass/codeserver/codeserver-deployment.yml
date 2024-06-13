@@ -33,8 +33,10 @@ spec:
           name: http
           protocol: TCP
         volumeMounts:
-        - name: codeserver-data
-          mountPath: /home/coder
+        - name: codeserver-config
+          mountPath: /home/coder/.config
+        - name: codeserver-local
+          mountPath: /home/coder/.local
         - name: codeserver-repos-data
           mountPath: /home/source-repos
         - name: appdaemon-data
@@ -58,9 +60,12 @@ spec:
           initialDelaySeconds: 10
         readinessProbe: *probe
       volumes:
-      - name: codeserver-data
+      - name: codeserver-config
         persistentVolumeClaim:
           claimName: codeserver-pvc
+      - name: codeserver-local
+        persistentVolumeClaim:
+          claimName: codeserver-local-pvc
       - name: codeserver-repos-data
         persistentVolumeClaim:
           claimName: codeserver-repos-pvc
