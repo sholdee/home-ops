@@ -34,7 +34,7 @@ spec:
           protocol: TCP
         volumeMounts:
         - name: codeserver-data
-          mountPath: /home/coder/.local/share/code-server
+          mountPath: /home/coder
         - name: codeserver-repos-data
           mountPath: /home/source-repos
         - name: appdaemon-data
