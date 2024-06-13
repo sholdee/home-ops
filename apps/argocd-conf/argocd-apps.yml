@@ -315,7 +315,11 @@ spec:
                 sourceLabels: ["__name__"]
                 regex: (apiserver_response_sizes_bucket|apiserver_watch_events_sizes_bucket)
         kubeEtcd:
-          enabled: false
+          enabled: true
+          endpoints:
+            - 192.168.99.10
+            - 192.168.99.11
+            - 192.168.99.12
         kubeControllerManager:
           enabled: false
         kubeScheduler:
