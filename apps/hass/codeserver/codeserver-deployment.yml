@@ -15,6 +15,15 @@ spec:
       labels:
         app: codeserver
     spec:
+      initContainers:
+      - name: init-permissions
+        image: busybox:1.36.1
+        command: ["sh", "-c", "chown -R 1000:1000 /home/coder/.config /home/coder/.local"]
+        volumeMounts:
+        - name: codeserver-config
+          mountPath: /home/coder/.config
+        - name: codeserver-local
+          mountPath: /home/coder/.local
       containers:
       - name: codeserver
         image: ghcr.io/coder/code-server:4.90.1@sha256:5d85938ed45660b18934fa54de7274d0b5635c5e246d2b61bca523288005e6bd
