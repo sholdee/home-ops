@@ -261,6 +261,8 @@ spec:
                       storage: 50Gi
         alertmanager:
           alertmanagerSpec:
+            useExistingSecret: true
+            configSecret: alertmanager-secret
             storage:
               volumeClaimTemplate:
                 spec:
