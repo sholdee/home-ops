@@ -23,6 +23,11 @@ spec:
             value: America/Chicago
           - name: DEFAULT_WORKSPACE
             value: /home
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zwave
+                key: pass
         ports:
         - containerPort: 8080
           name: http
