@@ -253,6 +253,7 @@ spec:
           enabled: false
         prometheus:
           prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
             storageSpec:
               volumeClaimTemplate:
                 spec:
