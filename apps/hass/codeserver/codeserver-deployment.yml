@@ -17,19 +17,14 @@ spec:
     spec:
       containers:
       - name: codeserver
-        image: ghcr.io/linuxserver/code-server:4.90.1@sha256:c4f6a2265a537833659e9243f049cdb69b912f830fd483e7f32acbfc2bbdebab
+        image: ghcr.io/coder/code-server:4.90.1@sha256:5d85938ed45660b18934fa54de7274d0b5635c5e246d2b61bca523288005e6bd
         env:
           - name: TZ
             value: America/Chicago
           - name: DEFAULT_WORKSPACE
             value: /home
-          - name: SUDO_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: zwave
-                key: pass
         ports:
-        - containerPort: 8443
+        - containerPort: 8080
           name: http
           protocol: TCP
         volumeMounts:
