@@ -30,6 +30,8 @@ spec:
         env:
           - name: TZ
             value: America/Chicago
+          - name: DEFAULT_WORKSPACE
+            value: /home
           - name: PASSWORD
             valueFrom:
               secretKeyRef:
