@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: codeserver
-        image: ghcr.io/linuxserver/code-server:4.90.0@sha256:8b7338eaa52d8207dbff10f46886e6cda86270b1bcde20e596ac6805edbd18f5
+        image: ghcr.io/linuxserver/code-server:4.90.1@sha256:c4f6a2265a537833659e9243f049cdb69b912f830fd483e7f32acbfc2bbdebab
         env:
           - name: TZ
             value: America/Chicago
