@@ -249,6 +249,8 @@ spec:
     chart: kube-prometheus-stack
     helm:
       values: |-
+        crds:
+          enabled: false
         prometheus:
           prometheusSpec:
             storageSpec:
