@@ -1,12 +1,15 @@
+<div align="center" style="display: flex; align-items: center; justify-content: center;">
+  <img src="docs/assets/kubernetes.svg" alt="ArgoCD Icon" width="50" height="50" style="margin-right: 10px;"/>
+  
+  <h1 style="margin: 0 10px;">K3s Home Operations</h1>
+  
+  <img src="docs/assets/kubernetes.svg" alt="Kubernetes Icon" width="50" height="50" style="margin-left: 10px;"/>
+</div>
 <div align="center">
-
-# K3s Home Operations
-
-_... managed with ArgoCD and Renovate_
-
+  <em>... managed with ArgoCD and Renovate</em>
 </div>
 
-<div align="center">
+<div align="center" style="margin-top: 20px;">
 
 [![Kubernetes](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A2096%2Fquery%3Fformat%3Dendpoint%26metric%3Dkubernetes_version&style=for-the-badge&logo=kubernetes&logoColor=white&color=blue&label=%20)](https://k3s.io/)&nbsp;&nbsp;
 
