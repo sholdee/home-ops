@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kromgo
+  namespace: monitoring
+  labels:
+    app: kromgo
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: kromgo
+  template:
+    metadata:
+      labels:
+        app: kromgo
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: kromgo
+      containers:
+        - name: kromgo
+          image: ghcr.io/kashalls/kromgo:0.3.1@sha256:5ba40b2fda00ab7adb039c0be955161b84febfe9e9e7816d5f1f87d9ab41f173
+          env:
+            - name: PROMETHEUS_URL
+              value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
+            - name: PORT
+              value: "80"
+          ports:
+            - containerPort: 80
+              name: http
+          livenessProbe: &probe
+            httpGet:
+              path: /-/ready
+              port: 80
+          readinessProbe: *probe
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+            limits:
+              memory: 64Mi
+          volumeMounts:
+            - name: config-volume
+              mountPath: /kromgo/config.yaml
+              subPath: config.yaml
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: kromgo-configmap

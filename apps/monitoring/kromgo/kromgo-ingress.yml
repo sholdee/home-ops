@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kromgo
+  namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: kromgo.mgmt.sholdee.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kromgo
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - kromgo.mgmt.sholdee.net
+      secretName: kromgo-tls-secret
