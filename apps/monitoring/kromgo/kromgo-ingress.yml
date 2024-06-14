@@ -4,7 +4,6 @@ metadata:
   name: kromgo
   namespace: monitoring
   annotations:
-    traefik.ingress.kubernetes.io/router.tls: "true"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     cert-manager.io/cluster-issuer: cloudflare
 spec:
