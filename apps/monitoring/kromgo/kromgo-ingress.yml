@@ -9,7 +9,7 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-  - host: kromgo.mgmt.sholdee.net
+  - host: kromgo.sholdee.net
     http:
       paths:
         - path: /
@@ -21,5 +21,5 @@ spec:
                 number: 80
   tls:
   - hosts:
-    - kromgo.mgmt.sholdee.net
+    - kromgo.sholdee.net
     secretName: kromgo-tls-secret
