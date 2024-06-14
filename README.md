@@ -27,7 +27,7 @@ _... managed with ArgoCD and Renovate_
 
 This repository contains the configurations for my home operations k3s cluster.
 
-My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository. Renovate automatically scans and submits pull requests for updates to dependencies. 
+My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository. Renovate automatically scans and submits pull requests for dependency updates. 
 
 Cluster bootstrapping is performed with Techno-Tim's [k3s-ansible](https://github.com/techno-tim/k3s-ansible) repository, for which I contributed [Cilium CNI support](https://github.com/techno-tim/k3s-ansible/pull/435).
 
