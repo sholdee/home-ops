@@ -15,7 +15,7 @@ _... managed with ArgoCD and Renovate_
 <div align="center">
 
 
-![Home-Internet](https://img.shields.io/endpoint?url=https%3A%2F%2Fhealthchecks.io%2Fbadge%2F51183e61-d334-4de9-acb4-abfdf9%2F4nYMJsdM-2%2Fhome-internet.shields&color=brightgreen&label=Home%20Internet&style=for-the-badge&logo=v&logoColor=white)&nbsp;&nbsp;
+![Home-Internet](https://img.shields.io/endpoint?url=https%3A%2F%2Fhealthchecks.io%2Fbadge%2F51183e61-d334-4de9-acb4-abfdf9%2F4nYMJsdM-2%2Fhome-internet.shields&color=brightgreen&label=Home%20Internet&style=for-the-badge&logo=ubiquiti&logoColor=white)&nbsp;&nbsp;
 ![Alertmanager](https://img.shields.io/endpoint?url=https%3A%2F%2Fhealthchecks.io%2Fbadge%2F51183e61-d334-4de9-acb4-abfdf9%2F6loCWl61-2%2Falert-manager.shields&label=alert%20manager&style=for-the-badge&logo=prometheus&logoColor=white)&nbsp;&nbsp;
 
 </div>
