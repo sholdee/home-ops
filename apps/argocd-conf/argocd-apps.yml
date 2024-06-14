@@ -254,6 +254,7 @@ spec:
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
+            externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -266,6 +267,7 @@ spec:
           alertmanagerSpec:
             useExistingSecret: true
             configSecret: alertmanager-secret
+            externalUrl: "https://alertmgr.mgmt.sholdee.net"
             storage:
               volumeClaimTemplate:
                 spec:
