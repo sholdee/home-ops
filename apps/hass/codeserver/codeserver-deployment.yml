@@ -58,10 +58,10 @@ spec:
           mountPath: /home/zwave-data
         resources:
           requests:
-            memory: 250Mi
-            cpu: "7m"
+            memory: 1Gi
+            cpu: "20m"
           limits:
-            memory: 500Mi
+            memory: 1Gi
         livenessProbe: &probe
           httpGet:
             path: /healthz
