@@ -18,7 +18,7 @@ data:
         colors:
           - { color: "green", min: 0, max: 9999 }
       - name: cluster_cpu_usage
-        query: avg(round(100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100, 0.1))
+        query: round(avg(100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100), 0.01)
         suffix: "%"
         colors:
           - { color: "green", min: 0, max: 35 }
