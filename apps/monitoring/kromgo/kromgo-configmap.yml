@@ -3,7 +3,7 @@ kind: ConfigMap
 metadata:
   name: kromgo-configmap
   namespace: monitoring
-data:
+stringData:
   config.yaml: |
     metrics:
       - name: kubernetes_version
