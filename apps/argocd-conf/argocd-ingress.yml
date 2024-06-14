@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: argocd.mgmt.sholdee.net
+  - host: argocd.sholdee.net
     http:
       paths:
         - path: /
@@ -22,5 +22,5 @@ spec:
                 number: 443
   tls:
   - hosts:
-    - argocd.mgmt.sholdee.net
+    - argocd.sholdee.net
     secretName: argocd-tls-secret
