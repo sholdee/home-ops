@@ -3,10 +3,16 @@ kind: Service
 metadata:
   name: kromgo
   namespace: monitoring
+  annotations:
+    traefik.ingress.kubernetes.io/service.passhostheader: "true"
+    traefik.ingress.kubernetes.io/service.serversscheme: http
 spec:
   selector:
     app: kromgo
   ports:
-    - name: http
-      port: 80
-      targetPort: 80
+  - protocol: TCP
+    port: 80
+    targetPort: 80
+    name: http
+  type: ClusterIP
+  clusterIP: None
