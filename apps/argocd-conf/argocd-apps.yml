@@ -15,7 +15,7 @@ spec:
   - group: '*'
     kind: '*'
   sourceRepos:
-  - git@github.com:sholdee/k3s-app-manifests.git
+  - git@github.com:sholdee/home-ops.git
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -26,7 +26,7 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        repoURL: 'git@github.com:sholdee/home-ops.git'
         revision: master
         directories:
           - path: 'apps/*'
@@ -36,7 +36,7 @@ spec:
     spec:
       project: k3s
       source:
-        repoURL: 'git@github.com:sholdee/k3s-app-manifests.git'
+        repoURL: 'git@github.com:sholdee/home-ops.git'
         targetRevision: master
         path: '{{.path.path}}'
         directory:
