@@ -3,14 +3,14 @@
   "apiVersion": "bitnami.com/v1alpha1",
   "metadata": {
     "name": "repo-home-ops",
-    "namespace": "default",
+    "namespace": "argocd",
     "creationTimestamp": null
   },
   "spec": {
     "template": {
       "metadata": {
         "name": "repo-home-ops",
-        "namespace": "default",
+        "namespace": "argocd",
         "creationTimestamp": null,
         "labels": {
           "argocd.argoproj.io/secret-type": "repository"
