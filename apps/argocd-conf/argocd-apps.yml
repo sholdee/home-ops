@@ -459,6 +459,18 @@ spec:
           kubernetesIngress:
             publishedService:
               enabled: true
+        deployment:
+          replicas: 2
+        podDisruptionBudget:
+          enabled: true
+          minAvailable: 1
+        topologySpreadConstraints:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: traefik
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 28.3.0
   syncPolicy:
