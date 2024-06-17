@@ -474,7 +474,7 @@ spec:
         logs:
           general:
             format: common
-            level: WARN
+            level: INFO
           access:
             enabled: true
             format: common
