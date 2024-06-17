@@ -19,8 +19,18 @@ spec:
       - name: zwave
         image: ghcr.io/zwave-js/zwave-js-ui:9.13.4
         resources:
+          requests:
+            memory: 200Mi
+            cpu: "10m"
           limits:
+            memory: 200Mi
             sholdee.net/zwave: 1
+        livenessProbe: &probe
+          httpGet:
+            path: /health/zwave
+            port: http
+          initialDelaySeconds: 10
+        readinessProbe: *probe
         env:
           - name: SESSION_SECRET
             valueFrom:
@@ -43,18 +53,6 @@ spec:
         volumeMounts:
         - name: zwave-data
           mountPath: /usr/src/app/store
-        resources:
-          requests:
-            memory: 200Mi
-            cpu: "10m"
-          limits:
-            memory: 200Mi
-        livenessProbe: &probe
-          httpGet:
-            path: /health/zwave
-            port: http
-          initialDelaySeconds: 10
-        readinessProbe: *probe
       volumes:
       - name: zwave-data
         persistentVolumeClaim:
