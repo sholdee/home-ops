@@ -471,6 +471,13 @@ spec:
             labelSelector:
               matchLabels:
                 app.kubernetes.io/name: traefik
+        logs:
+          general:
+            format: common
+            level: WARN
+          access:
+            enabled: true
+            format: common
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 28.3.0
   syncPolicy:
