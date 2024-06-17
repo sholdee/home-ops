@@ -478,10 +478,6 @@ spec:
           access:
             enabled: true
             format: common
-        ports:
-          traefik:
-            expose:
-              default: true
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 28.3.0
   syncPolicy:
