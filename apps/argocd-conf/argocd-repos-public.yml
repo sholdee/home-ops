@@ -52,19 +52,6 @@ type: Opaque
 ---
 apiVersion: v1
 data:
-  name: YXd4LW9wZXJhdG9y
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9hbnNpYmxlLmdpdGh1Yi5pby9hd3gtb3BlcmF0b3Iv
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-awx-operator
-type: Opaque
----
-apiVersion: v1
-data:
   name: bG9uZ2hvcm4=
   project: azNz
   type: aGVsbQ==
@@ -100,18 +87,6 @@ metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
   name: repo-traefik
-type: Opaque
----
-apiVersion: v1
-data:
-  project: azNz
-  type: Z2l0
-  url: aHR0cHM6Ly9naXRodWIuY29tL3Byb21ldGhldXMtb3BlcmF0b3Iva3ViZS1wcm9tZXRoZXVz
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-kube-prometheus
 type: Opaque
 ---
 apiVersion: v1
