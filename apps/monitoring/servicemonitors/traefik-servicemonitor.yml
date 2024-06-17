@@ -19,4 +19,6 @@ spec:
       targetPort: 9000
       interval: 30s
       scrapeTimeout: 10s
+      path: /metrics
+      honorLabels: true
   jobLabel: traefik-metrics
