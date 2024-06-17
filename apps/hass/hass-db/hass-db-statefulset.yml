@@ -32,6 +32,8 @@ spec:
             secretKeyRef:
               name: hass-db-secret
               key: user-password
+        - name: MARIADB_AUTO_UPGRADE
+          value: "1"
         ports:
         - containerPort: 3306
         volumeMounts:
