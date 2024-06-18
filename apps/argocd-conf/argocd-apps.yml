@@ -530,10 +530,10 @@ spec:
         metrics:
           service:
             enabled: true
-            labels: {}
-            annotations: {}
           disableAPICheck: false
           serviceMonitor:
+            enabled: true
+            namespace: "traefik"
             metricRelabelings:
               - sourceLabels: [__name__]
                 separator: ;
@@ -551,8 +551,7 @@ spec:
             interval: 30s
             honorLabels: true
           prometheusRule:
-            additionalLabels: {}
-            namespace: "monitoring"
+            namespace: "traefik"
             rules:
               - alert: TraefikDown
                 expr: up{job="traefik"} == 0
