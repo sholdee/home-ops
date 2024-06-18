@@ -1,0 +1,31 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: cert-manager
+    role: alert-rules
+  name: prometheus-certmanager-rules
+  namespace: monitoring
+spec:
+  groups:
+  - name: certmanager-certs
+    rules:
+    - alert: CertmanagerCertificateExpiredSoon
+      expr: |
+        max by (name, exported_namespace) (certmanager_certificate_expiration_timestamp_seconds{job="cert-manager"} - time() < 1209600)
+      for: 1h
+      labels:
+        severity: warning
+      annotations:
+        description: The certificate {{$labels.exported_namespace}}/{{$labels.name}} will expire in less than 2 weeks.
+        summary: Certificate will expire soon
+  
+    - alert: CertmanagerCertificateExpired
+      expr: |
+        max by (name, exported_namespace) (certmanager_certificate_expiration_timestamp_seconds{job="cert-manager"} - time() < 0)
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        description: Certificate {{$labels.exported_namespace}}/{{$labels.name}} expired
+        summary: Certificate expired
