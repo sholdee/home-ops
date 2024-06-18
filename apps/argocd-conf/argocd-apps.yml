@@ -532,7 +532,6 @@ spec:
             enabled: true
           disableAPICheck: false
           serviceMonitor:
-            enabled: true
             namespace: "traefik"
             metricRelabelings:
               - sourceLabels: [__name__]
