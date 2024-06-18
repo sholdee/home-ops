@@ -558,13 +558,31 @@ spec:
               rules:
                 - alert: TraefikDown
                   expr: up{job="traefik-metrics"} == 0
-                  for: 5m
+                  for: 1m
                   labels:
                     context: traefik
                     severity: critical
                   annotations:
                     summary: "Traefik Down"
                     description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
+                - alert: TraefikTooMany500s
+                  expr: 100 * ( sum(traefik_entrypoint_requests_total{code=~"5.."}) / sum(traefik_entrypoint_requests_total) ) > 5
+                  for: 1m
+                  labels:
+                    context: traefik
+                    severity: warning
+                  annotations:
+                    summary: "Too many Traefik 5XXs"
+                    description: "More than 5% of all requests returned 5XX."
+                - alert: TraefikTooMany400s
+                  expr: 100 * ( sum(traefik_entrypoint_requests_total{code=~"4.."}) / sum(traefik_entrypoint_requests_total) ) > 25
+                  for: 1m
+                  labels:
+                    context: traefik
+                    severity: warning
+                  annotations:
+                    summary: "Too many Traefik 4XXs"
+                    description: "More than 25% of all requests returned 4XX."
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 28.3.0
   syncPolicy:
