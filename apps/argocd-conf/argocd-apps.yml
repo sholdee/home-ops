@@ -534,6 +534,9 @@ spec:
               enabled: true
             serviceMonitor:
               namespace: traefik
+              jobLabel: traefik
+              interval: 30s
+              honorLabels: true
               metricRelabelings:
                 - sourceLabels: [__name__]
                   separator: ;
