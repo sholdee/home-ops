@@ -13,10 +13,10 @@ spec:
         - world
       toPorts:
         - ports:
-            - port: "443"
+            - port: "8443"
               protocol: TCP
         - ports:
-            - port: "80"
+            - port: "8000"
               protocol: TCP
     - fromEndpoints:
         - matchLabels:
