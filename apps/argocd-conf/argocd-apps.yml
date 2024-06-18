@@ -74,7 +74,7 @@ spec:
                clusters:
                  - "*"
     repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 7.1.3
+    targetRevision: 7.1.4
   syncPolicy:
     automated:
       prune: true
@@ -566,7 +566,7 @@ spec:
                 - instancemanagers.longhorn.io
                 - engineimages.longhorn.io
     repoURL: https://vmware-tanzu.github.io/helm-charts
-    targetRevision: 6.6.0
+    targetRevision: 6.7.0
   syncPolicy:
     automated:
       prune: true
