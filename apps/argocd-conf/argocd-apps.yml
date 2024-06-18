@@ -528,24 +528,21 @@ spec:
             enabled: true
             format: common
         metrics:
-          otlp:
+          prometheus:
+            entryPoint: metrics
             service:
               enabled: true
-            disableAPICheck: false
             serviceMonitor:
-              namespace: "traefik"
-              jobLabel: traefik
-              interval: 30s
-              honorLabels: true
+              namespace: traefik
             prometheusRule:
-              namespace: "traefik"
+              namespace: traefik
               rules:
                 - alert: TraefikDown
                   expr: up{job="traefik"} == 0
                   for: 5m
                   labels:
                     context: traefik
-                    severity: critical
+                    severity: warning
                   annotations:
                     summary: "Traefik Down"
                     description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
