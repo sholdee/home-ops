@@ -53,7 +53,7 @@ spec:
         ) > 0
       for: 5m
       labels:
-        severity: critical
+        severity: warning
       annotations:
         summary: Cilium Agent Errors
         description: "Agent {{ $labels.namespace }}/{{ $labels.pod }} in subsystem {{ $labels.subsystem }} logged {{ $value }} new error(s)."
