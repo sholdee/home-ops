@@ -557,7 +557,7 @@ spec:
                   for: 5m
                   labels:
                     context: traefik
-                    severity: warning
+                    severity: critical
                   annotations:
                     summary: "Traefik Down"
                     description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
