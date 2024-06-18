@@ -534,6 +534,19 @@ spec:
               enabled: true
             serviceMonitor:
               namespace: traefik
+              metricRelabelings:
+                - sourceLabels: [__name__]
+                  separator: ;
+                  regex: ^fluentd_output_status_buffer_(oldest|newest)_.+
+                  replacement: $1
+                  action: drop
+              relabelings:
+                - sourceLabels: [__meta_kubernetes_pod_node_name]
+                  separator: ;
+                  regex: ^(.*)$
+                  targetLabel: nodename
+                  replacement: $1
+                  action: replace
             prometheusRule:
               namespace: traefik
               rules:
