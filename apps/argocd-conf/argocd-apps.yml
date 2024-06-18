@@ -101,6 +101,10 @@ spec:
         value: 1.1.1.1:53,1.0.0.1:53
       - name: dns01RecursiveNameserversOnly
         value: "true"
+      values: |-
+        prometheus:
+          servicemonitor:
+            enabled: true
     repoURL: https://charts.jetstack.io
     targetRevision: v1.15.0
   syncPolicy:
