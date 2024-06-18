@@ -300,6 +300,7 @@ spec:
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
             externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
