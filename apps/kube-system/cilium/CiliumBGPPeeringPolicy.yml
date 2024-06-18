@@ -18,5 +18,5 @@ kind: CiliumLoadBalancerIPPool
 metadata:
   name: "01-lb-pool"
 spec:
-  cidrs:
+  blocks:
   - cidr: "192.168.77.0/24"
