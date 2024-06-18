@@ -528,26 +528,27 @@ spec:
             enabled: true
             format: common
         metrics:
-          service:
-            enabled: true
-          disableAPICheck: false
-          serviceMonitor:
-            namespace: "traefik"
-            jobLabel: traefik
-            interval: 30s
-            honorLabels: true
-          prometheusRule:
-            namespace: "traefik"
-            rules:
-              - alert: TraefikDown
-                expr: up{job="traefik"} == 0
-                for: 5m
-                labels:
-                  context: traefik
-                  severity: critical
-                annotations:
-                  summary: "Traefik Down"
-                  description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
+          otlp:
+            service:
+              enabled: true
+            disableAPICheck: false
+            serviceMonitor:
+              namespace: "traefik"
+              jobLabel: traefik
+              interval: 30s
+              honorLabels: true
+            prometheusRule:
+              namespace: "traefik"
+              rules:
+                - alert: TraefikDown
+                  expr: up{job="traefik"} == 0
+                  for: 5m
+                  labels:
+                    context: traefik
+                    severity: critical
+                  annotations:
+                    summary: "Traefik Down"
+                    description: "{{ $labels.pod }} on {{ $labels.nodename }} is down"
     repoURL: https://helm.traefik.io/traefik
     targetRevision: 28.3.0
   syncPolicy:
