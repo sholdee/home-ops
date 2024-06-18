@@ -62,7 +62,7 @@ spec:
     - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: default
-            component: apiserver
+            k8s-app: kubernetes
       toPorts:
         - ports:
             - port: "443"
