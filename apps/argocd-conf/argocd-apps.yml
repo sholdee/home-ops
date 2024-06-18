@@ -534,7 +534,6 @@ spec:
               enabled: true
             serviceMonitor:
               namespace: traefik
-              jobLabel: traefik
               interval: 30s
               honorLabels: true
               metricRelabelings:
@@ -554,7 +553,7 @@ spec:
               namespace: traefik
               rules:
                 - alert: TraefikDown
-                  expr: up{job="traefik"} == 0
+                  expr: up{job="traefik-metrics"} == 0
                   for: 5m
                   labels:
                     context: traefik
