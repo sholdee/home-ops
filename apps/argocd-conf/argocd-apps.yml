@@ -414,6 +414,8 @@ spec:
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret
         value: longhorn-s3-key
+      - name: metrics.serviceMonitor.enabled
+        value: true
     repoURL: https://charts.longhorn.io
     targetRevision: 1.6.2
   syncPolicy:
