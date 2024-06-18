@@ -59,10 +59,8 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
-    - toEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: default
-            k8s-app: kubernetes
+    - toCIDR:
+        - "10.43.0.1/32"
       toPorts:
         - ports:
             - port: "443"
