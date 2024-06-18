@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: grafana
   namespace: monitoring
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: kube-prometheus-stack-grafana
               port:
                 number: 3000
-  tls:
-  - hosts:
-    - grafana.mgmt.sholdee.net
-    secretName: grafana-tls-secret

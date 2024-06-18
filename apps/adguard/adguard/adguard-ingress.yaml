@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: adguard
   namespace: adguard
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: adguard-http
               port:
                 name: http
-  tls:
-  - hosts:
-    - adguard.mgmt.sholdee.net
-    secretName: adguard-tls-secret

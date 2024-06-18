@@ -4,7 +4,6 @@ metadata:
   name: hubble-ui
   namespace: kube-system
   annotations:
-    cert-manager.io/cluster-issuer: cloudflare
     # type of authentication
     nginx.ingress.kubernetes.io/auth-type: basic
     # name of the secret that contains the user/password definitions
@@ -24,7 +23,3 @@ spec:
               name: hubble-ui 
               port:
                 number: 80
-  tls:
-  - hosts:
-    - hubble.mgmt.sholdee.net
-    secretName: hubble-tls-secret

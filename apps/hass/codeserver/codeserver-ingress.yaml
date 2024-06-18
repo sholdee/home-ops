@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: codeserver
   namespace: hass
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: codeserver
               port:
                 number: 8080
-  tls:
-  - hosts:
-    - codeserver.mgmt.sholdee.net
-    secretName: codeserver-tls-secret

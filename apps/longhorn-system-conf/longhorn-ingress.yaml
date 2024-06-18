@@ -4,7 +4,6 @@ metadata:
   name: longhorn-frontend
   namespace: longhorn-system
   annotations:
-    cert-manager.io/cluster-issuer: cloudflare
     # type of authentication
     nginx.ingress.kubernetes.io/auth-type: basic
     # name of the secret that contains the user/password definitions
@@ -24,7 +23,3 @@ spec:
               name: longhorn-frontend
               port:
                 number: 80
-  tls:
-  - hosts:
-    - longhorn.mgmt.sholdee.net
-    secretName: longhorn-tls-secret

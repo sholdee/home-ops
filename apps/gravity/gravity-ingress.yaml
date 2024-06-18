@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: gravity
   namespace: gravity
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: gravity-http
               port:
                 name: http
-  tls:
-  - hosts:
-    - gravity.mgmt.sholdee.net
-    secretName: gravity-tls-secret

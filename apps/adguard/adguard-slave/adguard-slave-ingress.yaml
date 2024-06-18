@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: adguard-slave
   namespace: adguard
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: adguard-slave-http
               port:
                 name: http
-  tls:
-  - hosts:
-    - adguard-slave.mgmt.sholdee.net
-    secretName: adguard-slave-tls-secret

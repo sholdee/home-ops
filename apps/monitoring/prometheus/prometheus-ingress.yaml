@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: prometheus
   namespace: monitoring
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: kube-prometheus-stack-prometheus
               port:
                 number: 9090
-  tls:
-  - hosts:
-    - prometheus.mgmt.sholdee.net
-    secretName: prometheus-tls-secret

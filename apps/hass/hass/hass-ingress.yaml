@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: hass
   namespace: hass
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: hass
               port:
                 number: 8123
-  tls:
-  - hosts:
-    - hass.mgmt.sholdee.net
-    secretName: hass-tls-secret

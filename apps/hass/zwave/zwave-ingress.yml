@@ -3,8 +3,6 @@ kind: Ingress
 metadata:
   name: zwave
   namespace: hass
-  annotations:
-    cert-manager.io/cluster-issuer: cloudflare
 spec:
   ingressClassName: nginx
   rules:
@@ -18,7 +16,3 @@ spec:
               name: zwave
               port:
                 number: 8091
-  tls:
-  - hosts:
-    - zwave.mgmt.sholdee.net
-    secretName: zwave-tls-secret
