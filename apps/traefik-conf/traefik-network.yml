@@ -59,8 +59,8 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
-    - toCIDR:
-        - "10.43.0.1/32"
+    - toEntities:
+        - cluster
       toPorts:
         - ports:
             - port: "443"
