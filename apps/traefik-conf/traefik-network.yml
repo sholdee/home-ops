@@ -59,3 +59,11 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: default
+            component: apiserver
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
