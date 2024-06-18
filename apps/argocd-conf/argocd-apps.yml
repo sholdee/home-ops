@@ -145,8 +145,6 @@ spec:
     chart: cilium
     helm:
       values: |-
-        operator:
-          replicas: "1"
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
@@ -171,6 +169,21 @@ spec:
           ui:
             enabled: true
         installNoConntrackIptablesRules: true
+        operator:
+          replicas: "1"
+          prometheus:
+            enabled: true
+            serviceMonitor:
+              enabled: true
+          dashboards:
+            enabled: true
+        prometheus:
+          enabled: true
+          serviceMonitor:
+            enabled: true
+            trustCRDsExist: true
+        dashboards:
+          enabled: true
     repoURL: https://helm.cilium.io/
     targetRevision: 1.15.6
   syncPolicy:
