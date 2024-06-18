@@ -1,0 +1,14 @@
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: every-day-keep-30-days
+  namespace: longhorn-system
+spec:
+  name: every-day-keep-30-days
+  task: backup
+  retain: 30
+  concurrency: 1
+  cron: "0 3 * * ?"
+  groups:
+    - default
+  labels: {}
