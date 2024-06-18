@@ -47,10 +47,13 @@ spec:
         description: "eBPF map {{ $labels.map_name }} is more than 90% full in agent {{ $labels.namespace }}/{{ $labels.pod }}."
 
     - alert: CiliumAgentErrors
-      expr: sum by (namespace, pod) (cilium_errors_warnings_total{level="error"}) > 0
+      expr: |
+        sum by (namespace, pod, subsystem) (
+          increase(cilium_errors_warnings_total{level="error"}[5m])
+        ) > 0
       for: 5m
       labels:
         severity: critical
       annotations:
         summary: Cilium Agent Errors
-        description: "Agent {{ $labels.pod }} in {{ $labels.namespace }} logged {{ $value }} error(s)."
+        description: "Agent {{ $labels.namespace }}/{{ $labels.pod }} in subsystem {{ $labels.subsystem }} logged {{ $value }} new error(s)."
