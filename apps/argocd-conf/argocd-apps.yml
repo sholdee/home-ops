@@ -530,6 +530,9 @@ spec:
         metrics:
           service:
             enabled: true
+            labels: {}
+            annotations: {}
+          disableAPICheck: false
           serviceMonitor:
             metricRelabelings:
               - sourceLabels: [__name__]
