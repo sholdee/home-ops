@@ -337,12 +337,6 @@ spec:
         kubelet:
           enabled: true
           serviceMonitor:
-            relabelings:
-              - action: replace
-                sourceLabels: ["__name__", "node"]
-                regex: up;(.+)
-                targetLabel: instance
-                replacement: $1
             metricRelabelings:
               # Remove duplicate labels provided by k3s
               - action: keep
