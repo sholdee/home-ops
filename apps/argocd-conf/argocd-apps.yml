@@ -338,6 +338,7 @@ spec:
           enabled: true
           serviceMonitor:
             relabelings:
+              # Fix default kubelet dashboard using wrong instance label value
               - sourceLabels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
                 regex: Node;(.*)
                 targetLabel: node
