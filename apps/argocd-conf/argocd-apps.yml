@@ -340,10 +340,13 @@ spec:
             relabelings:
               - sourceLabels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
                 regex: Node;(.*)
-                targetLabel: "node"
+                targetLabel: node
                 action: replace
               - sourceLabels: ["node"]
                 targetLabel: instance
+                action: replace
+              - sourceLabels: [__metrics_path__]
+                targetLabel: metrics_path
                 action: replace
             metricRelabelings:
               # Remove duplicate labels provided by k3s
