@@ -487,7 +487,7 @@ spec:
   source:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
-    targetRevision: 2.15.4
+    targetRevision: 2.16.0
   syncPolicy:
     automated:
       prune: true
