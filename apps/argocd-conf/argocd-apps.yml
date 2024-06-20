@@ -337,10 +337,6 @@ spec:
         kubelet:
           enabled: true
           serviceMonitor:
-            relabelings:
-              - action: replace
-                targetLabel: cluster
-                replacement: "k3s"
             metricRelabelings:
               # Remove duplicate labels provided by k3s
               - action: keep
