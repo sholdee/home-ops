@@ -1,34 +1,37 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: adguard
+  name: &app adguard
   namespace: adguard
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
-  replicas: 1
+  replicas: 3
   strategy:
-    type: Recreate
+    type: RollingUpdate
   selector:
     matchLabels:
-      app: adguard
+      app: *app
   template:
     metadata:
       labels:
-        app: adguard
+        app: *app
     spec:
-      affinity:
-        podAntiAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app 
-                  operator: In
-                  values:
-                  - adguard
-              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: *app
+      initContainers:
+      - name: adguard-init
+        image: busybox:1.36.1
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 755 /config/AdGuardHome.yaml"]
+        volumeMounts:
+          - mountPath: /home
+            name: adguard-secret
+          - mountPath: /config
+            name: adguard-conf
       containers:
       - name: adguard-home
         image: adguard/adguardhome:v0.107.51
@@ -67,6 +70,8 @@ spec:
       volumes:
       - emptyDir: {}
         name: adguard-data
-      - name: adguard-conf
-        persistentVolumeClaim:
-          claimName: adguard-conf-pvc
+      - emptyDir: {}
+        name: adguard-conf
+      - name: adguard-secret
+        secret:
+          secretName: adguard-secret
