@@ -15,21 +15,10 @@ spec:
       labels:
         app: codeserver
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
       initContainers:
       - name: init-permissions
         image: busybox:1.36.1
-        command: ["sh", "-c", "chown -R 65534:65534 /home/coder/.config /home/coder/.local"]
-        securityContext:
-          runAsUser: 65534
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
+        command: ["sh", "-c", "chown -R 1000:1000 /home/coder/.config /home/coder/.local"]
         volumeMounts:
         - name: codeserver-config
           mountPath: /home/coder/.config
@@ -79,11 +68,6 @@ spec:
             port: http
           initialDelaySeconds: 10
         readinessProbe: *probe
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
       volumes:
       - name: codeserver-config
         persistentVolumeClaim:
