@@ -7,10 +7,6 @@ spec:
   selector:
     app: adguard
   ports:
-  - protocol: TCP
-    port: 3000
-    targetPort: 3000
-    name: http-initial
   - protocol: UDP
     port: 53
     targetPort: 53
