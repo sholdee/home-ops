@@ -27,6 +27,8 @@ spec:
         - |
           cp /tmp/mosquitto/conf/mosquitto.conf /mosquitto/config/mosquitto.conf;
           cp /tmp/mosquitto/pass/password.txt /mosquitto/config/password.txt;
+          chmod 400 /mosquitto/config/password.txt;
+          chown 65534:65534 /mosquitto/config/password.txt;
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -101,6 +103,9 @@ spec:
           readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
+        volumeMounts:
+        - mountPath: /.npm
+          name: npm-cache
       volumes:
       - name: mosquitto-conf-tmp
         configMap:
@@ -110,3 +115,5 @@ spec:
           secretName: mosquitto-pass
       - emptyDir: {}
         name: mosquitto-conf
+      - emptyDir: {}
+        name: npm-cache
