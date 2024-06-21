@@ -27,10 +27,7 @@ spec:
         - |
           cp /tmp/mosquitto/conf/mosquitto.conf /mosquitto/config/mosquitto.conf;
           cp /tmp/mosquitto/pass/password.txt /mosquitto/config/password.txt;
-          chmod 400 /mosquitto/config/password.txt;
-          chown 65534:65534 /mosquitto/config/password.txt;
         securityContext:
-          runAsUser: 0
           allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
