@@ -3,6 +3,10 @@ kind: Ingress
 metadata:
   name: adguard
   namespace: adguard
+  annotations:
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "route"
+    nginx.ingress.kubernetes.io/session-cookie-hash: "sha1"
 spec:
   ingressClassName: nginx
   rules:
