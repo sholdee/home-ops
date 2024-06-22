@@ -67,6 +67,15 @@ spec:
             - -c
             - nslookup localhost 127.0.0.1
         readinessProbe: *probe
+      - name: adguard-exporter
+        image: sholdee/adguardexporter
+        ports:
+        - containerPort: 8000
+          name: metrics
+          protocol: TCP
+        volumeMounts:
+        - name: adguard-data
+          mountPath: /opt/adguardhome/work
       volumes:
       - emptyDir: {}
         name: adguard-data

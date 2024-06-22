@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: adguard-metrics
+  namespace: adguard
+  labels:
+    app: adguard
+spec:
+  selector:
+    matchLabels:
+      app: adguard
+  namespaceSelector:
+    matchNames:
+    - adguard
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /
