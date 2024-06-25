@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: zwave
-        image: ghcr.io/zwave-js/zwave-js-ui:9.14.2
+        image: ghcr.io/zwave-js/zwave-js-ui:9.14.3
         resources:
           requests:
             memory: 200Mi
