@@ -5,6 +5,8 @@ metadata:
   namespace: monitoring
   labels:
     app: kromgo
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 2
   strategy:

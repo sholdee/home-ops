@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: wireguard
   namespace: wireguard
+  annotations:
+    secret.reloader.stakater.com/reload: "wg-secret"
 spec:
   replicas: 1
   selector:

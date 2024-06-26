@@ -3,6 +3,8 @@ kind: StatefulSet
 metadata:
   name: hass-db
   namespace: hass
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   serviceName: hass-db
   replicas: 1

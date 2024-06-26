@@ -5,6 +5,8 @@ metadata:
   namespace: homepage
   labels:
     app: homepage
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   selector:
     matchLabels:
