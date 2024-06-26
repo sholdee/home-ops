@@ -34,6 +34,12 @@
       "matchPackageNames": ["cilium"],
       "additionalBranchPrefix": "cilium-preflight-",
       "commitMessageSuffix": " [cilium-preflight]"
+    },
+    {
+      "description": ["Custom schedule for reloader"],
+      "matchDataSources": ["docker", "helm"],
+      "matchPackagePatterns": ["reloader"],
+      "schedule": ["on sunday"]
     }
   ],
   "customManagers": [
