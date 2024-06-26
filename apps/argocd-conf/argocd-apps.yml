@@ -478,6 +478,32 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: reloader
+spec:
+  destination:
+    name: in-cluster
+    namespace: default
+  project: k3s
+  source:
+    chart: reloader
+    helm:
+      values: |-
+        fullnameOverride: reloader
+        reloader:
+          readOnlyRootFileSystem: true
+          podMonitor:
+            enabled: true
+    repoURL: https://stakater.github.io/stakater-charts
+    targetRevision: 1.0.114
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: sealed-secrets-controller
 spec:
   destination:

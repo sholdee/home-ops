@@ -128,3 +128,15 @@ metadata:
   name: repo-prometheus-community
 type: Opaque
 ---
+apiVersion: v1
+data:
+  name: c3Rha2F0ZXI=
+  project: azNz
+  type: aGVsbQ==
+  url: aHR0cHM6Ly9zdGFrYXRlci5naXRodWIuaW8vc3Rha2F0ZXItY2hhcnRz
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-stakater-reloader
+type: Opaque
