@@ -275,6 +275,12 @@ spec:
                       values:
                       - controller
                   topologyKey: kubernetes.io/hostname
+          resources:
+            requests:
+              cpu: 100m
+              memory: 250Mi
+            limits:
+              memory: 250Mi
     repoURL: https://kubernetes.github.io/ingress-nginx
     targetRevision: 4.10.1
   syncPolicy:
