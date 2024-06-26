@@ -45,10 +45,10 @@ spec:
         args: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
         resources:
           requests:
-            memory: 400Mi
-            cpu: "10m"
+            memory: 700Mi
+            cpu: "15m"
           limits:
-            memory: 800Mi
+            memory: 700Mi
         livenessProbe:
           exec:
             command:
