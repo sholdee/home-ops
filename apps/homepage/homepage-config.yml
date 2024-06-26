@@ -66,23 +66,6 @@ data:
                 url: {{HOMEPAGE_VAR_PORTAINER_URL}}
                 env: 14
                 key: {{HOMEPAGE_VAR_PORTAINER_API_KEY}}
-    - DNS:
-        - Adguard Master:
-            icon: adguard-home.svg
-            href: {{HOMEPAGE_VAR_ADGUARD_URL_1}}
-            widget:
-                type: adguard
-                url: {{HOMEPAGE_VAR_ADGUARD_URL_1}}
-                username: {{HOMEPAGE_VAR_ADGUARD_USERNAME_1}}
-                password: {{HOMEPAGE_VAR_ADGUARD_PASSWORD_1}}
-        - Adguard Slave:
-            icon: adguard-home.svg
-            href: {{HOMEPAGE_VAR_ADGUARD_URL_2}}
-            widget:
-                type: adguard
-                url: {{HOMEPAGE_VAR_ADGUARD_URL_2}}
-                username: {{HOMEPAGE_VAR_ADGUARD_USERNAME_2}}
-                password: {{HOMEPAGE_VAR_ADGUARD_PASSWORD_2}}
     - Network:
         - UniFi:
             icon: unifi.svg
@@ -97,6 +80,14 @@ data:
             icon: cilium.svg
             href: {{HOMEPAGE_VAR_HUBBLE_URL}}
             description: hubble observability
+        - Adguard:
+            icon: adguard-home.svg
+            href: {{HOMEPAGE_VAR_ADGUARD_URL_1}}
+            widget:
+                type: adguard
+                url: {{HOMEPAGE_VAR_ADGUARD_URL_1}}
+                username: {{HOMEPAGE_VAR_ADGUARD_USERNAME_1}}
+                password: {{HOMEPAGE_VAR_ADGUARD_PASSWORD_1}}
     - Storage:
         - Synology DSM:
             icon: synology-dsm.svg
