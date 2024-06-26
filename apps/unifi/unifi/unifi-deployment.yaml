@@ -51,10 +51,10 @@ spec:
             name: unifi-data
         resources:
           requests:
-            memory: 700Mi
-            cpu: "15m"
+            memory: 1200Mi
+            cpu: "20m"
           limits:
-            memory: 1400Mi
+            memory: 1200Mi
         livenessProbe: &probe
           httpGet:
             path: /manage/account/login
