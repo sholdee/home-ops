@@ -68,7 +68,7 @@ spec:
             port: 2379
         readinessProbe:
           httpGet:
-            path: /readyz
+            path: /readyz?exclude=linearizable_read&exclude=serializable_read
             port: 2379
         resources:
           requests:
