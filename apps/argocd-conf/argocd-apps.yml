@@ -305,6 +305,7 @@ spec:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
             ruleSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
             externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
@@ -314,6 +315,12 @@ spec:
                   resources:
                     requests:
                       storage: 50Gi
+            resources:
+              requests:
+                cpu: 300m
+                memory: 2Gi
+              limits:
+                memory: 2Gi
         alertmanager:
           alertmanagerSpec:
             useExistingSecret: true
