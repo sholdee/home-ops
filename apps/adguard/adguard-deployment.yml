@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: &app adguard
-  namespace: adguard
+  namespace: *app
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
@@ -70,7 +70,7 @@ spec:
             - nslookup localhost 127.0.0.1
         readinessProbe: *probe
       - name: adguard-exporter
-        image: sholdee/adguardexporter:v1.0.1
+        image: sholdee/adguardexporter:v1.0.2
         ports:
         - containerPort: 8000
           name: metrics
