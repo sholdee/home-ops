@@ -37,8 +37,8 @@
     },
     {
       "description": ["Custom schedule for reloader"],
-      "matchDataSources": ["docker", "helm"],
-      "matchPackagePatterns": ["reloader"],
+      "matchManagers": ["argocd"],
+      "matchPackageNames": ["reloader"],
       "schedule": ["on sunday"]
     }
   ],
