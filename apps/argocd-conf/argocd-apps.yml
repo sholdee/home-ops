@@ -477,6 +477,8 @@ spec:
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret
         value: longhorn-s3-key
+      - name: defaultSettings.removeSnapshotsDuringFilesystemTrim
+        value: "true"
       - name: metrics.serviceMonitor.enabled
         value: "true"
     repoURL: https://charts.longhorn.io
