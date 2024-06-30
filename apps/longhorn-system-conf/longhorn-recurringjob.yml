@@ -21,7 +21,7 @@ metadata:
 spec:
   name: daily-volume-trim
   task: filesystem-trim
-  retain: 1
+  retain: 0
   concurrency: 1
   cron: "0 6 * * ?"
   groups:
