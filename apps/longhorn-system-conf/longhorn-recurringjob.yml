@@ -12,3 +12,18 @@ spec:
   groups:
     - default
   labels: {}
+---
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: daily-volume-trim
+  namespace: longhorn-system
+spec:
+  name: daily-volume-trim
+  task: filesystem-trim
+  retain: 1
+  concurrency: 1
+  cron: "0 6 * * ?"
+  groups:
+    - default
+  labels: {}
