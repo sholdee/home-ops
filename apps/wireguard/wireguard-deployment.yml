@@ -33,11 +33,16 @@ spec:
           command:
           - sh
           - -c
-          - /entrypoint.sh
+          - |
+            /entrypoint.sh &
+            /healthcheck.sh
           ports:
           - containerPort: 443
             protocol: UDP
             name: wireguard
+          - containerPort: 8080
+            protocol: TCP
+            name: healthcheck
           env:
           - name: LOG_LEVEL
             value: info
@@ -56,14 +61,19 @@ spec:
           - name: secret
             mountPath: /etc/wireguard/wg0.conf
             subPath: wg0.conf
+          - name: healthcheck
+            mountPath: /healthcheck.sh
+            subPath: healthcheck.sh
           livenessProbe: &probe
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - "wg show | grep -q 'I5P73tGjZVZmBw7VS/upDwvUWq5ivfmi9sb7KSnq6EA=' || exit 1"
+            httpGet:
+              path: /
+              port: 8080
           readinessProbe: *probe
       volumes:
       - name: secret
         secret:
           secretName: wg-secret
+      - name: healthcheck
+        configMap:
+          name: wireguard-healthcheck
+          defaultMode: 0755
