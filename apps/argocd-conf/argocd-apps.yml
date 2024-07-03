@@ -472,7 +472,7 @@ spec:
       - name: defaultSettings.nodeDrainPolicy
         value: allow-if-replica-is-stopped
       - name: defaultSettings.replicaAutoBalance
-        value: best-effort
+        value: least-effort
       - name: defaultSettings.backupTarget
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret
