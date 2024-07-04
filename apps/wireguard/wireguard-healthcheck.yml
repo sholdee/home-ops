@@ -8,38 +8,55 @@ data:
     #!/bin/sh
     
     check_interface() {
-        [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
+      [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
     }
     
     healthcheck_handler() {
-        if check_interface wg0; then
-            printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
-        else
-            printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
-        fi
+      if check_interface wg0; then
+        cat << EOF > /tmp/response
+    HTTP/1.1 200 OK
+    Content-Type: text/plain
+    Content-Length: 2
+    Connection: close
+    
+    OK
+    EOF
+      else
+        cat << EOF > /tmp/response
+    HTTP/1.1 503 Service Unavailable
+    Content-Type: text/plain
+    Content-Length: 2
+    Connection: close
+    
+    KO
+    EOF
+      fi
+      cat /tmp/response
+      rm /tmp/response
     }
     
     start_healthcheck_server() {
-        while true; do
-            { echo "Waiting for connection" >&2; nc -l -p 8080; } | while read line; do
-                echo "Received: $line" >&2
-                if echo "$line" | grep -q "^GET"; then
-                    echo "Processing request" >&2
-                    # Read and discard headers
-                    while read header && [ -n "$header" ]; do
-                        echo "Header: $header" >&2
-                    done
-                    healthcheck_handler
-                    echo "Response sent" >&2
-                    break
-                fi
+      while true; do
+        echo "Waiting for connection" >&2
+        nc -l -p 8080 | while read line; do
+          echo "Received: $line" >&2
+          if echo "$line" | grep -q "^GET"; then
+            echo "Processing request" >&2
+            # Read and discard headers
+            while read header && [ -n "$header" ]; do
+              echo "Header: $header" >&2
             done
+            healthcheck_handler
+            echo "Response sent" >&2
+            break
+          fi
         done
+      done
     }
     
-    finish () {
-        wg-quick down wg0
-        exit 0
+    finish() {
+      wg-quick down wg0
+      exit 0
     }
     trap finish TERM INT QUIT
     
