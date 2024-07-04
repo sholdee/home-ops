@@ -13,43 +13,34 @@ data:
     
     healthcheck_handler() {
       if check_interface wg0; then
-        cat << EOF
-    HTTP/1.1 200 OK
-    Content-Type: text/plain
-    Content-Length: 2
-    Connection: close
-    
-    OK
-    EOF
+        printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
       else
-        cat << EOF
-    HTTP/1.1 503 Service Unavailable
-    Content-Type: text/plain
-    Content-Length: 2
-    Connection: close
+        printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
+      fi
+    }
     
-    KO
-    EOF
+    handle_connection() {
+      read request
+      if [ -n "$request" ]; then
+        echo "Received: $request" >&2
+        if echo "$request" | grep -q "^GET"; then
+          echo "Processing request" >&2
+          # Read and discard headers
+          while read header && [ -n "$header" ]; do
+            echo "Header: $header" >&2
+          done
+          healthcheck_handler
+          echo "Response sent" >&2
+        fi
+      else
+        echo "Empty request received, closing connection" >&2
       fi
     }
     
     start_healthcheck_server() {
       while true; do
         echo "Waiting for connection" >&2
-        nc -l -p 8080 -w 5 | {
-          read request
-          echo "Received: $request" >&2
-          if echo "$request" | grep -q "^GET"; then
-            echo "Processing request" >&2
-            # Read and discard headers
-            while read header && [ -n "$header" ]; do
-              echo "Header: $header" >&2
-            done
-            healthcheck_handler
-            echo "Response sent" >&2
-          fi
-        }
-        sleep 0.1  # Small delay to ensure response is sent
+        nc -l -p 8080 -w 3 | handle_connection
       done
     }
     
