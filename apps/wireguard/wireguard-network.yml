@@ -13,6 +13,8 @@ spec:
       toPorts:
         - ports:
             - port: "443"
+        - ports:
+            - port: "8080"
   egress:
     - toEndpoints:
         - matchLabels:

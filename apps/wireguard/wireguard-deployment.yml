@@ -38,6 +38,9 @@ spec:
           - containerPort: 443
             protocol: UDP
             name: wireguard
+          - containerPort: 8080
+            protocol: TCP
+            name: healthcheck
           env:
           - name: LOG_LEVEL
             value: info
