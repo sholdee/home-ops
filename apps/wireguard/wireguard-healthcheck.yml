@@ -19,15 +19,15 @@ data:
         done
     
         if check_interface wg0; then
-            echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+            printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
         else
-            echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 2\r\n\r\nKO"
+            printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
         fi
     }
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -e /bin/sh -c '
+            nc -l -p 8080 -c '
                 check_interface() {
                     [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
                 }
@@ -39,9 +39,9 @@ data:
                     done
     
                     if check_interface wg0; then
-                        echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+                        printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
                     else
-                        echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 2\r\n\r\nKO"
+                        printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
                     fi
                 }
                 healthcheck_handler
