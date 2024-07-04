@@ -59,9 +59,6 @@ spec:
           - name: secret
             mountPath: /etc/wireguard/wg0.conf
             subPath: wg0.conf
-          - name: entrypoint-script
-            mountPath: /entrypoint.sh
-            subPath: entrypoint.sh
           livenessProbe: &probe
             exec:
               command:
@@ -73,7 +70,3 @@ spec:
       - name: secret
         secret:
           secretName: wg-secret
-      - name: entrypoint-script
-        configMap:
-          name: wireguard-entrypoint
-          defaultMode: 0755
