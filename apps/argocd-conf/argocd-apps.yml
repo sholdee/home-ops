@@ -470,9 +470,9 @@ spec:
       - name: defaultSettings.nodeDownPodDeletionPolicy
         value: delete-both-statefulset-and-deployment-pod
       - name: defaultSettings.nodeDrainPolicy
-        value: allow-if-replica-is-stopped
+        value: block-for-eviction
       - name: defaultSettings.replicaAutoBalance
-        value: least-effort
+        value: best-effort
       - name: defaultSettings.backupTarget
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret

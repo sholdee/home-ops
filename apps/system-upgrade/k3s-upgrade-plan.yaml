@@ -17,7 +17,7 @@ spec:
   serviceAccountName: system-upgrade
   drain:
     force: true
-    skipWaitForDeleteTimeout: 120 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
+    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
   upgrade:
     image: rancher/k3s-upgrade
 ---
@@ -42,6 +42,6 @@ spec:
     args: ["prepare", "k3s-server"]
   drain:
     force: true
-    skipWaitForDeleteTimeout: 120 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
+    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
   upgrade:
     image: rancher/k3s-upgrade
