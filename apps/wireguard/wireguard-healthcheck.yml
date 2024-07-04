@@ -13,7 +13,7 @@ data:
     
     healthcheck_handler() {
       if check_interface wg0; then
-        cat << EOF > /tmp/response
+        cat << EOF
     HTTP/1.1 200 OK
     Content-Type: text/plain
     Content-Length: 2
@@ -22,7 +22,7 @@ data:
     OK
     EOF
       else
-        cat << EOF > /tmp/response
+        cat << EOF
     HTTP/1.1 503 Service Unavailable
     Content-Type: text/plain
     Content-Length: 2
@@ -31,16 +31,15 @@ data:
     KO
     EOF
       fi
-      cat /tmp/response
-      rm /tmp/response
     }
     
     start_healthcheck_server() {
       while true; do
         echo "Waiting for connection" >&2
-        nc -l -p 8080 | while read line; do
-          echo "Received: $line" >&2
-          if echo "$line" | grep -q "^GET"; then
+        nc -l -p 8080 -w 5 | {
+          read request
+          echo "Received: $request" >&2
+          if echo "$request" | grep -q "^GET"; then
             echo "Processing request" >&2
             # Read and discard headers
             while read header && [ -n "$header" ]; do
@@ -48,9 +47,9 @@ data:
             done
             healthcheck_handler
             echo "Response sent" >&2
-            break
           fi
-        done
+        }
+        sleep 0.1  # Small delay to ensure response is sent
       done
     }
     
