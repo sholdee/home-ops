@@ -21,7 +21,7 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -e /bin/sh -c 'healthcheck_handler'
+            nc -l -p 8080 -e /bin/sh -c "$(declare -f check_interface); $(declare -f healthcheck_handler); healthcheck_handler"
         done
     }
     
@@ -29,13 +29,12 @@ data:
         wg-quick down wg0
         exit 0
     }
-    trap finish SIGTERM SIGINT SIGQUIT
+    trap finish TERM INT QUIT
     
     wg-quick up /etc/wireguard/wg0.conf
     
     # Start the healthcheck server
     start_healthcheck_server &
     
-    # Infinite sleep
-    sleep infinity &
-    wait $!
+    # Wait for all background processes
+    wait
