@@ -12,6 +12,12 @@ data:
     }
     
     healthcheck_handler() {
+        read request
+        while [ -n "$request" ]; do
+            read header
+            [ -n "$header" ] || break
+        done
+    
         if check_interface wg0; then
             echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
         else
@@ -21,18 +27,25 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            echo '#!/bin/sh
-            check_interface() {
-                [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
-            }
-            healthcheck_handler() {
-                if check_interface wg0; then
-                    echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
-                else
-                    echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 2\r\n\r\nKO"
-                fi
-            }
-            healthcheck_handler' | nc -l -p 8080 -e /bin/sh
+            nc -l -p 8080 -e /bin/sh -c '
+                check_interface() {
+                    [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
+                }
+                healthcheck_handler() {
+                    read request
+                    while [ -n "$request" ]; do
+                        read header
+                        [ -n "$header" ] || break
+                    done
+    
+                    if check_interface wg0; then
+                        echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+                    else
+                        echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 2\r\n\r\nKO"
+                    fi
+                }
+                healthcheck_handler
+            '
         done
     }
     
