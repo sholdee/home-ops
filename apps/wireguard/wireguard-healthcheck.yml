@@ -27,7 +27,7 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -c '
+            nc -l -p 8080 -e /bin/sh -c '
                 check_interface() {
                     [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
                 }
