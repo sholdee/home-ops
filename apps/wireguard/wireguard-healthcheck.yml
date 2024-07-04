@@ -21,7 +21,18 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -e /bin/sh -c "$(declare -f check_interface); $(declare -f healthcheck_handler); healthcheck_handler"
+            echo '#!/bin/sh
+            check_interface() {
+                [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
+            }
+            healthcheck_handler() {
+                if check_interface wg0; then
+                    echo -e "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nOK"
+                else
+                    echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 2\r\n\r\nKO"
+                fi
+            }
+            healthcheck_handler' | nc -l -p 8080 -e /bin/sh
         done
     }
     
