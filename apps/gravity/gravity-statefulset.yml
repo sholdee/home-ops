@@ -16,18 +16,13 @@ spec:
       labels:
         app: gravity
     spec:
-      affinity:
-        podAntiAffinity: 
-          preferredDuringSchedulingIgnoredDuringExecution: 
-          - weight: 100  
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - gravity
-              topologyKey: kubernetes.io/hostname
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: gravity
       containers:
       - name: etcd
         image: quay.io/coreos/etcd:v3.5.14
@@ -62,14 +57,6 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /etcd
-        livenessProbe:
-          httpGet:
-            path: /livez
-            port: 2379
-        readinessProbe:
-          httpGet:
-            path: /readyz?exclude=linearizable_read&exclude=serializable_read
-            port: 2379
         resources:
           requests:
             memory: 60Mi
