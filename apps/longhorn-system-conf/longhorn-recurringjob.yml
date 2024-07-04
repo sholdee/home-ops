@@ -23,7 +23,7 @@ spec:
   task: filesystem-trim
   retain: 0
   concurrency: 1
-  cron: "0 1 * * ?"
+  cron: "0 7 * * ?"
   groups:
     - default
   labels: {}
