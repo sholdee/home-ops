@@ -5,7 +5,7 @@ metadata:
   namespace: wireguard
 data:
   entrypoint.sh: |
-    #!/bin/bash
+    #!/bin/sh
     
     check_interface() {
         [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
@@ -21,7 +21,7 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -c 'healthcheck_handler'
+            nc -l -p 8080 -e /bin/sh -c 'healthcheck_handler'
         done
     }
     
