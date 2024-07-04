@@ -12,12 +12,6 @@ data:
     }
     
     healthcheck_handler() {
-        read request
-        while [ -n "$request" ]; do
-            read header
-            [ -n "$header" ] || break
-        done
-    
         if check_interface wg0; then
             printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
         else
@@ -27,25 +21,19 @@ data:
     
     start_healthcheck_server() {
         while true; do
-            nc -l -p 8080 -e /bin/sh -c '
-                check_interface() {
-                    [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
-                }
-                healthcheck_handler() {
-                    read request
-                    while [ -n "$request" ]; do
-                        read header
-                        [ -n "$header" ] || break
+            { echo "Waiting for connection" >&2; nc -l -p 8080; } | while read line; do
+                echo "Received: $line" >&2
+                if echo "$line" | grep -q "^GET"; then
+                    echo "Processing request" >&2
+                    # Read and discard headers
+                    while read header && [ -n "$header" ]; do
+                        echo "Header: $header" >&2
                     done
-    
-                    if check_interface wg0; then
-                        printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
-                    else
-                        printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
-                    fi
-                }
-                healthcheck_handler
-            '
+                    healthcheck_handler
+                    echo "Response sent" >&2
+                    break
+                fi
+            done
         done
     }
     
