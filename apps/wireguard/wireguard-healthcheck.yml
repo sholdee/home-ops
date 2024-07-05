@@ -7,38 +7,39 @@ data:
   healthcheck.sh: |
     #!/bin/sh
     
+    is_link_up() {
+        if [ -f "/sys/class/net/$1/carrier" ]; then
+            carrier=$(cat "/sys/class/net/$1/carrier")
+            if [ "$carrier" = "1" ]; then
+                return 0
+            fi
+        fi
+        return 1
+    }
+    
+    return_status_code() {
+        is_link_up "$1"
+        if [ $? -eq 0 ]; then
+            echo "200 OK"
+        else
+            echo "503 KO"
+        fi
+    }
+    
+    create_response() {
+        status_code=$(return_status_code "$1")
+        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\n\r\nstatus: ${status_code##* }"
+    }
+    
     start_server() {
-        interface="wg0"
-        echo "Starting healthcheck server..."
         while true; do
-            { echo -ne "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nstatus: OK" | nc -lk -p 8080 -e sh -c "
-                is_link_up() {
-                    if [ -f \"/sys/class/net/$interface/carrier\" ]; then
-                        carrier=\$(cat \"/sys/class/net/$interface/carrier\")
-                        if [ \"\$carrier\" = \"1\" ]; then
-                            return 0
-                        fi
-                    fi
-                    return 1
-                }
-                return_status_code() {
-                    is_link_up \"$interface\"
-                    if [ \$? -eq 0 ]; then
-                        echo \"200 OK\"
-                    else
-                        echo \"503 KO\"
-                    fi
-                }
-                status_code=\$(return_status_code \"$interface\")
-                echo -e \"HTTP/1.1 \${status_code%% *}\r\nContent-Type: text/plain\r\n\r\nstatus: \${status_code##* }\"
-            "; } 
+            { create_response "$1"; } | nc -l -p 8080
         done
     }
     
     main() {
-        echo "Starting healthcheck script..."
-        start_server
+        interface="wg0"
+        start_server "$interface"
     }
     
-    # Execute the main function
     main
