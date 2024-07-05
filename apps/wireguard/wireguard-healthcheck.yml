@@ -11,23 +11,22 @@ data:
         [ -f "/sys/class/net/$1/carrier" ] && [ "$(cat "/sys/class/net/$1/carrier")" = "1" ]
     }
     
-    return_status_code() {
+    create_response() {
         if is_link_up "$1"; then
-            echo "200 OK"
+            echo -e "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 10\r\nConnection: close\r\n\r\nstatus: OK\n"
         else
-            echo "503 KO"
+            echo -e "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 10\r\nConnection: close\r\n\r\nstatus: KO\n"
         fi
     }
     
-    create_response() {
-        status_code=$(return_status_code "$1")
-        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nstatus: ${status_code##* }"
-    }
-    
     start_server() {
+        local interface="$1"
+        local port=8080
+        local timeout=5
+    
         while true; do
-            response=$(create_response "$1")
-            echo "$response" | nc -l -p 8080 -w 5
+            response=$(create_response "$interface")
+            echo "$response" | nc -l -p $port -w $timeout
             sleep 0.1
         done
     }
