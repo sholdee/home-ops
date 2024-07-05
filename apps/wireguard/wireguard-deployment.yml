@@ -33,7 +33,7 @@ spec:
           command:
           - sh
           - -c
-          - "/entrypoint.sh & /healthcheck.sh"
+          - "/entrypoint.sh"
           ports:
           - containerPort: 443
             protocol: UDP
@@ -62,6 +62,9 @@ spec:
           - name: wg-healthcheck
             mountPath: /healthcheck.sh
             subPath: healthcheck.sh
+          - name: wg-entrypoint
+            mountPath: /entrypoint.sh
+            subPath: entrypoint.sh
           livenessProbe: &probe
             exec:
               command:
@@ -76,4 +79,8 @@ spec:
       - name: wg-healthcheck
         configMap:
           name: wg-healthcheck
+          defaultMode: 0755
+      - name: wg-entrypoint
+        configMap:
+          name: wg-entrypoint
           defaultMode: 0755
