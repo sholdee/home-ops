@@ -8,18 +8,11 @@ data:
     #!/bin/sh
     
     is_link_up() {
-        if [ -f "/sys/class/net/$1/carrier" ]; then
-            carrier=$(cat "/sys/class/net/$1/carrier")
-            if [ "$carrier" = "1" ]; then
-                return 0
-            fi
-        fi
-        return 1
+        [ -f "/sys/class/net/$1/carrier" ] && [ "$(cat "/sys/class/net/$1/carrier")" = "1" ]
     }
     
     return_status_code() {
-        is_link_up "$1"
-        if [ $? -eq 0 ]; then
+        if is_link_up "$1"; then
             echo "200 OK"
         else
             echo "503 KO"
@@ -28,12 +21,14 @@ data:
     
     create_response() {
         status_code=$(return_status_code "$1")
-        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\n\r\nstatus: ${status_code##* }"
+        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nstatus: ${status_code##* }"
     }
     
     start_server() {
         while true; do
-            { create_response "$1"; } | nc -l -p 8080
+            response=$(create_response "$1")
+            echo "$response" | nc -l -p 8080 -w 5
+            sleep 0.1
         done
     }
     
