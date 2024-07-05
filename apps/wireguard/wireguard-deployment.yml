@@ -69,6 +69,7 @@ spec:
             httpGet:
               path: /
               port: healthcheck
+            timeoutSeconds: 5
             failureThreshold: 5
             periodSeconds: 10
           readinessProbe: *probe
