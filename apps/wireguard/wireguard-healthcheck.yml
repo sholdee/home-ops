@@ -33,7 +33,7 @@ data:
     
     start_server() {
         while true; do
-            { create_response "$1"; } | nc -l -p 8080
+            { create_response "$1"; } | nc -l -p 8080 -w 1
         done
     }
     
