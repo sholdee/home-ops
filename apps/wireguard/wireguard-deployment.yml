@@ -62,7 +62,7 @@ spec:
           - name: wg-healthcheck
             mountPath: /healthcheck.sh
             subPath: healthcheck.sh
-          livenessProbe: &probe
+          livenessProbe:
             httpGet:
               path: /
               port: healthcheck
@@ -70,7 +70,6 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 5
             periodSeconds: 10
-          readinessProbe: *probe
       volumes:
       - name: secret
         secret:
