@@ -57,6 +57,14 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /etcd
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: 2379
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 2379
         resources:
           requests:
             memory: 60Mi
