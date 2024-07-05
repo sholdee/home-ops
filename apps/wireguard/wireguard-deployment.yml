@@ -66,11 +66,9 @@ spec:
             mountPath: /entrypoint.sh
             subPath: entrypoint.sh
           livenessProbe: &probe
-            exec:
-              command:
-              - /bin/sh
-              - -c
-              - "wg show | grep -q 'I5P73tGjZVZmBw7VS/upDwvUWq5ivfmi9sb7KSnq6EA=' || exit 1"
+            httpGet:
+              path: /
+              port: healthcheck
           readinessProbe: *probe
       volumes:
       - name: secret
