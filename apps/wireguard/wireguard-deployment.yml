@@ -33,7 +33,7 @@ spec:
           command:
           - sh
           - -c
-          - "/entrypoint.sh & /healthcheck.sh"
+          - "/entrypoint.sh"
           ports:
           - containerPort: 443
             protocol: UDP
@@ -62,15 +62,6 @@ spec:
           - name: wg-healthcheck
             mountPath: /healthcheck.sh
             subPath: healthcheck.sh
-          livenessProbe: &probe
-            httpGet:
-              path: /
-              port: healthcheck
-            initialDelaySeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 5
-            periodSeconds: 10
-          readinessProbe: *probe
       volumes:
       - name: secret
         secret:
