@@ -29,11 +29,11 @@ spec:
             privileged: true
       containers:
         - name: wireguard
-          image: masipcat/wireguard-go:0.0.20230223@sha256:85175a40ea588483791ff57cbd926d45a3699229c8a6cb1382c468f128a3dee7
+          image: sholdee/wireguard-go-docker:0.0.20230223@sha256:1d42574f7dc3fee60d93ea06f0e418b3dde74cec97aa8ccfee34e33eb3f8d899
           command:
           - sh
           - -c
-          - "/entrypoint.sh & /healthcheck.sh"
+          - "/entrypoint.sh"
           ports:
           - containerPort: 443
             protocol: UDP
@@ -59,22 +59,12 @@ spec:
           - name: secret
             mountPath: /etc/wireguard/wg0.conf
             subPath: wg0.conf
-          - name: wg-healthcheck
-            mountPath: /healthcheck.sh
-            subPath: healthcheck.sh
-          livenessProbe:
+          livenessProbe: &probe
             httpGet:
               path: /
               port: healthcheck
-            initialDelaySeconds: 5
-            timeoutSeconds: 3
-            failureThreshold: 3
-            periodSeconds: 7
+          readinessProbe: *probe
       volumes:
       - name: secret
         secret:
           secretName: wg-secret
-      - name: wg-healthcheck
-        configMap:
-          name: wg-healthcheck
-          defaultMode: 0755
