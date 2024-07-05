@@ -69,6 +69,8 @@ spec:
             httpGet:
               path: /
               port: healthcheck
+            failureThreshold: 5
+            periodSeconds: 10
           readinessProbe: *probe
       volumes:
       - name: secret
