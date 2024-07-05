@@ -1,59 +1,45 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: wireguard-entrypoint
+  name: wg-healthcheck
   namespace: wireguard
 data:
-  entrypoint.sh: |
+  healthcheck.sh: |
     #!/bin/sh
     
-    check_interface() {
-      [ -e "/sys/class/net/$1/carrier" ] && [ "$(cat /sys/class/net/$1/carrier)" = "1" ]
-    }
-    
-    healthcheck_handler() {
-      if check_interface wg0; then
-        printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK"
-      else
-        printf "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\nContent-Length: 2\r\nConnection: close\r\n\r\nKO"
-      fi
-    }
-    
-    handle_connection() {
-      read request
-      if [ -n "$request" ]; then
-        echo "Received: $request" >&2
-        if echo "$request" | grep -q "^GET"; then
-          echo "Processing request" >&2
-          # Read and discard headers
-          while read header && [ -n "$header" ]; do
-            echo "Header: $header" >&2
-          done
-          healthcheck_handler
-          echo "Response sent" >&2
+    is_link_up() {
+        if [ -f "/sys/class/net/$1/carrier" ]; then
+            carrier=$(cat "/sys/class/net/$1/carrier")
+            if [ "$carrier" = "1" ]; then
+                return 0
+            fi
         fi
-      else
-        echo "Empty request received, closing connection" >&2
-      fi
+        return 1
     }
     
-    start_healthcheck_server() {
-      while true; do
-        echo "Waiting for connection" >&2
-        nc -l -p 8080 -w 3 | handle_connection
-      done
+    return_status_code() {
+        is_link_up "$1"
+        if [ $? -eq 0 ]; then
+            echo "200 OK"
+        else
+            echo "503 KO"
+        fi
     }
     
-    finish() {
-      wg-quick down wg0
-      exit 0
+    create_response() {
+        status_code=$(return_status_code "$1")
+        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\n\r\nstatus: ${status_code##* }"
     }
-    trap finish TERM INT QUIT
     
-    wg-quick up /etc/wireguard/wg0.conf
+    start_server() {
+        while true; do
+            { create_response "$1"; } | nc -l -p 8080
+        done
+    }
     
-    # Start the healthcheck server
-    start_healthcheck_server &
+    main() {
+        interface="wg0"
+        start_server "$interface"
+    }
     
-    # Wait for all background processes
-    wait
+    main
