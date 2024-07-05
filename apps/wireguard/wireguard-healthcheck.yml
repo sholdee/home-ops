@@ -22,11 +22,16 @@ data:
     start_server() {
         local interface="$1"
         local port=8080
-        local timeout=5
+        local queue_size=5
     
         while true; do
-            response=$(create_response "$interface")
-            echo "$response" | nc -l -p $port -w $timeout
+            (
+                for _ in $(seq 1 $queue_size); do
+                    response=$(create_response "$interface")
+                    echo "$response" | nc -l -p $port -w 5 &
+                done
+                wait
+            )
             sleep 0.1
         done
     }
