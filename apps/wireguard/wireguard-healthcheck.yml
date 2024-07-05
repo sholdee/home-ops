@@ -17,23 +17,29 @@ data:
         return 1
     }
     
+    return_status_code() {
+        is_link_up "$1"
+        if [ $? -eq 0 ]; then
+            echo "200 OK"
+        else
+            echo "503 KO"
+        fi
+    }
+    
+    create_response() {
+        status_code=$(return_status_code "$1")
+        echo -e "HTTP/1.1 ${status_code%% *}\r\nContent-Type: text/plain\r\n\r\nstatus: ${status_code##* }"
+    }
+    
     start_server() {
-        interface="wg0"
-        echo "Starting healthcheck server..."
         while true; do
-            { 
-                echo -ne "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nstatus: OK\n";
-            } | nc -l -p 8080 -w 1 > /dev/null 2>&1 &
-            while is_link_up "$interface"; do
-                sleep 1
-            done
-            echo -ne "HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\n\r\nstatus: KO\n";
+            { create_response "$1"; } | nc -l -p 8080 -w 1
         done
     }
     
     main() {
-        echo "Starting healthcheck script..."
-        start_server
+        interface="wg0"
+        start_server "$interface"
     }
     
     main
