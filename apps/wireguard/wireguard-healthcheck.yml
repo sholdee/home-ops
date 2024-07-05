@@ -32,14 +32,16 @@ data:
     }
     
     start_server() {
+        interface="wg0"
+        echo "Starting healthcheck server..."
         while true; do
-            { create_response "$1"; } | nc -l -p 8080 -w 1
+            echo -ne "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nstatus: OK" | nc -lk -p 8080 -e sh -c "if is_link_up '$interface'; then echo 'HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\n\r\nstatus: OK'; else echo 'HTTP/1.1 503 Service Unavailable\r\nContent-Type: text/plain\r\n\r\nstatus: KO'; fi"
         done
     }
     
     main() {
-        interface="wg0"
-        start_server "$interface"
+        echo "Starting healthcheck script..."
+        start_server
     }
     
     main
