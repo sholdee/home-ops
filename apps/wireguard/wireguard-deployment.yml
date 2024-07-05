@@ -67,9 +67,9 @@ spec:
               path: /
               port: healthcheck
             initialDelaySeconds: 5
-            timeoutSeconds: 5
-            failureThreshold: 5
-            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+            periodSeconds: 7
       volumes:
       - name: secret
         secret:
