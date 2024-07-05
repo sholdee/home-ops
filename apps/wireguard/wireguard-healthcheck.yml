@@ -32,18 +32,14 @@ data:
     }
     
     start_server() {
-        interface="wg0"
-        echo "Starting healthcheck server..."
         while true; do
-            echo "Waiting for connection..."
-            { create_response "$interface"; } | nc -l -p 8080
-            echo "Served a request..."
+            { create_response "$1"; } | nc -l -p 8080
         done
     }
     
     main() {
-        echo "Starting healthcheck script..."
-        start_server
+        interface="wg0"
+        start_server "$interface"
     }
     
     main
