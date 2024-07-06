@@ -60,18 +60,19 @@ data:
   envoy.yaml: |
     static_resources:
       listeners:
-      - address:
+      - name: wireguard_listener
+        address:
           socket_address:
             address: 0.0.0.0
             port_value: 443
-        filter_chains:
-        - filters:
-          - name: envoy.filters.udp.udp_proxy
-            typed_config:
-              "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
-              stat_prefix: wireguard
-              cluster: wireguard_cluster
-              use_original_src_ip: true
+            protocol: UDP
+        listener_filters:
+        - name: envoy.filters.udp_listener.udp_proxy
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
+            stat_prefix: wireguard
+            cluster: wireguard_cluster
+            use_original_src_ip: true
       clusters:
       - name: wireguard_cluster
         connect_timeout: 0.25s
