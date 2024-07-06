@@ -50,7 +50,7 @@ spec:
     targetPort: 443
     protocol: UDP
   selector:
-    app: wireguard-proxy
+    app: wireguard
 ---
 apiVersion: v1
 kind: ConfigMap
