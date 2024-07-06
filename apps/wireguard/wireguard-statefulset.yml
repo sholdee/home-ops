@@ -22,7 +22,7 @@ spec:
         whenUnsatisfiable: DoNotSchedule
         labelSelector:
           matchLabels:
-            app: wireguard-proxy
+            app: wireguard
       initContainers:
         - name: sysctls
           image: busybox:1.36.1
