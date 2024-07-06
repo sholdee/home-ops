@@ -91,6 +91,7 @@ data:
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
             stat_prefix: wireguard
+            use_original_src_ip: true
             hash_policies:
             - key: SOURCE_IP
             matcher:
