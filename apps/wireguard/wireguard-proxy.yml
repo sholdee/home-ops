@@ -86,6 +86,8 @@ data:
                   socket_address:
                     address: wireguard-headless
                     port_value: 443
+                health_check_config:
+                  port_value: 8080
         health_checks:
           - timeout: 1s
             interval: 5s
@@ -97,4 +99,3 @@ data:
                 - start: 200
                   end: 200
               host: "wireguard-headless"
-              port_value: 8080
