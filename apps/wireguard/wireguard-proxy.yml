@@ -94,7 +94,7 @@ data:
             http_health_check:
               path: "/"
               host: "wireguard-headless"
-              port: 8080
+              codec_client_type: HTTP1
             expected_statuses:
               start: 200
               end: 200
