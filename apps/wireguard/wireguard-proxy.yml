@@ -71,12 +71,30 @@ data:
             address: 0.0.0.0
             port_value: 443
             protocol: UDP
+        udp_listener_config:
+          downstream_socket_config:
+            prefer_gro: true
         listener_filters:
         - name: envoy.filters.udp_listener.udp_proxy
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
             stat_prefix: wireguard
-            cluster: wireguard_cluster
+            hash_policies:
+            - key: SOURCE_IP
+            matcher:
+              matcher_tree:
+                input:
+                  name: udp-proxy
+                  typed_config:
+                    "@type": type.googleapis.com/envoy.extensions.matching.common_inputs.network.v3.DestinationIPInput
+                exact_match_map:
+                  map:
+                    "0.0.0.0/0":
+                      action:
+                        name: route
+                        typed_config:
+                          "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.Route
+                          cluster: wireguard_cluster
       clusters:
       - name: wireguard_cluster
         connect_timeout: 0.25s
