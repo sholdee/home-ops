@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wireguard-proxy
+  namespace: wireguard
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wireguard-proxy
+  template:
+    metadata:
+      labels:
+        app: wireguard-proxy
+    spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: wireguard-proxy
+      containers:
+      - name: wireguard-proxy
+        image: envoyproxy/envoy:v1.30.4
+        ports:
+        - containerPort: 443
+          protocol: UDP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/envoy
+      volumes:
+      - name: config
+        configMap:
+          name: envoy-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wireguard-proxy
+  namespace: wireguard
+spec:
+  type: LoadBalancer
+  loadBalancerIP: 192.168.77.26
+  ports:
+  - port: 443
+    targetPort: 443
+    protocol: UDP
+  selector:
+    app: wireguard-proxy
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: envoy-config
+  namespace: wireguard
+data:
+  envoy.yaml: |
+    static_resources:
+      listeners:
+      - address:
+          socket_address:
+            address: 0.0.0.0
+            port_value: 443
+        filter_chains:
+        - filters:
+          - name: envoy.filters.udp.udp_proxy
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
+              stat_prefix: wireguard
+              cluster: wireguard_cluster
+              hash_policies:
+              - source_ip: {}
+      clusters:
+      - name: wireguard_cluster
+        connect_timeout: 0.25s
+        type: STRICT_DNS
+        lb_policy: MAGLEV
+        load_assignment:
+          cluster_name: wireguard_cluster
+          endpoints:
+          - lb_endpoints:
+            - endpoint:
+                address:
+                  socket_address:
+                    address: wireguard-headless
+                    port_value: 443
+        health_checks:
+          - timeout: 1s
+            interval: 5s
+            unhealthy_threshold: 3
+            healthy_threshold: 1
+            http_health_check:
+              path: "/"
+              port_value: 8080
+              expected_statuses:
+                start: 200
+                end: 200

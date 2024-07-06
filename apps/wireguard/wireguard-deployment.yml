@@ -1,11 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: wireguard
   namespace: wireguard
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
+  serviceName: "wireguard-headless"
   replicas: 1
   selector:
     matchLabels:
@@ -15,6 +16,13 @@ spec:
       labels:
         app: wireguard
     spec:
+      topologySpreadConstraints:
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
+        labelSelector:
+          matchLabels:
+            app: wireguard-proxy
       initContainers:
         - name: sysctls
           image: busybox:1.36.1
