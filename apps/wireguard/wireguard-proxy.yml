@@ -22,6 +22,18 @@ spec:
         labelSelector:
           matchLabels:
             app: wireguard-proxy
+      initContainers:
+        - name: sysctls
+          image: busybox:1.36.1
+          command:
+          - sh
+          - -c
+          - sysctl -w net.ipv4.ip_forward=1 && sysctl -w net.ipv4.conf.all.forwarding=1
+          securityContext:
+            capabilities:
+              add:
+                - NET_ADMIN
+            privileged: true
       containers:
       - name: wireguard-proxy
         image: envoyproxy/envoy:v1.30.4
