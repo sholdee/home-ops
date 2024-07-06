@@ -86,8 +86,6 @@ data:
                   socket_address:
                     address: wireguard-headless
                     port_value: 443
-              health_check_config:
-                port_value: 8080
         health_checks:
           - timeout: 1s
             interval: 5s
@@ -98,21 +96,5 @@ data:
               expected_statuses:
                 - start: 200
                   end: 200
-            event_log_path: '/dev/stdout'
-        common_lb_config:
-          healthy_panic_threshold:
-            value: 50
-        transport_socket:
-          name: envoy.transport_sockets.raw_buffer
-          typed_config:
-            "@type": type.googleapis.com/envoy.extensions.transport_sockets.raw_buffer.v3.RawBuffer
-        protocol_selection: USE_DOWNSTREAM_PROTOCOL
-        ignore_health_on_host_removal: true
-        upstream_connection_options:
-          tcp_keepalive:
-            keepalive_probes: 3
-            keepalive_time: 30
-            keepalive_interval: 5
-        track_cluster_stats:
-          timeout_budgets: true
-          request_response_sizes: true
+              host: "wireguard-headless"
+              port_value: 8080
