@@ -11,6 +11,8 @@ spec:
   - port: 443
     targetPort: 443
     protocol: UDP
+    name: wireguard
   - port: 8080
     targetPort: 8080
     protocol: TCP
+    name: healthcheck
