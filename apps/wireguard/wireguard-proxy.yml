@@ -93,7 +93,8 @@ data:
             healthy_threshold: 1
             http_health_check:
               path: "/"
-              port_value: 8080
-              expected_statuses:
-                start: 200
-                end: 200
+              host: "wireguard-headless"
+              port: 8080
+            expected_statuses:
+              start: 200
+              end: 200
