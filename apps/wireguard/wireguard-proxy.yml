@@ -91,22 +91,9 @@ data:
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
             stat_prefix: wireguard
+            cluster: wireguard_cluster
             hash_policies:
-            - key: SOURCE_IP
-            matcher:
-              matcher_tree:
-                input:
-                  name: udp-proxy
-                  typed_config:
-                    "@type": type.googleapis.com/envoy.extensions.matching.common_inputs.network.v3.DestinationIPInput
-                exact_match_map:
-                  map:
-                    "0.0.0.0/0":
-                      action:
-                        name: route
-                        typed_config:
-                          "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.Route
-                          cluster: wireguard_cluster
+            - source_ip: {}
       clusters:
       - name: wireguard_cluster
         connect_timeout: 0.25s
