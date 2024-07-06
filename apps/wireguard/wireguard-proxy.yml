@@ -95,7 +95,4 @@ data:
             healthy_threshold: 1
             http_health_check:
               path: "/"
-              expected_statuses:
-                - start: 200
-                  end: 200
               host: "wireguard-headless"
