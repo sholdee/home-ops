@@ -91,7 +91,13 @@ data:
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.UdpProxyConfig
             stat_prefix: wireguard
-            cluster: wireguard_cluster
+            matcher:
+              on_no_match:
+                action:
+                  name: route
+                  typed_config:
+                    '@type': type.googleapis.com/envoy.extensions.filters.udp.udp_proxy.v3.Route
+                    cluster: wireguard_cluster
             hash_policies:
             - source_ip: true
       clusters:
