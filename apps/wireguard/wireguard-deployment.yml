@@ -1,13 +1,12 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: wireguard
   namespace: wireguard
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
-  serviceName: "wireguard-headless"
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: wireguard
