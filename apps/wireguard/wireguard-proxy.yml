@@ -43,11 +43,6 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /etc/envoy
-        securityContext:
-          capabilities:
-            add:
-              - NET_ADMIN
-          privileged: true
       volumes:
       - name: config
         configMap:
