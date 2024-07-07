@@ -36,7 +36,7 @@ spec:
             privileged: true
       containers:
         - name: wireguard
-          image: sholdee/wireguard-go-docker:0.0.20230223@sha256:cabc0db66fe4d0299e19733277e197c41131ccb5e521e4f0365cd49a0f6c9083
+          image: sholdee/wireguard-go-docker:0.0.20230223@sha256:0553c60caef9943eeae4ffe15885949527c53d7d113fa6f53b71c58c3b85e10e
           command:
           - sh
           - -c
@@ -51,6 +51,8 @@ spec:
           env:
           - name: LOG_LEVEL
             value: info
+          - name: ENABLE_HEALTHCHECK
+            value: true
           securityContext:
             capabilities:
               add:
