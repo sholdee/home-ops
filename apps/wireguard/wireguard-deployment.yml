@@ -45,7 +45,7 @@ spec:
           - containerPort: 443
             protocol: UDP
             name: wireguard
-          - containerPort: 8080
+          - containerPort: 8081
             protocol: TCP
             name: healthcheck
           env:
@@ -53,6 +53,8 @@ spec:
             value: info
           - name: ENABLE_HEALTHCHECK
             value: "true"
+          - name: HEALTHCHECK_PORT
+            value: "8081"
           securityContext:
             capabilities:
               add:
