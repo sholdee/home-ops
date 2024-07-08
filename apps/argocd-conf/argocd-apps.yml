@@ -282,7 +282,7 @@ spec:
             limits:
               memory: 250Mi
     repoURL: https://kubernetes.github.io/ingress-nginx
-    targetRevision: 4.10.2
+    targetRevision: 4.11.0
   syncPolicy:
     automated:
       prune: true
