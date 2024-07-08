@@ -36,7 +36,7 @@ spec:
             privileged: true
       containers:
         - name: wireguard
-          image: sholdee/wireguard-go-docker:0.0.20230223@sha256:0553c60caef9943eeae4ffe15885949527c53d7d113fa6f53b71c58c3b85e10e
+          image: sholdee/wireguard-go-docker:0.0.20230223@sha256:b6de1066870f7fc8780904d65e846d772fad707e217514626dfe3b495d33fc1a
           command:
           - sh
           - -c
