@@ -23,8 +23,10 @@ def main():
             patch = file['patch']
             lines = patch.split('\n')
             for line in lines:
-                if re.match(r'^\+ *image: ', line):
-                    image_tag = line.split('image: ')[1]
+                match = re.match(r'^\+ *(?:image|[a-z_]+image): *(.+)', line, re.IGNORECASE)
+                if match:
+                    image_tag = match.group(1).strip()
+                    
                     image = image_tag.split('@')[0].split(':')[0].strip()
                     tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
                     digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
