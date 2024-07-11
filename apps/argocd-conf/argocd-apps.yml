@@ -189,7 +189,7 @@ spec:
         dashboards:
           enabled: true
     repoURL: https://helm.cilium.io/
-    targetRevision: 1.15.6
+    targetRevision: 1.15.7
   syncPolicy:
     automated:
       prune: true
