@@ -590,6 +590,7 @@ spec:
             service:
               enabled: true
             serviceMonitor:
+              enabled: true
               namespace: traefik
               interval: 30s
               honorLabels: true
