@@ -25,15 +25,3 @@ spec:
       prune: true
     syncOptions:
       - ApplyOutOfSyncOnly=true
-  ignoreDifferences:
-  - group: apps
-    kind: Deployment
-    jsonPointers:
-    - /spec/replicas
-    - /status
-  - group: apps
-    kind: DaemonSet
-    jsonPointers:
-    - /spec/template/spec/containers/0/image
-    - /status
-
