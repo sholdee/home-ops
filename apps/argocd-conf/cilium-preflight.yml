@@ -47,7 +47,7 @@ metadata:
 spec:
   template:
     spec:
-      serviceAccountName: cilium-pre-flight
+      serviceAccountName: cilium-preflight-cleanup-sa
       restartPolicy: Never
       containers:
       - name: kubectl
@@ -58,3 +58,36 @@ spec:
         - |
           kubectl delete deployment -n kube-system cilium-pre-flight-check
           kubectl delete daemonset -n kube-system cilium-pre-flight-check
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cilium-preflight-cleanup-sa
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: cilium-preflight-cleanup-role
+  namespace: kube-system
+rules:
+- apiGroups: ["apps"]
+  resources: ["deployments", "daemonsets"]
+  resourceNames: ["cilium-pre-flight-check"]
+  verbs: ["delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: cilium-preflight-cleanup-rolebinding
+  namespace: kube-system
+subjects:
+- kind: ServiceAccount
+  name: cilium-preflight-cleanup-sa
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: cilium-preflight-cleanup-role
+  apiGroup: rbac.authorization.k8s.io
