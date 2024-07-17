@@ -20,14 +20,22 @@ spec:
           enabled: false
         k8sServiceHost: "127.0.0.1"
         k8sServicePort: "6444"
-      ignorePaths:
-      - resources.apps/v1/DaemonSet:cilium-pre-flight-check
-      - resources.apps/v1/Deployment:cilium-pre-flight-check
   syncPolicy:
     automated:
       prune: true
     syncOptions:
       - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+    - /status
+  - group: apps
+    kind: DaemonSet
+    jsonPointers:
+    - /spec/template/spec/containers/0/image
+    - /status
 ---
 apiVersion: batch/v1
 kind: Job
