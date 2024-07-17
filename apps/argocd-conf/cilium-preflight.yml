@@ -56,6 +56,29 @@ spec:
         - /bin/sh
         - -c
         - |
+          # Wait for deployment to be ready
+          kubectl rollout status deployment/cilium-pre-flight-check -n kube-system --timeout=300s || exit 1
+          
+          # Check if daemonset is ready
+          DESIRED=$(kubectl get daemonset cilium-pre-flight-check -n kube-system -o jsonpath='{.status.desiredNumberScheduled}')
+          READY=$(kubectl get daemonset cilium-pre-flight-check -n kube-system -o jsonpath='{.status.numberReady}')
+          
+          ATTEMPTS=0
+          while [ $READY -lt $DESIRED ] && [ $ATTEMPTS -lt 30 ]; do
+            echo "Waiting for daemonset to be ready. Current: $READY/$DESIRED"
+            sleep 10
+            READY=$(kubectl get daemonset cilium-pre-flight-check -n kube-system -o jsonpath='{.status.numberReady}')
+            ATTEMPTS=$((ATTEMPTS+1))
+          done
+          
+          if [ $READY -lt $DESIRED ]; then
+            echo "DaemonSet did not become ready within the timeout period."
+            exit 1
+          fi
+          
+          echo "Preflight check resources are ready. Proceeding with cleanup."
+          
+          # Perform cleanup
           kubectl delete deployment -n kube-system cilium-pre-flight-check
           kubectl delete daemonset -n kube-system cilium-pre-flight-check
 ---
@@ -75,8 +98,10 @@ rules:
 - apiGroups: ["apps"]
   resources: ["deployments", "daemonsets"]
   resourceNames: ["cilium-pre-flight-check"]
-  verbs: ["delete"]
-
+  verbs: ["delete", "get"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
