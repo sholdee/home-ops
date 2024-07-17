@@ -39,14 +39,15 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: cleanup-job
+  name: cilium-preflight-cleanup-job
+  namespace: kube-system
   annotations:
     argocd.argoproj.io/hook: PostSync
     argocd.argoproj.io/hook-delete-policy: HookSucceeded
 spec:
   template:
     spec:
-      serviceAccountName: argocd-cleanup-sa
+      serviceAccountName: cilium-pre-flight
       restartPolicy: Never
       containers:
       - name: kubectl
