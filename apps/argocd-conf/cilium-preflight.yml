@@ -98,10 +98,10 @@ rules:
 - apiGroups: ["apps"]
   resources: ["deployments", "daemonsets"]
   resourceNames: ["cilium-pre-flight-check"]
-  verbs: ["delete", "get"]
+  verbs: ["delete", "get", "list", "watch"]
 - apiGroups: [""]
   resources: ["pods"]
-  verbs: ["list"]
+  verbs: ["list", "watch"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
