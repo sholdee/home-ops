@@ -25,3 +25,35 @@ spec:
       prune: true
     syncOptions:
       - ApplyOutOfSyncOnly=true
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/replicas
+  - group: apps
+    kind: DaemonSet
+    jsonPointers:
+    - /spec/template/spec/containers/0/image
+    - /status
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cleanup-job
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      serviceAccountName: argocd-cleanup-sa
+      restartPolicy: Never
+      containers:
+      - name: kubectl
+        image: rancher/kubectl:v1.30.2
+        command:
+        - /bin/sh
+        - -c
+        - |
+          kubectl delete deployment -n kube-system cilium-pre-flight-check
+          kubectl delete daemonset -n kube-system cilium-pre-flight-check
