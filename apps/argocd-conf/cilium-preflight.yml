@@ -20,8 +20,3 @@ spec:
           enabled: false
         k8sServiceHost: "127.0.0.1"
         k8sServicePort: "6444"
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-      - ApplyOutOfSyncOnly=true
