@@ -453,6 +453,31 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: kured
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  project: k3s
+  source:
+    chart: kured
+    helm:
+      releaseName: my-release
+      values: |-
+        metrics:
+          create: true
+          namespace: "monitoring"
+    repoURL: https://kubereboot.github.io/charts
+    targetRevision: 5.4.5
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: longhorn
 spec:
   destination:
