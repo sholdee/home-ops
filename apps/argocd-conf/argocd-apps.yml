@@ -457,7 +457,7 @@ metadata:
 spec:
   destination:
     name: in-cluster
-    namespace: kube-system
+    namespace: default
   project: k3s
   source:
     chart: kured
