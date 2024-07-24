@@ -10,7 +10,7 @@ spec:
   source:
     chart: cilium
     repoURL: https://helm.cilium.io/
-    targetRevision: 1.15.7
+    targetRevision: 1.16.0
     helm:
       values: |-
         preflight:
