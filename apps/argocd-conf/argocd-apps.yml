@@ -468,7 +468,7 @@ spec:
           create: true
           namespace: "monitoring"
     repoURL: https://kubereboot.github.io/charts
-    targetRevision: 5.4.5
+    targetRevision: 5.5.0
   syncPolicy:
     automated:
       prune: true
