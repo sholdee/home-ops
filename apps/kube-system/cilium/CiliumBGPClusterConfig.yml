@@ -21,6 +21,15 @@ kind: CiliumBGPPeerConfig
 metadata:
   name: cilium-peer
 spec:
+  families:
+    - afi: ipv4
+      safi: unicast
+      advertisements:
+        matchLabels:
+          advertise: "bgp"
+  gracefulRestart:
+    enabled: true
+    restartTimeSeconds: 30
   timers:
     connectRetryTimeSeconds: 12
     holdTimeSeconds: 9
@@ -34,10 +43,7 @@ metadata:
     advertise: bgp
 spec:
   advertisements:
-    - advertisementType: "CiliumPodIPPool"
-      selector:
-        matchExpressions:
-        - {key: somekey, operator: NotIn, values: ['never-used-value']}
+    - advertisementType: "PodCIDR"
     - advertisementType: "Service"
       service:
         addresses:
