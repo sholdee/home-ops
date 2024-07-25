@@ -1,0 +1,55 @@
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPClusterConfig
+metadata:
+  name: cilium-bgp
+spec:
+  nodeSelector:
+    matchExpressions:
+       - {key: somekey, operator: NotIn, values: ['never-used-value']}
+  bgpInstances:
+  - name: "instance-64770"
+    localASN: 64770
+    peers:
+    - name: "peer-64777"
+      peerASN: 64777
+      peerAddress: '192.168.99.1'
+      peerConfigRef:
+        name: "cilium-peer"
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPPeerConfig
+metadata:
+  name: cilium-peer
+spec:
+  timers:
+    connectRetryTimeSeconds: 12
+    holdTimeSeconds: 9
+    keepAliveTimeSeconds: 3
+---
+apiVersion: cilium.io/v2alpha1
+kind: CiliumBGPAdvertisement
+metadata:
+  name: cilium-advert
+  labels:
+    advertise: bgp
+spec:
+  advertisements:
+    - advertisementType: "CiliumPodIPPool"
+      selector:
+        matchExpressions:
+        - {key: somekey, operator: NotIn, values: ['never-used-value']}
+    - advertisementType: "Service"
+      service:
+        addresses:
+          - LoadBalancerIP
+      selector:
+        matchExpressions:
+        - {key: somekey, operator: NotIn, values: ['never-used-value']}
+---
+apiVersion: "cilium.io/v2alpha1"
+kind: CiliumLoadBalancerIPPool
+metadata:
+  name: "01-lb-pool"
+spec:
+  blocks:
+  - cidr: "192.168.77.0/24"
