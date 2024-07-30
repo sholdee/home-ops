@@ -663,7 +663,7 @@ spec:
                     summary: "Too many Traefik 4XXs"
                     description: "More than 25% of all requests returned 4XX."
     repoURL: https://helm.traefik.io/traefik
-    targetRevision: 30.0.1
+    targetRevision: 30.0.2
   syncPolicy:
     automated:
       prune: true
