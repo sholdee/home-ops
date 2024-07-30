@@ -44,11 +44,8 @@ spec:
           timeoutSeconds: 3
           failureThreshold: 3
         readinessProbe:
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - "mongosh unifi --eval 'db.adminCommand(\"ping\")' || exit 1"
+          tcpSocket:
+            port: 27017
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 3
