@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: read-backup-creds
+  namespace: hass
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-backup-creds-binding
+  namespace: hass
+subjects:
+- kind: ServiceAccount
+  name: hass-db
+  namespace: hass
+roleRef:
+  kind: Role
+  name: read-backup-creds
+  apiGroup: rbac.authorization.k8s.io
