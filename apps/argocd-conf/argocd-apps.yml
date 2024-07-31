@@ -524,6 +524,8 @@ spec:
         value: "s3://sholdee-longhorn@us-west-002/"
       - name: defaultSettings.backupTargetCredentialSecret
         value: longhorn-s3-key
+      - name: defaultSettings.backupstorePollInterval
+        value: "0"
       - name: defaultSettings.removeSnapshotsDuringFilesystemTrim
         value: "true"
       - name: metrics.serviceMonitor.enabled
