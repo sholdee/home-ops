@@ -153,3 +153,16 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: repo-kubereboot
 type: Opaque
+---
+apiVersion: v1
+data:
+  name: Y25wZw==
+  project: azNz
+  type: aGVsbQ==
+  url: aHR0cHM6Ly9jbG91ZG5hdGl2ZS1wZy5naXRodWIuaW8vY2hhcnRz
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-cnpg
+type: Opaque

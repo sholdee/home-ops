@@ -200,6 +200,26 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: cnpg
+spec:
+  destination:
+    name: in-cluster
+    namespace: cnpg-system
+  project: k3s
+  source:
+    chart: cloudnative-pg
+    repoURL: https://cloudnative-pg.github.io/charts
+    targetRevision: 0.21.6
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: ingress-nginx
 spec:
   destination:
