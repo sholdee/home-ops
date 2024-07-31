@@ -46,7 +46,7 @@ metadata:
   name:  hass-db-backup-schedule
   namespace: hass
 spec:
-  schedule: "0 1 * * *"
+  schedule: "0 1 * * * *"
   backupOwnerReference: self
   cluster:
     name: hass-db
