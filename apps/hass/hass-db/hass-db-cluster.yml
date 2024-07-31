@@ -4,6 +4,16 @@ metadata:
   name: hass-db
 spec:
   instances: 3
+  bootstrap:
+    initdb:
+      database: hass
+      owner: hass
+      secret:
+        name: hass-db-app-user
+      dataChecksums: true
+      encoding: 'UTF8'
+  superuserSecret:
+    name: hass-db-superuser
   storage:
     storageClass: longhorn
     size: 7Gi
