@@ -31,7 +31,11 @@ spec:
     name: hass-db
   instances: 3
   type: rw
-
+  pgbouncer:
+    poolMode: session
+    parameters:
+      max_client_conn: "1000"
+      default_pool_size: "10"
   template:
     metadata:
       labels:
