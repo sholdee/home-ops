@@ -2,6 +2,7 @@ apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
   name: hass-db
+  namespace: hass
 spec:
   instances: 3
   bootstrap:
