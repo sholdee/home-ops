@@ -23,7 +23,7 @@ def main():
             patch = file['patch']
             lines = patch.split('\n')
             for line in lines:
-                match = re.match(r'^\+ *(?:image|[a-z_]+image): *(.+)', line, re.IGNORECASE)
+                match = re.match(r'^\+ *(?:image|[a-z_]+image|imageName): *(.+)', line, re.IGNORECASE)
                 if match:
                     image_tag = match.group(1).strip()
                     
