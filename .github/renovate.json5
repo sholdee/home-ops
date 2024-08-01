@@ -6,12 +6,12 @@
   ],
   "commitMessagePrefix": ":arrow_up:",
   "kubernetes": {
-    "fileMatch": ["apps/.*\\.(yaml|yml)$"]
+    "fileMatch": ["apps/.*\\.ya?ml$"]
   },
   "argocd": {
     "fileMatch": [
-      "apps/argocd-conf/argocd-apps\\.(yaml|yml)$",
-      "apps/argocd-conf/cilium-preflight\\.(yaml|yml)$"
+      "apps/argocd-conf/argocd-apps\\.ya?ml$",
+      "apps/argocd-conf/cilium-preflight\\.ya?ml$"
     ]
   },
   "packageRules": [
@@ -40,12 +40,17 @@
       "matchManagers": ["argocd"],
       "matchPackageNames": ["reloader"],
       "schedule": ["on sunday"]
+    },
+    {
+      "matchDatasources": ["docker"],
+      "matchPackagePatterns": ["postgresql"],
+      "allowedVersions": "<17"
     }
   ],
   "customManagers": [
     {
       "customType": "regex",
-      "fileMatch": ["apps/system-upgrade/k3s-upgrade-plan\\.(yaml|yml)$"],
+      "fileMatch": ["apps/system-upgrade/k3s-upgrade-plan\\.ya?ml$"],
       "matchStrings": [
         "version: (?<currentValue>v[\\d\\.\\+\\w-]+)"
       ],
@@ -55,13 +60,21 @@
     },
     {
       "customType": "regex",
-      "fileMatch": ["apps/system-upgrade/system-upgrade-controller\\.(yaml|yml)$"],
+      "fileMatch": ["apps/system-upgrade/system-upgrade-controller\\.ya?ml$"],
       "matchStrings": [
         "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
       ],
       "depNameTemplate": "{{depName}}",
       "versioningTemplate": "docker",
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": ["Process CloudnativePG Postgresql version"],
+      "fileMatch": ["apps/.*\\.ya?ml$"],
+      "matchStrings": ["imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)"],
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "redhat"
     }
   ],
   "customDatasources": {
