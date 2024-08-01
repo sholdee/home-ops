@@ -15,6 +15,16 @@ spec:
       labels:
         app: unifi
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - k3s-worker-0
       containers:
       - name: unifi
         image: ghcr.io/linuxserver/unifi-network-application:8.3.32@sha256:d4b50e615682037c32361b7ec348b1670e44b9cb0c5b52e80253b186e0db6c94
