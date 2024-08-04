@@ -173,7 +173,7 @@ data:
   project: azNz
   type: aGVsbQ==
   url: b2NpOi8vZ2hjci5pby9hZW5peC1pby9jaGFydHM=
-  enableOCI: "true"
+  enableOCI: true
 kind: Secret
 metadata:
   labels:
