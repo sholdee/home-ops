@@ -24,58 +24,13 @@ spec:
             matchLabels:
               app: gravity
       containers:
-      - name: etcd
-        image: quay.io/coreos/etcd:v3.5.15
-        env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          - name: ETCD_NAME
-            value: $(POD_NAME).etcd
-          - name: ETCD_INITIAL_ADVERTISE_PEER_URLS
-            value: http://$(POD_NAME).etcd:2380
-          - name: ETCD_INITIAL_CLUSTER_STATE
-            value: new
-          - name: ETCD_INITIAL_CLUSTER_TOKEN
-            value: gravity-etcd-token
-          - name: ETCD_INITIAL_CLUSTER
-            value: "gravity-0.etcd=http://gravity-0.etcd:2380,gravity-1.etcd=http://gravity-1.etcd:2380,gravity-2.etcd=http://gravity-2.etcd:2380"
-          - name: ETCD_LISTEN_PEER_URLS
-            value: http://0.0.0.0:2380
-          - name: ETCD_LISTEN_CLIENT_URLS
-            value: http://0.0.0.0:2379
-          - name: ETCD_ADVERTISE_CLIENT_URLS
-            value: http://$(POD_NAME).etcd:2379
-          - name: ETCD_DATA_DIR
-            value: /etcd
-        ports:
-        - containerPort: 2379
-          name: client
-        - containerPort: 2380
-          name: peer
-        volumeMounts:
-        - name: data
-          mountPath: /etcd
-        livenessProbe:
-          httpGet:
-            path: /livez
-            port: 2379
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: 2379
-        resources:
-          requests:
-            memory: 200Mi
-            cpu: "10m"
-          limits:
-            memory: 200Mi
       - name: gravity
         image: ghcr.io/beryju/gravity:v0.9.0
         env:
           - name: BOOTSTRAP_ROLES
             value: dns;dhcp;api;discovery;backup;monitoring;debug;tsdb
+          - name: ETCD_ENDPOINT
+            value: gravity-cluster-headless.gravity:2379
         ports:
         - containerPort: 53
           name: dns
@@ -109,12 +64,3 @@ spec:
             cpu: "5m"
           limits:
             memory: 200Mi
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 2Gi
-      storageClassName: "longhorn"
