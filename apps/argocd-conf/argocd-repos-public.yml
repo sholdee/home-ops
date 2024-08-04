@@ -166,3 +166,17 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: repo-cnpg
 type: Opaque
+---
+apiVersion: v1
+data:
+  name: ZXRjZC1vcGVyYXRvcg==
+  project: azNz
+  type: aGVsbQ==
+  url: b2NpOi8vZ2hjci5pby9hZW5peC1pby9jaGFydHM=
+  enableOCI: dHJ1ZQ==
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-etcd-operator
+type: Opaque
