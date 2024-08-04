@@ -67,10 +67,10 @@ spec:
             port: 2379
         resources:
           requests:
-            memory: 60Mi
+            memory: 200Mi
             cpu: "10m"
           limits:
-            memory: 60Mi
+            memory: 200Mi
       - name: gravity
         image: ghcr.io/beryju/gravity:v0.9.0
         env:
@@ -105,10 +105,10 @@ spec:
             port: http-metrics
         resources:
           requests:
-            memory: 80Mi
+            memory: 200Mi
             cpu: "5m"
           limits:
-            memory: 80Mi
+            memory: 200Mi
   volumeClaimTemplates:
   - metadata:
       name: data
