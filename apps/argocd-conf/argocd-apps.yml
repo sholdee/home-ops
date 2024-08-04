@@ -234,8 +234,6 @@ spec:
     chart: etcd-operator
     repoURL: oci://ghcr.io/aenix-io/charts
     targetRevision: 0.4.0
-    helm:
-      enableOCI: true
   syncPolicy:
     automated:
       prune: true
