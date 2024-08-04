@@ -1,10 +1,9 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: gravity
   namespace: gravity
 spec:
-  serviceName: etcd
   selector:
     matchLabels:
       app: gravity
