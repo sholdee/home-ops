@@ -1,0 +1,15 @@
+apiVersion: etcd.aenix.io/v1alpha1
+kind: EtcdCluster
+metadata:
+  name: gravity
+  namespace: gravity
+spec:
+  replicas: 3
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: longhorn
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 5Gi
