@@ -225,6 +225,8 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: etcd-operator
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   destination:
     name: in-cluster
@@ -238,7 +240,8 @@ spec:
     automated:
       prune: true
     syncOptions:
-      - CreateNamespace=true
+    - CreateNamespace=true
+    - ServerSideApply=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
