@@ -232,10 +232,8 @@ spec:
   project: k3s
   source:
     chart: etcd-operator
-    repoURL: ghcr.io/aenix-io/charts
+    repoURL: oci://ghcr.io/aenix-io/charts
     targetRevision: 0.4.0
-    helm:
-      enableOCI: true
   syncPolicy:
     automated:
       prune: true
