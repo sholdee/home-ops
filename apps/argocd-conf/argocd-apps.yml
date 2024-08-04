@@ -224,25 +224,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: etcd-operator
-spec:
-  destination:
-    name: in-cluster
-    namespace: etcd-operator
-  project: k3s
-  source:
-    chart: etcd-operator
-    repoURL: oci://ghcr.io/aenix-io/charts
-    targetRevision: 0.4.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-      - CreateNamespace=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: ingress-nginx
 spec:
   destination:
