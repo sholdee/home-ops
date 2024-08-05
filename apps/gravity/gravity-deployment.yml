@@ -7,8 +7,6 @@ spec:
   selector:
     matchLabels:
       app: gravity
-  updateStrategy:
-    type: RollingUpdate
   replicas: 3
   template:
     metadata:
