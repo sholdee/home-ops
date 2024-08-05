@@ -1,9 +1,9 @@
 apiVersion: v1
-data:
-  name: c2VhbGVkLXNlY3JldHMtY29udHJvbGxlcg==
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9iaXRuYW1pLWxhYnMuZ2l0aHViLmlvL3NlYWxlZC1zZWNyZXRz
+stringData:
+  name: sealed-secrets-controller
+  project: k3s
+  type: helm
+  url: https://bitnami-labs.github.io/sealed-secrets
 kind: Secret
 metadata:
   labels:
@@ -12,11 +12,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: YXJnb2Nk
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9hcmdvcHJvai5naXRodWIuaW8vYXJnby1oZWxt
+stringData:
+  name: argocd
+  project: k3s
+  type: helm
+  url: https://argoproj.github.io/argo-helm
 kind: Secret
 metadata:
   labels:
@@ -25,11 +25,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: Y2VydC1tYW5hZ2Vy
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9jaGFydHMuamV0c3RhY2suaW8=
+stringData:
+  name: cert-manager
+  project: k3s
+  type: helm
+  url: https://charts.jetstack.io
 kind: Secret
 metadata:
   labels:
@@ -38,11 +38,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: aW5ncmVzcy1uZ2lueA==
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9rdWJlcm5ldGVzLmdpdGh1Yi5pby9pbmdyZXNzLW5naW54
+stringData:
+  name: ingress-nginx
+  project: k3s
+  type: helm
+  url: https://kubernetes.github.io/ingress-nginx
 kind: Secret
 metadata:
   labels:
@@ -51,11 +51,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: bG9uZ2hvcm4=
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9jaGFydHMubG9uZ2hvcm4uaW8=
+stringData:
+  name: longhorn
+  project: k3s
+  type: helm
+  url: https://charts.longhorn.io
 kind: Secret
 metadata:
   labels:
@@ -64,11 +64,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: a3ViZXJuZXRlcy1kYXNoYm9hcmQ=
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9rdWJlcm5ldGVzLmdpdGh1Yi5pby9kYXNoYm9hcmQv
+stringData:
+  name: kubernetes-dashboard
+  project: k3s
+  type: helm
+  url: https://kubernetes.github.io/dashboard
 kind: Secret
 metadata:
   labels:
@@ -77,11 +77,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: dHJhZWZpaw==
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9oZWxtLnRyYWVmaWsuaW8vdHJhZWZpaw==
+stringData:
+  name: traefik
+  project: k3s
+  type: helm
+  url: https://helm.traefik.io/traefik
 kind: Secret
 metadata:
   labels:
@@ -90,11 +90,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: dm13YXJlLXRhbnp1
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly92bXdhcmUtdGFuenUuZ2l0aHViLmlvL2hlbG0tY2hhcnRz
+stringData:
+  name: vmware-tanzu
+  project: k3s
+  type: helm
+  url: https://vmware-tanzu.github.io/helm-charts
 kind: Secret
 metadata:
   labels:
@@ -103,11 +103,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: Y2lsaXVt
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9oZWxtLmNpbGl1bS5pby8=
+stringData:
+  name: cilium
+  project: k3s
+  type: helm
+  url: https://helm.cilium.io/
 kind: Secret
 metadata:
   labels:
@@ -116,11 +116,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: cHJvbWV0aGV1cy1jb21tdW5pdHk=
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9wcm9tZXRoZXVzLWNvbW11bml0eS5naXRodWIuaW8vaGVsbS1jaGFydHM=
+stringData:
+  name: prometheus-community
+  project: k3s
+  type: helm
+  url: https://prometheus-community.github.io/helm-charts
 kind: Secret
 metadata:
   labels:
@@ -129,11 +129,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: c3Rha2F0ZXI=
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9zdGFrYXRlci5naXRodWIuaW8vc3Rha2F0ZXItY2hhcnRz
+stringData:
+  name: stakater
+  project: k3s
+  type: helm
+  url: https://stakater.github.io/stakater-charts
 kind: Secret
 metadata:
   labels:
@@ -142,11 +142,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: a3ViZXJlYm9vdA==
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9rdWJlcmVib290LmdpdGh1Yi5pby9jaGFydHM=
+stringData:
+  name: kubereboot
+  project: k3s
+  type: helm
+  url: https://kubereboot.github.io/charts
 kind: Secret
 metadata:
   labels:
@@ -155,11 +155,11 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: Y25wZw==
-  project: azNz
-  type: aGVsbQ==
-  url: aHR0cHM6Ly9jbG91ZG5hdGl2ZS1wZy5naXRodWIuaW8vY2hhcnRz
+stringData:
+  name: cnpg
+  project: k3s
+  type: helm
+  url: https://cloudnative-pg.github.io/charts
 kind: Secret
 metadata:
   labels:
@@ -168,12 +168,12 @@ metadata:
 type: Opaque
 ---
 apiVersion: v1
-data:
-  name: ZXRjZC1vcGVyYXRvcg==
-  project: azNz
-  type: aGVsbQ==
-  url: Z2hjci5pby9hZW5peC1pby9jaGFydHM=
-  enableOCI: dHJ1ZQ==
+stringData:
+  name: etcd-operator
+  project: k3s
+  type: helm
+  url: ghcr.io/aenix-io/charts
+  enableOCI: true
 kind: Secret
 metadata:
   labels:
