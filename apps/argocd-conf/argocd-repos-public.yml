@@ -173,7 +173,7 @@ stringData:
   project: k3s
   type: helm
   url: ghcr.io/aenix-io/charts
-  enableOCI: true
+  enableOCI: "true"
 kind: Secret
 metadata:
   labels:
