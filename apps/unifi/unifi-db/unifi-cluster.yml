@@ -15,10 +15,14 @@ spec:
       passwordSecretRef: # a reference to the secret that will be used to generate the user's password
         name: unifi-db-password
       roles:
-        - name: clusterAdmin
+        - name: readWrite
           db: unifi
-        - name: userAdminAnyDatabase
+        - name: dbAdmin
           db: unifi
+        - name: readWrite
+          db: unifi_stat
+        - name: dbAdmin
+          db: unifi_stat
       scramCredentialsSecretName: unifi-scram
   additionalMongodConfig:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
