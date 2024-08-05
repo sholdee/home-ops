@@ -566,6 +566,37 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: mongodb-community-operator
+spec:
+  destination:
+    name: in-cluster
+    namespace: mongodb
+  project: k3s
+  source:
+    chart: community-operator
+    helm:
+      values: |-
+        operator:
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 25m
+              memory: 200Mi
+        database:
+          name: mongodb
+    repoURL: https://mongodb.github.io/helm-charts
+    targetRevision: 2.4.1
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: reloader
 spec:
   destination:
