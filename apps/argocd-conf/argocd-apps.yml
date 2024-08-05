@@ -585,7 +585,7 @@ spec:
               cpu: 25m
               memory: 200Mi
         database:
-          name: mongodb
+          namespace: mongodb
     repoURL: https://mongodb.github.io/helm-charts
     targetRevision: 0.10.0
   syncPolicy:
