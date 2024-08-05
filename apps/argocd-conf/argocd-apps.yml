@@ -586,7 +586,7 @@ spec:
         database:
           name: mongodb
     repoURL: https://mongodb.github.io/helm-charts
-    targetRevision: 2.4.1
+    targetRevision: 0.10.0
   syncPolicy:
     automated:
       prune: true
