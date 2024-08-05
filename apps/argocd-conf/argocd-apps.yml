@@ -64,6 +64,8 @@ spec:
     chart: argo-cd
     helm:
       values: |-
+        global:
+          domain: argocd.sholdee.net
         configs:
           cm:
             resource.exclusions: |
