@@ -13,3 +13,21 @@ spec:
         resources:
           requests:
             storage: 5Gi
+  podTemplate:
+    metadata:
+      labels:
+        app: gravity-cluster
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: gravity-cluster
+  podDisruptionBudgetTemplate:
+    metadata:
+      labels:
+        app: gravity-cluster
+    spec:
+      minAvailable: 2
