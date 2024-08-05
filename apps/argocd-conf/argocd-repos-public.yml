@@ -1,5 +1,18 @@
 apiVersion: v1
 stringData:
+  name: k3s
+  project: k3s
+  type: git
+  url: https://github.com/sholdee/home-ops
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-home-ops
+type: Opaque
+---
+apiVersion: v1
+stringData:
   name: sealed-secrets-controller
   project: k3s
   type: helm
