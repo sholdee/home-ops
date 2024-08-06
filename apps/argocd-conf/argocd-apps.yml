@@ -548,6 +548,10 @@ spec:
         value: best-effort
       - name: defaultSettings.backupTarget
         value: "nfs://10.2.0.110:/volume1/longhorn"
+      - name: defaultSettings.backupTargetCredentialSecret
+        value: ""
+      - name: defaultSettings.backupstorePollInterval
+        value: "3600"
       - name: defaultSettings.removeSnapshotsDuringFilesystemTrim
         value: "true"
       - name: metrics.serviceMonitor.enabled
