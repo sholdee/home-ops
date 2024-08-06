@@ -27,6 +27,10 @@ spec:
           db: unifi_stat
         - name: dbOwner
           db: unifi_stat
+        - name: readWrite
+          db: admin
+        - name: dbOwner
+          db: admin
       scramCredentialsSecretName: unifi-scram
       connectionStringSecretNamespace: unifi
   additionalMongodConfig:
