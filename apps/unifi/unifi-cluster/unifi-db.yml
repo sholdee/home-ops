@@ -11,15 +11,27 @@ spec:
       modes: ["SCRAM-SHA-1", "SCRAM-SHA-256"]
   users:
     - name: unifi
-      db: admin
+      db: unifi
       passwordSecretRef:
         name: unifi-db-password
       roles:
         - name: clusterAdmin
-          db: admin
+          db: unifi
         - name: userAdminAnyDatabase
+          db: unifi
+        - name: readWrite
+          db: unifi
+        - name: dbOwner
+          db: unifi
+        - name: readWrite
+          db: unifi_stat
+        - name: dbOwner
+          db: unifi_stat
+        - name: readWrite
           db: admin
-        - name: readWriteAnyDatabase
+        - name: dbOwner
+          db: admin
+        - name: clusterMonitor
           db: admin
       scramCredentialsSecretName: unifi-db-scram
       connectionStringSecretNamespace: unifi
