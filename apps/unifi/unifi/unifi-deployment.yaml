@@ -15,12 +15,6 @@ spec:
       labels:
         app: unifi
     spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
       affinity:
         nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -48,6 +42,10 @@ spec:
             value: unifi
           - name: TZ
             value: America/Chicago
+          - name: PGID
+            value: "65534"
+          - name: PUID
+            value: "65534"
           - name: RUN_CHOWN
             value: "false"
           - name: DB_MONGO_URI
@@ -81,11 +79,6 @@ spec:
             cpu: "20m"
           limits:
             memory: 1200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
-          capabilities:
-            drop: ["ALL"]
       volumes:
       - name: unifi-data
         persistentVolumeClaim:
