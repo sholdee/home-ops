@@ -87,7 +87,7 @@ spec:
             memory: 1200Mi
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
+          readOnlyRootFilesystem: false
           capabilities:
             drop: ["ALL"]
       volumes:
