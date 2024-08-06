@@ -48,10 +48,6 @@ spec:
             value: unifi
           - name: TZ
             value: America/Chicago
-          - name: PGID
-            value: "65534"
-          - name: PUID
-            value: "65534"
           - name: RUN_CHOWN
             value: "false"
           - name: DB_MONGO_URI
