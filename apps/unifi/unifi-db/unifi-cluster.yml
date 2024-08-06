@@ -31,6 +31,8 @@ spec:
           db: admin
         - name: dbOwner
           db: admin
+        - name: clusterMonitor
+          db: admin
       scramCredentialsSecretName: unifi-scram
       connectionStringSecretNamespace: unifi
   additionalMongodConfig:
