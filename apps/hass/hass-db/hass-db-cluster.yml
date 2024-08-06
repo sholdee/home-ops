@@ -5,7 +5,7 @@ metadata:
   namespace: hass
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.3-10@sha256:76ecc3b241ab753c3f0e6067902bde6c34d863910bd83d3f6d3599a0f92c9067
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.3-10@sha256:76576a10a91765d5e14524575311f53237cd15d16e7372d194e4d150f9bd9df8
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   bootstrap:
