@@ -1,0 +1,17 @@
+allowVolumeExpansion: true
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: longhorn-mongo
+  labels:
+    storageclass: mongo
+parameters:
+  dataLocality: best-effort
+  fromBackup: ''
+  fsType: xfs
+  numberOfReplicas: '1'
+  staleReplicaTimeout: '30'
+  unmapMarkSnapChainRemoved: ignored
+provisioner: driver.longhorn.io
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
