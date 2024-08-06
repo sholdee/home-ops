@@ -19,6 +19,10 @@ spec:
           db: admin
         - name: userAdminAnyDatabase
           db: admin
+        - name: readWrite
+          db: unifi
+        - name: readWrite
+          db: unifi_stat
       scramCredentialsSecretName: unifi-scram
       connectionStringSecretNamespace: unifi
   additionalMongodConfig:
