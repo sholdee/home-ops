@@ -31,10 +31,6 @@ spec:
         env:
           - name: DB_MONGO_LOCAL
             value: "false"
-          - name: DB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-cluster-0.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-1.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-2.unifi-cluster-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-cluster&ssl=false "
-          - name: STATDB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-cluster-0.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-1.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-2.unifi-cluster-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-cluster&ssl=false "
           - name: MONGO_PASS
             valueFrom:
               secretKeyRef:
@@ -46,6 +42,10 @@ spec:
             value: unifi
           - name: TZ
             value: America/Chicago
+          - name: DB_MONGO_URI
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-cluster-0.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-1.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-2.unifi-cluster-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-cluster&ssl=false"
+          - name: STATDB_MONGO_URI
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-cluster-0.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-1.unifi-cluster-svc.unifi.svc.cluster.local:27017,unifi-cluster-2.unifi-cluster-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-cluster&ssl=false"
         ports:
         - containerPort: 8080
           protocol: TCP
