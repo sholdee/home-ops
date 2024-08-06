@@ -4,7 +4,7 @@ metadata:
   name: unifi
   namespace: unifi
 spec:
-  replicas: 1
+  replicas: 0
   strategy:
     type: Recreate
   selector:
@@ -27,25 +27,23 @@ spec:
                       - k3s-worker-0
       containers:
       - name: unifi
-        image: ghcr.io/linuxserver/unifi-network-application:8.3.32@sha256:d4b50e615682037c32361b7ec348b1670e44b9cb0c5b52e80253b186e0db6c94
+        image: ghcr.io/goofball222/unifi:8.3.32
         env:
-          - name: MONGO_DBNAME
-            value: unifi
-          - name: MONGO_HOST
-            value: unifi-db
+          - name: DB_MONGO_LOCAL
+            value: "false"
+          - name: DB_MONGO_URI
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@mongo:27017/unifi"
+          - name: STATDB_MONGO_URI
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@mongo:27017/unifi_stat"
           - name: MONGO_PASS
             valueFrom:
               secretKeyRef:
                 name: unifi
                 key: mongopass
-          - name: MONGO_PORT
-            value: "27017"
           - name: MONGO_USER
             value: unifi
-          - name: PGID
-            value: "1000"
-          - name: PUID
-            value: "1000"
+          - name: UNIFI_DB_NAME
+            value: unifi
           - name: TZ
             value: America/Chicago
         ports:
@@ -57,8 +55,18 @@ spec:
           protocol: TCP
         - containerPort: 8843
         volumeMounts:
-          - mountPath: /config
-            name: unifi-data
+          - name: localtime
+            mountPath: /etc/localtime
+            readOnly: true
+          - name: unifi-data
+            mountPath: /usr/lib/unifi/cert
+            subPath: cert
+          - name: unifi-data
+            mountPath: /usr/lib/unifi/data
+            subPath: data
+          - name: unifi-data
+            mountPath: /usr/lib/unifi/logs
+            subPath: logs
         resources:
           requests:
             memory: 1200Mi
@@ -77,3 +85,7 @@ spec:
       - name: unifi-data
         persistentVolumeClaim:
           claimName: unifi-pvc
+      - name: localtime
+        hostPath:
+          path: /etc/localtime
+          type: File
