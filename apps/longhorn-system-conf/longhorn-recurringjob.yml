@@ -6,7 +6,7 @@ metadata:
 spec:
   name: every-day-keep-30-days
   task: backup
-  retain: 30
+  retain: 14
   concurrency: 1
   cron: "0 3 * * ?"
   groups:
