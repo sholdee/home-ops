@@ -22,6 +22,10 @@ spec:
         - name: readWrite
           db: unifi
         - name: readWrite
+          db: unifi_status
+        - name: dbOwner
+          db: unifi
+        - name: dbOwner
           db: unifi_stat
       scramCredentialsSecretName: unifi-scram
       connectionStringSecretNamespace: unifi
