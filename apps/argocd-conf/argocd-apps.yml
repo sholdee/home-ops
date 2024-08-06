@@ -547,7 +547,7 @@ spec:
       - name: defaultSettings.replicaAutoBalance
         value: best-effort
       - name: defaultSettings.backupTarget
-        value: "nfs://10.2.0.110/volume1/longhorn"
+        value: "nfs://10.2.0.110:/volume1/longhorn"
       - name: defaultSettings.removeSnapshotsDuringFilesystemTrim
         value: "true"
       - name: metrics.serviceMonitor.enabled
