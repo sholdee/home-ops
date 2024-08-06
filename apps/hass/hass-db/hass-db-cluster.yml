@@ -21,7 +21,6 @@ spec:
   storage:
     storageClass: longhorn-noreplicas
     size: 7Gi
-    resizeInUseVolumes: False
   monitoring:
     enablePodMonitor: true
   backup:
