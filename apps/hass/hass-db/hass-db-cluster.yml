@@ -19,8 +19,9 @@ spec:
   superuserSecret:
     name: hass-db-superuser
   storage:
-    storageClass: longhorn
+    storageClass: longhorn-noreplicas
     size: 7Gi
+    resizeInUseVolumes: False
   monitoring:
     enablePodMonitor: true
   backup:
