@@ -8,7 +8,7 @@ spec:
   version: "7.0.12"
   security:
     authentication:
-      modes: ["SCRAM"]
+      modes: ["SCRAM-SHA-1", "SCRAM-SHA-256"]
   users:
     - name: unifi
       db: admin
