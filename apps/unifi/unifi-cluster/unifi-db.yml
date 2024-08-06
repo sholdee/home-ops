@@ -1,0 +1,46 @@
+apiVersion: mongodbcommunity.mongodb.com/v1
+kind: MongoDBCommunity
+metadata:
+  name: unifi-db
+spec:
+  members: 3
+  type: ReplicaSet
+  version: "7.0.12"
+  security:
+    authentication:
+      modes: ["SCRAM-SHA-1", "SCRAM-SHA-256"]
+  users:
+    - name: unifi
+      db: admin
+      passwordSecretRef:
+        name: unifi-db-password
+      roles:
+        - name: clusterAdmin
+          db: admin
+        - name: userAdminAnyDatabase
+          db: admin
+        - name: readWriteAnyDatabase
+          db: admin
+      scramCredentialsSecretName: unifi-db-scram
+      connectionStringSecretNamespace: unifi
+  additionalMongodConfig:
+    storage.wiredTiger.engineConfig.journalCompressor: zlib
+  statefulSet:
+    spec:
+      volumeClaimTemplates:
+        - metadata:
+            name: data-volume
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 5Gi
+            storageClassName: longhorn-mongo
+        - metadata:
+            name: logs-volume
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: longhorn-mongo
