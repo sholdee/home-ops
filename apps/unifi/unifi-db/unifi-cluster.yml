@@ -15,29 +15,21 @@ spec:
       passwordSecretRef: # a reference to the secret that will be used to generate the user's password
         name: unifi-db-password
       roles:
-        - name: readWrite
-          db: unifi
-        - name: dbOwner
-          db: unifi
-    - name: unifi
-      db: unifi_stat
-      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
-        name: unifi-db-password
-      roles:
-        - name: readWrite
-          db: unifi_stat
-        - name: dbOwner
-          db: unifi_stat
-    - name: unifi
-      db: admin
-      passwordSecretRef: # a reference to the secret that will be used to generate the user's password
-        name: unifi-db-password
-      roles:
         - name: clusterAdmin
-          db: admin
+          db: unifi
         - name: userAdminAnyDatabase
+          db: unifi
+        - name: readWrite
+          db: unifi
+        - name: dbOwner
+          db: unifi
+        - name: readWrite
+          db: unifi_stat
+        - name: dbOwner
+          db: unifi_stat
+        - name: readWrite
           db: admin
-        - name: clusterMonitor
+        - name: dbOwner
           db: admin
       scramCredentialsSecretName: unifi-scram
       connectionStringSecretNamespace: unifi
