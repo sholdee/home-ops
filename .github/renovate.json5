@@ -75,6 +75,17 @@
       "matchStrings": ["imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)"],
       "datasourceTemplate": "docker",
       "versioningTemplate": "redhat"
+    },
+    {
+      "customType": "regex",
+      "description": ["Process MongoDB version"],
+      "fileMatch": ["^apps/.*/unifi-db.yml$"],
+      "matchStrings": [
+        "version: \"(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)\""
+      ],
+      "datasourceTemplate": "docker",
+      "packageNameTemplate": "mongo",
+      "versioningTemplate": "semver"
     }
   ],
   "customDatasources": {
