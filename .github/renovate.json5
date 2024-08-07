@@ -72,7 +72,7 @@
       "customType": "regex",
       "description": ["Process CloudnativePG Postgresql version"],
       "fileMatch": ["apps/.*\\.ya?ml$"],
-      "matchStrings": ["imageName: (?<depName>[^:]+):(?<currentValue>[^@]+)(@(?<currentDigest>sha256:\\S+))?"],
+      "matchStrings": ["imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)"],
       "datasourceTemplate": "docker",
       "versioningTemplate": "redhat"
     }
