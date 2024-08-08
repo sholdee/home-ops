@@ -587,7 +587,7 @@ spec:
               cpu: 20m
               memory: 100Mi
     repoURL: https://mongodb.github.io/helm-charts
-    targetRevision: 0.10.0
+    targetRevision: 0.11.0
   syncPolicy:
     automated:
       prune: true
