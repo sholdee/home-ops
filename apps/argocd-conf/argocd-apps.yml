@@ -237,7 +237,7 @@ spec:
   source:
     chart: etcd-operator
     repoURL: ghcr.io/aenix-io/charts
-    targetRevision: 0.4.0
+    targetRevision: 0.4.1
   syncPolicy:
     automated:
       prune: true
