@@ -39,6 +39,9 @@ spec:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
   statefulSet:
     spec:
+      selector:
+        matchLabels:
+          app: unifi-db
       template:
         metadata:
           labels:
