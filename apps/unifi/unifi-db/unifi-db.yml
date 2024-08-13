@@ -39,6 +39,18 @@ spec:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
   statefulSet:
     spec:
+      template:
+        metadata:
+          labels:
+            app: unifi-db
+        spec:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app: unifi-db
       volumeClaimTemplates:
         - metadata:
             name: data-volume
