@@ -39,13 +39,7 @@ spec:
     storage.wiredTiger.engineConfig.journalCompressor: zlib
   statefulSet:
     spec:
-      selector:
-        matchLabels:
-          app: unifi-db
       template:
-        metadata:
-          labels:
-            app: unifi-db
         spec:
           topologySpreadConstraints:
             - maxSkew: 1
@@ -53,7 +47,7 @@ spec:
               whenUnsatisfiable: DoNotSchedule
               labelSelector:
                 matchLabels:
-                  app: unifi-db
+                  app: unifi-db-svc
       volumeClaimTemplates:
         - metadata:
             name: data-volume
