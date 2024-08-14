@@ -380,6 +380,8 @@ spec:
             useExistingSecret: true
             configSecret: alertmanager-secret
             externalUrl: "https://alertmgr.mgmt.sholdee.net"
+            replicas: 3
+            podAntiAffinity: "soft"
             storage:
               volumeClaimTemplate:
                 spec:
