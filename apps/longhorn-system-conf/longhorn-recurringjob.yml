@@ -8,7 +8,7 @@ spec:
   task: backup
   retain: 14
   concurrency: 1
-  cron: "0 3 * * ?"
+  cron: "0 2 * * ?"
   groups:
     - default
   labels: {}
@@ -23,7 +23,7 @@ spec:
   task: filesystem-trim
   retain: 0
   concurrency: 1
-  cron: "0 7 * * ?"
+  cron: "0 4 * * ?"
   groups:
     - default
   labels: {}
