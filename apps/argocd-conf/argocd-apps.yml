@@ -288,21 +288,21 @@ spec:
                     description: ssl certificate(s) will expire in less then a week
                     summary: renew expiring certificates to avoid downtime
                 - alert: NGINXTooMany500s
-                  expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"5.+"} ) / sum(nginx_ingress_controller_requests) ) > 5
+                  expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"5.+"} ) / sum(nginx_ingress_controller_requests) ) > 25
                   for: 1m
                   labels:
                     severity: warning
                   annotations:
                     description: Too many 5XXs
-                    summary: More than 5% of all requests returned 5XX, this requires your attention
+                    summary: More than 25% of all requests returned 5XX, this requires your attention
                 - alert: NGINXTooMany400s
-                  expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"4.+"} ) / sum(nginx_ingress_controller_requests) ) > 5
+                  expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"4.+"} ) / sum(nginx_ingress_controller_requests) ) > 25
                   for: 1m
                   labels:
                     severity: warning
                   annotations:
                     description: Too many 4XXs
-                    summary: More than 5% of all requests returned 4XX, this requires your attention
+                    summary: More than 25% of all requests returned 4XX, this requires your attention
           affinity:
             podAntiAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
