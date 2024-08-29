@@ -13,7 +13,7 @@ spec:
     - default
   labels: {}
   parameters:
-    full-backup-interval: 7
+    full-backup-interval: "7"
 ---
 apiVersion: longhorn.io/v1beta2
 kind: RecurringJob
