@@ -559,7 +559,7 @@ spec:
       - name: metrics.serviceMonitor.enabled
         value: "true"
     repoURL: https://charts.longhorn.io
-    targetRevision: 1.7.0
+    targetRevision: 1.7.1
   syncPolicy:
     automated:
       prune: true
