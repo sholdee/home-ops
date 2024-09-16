@@ -63,7 +63,7 @@ spec:
   source:
     chart: argo-cd
     helm:
-      values: |-
+      valuesObject:
         global:
           domain: argocd.sholdee.net
         configs:
@@ -96,14 +96,10 @@ spec:
   source:
     chart: cert-manager
     helm:
-      parameters:
-      - name: installCRDs
-        value: "true"
-      - name: dns01RecursiveNameservers
-        value: 1.1.1.1:53,1.0.0.1:53
-      - name: dns01RecursiveNameserversOnly
-        value: "true"
-      values: |-
+      valuesObject:
+        installCRDs: "true"
+        dns01RecursiveNameservers: "1.1.1.1:53,1.0.0.1:53"
+        dns01RecursiveNameserversOnly: "true"
         prometheus:
           servicemonitor:
             enabled: true
@@ -152,7 +148,7 @@ spec:
   source:
     chart: cilium
     helm:
-      values: |-
+      valuesObject:
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
@@ -257,11 +253,11 @@ spec:
   source:
     chart: ingress-nginx
     helm:
-      parameters:
-      - name: controller.service.internal.loadBalancerIP
-        value: 192.168.77.20
-      values: |-
+      valuesObject:
         controller:
+          service:
+            internal:
+              loadBalancerIP: "192.168.77.20"
           extraArgs:
             default-ssl-certificate: "ingress-nginx/wildcard-cert"
           metrics:
@@ -352,7 +348,7 @@ spec:
   source:
     chart: kube-prometheus-stack
     helm:
-      values: |-
+      valuesObject:
         crds:
           enabled: false
         prometheus:
@@ -513,7 +509,7 @@ spec:
     chart: kured
     helm:
       releaseName: my-release
-      values: |-
+      valuesObject:
         metrics:
           create: true
           namespace: "monitoring"
@@ -575,7 +571,7 @@ spec:
   source:
     chart: community-operator
     helm:
-      values: |-
+      valuesObject:
         operator:
           watchNamespace: "*"
           resources:
@@ -605,7 +601,7 @@ spec:
   source:
     chart: reloader
     helm:
-      values: |-
+      valuesObject:
         fullnameOverride: reloader
         reloader:
           readOnlyRootFileSystem: true
@@ -650,7 +646,7 @@ spec:
   source:
     chart: traefik
     helm:
-      values: |-
+      valuesObject:
         service:
           spec:
             loadBalancerIP: 192.168.77.22
@@ -761,7 +757,7 @@ spec:
   source:
     chart: velero
     helm:
-      values: |-
+      valuesObject:
         upgradeCRDs: true
         snapshotsEnabled: false
         credentials:
