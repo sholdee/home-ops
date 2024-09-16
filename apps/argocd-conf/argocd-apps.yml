@@ -537,27 +537,23 @@ spec:
   source:
     chart: longhorn
     helm:
-      parameters:
-      - name: defaultSettings.defaultDataLocality
-        value: best-effort
-      - name: defaultSettings.concurrentAutomaticEngineUpgradePerNodeLimit
-        value: "2"
-      - name: defaultSettings.nodeDownPodDeletionPolicy
-        value: delete-both-statefulset-and-deployment-pod
-      - name: defaultSettings.nodeDrainPolicy
-        value: block-for-eviction-if-contains-last-replica
-      - name: defaultSettings.replicaAutoBalance
-        value: best-effort
-      - name: defaultSettings.backupTarget
-        value: "nfs://10.2.0.110:/volume1/longhorn"
-      - name: defaultSettings.backupTargetCredentialSecret
-        value: ""
-      - name: defaultSettings.backupstorePollInterval
-        value: "3600"
-      - name: defaultSettings.removeSnapshotsDuringFilesystemTrim
-        value: "true"
-      - name: metrics.serviceMonitor.enabled
-        value: "true"
+      valuesObject:
+        defaultSettings:
+          defaultDataLocality: best-effort
+          concurrentAutomaticEngineUpgradePerNodeLimit: "2"
+          nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+          nodeDrainPolicy: block-for-eviction-if-contains-last-replica
+          replicaAutoBalance: best-effort
+          backupTarget: "nfs://10.2.0.110:/volume1/longhorn"
+          backupTargetCredentialSecret: ""
+          backupstorePollInterval: "3600"
+          removeSnapshotsDuringFilesystemTrim: "true"
+        metrics:
+          serviceMonitor:
+            enabled: "true"
+        networkPolicies:
+          enabled: true
+          type: "k3s"
     repoURL: https://charts.longhorn.io
     targetRevision: 1.7.1
   syncPolicy:
