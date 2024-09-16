@@ -548,7 +548,7 @@ spec:
           serviceMonitor:
             enabled: "true"
         networkPolicies:
-          enabled: true
+          enabled: false
           type: "k3s"
     repoURL: https://charts.longhorn.io
     targetRevision: 1.7.1
