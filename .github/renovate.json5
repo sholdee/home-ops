@@ -44,7 +44,7 @@
     {
       "matchDatasources": ["docker"],
       "matchPackagePatterns": ["postgresql"],
-      "allowedVersions": "16.\\d+$"
+      "allowedVersions": "<17"
     }
   ],
   "customManagers": [
