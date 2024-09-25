@@ -45,7 +45,7 @@
       "matchDatasources": ["docker"],
       "matchPackagePatterns": ["postgresql"],
       "allowedVersions": "<17"
-    }
+    },
     {
       "matchDatasources": ["docker"],
       "matchPackagePatterns": ["mongodb-community-server"],
