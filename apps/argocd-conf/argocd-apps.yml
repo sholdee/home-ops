@@ -353,12 +353,9 @@ spec:
           enabled: false
         prometheus:
           prometheusSpec:
-            serviceMonitorSelector:
-              matchLabels: null
-            ruleSelector:
-              matchLabels: null
-            podMonitorSelector:
-              matchLabels: null
+            serviceMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
             externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
@@ -455,7 +452,7 @@ spec:
         kubeProxy:
           enabled: false
     repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 63.1.0
+    targetRevision: 62.7.0
   syncPolicy:
     automated:
       prune: true
