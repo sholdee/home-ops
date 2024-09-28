@@ -353,12 +353,6 @@ spec:
           enabled: false
         prometheus:
           prometheusSpec:
-            podMonitorSelector: &selector
-              matchLabels: ~
-            probeSelector: *selector
-            ruleSelector: *selector
-            scrapeConfigSelector: *selector
-            serviceMonitorSelector: *selector
             externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
