@@ -354,7 +354,7 @@ spec:
         prometheus:
           prometheusSpec:
             podMonitorSelector: &selector
-              matchLabels: null
+              matchLabels: ~
             probeSelector: *selector
             ruleSelector: *selector
             scrapeConfigSelector: *selector
