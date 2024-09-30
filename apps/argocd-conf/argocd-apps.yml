@@ -76,7 +76,7 @@ spec:
                clusters:
                  - "*"
     repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 7.6.6
+    targetRevision: 7.6.7
   syncPolicy:
     automated:
       prune: true
