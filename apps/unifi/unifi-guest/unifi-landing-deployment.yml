@@ -16,7 +16,7 @@ spec:
     spec:
       initContainers:
       - name: unifi-landing-conf-init
-        image: busybox:1.36.1
+        image: busybox:1.37.0
         command: ["sh", "-c", "cp /home/unifi-landing-secret/unifi-landing.conf /home/unifi-landing-config/default.conf;chmod 644 /home/unifi-landing-config/default.conf"]
         volumeMounts:
           - mountPath: /home/unifi-landing-config
