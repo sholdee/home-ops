@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: portainer
-        image: portainer/portainer-ce:2.21.2
+        image: portainer/portainer-ce:2.22.0
         ports:
         - containerPort: 9443 #web gui
           name: https
