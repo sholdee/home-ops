@@ -104,7 +104,7 @@ spec:
           servicemonitor:
             enabled: true
     repoURL: https://charts.jetstack.io
-    targetRevision: v1.15.3
+    targetRevision: v1.16.0
   syncPolicy:
     automated:
       prune: true
