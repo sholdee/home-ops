@@ -25,7 +25,7 @@ spec:
             name: unifi-landing-secret
       containers:
       - name: unifi-landing
-        image: nginx:1.27.1
+        image: nginx:1.27.2
         ports:
         - containerPort: 80
           protocol: TCP
