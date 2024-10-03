@@ -44,7 +44,7 @@ spec:
             name: mosquitto-pass-tmp
       containers:
       - name: mosquitto
-        image: eclipse-mosquitto:2.0.18
+        image: eclipse-mosquitto:2.0.19
         ports:
         - containerPort: 1883
           name: mqtt
