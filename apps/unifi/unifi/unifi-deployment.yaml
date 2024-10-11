@@ -34,7 +34,7 @@ spec:
                       - k3s-worker-1
       containers:
       - name: unifi
-        image: ghcr.io/goofball222/unifi:8.4@sha256:ea9dffaf9519c5bb7180d652057d9b33fb265d26155e3cfa6d475701b7192428
+        image: ghcr.io/goofball222/unifi:8.4@sha256:05d8f7f539f4989f4285d083d5da585ad5372062aeddc934ace07355ede3c396
         env:
           - name: DB_MONGO_LOCAL
             value: "false"
