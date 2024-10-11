@@ -64,7 +64,7 @@ data:
             widget:
                 type: portainer
                 url: {{HOMEPAGE_VAR_PORTAINER_URL}}
-                env: 14
+                env: 16
                 key: {{HOMEPAGE_VAR_PORTAINER_API_KEY}}
     - Network:
         - UniFi:
