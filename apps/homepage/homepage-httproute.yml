@@ -40,5 +40,6 @@ spec:
         value: /
     backendRefs:
     - name: homepage
+      namespace: homepage
       port: 3000
       kind: Service
