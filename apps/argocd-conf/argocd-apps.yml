@@ -188,6 +188,8 @@ spec:
             trustCRDsExist: true
         dashboards:
           enabled: true
+        gatewayAPI:
+          enabled: true
     repoURL: https://helm.cilium.io/
     targetRevision: 1.16.2
   syncPolicy:
