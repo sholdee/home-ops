@@ -103,6 +103,10 @@ spec:
         prometheus:
           servicemonitor:
             enabled: true
+        config:
+          apiVersion: controller.config.cert-manager.io/v1alpha1
+          kind: ControllerConfiguration
+          enableGatewayAPI: true
     repoURL: https://charts.jetstack.io
     targetRevision: v1.16.1
   syncPolicy:
