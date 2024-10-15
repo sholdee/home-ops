@@ -265,7 +265,7 @@ spec:
             internal:
               loadBalancerIP: "192.168.77.20"
           extraArgs:
-            default-ssl-certificate: "ingress-nginx/wildcard-cert"
+            default-ssl-certificate: "default/mgmt-wildcard"
           metrics:
             enabled: true
             serviceMonitor:
