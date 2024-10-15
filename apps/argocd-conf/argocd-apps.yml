@@ -492,6 +492,12 @@ spec:
   project: k3s
   source:
     chart: kubernetes-dashboard
+    helm:
+      valuesObject:
+        kong:
+          proxy:
+            http:
+              enabled: true
     repoURL: https://kubernetes.github.io/dashboard
     targetRevision: 7.8.0
   syncPolicy:
