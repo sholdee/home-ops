@@ -673,8 +673,8 @@ spec:
         additionalArguments:
           - --serversTransport.insecureSkipVerify=true
         providers:
-          kubernetesCRD:
-            enabled: false
+          kubernetesGateway:
+            experimentalChannel: true
           kubernetesIngress:
             publishedService:
               enabled: true
