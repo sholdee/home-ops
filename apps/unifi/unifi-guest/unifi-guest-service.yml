@@ -10,8 +10,11 @@ spec:
   selector:
     app: unifi
   ports:
-  - protocol: TCP
-    port: 8843
+  - port: 8843
+    protocol: TCP
     name: guestportaltls
+  - port: 8880
+    protocol: TCP
+    name: guestportalhttp
   type: ClusterIP
   clusterIP: None

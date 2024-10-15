@@ -1,0 +1,49 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: external-gateway
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  gatewayClassName: cilium
+  infrastructure:
+    annotations:
+      io.cilium/lb-ipam-ips: 192.168.77.31
+  listeners:
+  - name: unifi-guest-http
+    hostname: "unifi.guest.sholdee.net"
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: unifi-guest-https
+    hostname: "unifi.guest.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: unifi-guest
+  - name: kromgo-http
+    hostname: "kromgo.sholdee.net"
+    protocol: HTTP
+    port: 80
+    allowedRoutes:
+      namespaces:
+        from: All
+  - name: kromgo-https
+    hostname: "kromgo.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: kromgo
