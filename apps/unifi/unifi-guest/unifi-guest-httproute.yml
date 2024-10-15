@@ -11,15 +11,7 @@ spec:
   hostnames:
   - "unifi.guest.sholdee.net"
   rules:
-  - matches:
-      - path:
-          type: PathPrefix
-          value: /landing
-    backendRefs:
-      - name: unifi-landing
-        port: 80
-        kind: Service
   - backendRefs:
-    - name: unifi-guest
-      port: 8843
+    - name: unifi-landing
+      port: 80
       kind: Service
