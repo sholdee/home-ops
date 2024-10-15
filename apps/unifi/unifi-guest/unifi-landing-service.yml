@@ -3,9 +3,6 @@ kind: Service
 metadata:
   name: unifi-landing
   namespace: unifi
-  annotations:
-    traefik.ingress.kubernetes.io/service.passhostheader: "true"
-    traefik.ingress.kubernetes.io/service.serversscheme: http
 spec:
   selector:
     app: unifi-landing

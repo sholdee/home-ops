@@ -3,9 +3,6 @@ kind: Service
 metadata:
   name: unifi-guest
   namespace: unifi
-  annotations:
-    traefik.ingress.kubernetes.io/service.passhostheader: "true"
-    traefik.ingress.kubernetes.io/service.serversscheme: https
 spec:
   selector:
     app: unifi
