@@ -33,4 +33,4 @@ spec:
   - backendRefs:
     - name: adguard-http
       namespace: adguard
-      port: http
+      port: 80
