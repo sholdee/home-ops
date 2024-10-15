@@ -17,4 +17,5 @@ spec:
     protocol: TCP
     targetPort: 8000
     name: metrics
+  sessionAffinity: ClientIP
   type: ClusterIP
