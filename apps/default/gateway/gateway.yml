@@ -22,6 +22,7 @@ spec:
       namespaces:
         from: All
     tls:
+      mode: Terminate
       certificateRefs:
       - name: wildcard-cert
         kind: Secret
