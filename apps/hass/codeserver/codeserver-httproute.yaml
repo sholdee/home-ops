@@ -1,0 +1,36 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: codeserver
+  namespace: hass
+spec:
+  parentRefs:
+  - name: mgmt-gateway
+    namespace: default
+    sectionName: http
+  hostnames:
+  - "codeserver.mgmt.sholdee.net"
+  rules:
+    - filters:
+        - requestRedirect:
+            scheme: https
+            statusCode: 301
+          type: RequestRedirect
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: codeserver-https
+  namespace: hass
+spec:
+  parentRefs:
+  - name: mgmt-gateway
+    namespace: default
+    sectionName: https
+  hostnames:
+  - "codeserver.mgmt.sholdee.net"
+  rules:
+  - backendRefs:
+    - name: codeserver
+      namespace: hass
+      port: 8080
