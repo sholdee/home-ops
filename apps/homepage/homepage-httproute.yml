@@ -11,10 +11,11 @@ spec:
   hostnames:
   - "homepage.mgmt.sholdee.net"
   rules:
-  - backendRefs:
-    - name: homepage
-      namespace: homepage
-      port: 3000
+    - filters:
+        - requestRedirect:
+            scheme: https
+            statusCode: 301
+          type: RequestRedirect
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
