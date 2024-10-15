@@ -18,6 +18,11 @@ spec:
     allowedRoutes:
       namespaces:
         from: All
+    filters:
+    - type: RequestRedirect
+      requestRedirect:
+        scheme: https
+        statusCode: 301
   - name: https
     hostname: "*.mgmt.sholdee.net"
     protocol: HTTPS
