@@ -1,0 +1,36 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portainer
+  namespace: hass
+spec:
+  parentRefs:
+  - name: mgmt-gateway
+    namespace: default
+    sectionName: http
+  hostnames:
+  - "portainer.mgmt.sholdee.net"
+  rules:
+    - filters:
+        - requestRedirect:
+            scheme: https
+            statusCode: 301
+          type: RequestRedirect
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portainer-https
+  namespace: hass
+spec:
+  parentRefs:
+  - name: mgmt-gateway
+    namespace: default
+    sectionName: https
+  hostnames:
+  - "portainer.mgmt.sholdee.net"
+  rules:
+  - backendRefs:
+    - name: portainer
+      namespace: hass
+      port: 9000
