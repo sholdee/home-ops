@@ -19,11 +19,7 @@ spec:
       - name: unifi-landing
         port: 80
         kind: Service
-  - matches:
-      - path:
-          type: PathPrefix
-          value: /
-    backendRefs:
-      - name: unifi-guest
-        port: 8880
-        kind: Service
+  - backendRefs:
+    - name: unifi-guest
+      port: 8880
+      kind: Service
