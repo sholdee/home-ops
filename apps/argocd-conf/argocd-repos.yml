@@ -91,19 +91,6 @@ type: Opaque
 ---
 apiVersion: v1
 stringData:
-  name: traefik
-  project: k3s
-  type: helm
-  url: https://helm.traefik.io/traefik
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-traefik
-type: Opaque
----
-apiVersion: v1
-stringData:
   name: vmware-tanzu
   project: k3s
   type: helm

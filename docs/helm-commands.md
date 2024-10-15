@@ -4,7 +4,6 @@
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-helm repo add traefik https://helm.traefik.io/traefik
 helm repo add longhorn https://charts.longhorn.io
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
 helm repo add jetstack https://charts.jetstack.io # cert-manager
@@ -26,8 +25,6 @@ helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ing
 helm upgrade --install kubernetes-dashboard kubernetes-dashboard/kubernetes-dashboard --create-namespace --namespace kubernetes-dashboard
 
 helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace --version v1.13.3 --set installCRDs=true --set extraArgs='{--dns01-recursive-nameservers-only=true,--dns01-recursive-nameservers=1.1.1.1:53\,1.0.0.1:53}'
-
-helm upgrade --install traefik traefik/traefik --create-namespace --namespace=traefik --values=traefik-values.yml
 ```
 
 ## How to Install Helm and Arkade
