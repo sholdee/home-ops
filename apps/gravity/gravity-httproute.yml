@@ -33,4 +33,4 @@ spec:
   - backendRefs:
     - name: gravity-http
       namespace: gravity
-      port: http
+      port: 8008
