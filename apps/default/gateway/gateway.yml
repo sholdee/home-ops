@@ -3,12 +3,13 @@ kind: Gateway
 metadata:
   name: mgmt-gateway
   namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
 spec:
   gatewayClassName: cilium
   infrastructure:
     annotations:
       io.cilium/lb-ipam-ips: 192.168.77.30
-      cert-manager.io/cluster-issuer: cloudflare
   listeners:
   - name: http
     hostname: "*.mgmt.sholdee.net"
