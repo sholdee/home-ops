@@ -15,14 +15,14 @@ spec:
     hostname: "*.mgmt.sholdee.net"
     allowedRoutes:
       namespaces:
-        from: all
+        from: All
   - name: https
     protocol: HTTPS
     port: 443
     hostname: "*.mgmt.sholdee.net"
     allowedRoutes:
       namespaces:
-        from: all
+        from: All
     tls:
       mode: Terminate
       certificateRefs:
