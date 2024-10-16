@@ -81,7 +81,7 @@ spec:
             mountPath: /usr/lib/unifi/logs
             subPath: logs
           - name: certs
-            mountPath: /usr/lib/unifi/cert/fullchain.pem
+            mountPath: /usr/lib/unifi/cert/cert.pem
             subPath: tls.crt
           - name: certs
             mountPath: /usr/lib/unifi/cert/privkey.pem
