@@ -19,7 +19,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TLSRoute
 metadata:
-  name: argocd-api
+  name: argocd-external
   namespace: argocd
 spec:
   parentRefs:
@@ -29,11 +29,7 @@ spec:
   hostnames:
   - "argocd.sholdee.net"
   rules:
-  - matches:
-    - path:
-        type: Exact
-        value: /api/webhook
-    backendRefs:
+  - backendRefs:
     - name: argocd-server
       namespace: argocd
       port: 443
