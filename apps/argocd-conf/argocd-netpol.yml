@@ -1,34 +1,30 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: argocd
+  name: argocd-server
   namespace: argocd
 spec:
   endpointSelector:
     matchLabels:
       app.kubernetes.io/name: argocd-server
   ingress:
-  - fromEntities:
-    - reserved:ingress
-    toPorts:
-    - ports:
-      - port: "443"
-        protocol: TCP
-  - fromCIDR:
-    - 10.0.0.0/8
-    - 172.16.0.0/12
-    - 192.168.0.0/16
-    toPorts:
-    - ports:
-      - port: "443"
-        protocol: TCP
-  - fromEntities:
-    - all
-    toPorts:
-    - ports:
-      - port: "443"
-        protocol: TCP
-      rules:
-        http:
-        - method: POST
-          path: "/api/webhook"
+    - fromEndpoints:
+        - {}
+    - fromEndpoints:
+        - matchLabels:
+            gateway.networking.k8s.io/gateway-name: mgmt-gateway
+            io.kubernetes.pod.namespace: default
+      toPorts:
+        - ports:
+            - port: "443"
+    - fromEndpoints:
+        - matchLabels:
+            gateway.networking.k8s.io/gateway-name: external-gateway
+            io.kubernetes.pod.namespace: default
+      toPorts:
+        - ports:
+            - port: "443"
+          rules:
+            http:
+            - method: POST
+              path: "/api/webhook"
