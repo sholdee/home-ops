@@ -80,6 +80,12 @@ spec:
           - name: unifi-data
             mountPath: /usr/lib/unifi/logs
             subPath: logs
+          - name: certs
+            mountPath: /usr/lib/unifi/cert/fullchain.pem
+            subPath: tls.crt
+          - name: certs
+            mountPath: /usr/lib/unifi/cert/privkey.pem
+            subPath: tls.key
         resources:
           requests:
             memory: 1200Mi
@@ -99,3 +105,6 @@ spec:
         hostPath:
           path: /etc/localtime
           type: File
+      - name: certs
+        secret:
+          secretName: unifi-cert
