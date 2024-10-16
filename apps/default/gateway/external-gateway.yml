@@ -33,3 +33,11 @@ spec:
       mode: Terminate
       certificateRefs:
       - name: kromgo
+  - name: tls
+    protocol: TLS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Passthrough

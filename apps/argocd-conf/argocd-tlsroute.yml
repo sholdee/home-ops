@@ -15,3 +15,25 @@ spec:
     - name: argocd-server
       namespace: argocd
       port: 443
+---
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: argocd-api
+  namespace: argocd
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: default
+    sectionName: tls
+  hostnames:
+  - "argocd.sholdee.net"
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /api/webhook
+    backendRefs:
+    - name: argocd-server
+      namespace: argocd
+      port: 443
