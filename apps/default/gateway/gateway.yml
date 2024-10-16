@@ -11,15 +11,6 @@ spec:
     annotations:
       io.cilium/lb-ipam-ips: 192.168.77.30
   listeners:
-  - name: unifi-tls
-    hostname: "unifi.mgmt.sholdee.net"
-    protocol: TLS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Passthrough
   - name: http
     hostname: "*.mgmt.sholdee.net"
     protocol: HTTP
@@ -39,6 +30,15 @@ spec:
       certificateRefs:
       - name: mgmt-wildcard
   - name: tls
+    protocol: TLS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Passthrough
+  - name: unifi-tls
+    hostname: "unifi.mgmt.sholdee.net"
     protocol: TLS
     port: 443
     allowedRoutes:
