@@ -7,7 +7,7 @@ spec:
   parentRefs:
   - name: mgmt-gateway
     namespace: default
-    sectionName: tls
+    sectionName: unifi-tls
   hostnames:
   - "unifi.mgmt.sholdee.net"
   rules:
