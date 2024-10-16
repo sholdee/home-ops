@@ -66,6 +66,13 @@ spec:
       valuesObject:
         global:
           domain: argocd.sholdee.net
+        server:
+          certificate:
+            enabled: true
+            issuer:
+              group: "cert-manager.io"
+              kind: "ClusterIssuer"
+              name: "cloudflare"
         configs:
           cm:
             resource.exclusions: |
