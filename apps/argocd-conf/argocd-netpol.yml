@@ -8,6 +8,12 @@ spec:
     matchLabels:
       app.kubernetes.io/name: argocd-server
   ingress:
+  - fromEntities:
+    - reserved:ingress
+    toPorts:
+    - ports:
+      - port: "443"
+        protocol: TCP
   - fromCIDR:
     - 10.0.0.0/8
     - 172.16.0.0/12
