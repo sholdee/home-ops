@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TLSRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+  - name: mgmt-gateway
+    namespace: default
+    sectionName: tls
+  hostnames:
+  - "argocd.sholdee.net"
+  rules:
+  - backendRefs:
+    - name: argocd-server
+      namespace: argocd
+      port: 443
