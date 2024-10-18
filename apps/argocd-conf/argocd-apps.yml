@@ -570,7 +570,7 @@ spec:
           enabled: false
           type: "k3s"
     repoURL: https://charts.longhorn.io
-    targetRevision: 1.7.1
+    targetRevision: 1.7.2
   syncPolicy:
     automated:
       prune: true
