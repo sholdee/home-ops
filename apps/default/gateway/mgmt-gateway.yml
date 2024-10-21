@@ -39,7 +39,7 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: mgmt-wildcard
+      - name: longhorn-cert
       frontendValidation:
         caCertificateRefs:
         - kind: ConfigMap
@@ -55,7 +55,7 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: mgmt-wildcard
+      - name: hubble-cert
       frontendValidation:
         caCertificateRefs:
         - kind: ConfigMap
