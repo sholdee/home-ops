@@ -29,7 +29,40 @@ spec:
       mode: Terminate
       certificateRefs:
       - name: mgmt-wildcard
-  - name: tls
+  - name: longhorn-https
+    hostname: "longhorn.mgmt.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: mgmt-wildcard
+      frontendValidation:
+        caCertificateRefs:
+        - kind: ConfigMap
+          group: ""
+          name: mgmt-gateway-mtls-ca
+  - name: hubble-https
+    hostname: "hubble.mgmt.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: mgmt-wildcard
+      frontendValidation:
+        caCertificateRefs:
+        - kind: ConfigMap
+          group: ""
+          name: mgmt-gateway-mtls-ca
+  - name: unifi-tls
+    hostname: "unifi.mgmt.sholdee.net"
     protocol: TLS
     port: 443
     allowedRoutes:
@@ -37,8 +70,7 @@ spec:
         from: All
     tls:
       mode: Passthrough
-  - name: unifi-tls
-    hostname: "unifi.mgmt.sholdee.net"
+  - name: tls
     protocol: TLS
     port: 443
     allowedRoutes:
