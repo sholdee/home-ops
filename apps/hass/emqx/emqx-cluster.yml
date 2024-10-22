@@ -7,7 +7,7 @@ spec:
   coreTemplate:
     spec:
       volumeClaimTemplates:
-        storageClassName: longhorn
+        storageClassName: longhorn-noreplicas
         resources:
           requests:
             storage: 20Mi
