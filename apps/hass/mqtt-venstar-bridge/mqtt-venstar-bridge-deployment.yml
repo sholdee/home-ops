@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mqtt-venstar-bridge
+  namespace: hass
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  selector:
+    matchLabels:
+      app: mqtt-venstar-bridge
+  template:
+    metadata:
+      labels:
+        app: mqtt-venstar-bridge
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      - name: mqtt-venstar-bridge
+        image: ghcr.io/terafin/mqtt-venstar-bridge:latest@sha256:04cec258c3046c49fbd47cc415385574de17adcd14403a074ca9378a4a75951d
+        env:
+          - name: TZ
+            value: America/Chicago
+          - name: LOGGING_NAME
+            value: mqtt-venstar-bridge
+          - name: TOPIC_PREFIX
+            value: home/nodes/venstar
+          - name: VENSTAR_HOST
+            value: "192.168.99.251"
+          - name: VENSTAR_QUERY_INTERVAL
+            value: "7"
+          - name: MQTT_HOST
+            value: mqtt://emqx-listeners 
+          - name: MQTT_USER
+            value: admin
+          - name: MQTT_PASS
+            valueFrom:
+              secretKeyRef:
+                name: mqtt-venstar-bridge
+                key: pass
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+        volumeMounts:
+        - mountPath: /.npm
+          name: npm-cache
+      volumes:
+      - emptyDir: {}
+        name: npm-cache
