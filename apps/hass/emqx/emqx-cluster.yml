@@ -1,0 +1,23 @@
+apiVersion: apps.emqx.io/v2beta1
+kind: EMQX
+metadata:
+  name: emqx
+spec:
+  image: emqx:5.8.1
+  coreTemplate:
+    spec:
+      volumeClaimTemplates:
+        storageClassName: longhorn
+        resources:
+          requests:
+            storage: 20Mi
+        accessModes:
+          - ReadWriteOnce
+      replicas: 3
+  listenersServiceTemplate:
+    spec:
+      type: LoadBalancer
+      loadBalancerIP: 192.168.77.24
+  dashboardServiceTemplate:
+    spec:
+      type: ClusterIP
