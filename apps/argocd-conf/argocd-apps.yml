@@ -74,6 +74,8 @@ spec:
               kind: "ClusterIssuer"
               name: "cloudflare"
         configs:
+          secret:
+            githubSecret: "$argocd-webhook-secret:argocd.webhook.secret"
           cm:
             resource.exclusions: |
              - apiGroups:
