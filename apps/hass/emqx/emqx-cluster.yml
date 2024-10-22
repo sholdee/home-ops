@@ -10,7 +10,7 @@ spec:
         storageClassName: longhorn-noreplicas
         resources:
           requests:
-            storage: 20Mi
+            storage: 1Gi
         accessModes:
           - ReadWriteOnce
       replicas: 3
