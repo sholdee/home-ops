@@ -237,6 +237,28 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: emqx-operator
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+spec:
+  destination:
+    name: in-cluster
+    namespace: emqx-operator-system
+  project: k3s
+  source:
+    chart: emqx-operator
+    repoURL: https://repos.emqx.io/charts
+    targetRevision: 2.2.26
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: etcd-operator
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
