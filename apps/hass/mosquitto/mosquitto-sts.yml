@@ -70,7 +70,14 @@ spec:
         livenessProbe: &probe
           tcpSocket:
             port: mqtt
+          initialDelaySeconds: 10
         readinessProbe: *probe
+        resources:
+          requests:
+            memory: 10Mi
+            cpu: 2m
+          limits:
+            memory: 100Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
