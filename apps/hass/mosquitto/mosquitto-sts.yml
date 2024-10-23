@@ -32,8 +32,8 @@ spec:
           cp /tmp/mosquitto/config/* /mosquitto/config/;
           cp /tmp/mosquitto/secret/password.txt /mosquitto/config/;
           sed -i "s/BRIDGE_PASS/$BRIDGE_PASS/" /mosquitto/config/mosquitto-1.conf;
-          chmod 400 /mosquitto/config/password.txt;
           chown 65534:65534 /mosquitto/config/password.txt;
+          chmod 400 /mosquitto/config/password.txt;
         env:
         - name: BRIDGE_PASS
           valueFrom:
