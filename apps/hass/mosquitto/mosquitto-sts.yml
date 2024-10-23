@@ -23,6 +23,34 @@ spec:
         runAsUser: 65534
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+      - name: mosquitto-init
+        image: busybox:1.37.0
+        command: ['sh', '-c']
+        args:
+        - |
+          cp /tmp/mosquitto/config/* /mosquitto/config/;
+          sed -i "s/BRIDGE_PASS/$BRIDGE_PASS/" /mosquitto/config/mosquitto-1.conf;
+        env:
+        - name: BRIDGE_PASS
+          valueFrom:
+            secretKeyRef:
+              name: mosquitto-secret
+              key: password
+        securityContext:
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65532
+          runAsGroup: 65532
+          allowPrivilegeEscalation: false
+        volumeMounts:
+        - name: config
+          mountPath: /mosquitto/config
+        - name: configmap
+          mountPath: /tmp/mosquitto/config
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
@@ -44,13 +72,16 @@ spec:
         - name: config
           mountPath: /mosquitto/config
         - name: secret
-          mountPath: /mosquitto/secret
+          mountPath: /mosquitto/config/password.txt
+          subPath: password.txt
         - name: mosquitto-data
           mountPath: /mosquitto/data
       volumes:
-      - name: config
+      - name: configmap
         configMap:
           name: mosquitto-config
+      - name: config
+        emptyDir: {}
       - name: secret
         secret:
           secretName: mosquitto-secret

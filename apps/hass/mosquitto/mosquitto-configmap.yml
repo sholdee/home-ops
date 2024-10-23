@@ -7,17 +7,19 @@ data:
   mosquitto-0.conf: |
     listener 1883
     allow_anonymous false
-    password_file /mosquitto/secret/password.txt
+    password_file /mosquitto/config/password.txt
     persistence true
     persistence_location /mosquitto/data/
 
   mosquitto-1.conf: |
     listener 1883
     allow_anonymous false
-    password_file /mosquitto/secret/password.txt
+    password_file /mosquitto/config/password.txt
     persistence true
     persistence_location /mosquitto/data/
     
     connection broker0
     address mosquitto-0.mosquitto
     topic # both 0
+    bridge_identity admin
+    bridge_password BRIDGE_PASS
