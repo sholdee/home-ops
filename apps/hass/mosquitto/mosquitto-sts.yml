@@ -30,7 +30,7 @@ spec:
         args:
         - |
           cp /tmp/mosquitto/config/* /mosquitto/config/;
-          cp /tmp/mosquitto/secret/password.txt /mosquitto/config/;
+          cp /tmp/mosquitto/secret/password.txt /mosquitto/config/password.txt;
           sed -i "s/BRIDGE_PASS/$BRIDGE_PASS/" /mosquitto/config/mosquitto-1.conf;
           chown 65534:65534 /mosquitto/config/password.txt;
           chmod 400 /mosquitto/config/password.txt;
@@ -46,8 +46,8 @@ spec:
             - ALL
           readOnlyRootFilesystem: true
           runAsNonRoot: true
-          runAsUser: 65532
-          runAsGroup: 65532
+          runAsUser: 65534
+          runAsGroup: 65534
           allowPrivilegeEscalation: false
         volumeMounts:
         - name: config
