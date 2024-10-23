@@ -67,6 +67,10 @@ spec:
           - containerPort: 1883
             name: mqtt
             protocol: TCP
+        livenessProbe: &probe
+          tcpSocket:
+            port: mqtt
+        readinessProbe: *probe
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
