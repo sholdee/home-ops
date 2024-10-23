@@ -28,7 +28,6 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /mosquitto/config
-          subPath: $(hostname).conf
         - name: mosquitto-data
           mountPath: /mosquitto/data
       containers:
@@ -51,7 +50,6 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /mosquitto/config
-          subPath: $(hostname).conf
         - name: mosquitto-data
           mountPath: /mosquitto/data
       volumes:
