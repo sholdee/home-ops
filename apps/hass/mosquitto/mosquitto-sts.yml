@@ -45,7 +45,6 @@ spec:
           mountPath: /mosquitto/config
         - name: secret
           mountPath: /mosquitto/secret
-          subPath: password.txt
         - name: mosquitto-data
           mountPath: /mosquitto/data
       volumes:
