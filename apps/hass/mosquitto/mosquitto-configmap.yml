@@ -6,13 +6,15 @@ metadata:
 data:
   mosquitto-0.conf: |
     listener 1883
-    allow_anonymous true
+    allow_anonymous false
+    password_file /mosquitto/secret/password.txt
     persistence true
     persistence_location /mosquitto/data/
 
   mosquitto-1.conf: |
     listener 1883
-    allow_anonymous true
+    allow_anonymous false
+    password_file /mosquitto/secret/password.txt
     persistence true
     persistence_location /mosquitto/data/
     
