@@ -70,7 +70,6 @@ spec:
         livenessProbe: &probe
           tcpSocket:
             port: mqtt
-          initialDelaySeconds: 10
         readinessProbe: *probe
         resources:
           requests:
