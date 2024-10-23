@@ -21,15 +21,6 @@ spec:
         runAsUser: 65534
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-      - name: debug-init
-        image: busybox
-        command: ['sh', '-c', 'sleep 3600']
-        volumeMounts:
-        - name: config
-          mountPath: /mosquitto/config
-        - name: mosquitto-data
-          mountPath: /mosquitto/data
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
