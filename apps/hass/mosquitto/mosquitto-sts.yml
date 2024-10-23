@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mosquitto
+  namespace: hass
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: mosquitto
+  serviceName: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: mosquitto
+        image: eclipse-mosquitto:2.0.18
+        args:
+        - sh
+        - -c
+        - exec mosquitto -c "/mosquitto/config/$(hostname).conf"
+        ports:
+          - containerPort: 1883
+            name: mqtt
+            protocol: TCP
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - name: config
+          mountPath: /mosquitto/config
+          subPath: $(hostname).conf
+        - name: mosquitto-data
+          mountPath: /mosquitto/data
+  volumeClaimTemplates:
+  - metadata:
+      name: mosquitto-data
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 1Gi
+  volumes:
+  - name: config
+    configMap:
+      name: mosquitto-config
