@@ -44,6 +44,10 @@ spec:
           subPath: $(hostname).conf
         - name: mosquitto-data
           mountPath: /mosquitto/data
+      volumes:
+      - name: config
+        configMap:
+          name: mosquitto-config
   volumeClaimTemplates:
   - metadata:
       name: mosquitto-data
@@ -52,7 +56,3 @@ spec:
       resources:
         requests:
           storage: 1Gi
-  volumes:
-  - name: config
-    configMap:
-      name: mosquitto-config
