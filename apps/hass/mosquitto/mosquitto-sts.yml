@@ -30,7 +30,10 @@ spec:
         args:
         - |
           cp /tmp/mosquitto/config/* /mosquitto/config/;
+          cp /tmp/mosquitto/secret/password.txt /mosquitto/config/;
           sed -i "s/BRIDGE_PASS/$BRIDGE_PASS/" /mosquitto/config/mosquitto-1.conf;
+          chmod 400 /mosquitto/config/password.txt;
+          chown 65534:65534 /mosquitto/config/password.txt;
         env:
         - name: BRIDGE_PASS
           valueFrom:
@@ -51,6 +54,8 @@ spec:
           mountPath: /mosquitto/config
         - name: configmap
           mountPath: /tmp/mosquitto/config
+        - name: secret
+          mountPath: /tmp/mosquitto/secret
       containers:
       - name: mosquitto
         image: eclipse-mosquitto:2.0.18
@@ -71,9 +76,6 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /mosquitto/config
-        - name: secret
-          mountPath: /mosquitto/config/password.txt
-          subPath: password.txt
         - name: mosquitto-data
           mountPath: /mosquitto/data
       volumes:
