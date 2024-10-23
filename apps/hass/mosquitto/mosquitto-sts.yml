@@ -54,7 +54,7 @@ spec:
           name: mosquitto-config
       - name: secret
         secret:
-          name: mosquitto-secret
+          secretName: mosquitto-secret
   volumeClaimTemplates:
   - metadata:
       name: mosquitto-data
