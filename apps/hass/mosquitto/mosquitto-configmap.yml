@@ -19,5 +19,7 @@ data:
     persistence_location /mosquitto/data/
     
     connection broker0
-    address admin:BRIDGE_PASS@mosquitto-0.mosquitto:1883
+    address mosquitto-0.mosquitto
     topic # both 0
+    remote_username admin
+    remote_password BRIDGE_PASS
