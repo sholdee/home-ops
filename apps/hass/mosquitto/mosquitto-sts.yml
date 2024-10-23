@@ -58,7 +58,7 @@ spec:
           mountPath: /tmp/mosquitto/secret
       containers:
       - name: mosquitto
-        image: eclipse-mosquitto:2.0.18
+        image: eclipse-mosquitto:2.0.20
         args:
         - sh
         - -c
