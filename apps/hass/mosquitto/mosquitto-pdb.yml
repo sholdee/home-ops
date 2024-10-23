@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mosquitto-pdb
+  namespace: hass
+spec:
+  selector:
+    matchLabels:
+      app: mosquitto
+  minAvailable: 1
