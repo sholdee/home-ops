@@ -23,6 +23,13 @@ spec:
         runAsUser: 65534
         seccompProfile:
           type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: mosquitto
       initContainers:
       - name: mosquitto-init
         image: busybox:1.37.0
@@ -70,6 +77,10 @@ spec:
         livenessProbe: &probe
           tcpSocket:
             port: mqtt
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 2
         readinessProbe: *probe
         resources:
           requests:
