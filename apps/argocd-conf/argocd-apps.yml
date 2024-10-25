@@ -388,10 +388,9 @@ spec:
                 memory: 2Gi
             affinity:
               nodeAffinity:
-                preferredDuringSchedulingIgnoredDuringExecution:
-                  - weight: 1
-                    preference:
-                      matchExpressions:
+                requiredDuringSchedulingIgnoredDuringExecution:
+                  nodeSelectorTerms:
+                    - matchExpressions:
                         - key: node-role.kubernetes.io/control-plane
                           operator: DoesNotExist
         alertmanager:
