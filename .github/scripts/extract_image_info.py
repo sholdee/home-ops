@@ -30,8 +30,8 @@ def main():
                         version = match.group(1).strip()
                         
                         with open(os.environ['GITHUB_ENV'], 'a') as f:
-                            f.write(f"IMAGE=mongo\n")
-                            f.write(f"TAG={version}\n")
+                            f.write(f"IMAGE=mongodb/mongodb-community-server\n")
+                            f.write(f"TAG={version}-ubi8\n")
                             f.write(f"DIGEST=\n")
                         break  # Exit after finding the new version line
             else:
