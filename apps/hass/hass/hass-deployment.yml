@@ -15,6 +15,14 @@ spec:
       labels:
         app: hass
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
       - name: hass
         image: ghcr.io/home-assistant/home-assistant:2024.10.3
@@ -22,7 +30,7 @@ spec:
           - name: DISABLE_JEMALLOC
             value: 'true'
         ports:
-        - containerPort: 8123 #web gui
+        - containerPort: 8123
           name: http
           protocol: TCP
         volumeMounts:
@@ -38,7 +46,7 @@ spec:
           httpGet:
             path: /manifest.json
             port: http
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
         readinessProbe: *probe
       volumes:
       - name: hass-data
