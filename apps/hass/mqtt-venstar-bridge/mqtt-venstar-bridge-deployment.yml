@@ -41,8 +41,8 @@ spec:
           - name: MQTT_PASS
             valueFrom:
               secretKeyRef:
-                name: mqtt-venstar-bridge
-                key: pass
+                name: mosquitto-secret
+                key: password
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
