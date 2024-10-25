@@ -27,11 +27,8 @@ spec:
             - weight: 1
               preference:
                 matchExpressions:
-                  - key: kubernetes.io/hostname
-                    operator: In
-                    values:
-                      - k3s-worker-0
-                      - k3s-worker-1
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
       containers:
       - name: unifi
         image: ghcr.io/goofball222/unifi:8.5@sha256:0ff7de98fe4fa19c1737d049db342447c1d9ca79c4db924815286a1aa85dfe89

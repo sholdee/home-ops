@@ -386,6 +386,14 @@ spec:
                 memory: 2Gi
               limits:
                 memory: 2Gi
+            affinity:
+              nodeAffinity:
+                preferredDuringSchedulingIgnoredDuringExecution:
+                  - weight: 1
+                    preference:
+                      matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
         alertmanager:
           alertmanagerSpec:
             useExistingSecret: true
