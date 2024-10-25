@@ -389,10 +389,11 @@ spec:
             affinity:
               nodeAffinity:
                 preferredDuringSchedulingIgnoredDuringExecution:
-                  nodeSelectorTerms:
-                  - matchExpressions:
-                    - key: node-role.kubernetes.io/control-plane
-                      operator: DoesNotExist
+                  - weight: 1
+                    preference:
+                      matchExpressions:
+                        - key: node-role.kubernetes.io/control-plane
+                          operator: DoesNotExist
         alertmanager:
           alertmanagerSpec:
             useExistingSecret: true
