@@ -181,6 +181,7 @@ spec:
   selector:
     matchLabels:
       upgrade.cattle.io/controller: system-upgrade-controller
+  replicas: 3
   template:
     metadata:
       labels:
