@@ -107,9 +107,9 @@ data:
                 url: {{HOMEPAGE_VAR_HOME_ASSISTANT_URL}}
                 key: {{HOMEPAGE_VAR_HOME_ASSISTANT_API_KEY}}
                 custom:
-                  - state: sensor.temp_sensor_lower_air_temperature
+                  - state: sensor.living_room_temp_sensor_lower_living_room_temp_sensor_lower_temperature_air
                     label: Temp
-                  - state: sensor.temp_sensor_lower_humidity
+                  - state: sensor.living_room_temp_sensor_lower_living_room_temp_sensor_lower_humidity_air
                     label: Humidity
                   - state: group.ethan
                     label: Ethan
