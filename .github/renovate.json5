@@ -44,7 +44,8 @@
     {
       "matchDatasources": ["docker"],
       "matchPackagePatterns": ["postgresql"],
-      "allowedVersions": "<17"
+      "allowedVersions": "<17",
+      "schedule": ["on sunday"]
     },
     {
       "matchDatasources": ["docker"],
