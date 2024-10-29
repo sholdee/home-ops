@@ -27,15 +27,15 @@ spec:
           - name: TZ
             value: America/Chicago
           - name: LOGGING_NAME
-            value: mqtt-venstar-bridge
+            value: "mqtt-venstar-bridge"
           - name: TOPIC_PREFIX
-            value: home/nodes/venstar
+            value: "home/nodes/venstar"
           - name: VENSTAR_HOST
             value: "192.168.99.251"
           - name: VENSTAR_QUERY_INTERVAL
             value: "7"
           - name: MQTT_HOST
-            value: mqtt://192.168.77.24
+            value: "mqtt://emqx-listeners"
           - name: MQTT_USER
             valueFrom:
               secretKeyRef:
