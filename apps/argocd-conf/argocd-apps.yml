@@ -89,6 +89,7 @@ spec:
   syncPolicy:
     automated:
       prune: true
+      selfHeal: true
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
@@ -524,31 +525,6 @@ spec:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
     - RespectIgnoreDifferences=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: kured
-spec:
-  destination:
-    name: in-cluster
-    namespace: default
-  project: k3s
-  source:
-    chart: kured
-    helm:
-      releaseName: my-release
-      valuesObject:
-        metrics:
-          create: true
-          namespace: "monitoring"
-    repoURL: https://kubereboot.github.io/charts
-    targetRevision: 5.5.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
