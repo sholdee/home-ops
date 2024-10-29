@@ -37,12 +37,15 @@ spec:
           - name: MQTT_HOST
             value: mqtt://emqx-listeners
           - name: MQTT_USER
-            value: admin
+            valueFrom:
+              secretKeyRef:
+                name: emqx-secret
+                key: EMQX_DASHBOARD__DEFAULT_USERNAME
           - name: MQTT_PASS
             valueFrom:
               secretKeyRef:
-                name: mosquitto-secret
-                key: password
+                name: emqx-secret
+                key: EMQX_DASHBOARD__DEFAULT_PASSWORD
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
