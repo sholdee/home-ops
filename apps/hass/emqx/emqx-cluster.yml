@@ -10,7 +10,7 @@ spec:
         backend = "built_in_database"
         mechanism = "password_based"
         password_hash_algorithm {
-            name = "bcrypt"
+            name = "sha256"
         }
         user_id_type = "username"
         bootstrap_file = "/opt/init-user.json"
