@@ -73,6 +73,15 @@ spec:
               group: "cert-manager.io"
               kind: "ClusterIssuer"
               name: "cloudflare"
+        controller:
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 1
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
         configs:
           secret:
             githubSecret: "$argocd-webhook-secret:argocd.webhook.secret"
