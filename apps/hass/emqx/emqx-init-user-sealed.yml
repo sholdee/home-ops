@@ -1,0 +1,22 @@
+{
+  "kind": "SealedSecret",
+  "apiVersion": "bitnami.com/v1alpha1",
+  "metadata": {
+    "name": "emqx-init-user",
+    "namespace": "hass",
+    "creationTimestamp": null
+  },
+  "spec": {
+    "template": {
+      "metadata": {
+        "name": "emqx-init-user",
+        "namespace": "hass",
+        "creationTimestamp": null
+      },
+      "type": "Opaque"
+    },
+    "encryptedData": {
+      "init-user.json": "AgDGeM35csS4fZB9PXfMTsG1cVevuqrUI5aGhXWkcX8R4p/Ecbgo+l6yV3Nm4H0A1eGN29FzXifgGTh3hDd+8Zy7IgQ6VvhRhpmbHwF0bQhqdqWw34GBVCMTnLoXWLkWRvykptpz6IBjF9vLj0rV2EIkfKj3G7ChJVO7tmY4zDCI6G49fVM6uVs9zpjfuQdD8m3506+Z6G7g3fh50+wExXdw6wFJSXVDBQt5d/qWp6GNFdTVYbosSOBNC48rKndrAZBrXEKS0gpGowD2JS3D2g2UgjmFv2TxH9doPP6jMLKcqNbFPqTN4ObIhWmmOgkDQlJlHjcuvl+hZMOXF84uV2SRXddjaSjEsJUWmlGnBD1+vrNPbDzsH5l0zIusVwglE2boq0BS6ksD5Jm6AQcio9GDUFPSf8gUWWWySRcU2E6rzu8aET7XuWLmFRFEfRxCtxopLYAWtC4XBpntKaGmsGm7wX1mjgGwkrG+WQWsRVTbeXMoQ3OTidAdqtchTb+tlBEoU33XYD9LZGGpkY8Sc5qNSsRDF8LsCldLOaho6hwGR8vBnJ1IkRtZDmcFWtjHqbwnb6nVTi0M4WG3QZm96LW/aehA9y/aVJsvRmrXymNbjjk9vhttdo6swrAanssdFKee8DGSdSAlXUw28kCXOiYlIrILhCs3eIjW5mV28pqWUcZv0g66jugzYz3JhBhUjpqGGwtcTHc2ckLtKehqEyfEVGvYF86hEGBqjSoIKMpaK1HbCEmusDzALEK46B8jAUZyyo/STxbqTHoXi/Ot"
+    }
+  }
+}
