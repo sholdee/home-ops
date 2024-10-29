@@ -35,7 +35,7 @@ spec:
           - name: VENSTAR_QUERY_INTERVAL
             value: "7"
           - name: MQTT_HOST
-            value: mqtt://emqx-listeners.hass
+            value: mqtt://192.168.77.24
           - name: MQTT_USER
             valueFrom:
               secretKeyRef:
