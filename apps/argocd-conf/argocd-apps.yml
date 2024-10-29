@@ -448,6 +448,14 @@ spec:
             storageClassName: longhorn
             accessModes: ["ReadWriteOnce"]
             size: 20Gi
+          affinity:
+            nodeAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 1
+                  preference:
+                    matchExpressions:
+                      - key: node-role.kubernetes.io/control-plane
+                        operator: DoesNotExist
         kubelet:
           enabled: true
           serviceMonitor:
