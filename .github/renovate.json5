@@ -1,106 +1,148 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:base",
-    "docker:enableMajor"
+  $schema: 'https://docs.renovatebot.com/renovate-schema.json',
+  extends: [
+    'config:recommended',
+    'docker:enableMajor',
   ],
-  "commitMessagePrefix": ":arrow_up:",
-  "kubernetes": {
-    "fileMatch": ["apps/.*\\.ya?ml$"]
+  commitMessagePrefix: ':arrow_up:',
+  kubernetes: {
+    fileMatch: [
+      'apps/.*\\.ya?ml$',
+    ],
   },
-  "argocd": {
-    "fileMatch": [
-      "apps/argocd-conf/argocd-apps\\.ya?ml$",
-      "apps/argocd-conf/cilium-preflight\\.ya?ml$"
-    ]
+  argocd: {
+    fileMatch: [
+      'apps/argocd-conf/argocd-apps\\.ya?ml$',
+      'apps/argocd-conf/cilium-preflight\\.ya?ml$',
+    ],
   },
-  "packageRules": [
+  packageRules: [
     {
-      "description": "Separate PRs for cilium",
-      "matchFileNames": [
-        "**/argocd-apps.yml"
+      description: 'Separate PRs for cilium',
+      matchFileNames: [
+        '**/argocd-apps.yml',
       ],
-      "matchManagers": ["argocd"],
-      "matchPackageNames": ["cilium"],
-      "additionalBranchPrefix": "cilium-",
-      "commitMessageSuffix": " [cilium]"
-    },
-    {
-      "description": "Separate PRs for cilium-preflight",
-      "matchFileNames": [
-        "**/cilium-preflight.yml"
+      matchManagers: [
+        'argocd',
       ],
-      "matchManagers": ["argocd"],
-      "matchPackageNames": ["cilium"],
-      "additionalBranchPrefix": "cilium-preflight-",
-      "commitMessageSuffix": " [cilium-preflight]"
+      matchPackageNames: [
+        'cilium',
+      ],
+      additionalBranchPrefix: 'cilium-',
+      commitMessageSuffix: ' [cilium]',
     },
     {
-      "description": ["Custom schedule for reloader"],
-      "matchManagers": ["argocd"],
-      "matchPackageNames": ["reloader"],
-      "schedule": ["on sunday"]
+      description: 'Separate PRs for cilium-preflight',
+      matchFileNames: [
+        '**/cilium-preflight.yml',
+      ],
+      matchManagers: [
+        'argocd',
+      ],
+      matchPackageNames: [
+        'cilium',
+      ],
+      additionalBranchPrefix: 'cilium-preflight-',
+      commitMessageSuffix: ' [cilium-preflight]',
     },
     {
-      "matchDatasources": ["docker"],
-      "matchPackagePatterns": ["postgresql"],
-      "allowedVersions": "<17",
-      "schedule": ["on sunday"]
+      description: [
+        'Custom schedule for reloader',
+      ],
+      matchManagers: [
+        'argocd',
+      ],
+      matchPackageNames: [
+        'reloader',
+      ],
+      schedule: [
+        'on sunday',
+      ],
     },
     {
-      "matchDatasources": ["docker"],
-      "matchPackagePatterns": ["mongodb-community-server"],
-      "allowedVersions": "<8"
-    }
+      matchDatasources: [
+        'docker',
+      ],
+      allowedVersions: '<17',
+      schedule: [
+        'on sunday',
+      ],
+      matchPackageNames: [
+        '/postgresql/',
+      ],
+    },
+    {
+      matchDatasources: [
+        'docker',
+      ],
+      allowedVersions: '<8',
+      matchPackageNames: [
+        '/mongodb-community-server/',
+      ],
+    },
   ],
-  "customManagers": [
+  customManagers: [
     {
-      "customType": "regex",
-      "fileMatch": ["apps/system-upgrade/k3s-upgrade-plan\\.ya?ml$"],
-      "matchStrings": [
-        "version: (?<currentValue>v[\\d\\.\\+\\w-]+)"
+      customType: 'regex',
+      fileMatch: [
+        'apps/system-upgrade/k3s-upgrade-plan\\.ya?ml$',
       ],
-      "depNameTemplate": "k3s",
-      "versioningTemplate": "semver-coerced",
-      "datasourceTemplate": "custom.k3s"
+      matchStrings: [
+        'version: (?<currentValue>v[\\d\\.\\+\\w-]+)',
+      ],
+      depNameTemplate: 'k3s',
+      versioningTemplate: 'semver-coerced',
+      datasourceTemplate: 'custom.k3s',
     },
     {
-      "customType": "regex",
-      "fileMatch": ["apps/system-upgrade/system-upgrade-controller\\.ya?ml$"],
-      "matchStrings": [
-        "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
+      customType: 'regex',
+      fileMatch: [
+        'apps/system-upgrade/system-upgrade-controller\\.ya?ml$',
       ],
-      "depNameTemplate": "{{depName}}",
-      "versioningTemplate": "docker",
-      "datasourceTemplate": "docker"
+      matchStrings: [
+        'SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)',
+      ],
+      depNameTemplate: '{{depName}}',
+      versioningTemplate: 'docker',
+      datasourceTemplate: 'docker',
     },
     {
-      "customType": "regex",
-      "description": ["Process CloudnativePG Postgresql version"],
-      "fileMatch": ["apps/.*\\.ya?ml$"],
-      "matchStrings": ["imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)"],
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "redhat"
+      customType: 'regex',
+      description: [
+        'Process CloudnativePG Postgresql version',
+      ],
+      fileMatch: [
+        'apps/.*\\.ya?ml$',
+      ],
+      matchStrings: [
+        'imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)',
+      ],
+      datasourceTemplate: 'docker',
+      versioningTemplate: 'redhat',
     },
     {
-      "customType": "regex",
-      "description": ["Process MongoDB version"],
-      "fileMatch": ["^apps/.*/unifi-db.yml$"],
-      "matchStrings": [
-        "version: \"(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)\""
+      customType: 'regex',
+      description: [
+        'Process MongoDB version',
       ],
-      "datasourceTemplate": "docker",
-      "packageNameTemplate": "docker.io/mongodb/mongodb-community-server",
-      "extractVersionTemplate": "^(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)-(ubi8|ubi9)$",
-      "versioningTemplate": "semver"
-    }
+      fileMatch: [
+        '^apps/.*/unifi-db.yml$',
+      ],
+      matchStrings: [
+        'version: "(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"',
+      ],
+      datasourceTemplate: 'docker',
+      packageNameTemplate: 'docker.io/mongodb/mongodb-community-server',
+      extractVersionTemplate: '^(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)-(ubi8|ubi9)$',
+      versioningTemplate: 'semver',
+    },
   ],
-  "customDatasources": {
-    "k3s": {
-      "defaultRegistryUrlTemplate": "https://update.k3s.io/v1-release/channels",
-      "transformTemplates": [
-        "{\"releases\":[{\"version\": $$.(data[id = 'stable'].latest),\"sourceUrl\":\"https://github.com/k3s-io/k3s\",\"changelogUrl\":$join([\"https://github.com/k3s-io/k3s/releases/tag/\",data[id = 'stable'].latest])}],\"sourceUrl\": \"https://github.com/k3s-io/k3s\",\"homepage\": \"https://k3s.io/\"}"
-      ]
-    }
-  }
+  customDatasources: {
+    k3s: {
+      defaultRegistryUrlTemplate: 'https://update.k3s.io/v1-release/channels',
+      transformTemplates: [
+        '{"releases":[{"version": $$.(data[id = \'stable\'].latest),"sourceUrl":"https://github.com/k3s-io/k3s","changelogUrl":$join(["https://github.com/k3s-io/k3s/releases/tag/",data[id = \'stable\'].latest])}],"sourceUrl": "https://github.com/k3s-io/k3s","homepage": "https://k3s.io/"}',
+      ],
+    },
+  },
 }
