@@ -39,10 +39,10 @@ spec:
           mountPath: /conf
         resources:
           requests:
-            memory: 50Mi
+            memory: 100Mi
             cpu: "20m"
           limits:
-            memory: 100Mi
+            memory: 250Mi
         livenessProbe: &probe
           httpGet:
             path: /api
