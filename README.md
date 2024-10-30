@@ -42,7 +42,7 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
   - Home Assistant and related services
     - Appdaemon
     - Z-Wave JS UI
-    - Mosquitto MQTT
+    - EMQX
     - Codeserver
   - Unifi
   - Wireguard
