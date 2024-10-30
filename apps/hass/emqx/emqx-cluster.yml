@@ -43,6 +43,20 @@ spec:
         - name: init-user
           secret:
             secretName: emqx-init-user
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 1
+              preference:
+                matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: DoesNotExist
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  apps.emqx.io/db-role: core
+              topologyKey: "kubernetes.io/hostname"
   listenersServiceTemplate:
     spec:
       type: LoadBalancer
