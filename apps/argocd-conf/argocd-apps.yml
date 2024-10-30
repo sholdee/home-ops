@@ -761,7 +761,7 @@ spec:
                labels:
                  severity: warning
     repoURL: https://vmware-tanzu.github.io/helm-charts
-    targetRevision: 7.2.1
+    targetRevision: 7.2.2
   syncPolicy:
     automated:
       prune: true
