@@ -22,6 +22,9 @@ spec:
         - containerPort: 9443
           name: https
           protocol: TCP
+        - containerPort: 9000
+          name: http
+          protocol: TCP
         volumeMounts:
         - name: portainer-data
           mountPath: /data
