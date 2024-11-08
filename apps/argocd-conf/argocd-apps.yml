@@ -284,11 +284,17 @@ spec:
         etcdOperator:
            resources:
              limits:
-               cpu: null
                memory: 200Mi
              requests:
-               cpu: 5m
+               cpu: 3m
                memory: 200Mi
+        kubeRbacProxy:
+           resources:
+             limits:
+               memory: 128Mi
+             requests:
+               cpu: 3m
+               memory: 128Mi
     repoURL: ghcr.io/aenix-io/charts
     targetRevision: 0.4.1
   syncPolicy:
