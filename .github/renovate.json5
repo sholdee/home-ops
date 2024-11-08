@@ -80,6 +80,15 @@
         '/mongodb-community-server/',
       ],
     },
+    {
+      matchDatasources: [
+        'docker',
+      ],
+      allowedVersions: '<2.22',
+      matchPackageNames: [
+        '/portainer-ce/',
+      ],
+    },
   ],
   customManagers: [
     {

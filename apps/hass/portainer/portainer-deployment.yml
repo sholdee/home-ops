@@ -17,9 +17,9 @@ spec:
     spec:
       containers:
       - name: portainer
-        image: portainer/portainer-ce:2.23.0
+        image: portainer/portainer-ce:2.21.4
         ports:
-        - containerPort: 9443 #web gui
+        - containerPort: 9443
           name: https
           protocol: TCP
         volumeMounts:
