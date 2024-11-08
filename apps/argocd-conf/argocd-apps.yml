@@ -279,6 +279,16 @@ spec:
   project: k3s
   source:
     chart: etcd-operator
+    helm:
+      valuesObject:
+        etcdOperator:
+           resources:
+             limits:
+               cpu: null
+               memory: 200Mi
+             requests:
+               cpu: 5m
+               memory: 200Mi
     repoURL: ghcr.io/aenix-io/charts
     targetRevision: 0.4.1
   syncPolicy:
