@@ -284,6 +284,7 @@ spec:
         etcdOperator:
            resources:
              limits:
+               cpu: ~
                memory: 200Mi
              requests:
                cpu: 3m
@@ -291,6 +292,7 @@ spec:
         kubeRbacProxy:
            resources:
              limits:
+               cpu: ~
                memory: 128Mi
              requests:
                cpu: 3m
