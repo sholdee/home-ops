@@ -29,6 +29,7 @@ spec:
         volumeMounts:
           - mountPath: /home/unifi-landing-config
             name: unifi-landing-config
+            subPath: conf
           - mountPath: /home/unifi-landing-secret
             name: unifi-landing-secret
         securityContext:
@@ -46,10 +47,12 @@ spec:
         volumeMounts:
           - mountPath: /etc/nginx/conf.d/
             name: unifi-landing-config
+            subPath: conf
           - mountPath: /var/www
             name: unifi-landing-static-secret
-          - mountPath: /var/cache
-            name: cache
+          - mountPath: /var/cache/nginx
+            name: unifi-landing-config
+            subPath: cache
         resources:
           requests:
             memory: 10Mi
@@ -75,5 +78,3 @@ spec:
       - name: unifi-landing-static-secret
         secret:
           secretName: unifi-landing-static
-      - name: cache
-        emptyDir: {}
