@@ -48,6 +48,8 @@ spec:
             name: unifi-landing-config
           - mountPath: /var/www
             name: unifi-landing-static-secret
+          - mountPath: /var/cache
+            name: cache
         resources:
           requests:
             memory: 10Mi
@@ -73,3 +75,5 @@ spec:
       - name: unifi-landing-static-secret
         secret:
           secretName: unifi-landing-static
+      - name: cache
+        emptyDir: {}
