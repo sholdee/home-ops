@@ -55,6 +55,7 @@ spec:
           mountPath: /tmp
         - name: appdaemon-data
           mountPath: /home/appdaemon-data
+          subPath: conf
         - name: hass-data
           mountPath: /home/hass-data
         - name: portainer-data
