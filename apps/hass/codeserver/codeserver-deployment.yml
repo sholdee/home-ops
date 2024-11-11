@@ -17,15 +17,14 @@ spec:
       labels:
         app: codeserver
     spec:
-      initContainers:
-      - name: init-permissions
-        image: busybox:1.37.0
-        command: ["sh", "-c", "chown -R 1000:1000 /home/coder/.config /home/coder/.local"]
-        volumeMounts:
-        - name: codeserver-config
-          mountPath: /home/coder/.config
-        - name: codeserver-local
-          mountPath: /home/coder/.local
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: codeserver
         image: ghcr.io/coder/code-server:4.95.1@sha256:d9bc7797d997e1b199e333676732e075bac4bae276dc0fe1baece2e313edfa09
@@ -44,12 +43,15 @@ spec:
           name: http
           protocol: TCP
         volumeMounts:
-        - name: codeserver-config
+        - name: codeserver
           mountPath: /home/coder/.config
-        - name: codeserver-local
+          subPath: config
+        - name: codeserver
           mountPath: /home/coder/.local
-        - name: codeserver-repos-data
+          subPath: local
+        - name: codeserver
           mountPath: /home/source-repos
+          subPath: repos
         - name: appdaemon-data
           mountPath: /home/appdaemon-data
         - name: hass-data
@@ -70,16 +72,15 @@ spec:
             port: http
           initialDelaySeconds: 10
         readinessProbe: *probe
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       volumes:
-      - name: codeserver-config
+      - name: codeserver
         persistentVolumeClaim:
           claimName: codeserver-pvc
-      - name: codeserver-local
-        persistentVolumeClaim:
-          claimName: codeserver-local-pvc
-      - name: codeserver-repos-data
-        persistentVolumeClaim:
-          claimName: codeserver-repos-pvc
       - name: appdaemon-data
         persistentVolumeClaim:
           claimName: appdaemon-pvc
