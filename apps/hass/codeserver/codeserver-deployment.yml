@@ -51,6 +51,8 @@ spec:
         - name: codeserver
           mountPath: /home/source-repos
           subPath: repos
+        - name: tmp
+          mountPath: /tmp
         - name: appdaemon-data
           mountPath: /home/appdaemon-data
         - name: hass-data
@@ -92,3 +94,5 @@ spec:
       - name: zwave-data
         persistentVolumeClaim:
           claimName: zwave-pvc
+      - name: tmp
+        emptyDir: {}
