@@ -14,6 +14,14 @@ spec:
       labels:
         app: unifi-landing
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
       initContainers:
       - name: unifi-landing-conf-init
         image: busybox:1.37.0
@@ -23,6 +31,11 @@ spec:
             name: unifi-landing-config
           - mountPath: /home/unifi-landing-secret
             name: unifi-landing-secret
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       containers:
       - name: unifi-landing
         image: nginx:1.27.2
@@ -46,6 +59,11 @@ spec:
             path: /landing
             port: http
         readinessProbe: *probe
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       volumes:
       - emptyDir: {}
         name: unifi-landing-config
