@@ -15,6 +15,14 @@ spec:
       labels:
         app: portainer
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: portainer
         image: portainer/portainer-ce:2.21.4
@@ -40,6 +48,11 @@ spec:
             port: https
             scheme: HTTPS
         readinessProbe: *probe
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       volumes:
       - name: portainer-data
         persistentVolumeClaim:
