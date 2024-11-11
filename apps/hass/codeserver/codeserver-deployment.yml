@@ -73,7 +73,7 @@ spec:
           initialDelaySeconds: 10
         readinessProbe: *probe
         securityContext:
-          allowPrivilegeEscalation: false
+          allowPrivilegeEscalation: true
           readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
