@@ -34,7 +34,7 @@ spec:
           - name: DEFAULT_WORKSPACE
             value: /home
           - name: DOCKER_USER
-            value: 65534
+            value: "65534"
           - name: PASSWORD
             valueFrom:
               secretKeyRef:
