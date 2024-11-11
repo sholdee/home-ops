@@ -45,10 +45,15 @@ spec:
         volumeMounts:
         - name: appdaemon-data
           mountPath: /conf
-        - name: cache
+        - name: tmp
           mountPath: /.cache
+          subPath: cache
         - name: tmp
           mountPath: /tmp
+          subPath: tmp
+        - name: tmp
+          mountPath: /.local
+          subPath: local
         resources:
           requests:
             memory: 100Mi
@@ -70,7 +75,5 @@ spec:
       - name: appdaemon-data
         persistentVolumeClaim:
           claimName: appdaemon-pvc
-      - name: cache
-        emptyDir: {}
       - name: tmp
         emptyDir: {}
