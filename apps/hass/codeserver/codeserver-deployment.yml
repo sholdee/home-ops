@@ -35,6 +35,8 @@ spec:
             value: /home/coder
           - name: DEFAULT_WORKSPACE
             value: /home
+          - name: SHELL
+            value: "/bin/sh"
           - name: PASSWORD
             valueFrom:
               secretKeyRef:
