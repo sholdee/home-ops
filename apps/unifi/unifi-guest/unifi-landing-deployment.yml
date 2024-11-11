@@ -53,6 +53,9 @@ spec:
           - mountPath: /var/cache/nginx
             name: unifi-landing-config
             subPath: cache
+          - mountPath: /var/run
+            name: unifi-landing-config
+            subPath: run
         resources:
           requests:
             memory: 10Mi
