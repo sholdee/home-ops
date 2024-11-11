@@ -17,6 +17,14 @@ spec:
       labels:
         app: zwave
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: "OnRootMismatch"
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: zwave
         image: ghcr.io/zwave-js/zwave-js-ui:9.26.0
@@ -55,6 +63,11 @@ spec:
         volumeMounts:
         - name: zwave-data
           mountPath: /usr/src/app/store
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       volumes:
       - name: zwave-data
         persistentVolumeClaim:
