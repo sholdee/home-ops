@@ -35,17 +35,19 @@ spec:
             value: /home/coder
           - name: DEFAULT_WORKSPACE
             value: /home
+          - name: PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: zwave
+                key: pass
         ports:
         - containerPort: 8080
           name: http
           protocol: TCP
         volumeMounts:
         - name: codeserver
-          mountPath: /home/coder/.config
+          mountPath: /home/coder
           subPath: config
-        - name: codeserver
-          mountPath: /home/coder/.local
-          subPath: local
         - name: codeserver
           mountPath: /home/source-repos
           subPath: repos
