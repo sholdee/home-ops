@@ -33,7 +33,7 @@ spec:
         env:
           - name: TZ
             value: America/Chicago
-          - name: DEFAULT_WORKSPACE
+          - name: HOME
             value: /home
           - name: DOCKER_USER
             value: "65534"
