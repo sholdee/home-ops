@@ -34,7 +34,7 @@ spec:
           - name: TZ
             value: America/Chicago
           - name: HOME
-            value: /home
+            value: /home/coder
           - name: DOCKER_USER
             value: "65534"
           - name: PASSWORD
