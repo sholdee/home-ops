@@ -45,6 +45,7 @@ spec:
         volumeMounts:
         - name: appdaemon-data
           mountPath: /conf
+          subPath: conf
         - name: appdaemon-data
           mountPath: /.local
           subPath: local
