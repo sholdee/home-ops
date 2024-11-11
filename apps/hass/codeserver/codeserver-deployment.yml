@@ -35,8 +35,8 @@ spec:
             value: America/Chicago
           - name: DEFAULT_WORKSPACE
             value: /home
-          - name: DOCKER_USER
-            value: "65534"
+          - name: HOME
+            value: /home
           - name: PASSWORD
             valueFrom:
               secretKeyRef:
