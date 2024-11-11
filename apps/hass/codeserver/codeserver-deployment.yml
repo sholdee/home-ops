@@ -32,7 +32,7 @@ spec:
           - name: TZ
             value: America/Chicago
           - name: HOME
-            value: /home/coder/.config
+            value: /home/coder
           - name: DEFAULT_WORKSPACE
             value: /home
           - name: PASSWORD
