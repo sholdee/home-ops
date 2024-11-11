@@ -297,6 +297,14 @@ spec:
              requests:
                cpu: 3m
                memory: 128Mi
+        podSecurityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          fsGroup: 65534
+          fsGroupChangePolicy: "OnRootMismatch"
+          seccompProfile:
+            type: RuntimeDefault
     repoURL: ghcr.io/aenix-io/charts
     targetRevision: 0.4.1
   syncPolicy:
