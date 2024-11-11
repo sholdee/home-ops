@@ -45,15 +45,15 @@ spec:
         volumeMounts:
         - name: appdaemon-data
           mountPath: /conf
+        - name: appdaemon-data
+          mountPath: /.local
+          subPath: local
         - name: tmp
           mountPath: /.cache
           subPath: cache
         - name: tmp
           mountPath: /tmp
           subPath: tmp
-        - name: tmp
-          mountPath: /.local
-          subPath: local
         resources:
           requests:
             memory: 100Mi
