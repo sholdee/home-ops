@@ -56,11 +56,11 @@ spec:
             port: http
           initialDelaySeconds: 15
         readinessProbe: *probe
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
       volumes:
       - name: hass-data
         persistentVolumeClaim:
