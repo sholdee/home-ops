@@ -34,9 +34,6 @@ spec:
       containers:
       - name: hass
         image: ghcr.io/onedr0p/home-assistant:2024.11.1@sha256:a3dd7577c28771702b21f817ad86600056467c2c7f45d261a1e7241910ddc2e2
-        env:
-          - name: DISABLE_JEMALLOC
-            value: 'true'
         ports:
         - containerPort: 8123
           name: http
