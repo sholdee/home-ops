@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: etcd
-        image: quay.io/coreos/etcd:v3.5.16
+        image: quay.io/coreos/etcd:v3.5.17
         imagePullPolicy: IfNotPresent
         resources:
           requests:
