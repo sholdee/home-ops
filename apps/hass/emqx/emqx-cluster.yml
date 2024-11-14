@@ -25,6 +25,9 @@ spec:
         ]
         no_match: "deny"
       }
+      cluster {
+        autoclean = 10m
+      }
   coreTemplate:
     metadata:
       annotations:
