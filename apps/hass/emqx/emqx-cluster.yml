@@ -28,7 +28,7 @@ spec:
       cluster {
         autoclean = 5m
       }
-  revisionHistoryLimit: 0
+  revisionHistoryLimit: 1
   coreTemplate:
     metadata:
       annotations:
