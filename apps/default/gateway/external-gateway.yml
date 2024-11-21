@@ -33,6 +33,17 @@ spec:
       mode: Terminate
       certificateRefs:
       - name: kromgo
+  - name: portainer
+    hostname: "portainer.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: portainer
   - name: tls
     protocol: TLS
     port: 443
