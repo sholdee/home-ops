@@ -86,7 +86,7 @@
       ],
       allowedVersions: '<2.22',
       matchPackageNames: [
-        '/portainer-ce/',
+        '/portainer-ee/',
       ],
     },
   ],
