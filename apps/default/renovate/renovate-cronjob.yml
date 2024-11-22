@@ -16,10 +16,6 @@ spec:
             fsGroup: 65534
             fsGroupChangePolicy: "OnRootMismatch"
             runAsNonRoot: true
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
             seccompProfile:
               type: RuntimeDefault
           containers:
@@ -35,6 +31,10 @@ spec:
                     name: renovate-env
               securityContext:
                 readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
               volumeMounts:
                 - name: tmp-volume
                   mountPath: /tmp
