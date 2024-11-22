@@ -30,4 +30,10 @@ spec:
                   drop:
                     - ALL
                 readOnlyRootFilesystem: true
+              volumeMounts:
+                - name: tmp-volume
+                  mountPath: /tmp
           restartPolicy: Never
+          volumes:
+            - name: tmp-volume
+              emptyDir: {}
