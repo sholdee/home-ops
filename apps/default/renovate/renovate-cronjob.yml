@@ -12,7 +12,7 @@ spec:
         spec:
           containers:
             - name: renovate
-              image: renovate/renovate:39.25.5
+              image: renovate/renovate:39.26.1
               args:
                 - sholdee/docker-compose
               env:
