@@ -18,14 +18,14 @@ spec:
               env:
                 - name: LOG_LEVEL
                   value: debug
-                - name: IGNORE_MANAGERS
-                  value: elixir
               envFrom:
                 - secretRef:
                     name: renovate-env
               securityContext:
                 runAsUser: 65534
                 runAsGroup: 65534
+                fsGroup: 65534
+                fsGroupChangePolicy: "OnRootMismatch"
                 runAsNonRoot: true
                 allowPrivilegeEscalation: false
                 capabilities:
