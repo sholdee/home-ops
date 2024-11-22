@@ -13,8 +13,6 @@ spec:
           securityContext:
             runAsUser: 65534
             runAsGroup: 65534
-            fsGroup: 65534
-            fsGroupChangePolicy: "OnRootMismatch"
             runAsNonRoot: true
             seccompProfile:
               type: RuntimeDefault
@@ -26,21 +24,12 @@ spec:
               env:
                 - name: LOG_LEVEL
                   value: debug
-                - name: RENOVATE_BINARY_SOURCE
-                  value: global
               envFrom:
                 - secretRef:
                     name: renovate-env
               securityContext:
-                readOnlyRootFilesystem: true
                 allowPrivilegeEscalation: false
                 capabilities:
                   drop:
                     - ALL
-              volumeMounts:
-                - name: tmp-volume
-                  mountPath: /tmp
           restartPolicy: Never
-          volumes:
-            - name: tmp-volume
-              emptyDir: {}
