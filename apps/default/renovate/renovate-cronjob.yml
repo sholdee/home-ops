@@ -21,4 +21,13 @@ spec:
               envFrom:
                 - secretRef:
                     name: renovate-env
+              securityContext:
+                runAsUser: 65534
+                runAsGroup: 65534
+                runAsNonRoot: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+                readOnlyRootFilesystem: true
           restartPolicy: Never
