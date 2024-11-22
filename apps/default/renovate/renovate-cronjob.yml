@@ -10,6 +10,18 @@ spec:
       ttlSecondsAfterFinished: 10800
       template:
         spec:
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            fsGroupChangePolicy: "OnRootMismatch"
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: renovate
               image: renovate/renovate:39.26.1
@@ -22,15 +34,6 @@ spec:
                 - secretRef:
                     name: renovate-env
               securityContext:
-                runAsUser: 65534
-                runAsGroup: 65534
-                fsGroup: 65534
-                fsGroupChangePolicy: "OnRootMismatch"
-                runAsNonRoot: true
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop:
-                    - ALL
                 readOnlyRootFilesystem: true
               volumeMounts:
                 - name: tmp-volume
