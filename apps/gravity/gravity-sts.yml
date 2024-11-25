@@ -74,7 +74,11 @@ spec:
             drop: ["ALL"]
         volumeMounts:
           - mountPath: /data
-            name: data
+            name: tmp
+            subPath: data
+          - mountPath: /var/run
+            name: tmp
+            subPath: run
       volumes:
       - emptyDir: {}
-        name: data
+        name: tmp
