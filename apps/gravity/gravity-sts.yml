@@ -31,7 +31,7 @@ spec:
         image: ghcr.io/beryju/gravity:v0.17.1
         env:
           - name: BOOTSTRAP_ROLES
-            value: dns;dhcp;api;discovery;backup;monitoring;debug;tsdb
+            value: dns;dhcp;api;discovery;monitoring;debug;tsdb
           - name: ETCD_ENDPOINT
             value: gravity-cluster-headless.gravity:2379
         ports:
@@ -72,3 +72,9 @@ spec:
           readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
+        volumeMounts:
+          - mountPath: /data
+            name: data
+      volumes:
+      - emptyDir: {}
+        name: data
