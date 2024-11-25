@@ -31,7 +31,7 @@ spec:
         image: ghcr.io/beryju/gravity:v0.17.1
         env:
           - name: BOOTSTRAP_ROLES
-            value: dns;dhcp;api;discovery;monitoring;debug;tsdb
+            value: dns;dhcp;api;backup;discovery;monitoring;debug;tsdb
           - name: ETCD_ENDPOINT
             value: gravity-cluster-headless.gravity:2379
         ports:
