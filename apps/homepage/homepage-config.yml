@@ -115,6 +115,14 @@ data:
                     label: Ethan
                   - state: group.hannah
                     label: Hannah
+        - Uptime Robot:
+            icon: uptime-kuma.svg
+            href: https://dashboard.uptimerobot.com
+            description: Uptime Robot
+            widget:
+              type: uptimerobot
+              url: https://api.uptimerobot.com
+              key: {{HOMEPAGE_VAR_UPTIME_ROBOT_API_KEY}}
   widgets.yaml: |
     - kubernetes:
         cluster:
