@@ -1,0 +1,9 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: hass-db-backup
+  namespace: hass
+spec:
+  method: barmanObjectStore
+  cluster:
+    name: hass-db
