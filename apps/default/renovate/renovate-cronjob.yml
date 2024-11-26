@@ -18,7 +18,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: renovate
-              image: renovate/renovate:39.31.1
+              image: renovate/renovate:39.31.2
               args:
                 - sholdee/docker-compose
               env:
