@@ -329,6 +329,8 @@ spec:
     chart: github-app-operator
     helm:
       valuesObject:
+        certmanager:
+          enabled: false
         webhook:
           enabled: false
         controllerManager:
