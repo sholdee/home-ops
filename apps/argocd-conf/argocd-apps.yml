@@ -317,39 +317,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: github-app-operator
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
-spec:
-  destination:
-    name: in-cluster
-    namespace: github-app-operator
-  project: k3s
-  source:
-    chart: github-app-operator
-    helm:
-      valuesObject:
-        certmanager:
-          enabled: true
-          installCRDs: false
-        webhook:
-          enabled: false
-        controllerManager:
-          manager:
-            env:
-              enableWebhooks: "false"
-    repoURL: ghcr.io/samirtahir91/github-app-operator/helm-charts
-    targetRevision: v1.11.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: ingress-nginx
 spec:
   destination:
