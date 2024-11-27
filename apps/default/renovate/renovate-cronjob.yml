@@ -23,9 +23,9 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  APP_ID=$(cat /github-secrets/app-id)
-                  INSTALLATION_ID=57693311
-                  API_URL="https://api.github.com/"
+                  export APP_ID=$(cat /github-secrets/app-id)
+                  export INSTALLATION_ID=57693311
+                  export API_URL="https://api.github.com/"
                   node /app/index.js "$APP_ID" "$INSTALLATION_ID" "/github-secrets/private-key" "$API_URL" > /token-volume/install-token
               volumeMounts:
                 - name: github-secrets
@@ -44,8 +44,7 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  RENOVATE_TOKEN=$(cat /token-volume/install-token)
-                  export RENOVATE_TOKEN
+                  export RENOVATE_TOKEN=$(cat /token-volume/install-token)
                   export GITHUB_COM_TOKEN=$RENOVATE_TOKEN
                   /usr/local/sbin/renovate-entrypoint.sh sholdee/docker-compose
               env:
