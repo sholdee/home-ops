@@ -39,7 +39,7 @@ spec:
             drop: ["ALL"]
       containers:
       - name: unifi-landing
-        image: nginx:1.27.2
+        image: nginx:1.27.3
         ports:
         - containerPort: 80
           protocol: TCP
