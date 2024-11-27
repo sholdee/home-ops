@@ -330,13 +330,14 @@ spec:
     helm:
       valuesObject:
         certmanager:
-          enabled: false
-        webhook:
           enabled: true
+          installCRDs: false
+        webhook:
+          enabled: false
         controllerManager:
           manager:
             env:
-              enableWebhooks: "true"
+              enableWebhooks: "false"
     repoURL: ghcr.io/samirtahir91/github-app-operator/helm-charts
     targetRevision: v1.11.0
   syncPolicy:
