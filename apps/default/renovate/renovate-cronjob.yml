@@ -62,13 +62,13 @@ spec:
                 - name: RENOVATE_CACHE_DIR
                   value: '/cache'
                 - name: RENOVATE_CONFIG_FILE
-                  value: /usr/src/app/config.json
-                - name: DOCKER_USERNAME
+                  value: /usr/src/app/config.js
+                - name: RENOVATE_DOCKER_USERNAME
                   valueFrom:
                     secretKeyRef:
                       name: dockerhub-credentials
                       key: username
-                - name: DOCKER_PASSWORD
+                - name: RENOVATE_DOCKER_PASSWORD
                   valueFrom:
                     secretKeyRef:
                       name: dockerhub-credentials
@@ -79,8 +79,8 @@ spec:
                 - name: renovate-cache
                   mountPath: /cache
                 - name: renovate-config
-                  mountPath: /usr/src/app/config.json
-                  subPath: config.json
+                  mountPath: /usr/src/app/config.js
+                  subPath: config.js
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
