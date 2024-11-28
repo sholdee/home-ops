@@ -5,6 +5,7 @@
     'docker:enableMajor',
   ],
   commitMessagePrefix: ':arrow_up:',
+  dependencyDashboardTitle: 'Dependency Dashboard :robot:',
   kubernetes: {
     fileMatch: [
       'apps/.*\\.ya?ml$',
