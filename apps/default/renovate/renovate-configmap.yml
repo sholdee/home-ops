@@ -9,8 +9,14 @@ data:
         {
           "matchHost": "docker.io",
           "hostType": "docker",
-          "username": "$(DOCKER_USERNAME)",
-          "password": "$(DOCKER_PASSWORD)"
+          "username": "{{ DOCKER_USERNAME }}",
+          "password": "{{ DOCKER_PASSWORD }}"
+        },
+        {
+          "matchHost": "hub.docker.com",
+          "hostType": "docker",
+          "username": "{{ DOCKER_USERNAME }}",
+          "password": "{{ DOCKER_PASSWORD }}"
         }
       ]
     }
