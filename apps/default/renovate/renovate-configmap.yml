@@ -8,6 +8,7 @@ data:
       "hostRules": [
         {
           "hostName": "docker.io",
+          "hostType": "docker",
           "username": "$(DOCKER_USERNAME)",
           "password": "$(DOCKER_PASSWORD)"
         }
