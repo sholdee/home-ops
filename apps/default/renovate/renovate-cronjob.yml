@@ -3,7 +3,7 @@ kind: CronJob
 metadata:
   name: renovate
 spec:
-  schedule: '@hourly'
+  schedule: '0 */2 * * *' 
   concurrencyPolicy: Forbid
   jobTemplate:
     spec:
