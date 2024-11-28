@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: renovate-config
+data:
+  config.json: |
+    {
+      "hostRules": [
+        {
+          "hostName": "docker.io",
+          "username": "$(DOCKER_USERNAME)",
+          "password": "$(DOCKER_PASSWORD)"
+        }
+      ]
+    }

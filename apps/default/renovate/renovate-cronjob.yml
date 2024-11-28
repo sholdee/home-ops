@@ -61,11 +61,26 @@ spec:
                   value: 'github'
                 - name: RENOVATE_CACHE_DIR
                   value: '/cache'
+                - name: RENOVATE_CONFIG_FILE
+                  value: /usr/src/app/config.json
+                - name: DOCKER_USERNAME
+                  valueFrom:
+                    secretKeyRef:
+                      name: dockerhub-credentials
+                      key: username
+                - name: DOCKER_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: dockerhub-credentials
+                      key: password
               volumeMounts:
                 - name: token-volume
                   mountPath: /token-volume
                 - name: renovate-cache
                   mountPath: /cache
+                - name: renovate-config
+                  mountPath: /usr/src/app/config.json
+                  subPath: config.json
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
@@ -80,4 +95,7 @@ spec:
             - name: renovate-cache
               persistentVolumeClaim:
                 claimName: renovate-cache
+            - name: renovate-config
+              configMap:
+                name: renovate-config
           restartPolicy: Never
