@@ -90,6 +90,19 @@
         '/portainer-ee/',
       ],
     },
+    {
+      matchUpdateTypes: [
+        'minor',
+        'patch'
+      ],
+      matchDatasources: [
+        'docker'
+      ],
+      matchPackageNames: [
+        '/renovate/'
+      ],
+      automerge: true
+    },
   ],
   customManagers: [
     {
