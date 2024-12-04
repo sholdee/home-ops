@@ -47,20 +47,6 @@
       commitMessageSuffix: ' [cilium-preflight]',
     },
     {
-      description: [
-        'Custom schedule for reloader',
-      ],
-      matchManagers: [
-        'argocd',
-      ],
-      matchPackageNames: [
-        'reloader',
-      ],
-      schedule: [
-        'on sunday',
-      ],
-    },
-    {
       matchDatasources: [
         'docker',
       ],
@@ -93,13 +79,20 @@
     {
       matchUpdateTypes: [
         'minor',
-        'patch'
+        'patch',
       ],
       matchDatasources: [
-        'docker'
+        'docker',
+        'helm',
       ],
       matchPackageNames: [
-        '/renovate/'
+        '/renovate/',
+        '/cert-manager/',
+        '/kube-prometheus-stack/',
+        '/kubernetes-dashboard/',
+        '/reloader/',
+        '/sealed-secrets/',
+        '/velero/',
       ],
       automerge: true
     },
