@@ -697,7 +697,7 @@ spec:
   source:
     chart: sealed-secrets
     repoURL: https://bitnami-labs.github.io/sealed-secrets
-    targetRevision: 2.16.2
+    targetRevision: 2.17.0
   syncPolicy:
     automated:
       prune: true
