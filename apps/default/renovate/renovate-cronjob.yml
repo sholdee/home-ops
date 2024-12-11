@@ -55,8 +55,6 @@ spec:
                   value: 'false'
                 - name: RENOVATE_ENDPOINT
                   value: 'https://api.github.com/'
-                - name: RENOVATE_GIT_AUTHOR
-                  value: 'Renovate Bot <bot@renovateapp.com>'
                 - name: RENOVATE_PLATFORM
                   value: 'github'
                 - name: RENOVATE_CACHE_DIR
