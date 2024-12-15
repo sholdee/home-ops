@@ -57,8 +57,6 @@ spec:
                   value: 'https://api.github.com/'
                 - name: RENOVATE_PLATFORM
                   value: 'github'
-                - name: RENOVATE_CACHE_DIR
-                  value: '/cache'
                 - name: RENOVATE_CONFIG_FILE
                   value: /usr/src/app/config.js
                 - name: RENOVATE_DOCKER_USERNAME
@@ -75,7 +73,7 @@ spec:
                 - name: token-volume
                   mountPath: /token-volume
                 - name: renovate-cache
-                  mountPath: /cache
+                  mountPath: /tmp/renovate
                 - name: renovate-config
                   mountPath: /usr/src/app/config.js
                   subPath: config.js
