@@ -58,7 +58,7 @@ metadata:
 spec:
   destination:
     name: in-cluster
-    namespace: 1password
+    namespace: external-secrets
   project: k3s
   source:
     chart: connect
