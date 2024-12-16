@@ -206,3 +206,16 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: repo-emqx
 type: Opaque
+---
+apiVersion: v1
+stringData:
+  name: 1password
+  project: k3s
+  type: helm
+  url: https://1password.github.io/connect-helm-charts
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-1password
+type: Opaque
