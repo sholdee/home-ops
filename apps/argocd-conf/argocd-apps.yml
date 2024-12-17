@@ -66,10 +66,22 @@ spec:
       valuesObject:
         connect:
           serviceType: ClusterIP
+          credentialsName: op-credentials
+          credentialsKey: 1password-credentials.json
           api:
             resources:
               requests:
                 cpu: 5m
+                memory: 64Mi
+              limits:
+                memory: 64Mi
+          sync:
+            resources:
+              requests:
+                cpu: 5m
+                memory: 64Mi
+              limits:
+                memory: 64Mi
     repoURL: https://1password.github.io/connect-helm-charts
     targetRevision: 1.17.0
   syncPolicy:
