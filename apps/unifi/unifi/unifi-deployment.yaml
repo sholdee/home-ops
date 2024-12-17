@@ -38,8 +38,8 @@ spec:
           - name: MONGO_PASS
             valueFrom:
               secretKeyRef:
-                name: unifi
-                key: mongopass
+                name: unifi-db-password
+                key: password
           - name: MONGO_USER
             value: unifi
           - name: UNIFI_DB_NAME
