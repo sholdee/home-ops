@@ -2,7 +2,6 @@
 
 ```bash
 helm repo add argo https://argoproj.github.io/argo-helm
-helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo add longhorn https://charts.longhorn.io
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
@@ -15,8 +14,6 @@ helm repo update
 
 ```bash
 helm upgrade --install argocd argo/argo-cd --create-namespace --namespace=argocd
-
-helm upgrade --install sealed-secrets-controller sealed-secrets/sealed-secrets --create-namespace --namespace kube-system
 
 helm upgrade --install longhorn longhorn/longhorn --namespace longhorn-system --create-namespace --set defaultSettings.defaultDataLocality="best-effort"
 

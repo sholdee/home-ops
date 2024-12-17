@@ -726,25 +726,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: sealed-secrets-controller
-spec:
-  destination:
-    name: in-cluster
-    namespace: kube-system
-  project: k3s
-  source:
-    chart: sealed-secrets
-    repoURL: https://bitnami-labs.github.io/sealed-secrets
-    targetRevision: 2.17.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: velero
 spec:
   destination:

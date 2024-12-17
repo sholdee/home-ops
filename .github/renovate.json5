@@ -91,7 +91,6 @@
         '/kube-prometheus-stack/',
         '/kubernetes-dashboard/',
         '/reloader/',
-        '/sealed-secrets/',
         '/velero/',
       ],
       automerge: true
