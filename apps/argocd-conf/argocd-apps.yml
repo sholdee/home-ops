@@ -103,8 +103,6 @@ spec:
                       - key: node-role.kubernetes.io/control-plane
                         operator: DoesNotExist
         configs:
-          secret:
-            githubSecret: "$argocd-webhook-secret:argocd.webhook.secret"
           cm:
             resource.exclusions: |
              - apiGroups:
