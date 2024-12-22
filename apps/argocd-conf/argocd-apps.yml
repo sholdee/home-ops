@@ -422,14 +422,6 @@ spec:
                   annotations:
                     description: Too many 5XXs
                     summary: More than 25% of all requests returned 5XX, this requires your attention
-                - alert: NGINXTooMany400s
-                  expr: 100 * ( sum( nginx_ingress_controller_requests{status=~"4.+"} ) / sum(nginx_ingress_controller_requests) ) > 25
-                  for: 1m
-                  labels:
-                    severity: warning
-                  annotations:
-                    description: Too many 4XXs
-                    summary: More than 25% of all requests returned 4XX, this requires your attention
           affinity:
             podAntiAffinity:
               preferredDuringSchedulingIgnoredDuringExecution:
