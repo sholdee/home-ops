@@ -33,13 +33,6 @@ spec:
                   mountPath: /github-secrets
                 - name: token-volume
                   mountPath: /token-volume
-              resources:
-                requests:
-                  memory: 600Mi
-                  cpu: 400m
-                limits:
-                  memory: 600Mi
-                  cpu: 400m
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
@@ -84,6 +77,13 @@ spec:
                 - name: renovate-config
                   mountPath: /usr/src/app/config.js
                   subPath: config.js
+              resources:
+                requests:
+                  memory: 600Mi
+                  cpu: 400m
+                limits:
+                  memory: 600Mi
+                  cpu: 400m
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
