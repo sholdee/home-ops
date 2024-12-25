@@ -33,6 +33,13 @@ spec:
                   mountPath: /github-secrets
                 - name: token-volume
                   mountPath: /token-volume
+              resources:
+                requests:
+                  memory: 600Mi
+                  cpu: 400m
+                limits:
+                  memory: 600Mi
+                  cpu: 400m
               securityContext:
                 allowPrivilegeEscalation: false
                 capabilities:
