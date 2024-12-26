@@ -102,3 +102,43 @@ spec:
               configMap:
                 name: renovate-config
           restartPolicy: Never
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: renovate-trim
+spec:
+  schedule: "30 2 * * *"
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        spec:
+          securityContext:
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: renovate-trim
+              image: openebs/linux-utils:4.1.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  fstrim -v /mnt/renovate-cache
+              volumeMounts:
+                - name: renovate-cache
+                  mountPath: /mnt/renovate-cache
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+          restartPolicy: Never
+          volumes:
+            - name: renovate-cache
+              persistentVolumeClaim:
+                claimName: renovate-cache
