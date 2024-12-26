@@ -125,6 +125,8 @@ spec:
               volumeMounts:
                 - name: renovate-cache
                   mountPath: /mnt/renovate-cache
+              securityContext:
+                privileged: true
           restartPolicy: Never
           volumes:
             - name: renovate-cache
