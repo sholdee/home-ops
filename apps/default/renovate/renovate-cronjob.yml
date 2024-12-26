@@ -137,6 +137,8 @@ spec:
                 capabilities:
                   drop:
                     - ALL
+                  add:
+                    - SYS_ADMIN
           restartPolicy: Never
           volumes:
             - name: renovate-cache
