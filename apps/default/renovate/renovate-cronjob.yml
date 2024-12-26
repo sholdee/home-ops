@@ -114,13 +114,6 @@ spec:
       ttlSecondsAfterFinished: 86400
       template:
         spec:
-          securityContext:
-            runAsUser: 65534
-            runAsGroup: 65534
-            fsGroup: 65534
-            runAsNonRoot: true
-            seccompProfile:
-              type: RuntimeDefault
           containers:
             - name: renovate-trim
               image: openebs/linux-utils:4.1.0
@@ -132,13 +125,6 @@ spec:
               volumeMounts:
                 - name: renovate-cache
                   mountPath: /mnt/renovate-cache
-              securityContext:
-                allowPrivilegeEscalation: false
-                capabilities:
-                  drop:
-                    - ALL
-                  add:
-                    - SYS_ADMIN
           restartPolicy: Never
           volumes:
             - name: renovate-cache
