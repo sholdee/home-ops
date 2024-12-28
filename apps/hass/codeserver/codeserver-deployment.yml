@@ -60,8 +60,6 @@ spec:
           subPath: conf
         - name: hass-data
           mountPath: /home/hass-data
-        - name: portainer-data
-          mountPath: /home/portainer-data
         - name: zwave-data
           mountPath: /home/zwave-data
         resources:
@@ -91,9 +89,6 @@ spec:
       - name: hass-data
         persistentVolumeClaim:
           claimName: hass-pvc
-      - name: portainer-data
-        persistentVolumeClaim:
-          claimName: portainer-pvc
       - name: zwave-data
         persistentVolumeClaim:
           claimName: zwave-pvc
