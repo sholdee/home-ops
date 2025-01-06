@@ -27,9 +27,6 @@ spec:
       advertisements:
         matchLabels:
           advertise: "bgp"
-  gracefulRestart:
-    enabled: true
-    restartTimeSeconds: 30
   timers:
     connectRetryTimeSeconds: 12
     holdTimeSeconds: 9
