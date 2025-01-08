@@ -19,7 +19,7 @@ spec:
               type: RuntimeDefault
           initContainers:
             - name: generate-token
-              image: ghcr.io/mshekow/github-app-installation-token:2024.12.30
+              image: ghcr.io/mshekow/github-app-installation-token:2025.01.08
               command:
                 - /bin/sh
                 - -c
