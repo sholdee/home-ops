@@ -223,7 +223,7 @@ spec:
           masquerade: false
           loadBalancer:
             algorithm: "maglev"
-            mode: "hybrid"
+            mode: "dsr"
         enableIPv4Masquerade: false
         bgpControlPlane:
           enabled: true
