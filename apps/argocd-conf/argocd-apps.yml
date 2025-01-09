@@ -222,8 +222,8 @@ spec:
         bpf:
           masquerade: false
         loadBalancer:
-            algorithm: "maglev"
-            mode: "dsr"
+          algorithm: "maglev"
+          mode: "dsr"
         enableIPv4Masquerade: false
         bgpControlPlane:
           enabled: true
