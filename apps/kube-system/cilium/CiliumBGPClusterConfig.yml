@@ -31,7 +31,6 @@ spec:
     connectRetryTimeSeconds: 12
     holdTimeSeconds: 9
     keepAliveTimeSeconds: 3
-  ebgpMultihop: 2
 ---
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
