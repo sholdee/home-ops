@@ -728,7 +728,7 @@ spec:
           podMonitor:
             enabled: true
     repoURL: https://stakater.github.io/stakater-charts
-    targetRevision: 1.2.0
+    targetRevision: 1.2.1
   syncPolicy:
     automated:
       prune: true
