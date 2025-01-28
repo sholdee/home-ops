@@ -297,10 +297,6 @@ spec:
     chart: emqx-operator
     repoURL: https://repos.emqx.io/charts
     targetRevision: 2.2.27
-    helm:
-      valuesObject:
-        webhook:
-          enabled: false
   syncPolicy:
     automated:
       prune: true
