@@ -77,6 +77,17 @@
       ],
     },
     {
+      matchDatasources: [
+        'docker',
+      ],
+      schedule: [
+        'daily',
+      ],
+      matchPackageNames: [
+        '/renovate/',
+      ],
+    },
+    {
       matchUpdateTypes: [
         'minor',
         'patch',
