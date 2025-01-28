@@ -286,8 +286,6 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: emqx-operator
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   destination:
     name: in-cluster
@@ -302,7 +300,7 @@ spec:
       prune: true
     syncOptions:
     - CreateNamespace=true
-    - ServerSideApply=true
+    - ApplyOutOfSyncOnly=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
