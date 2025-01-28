@@ -81,7 +81,7 @@
         'docker',
       ],
       schedule: [
-        'daily',
+        'every day',
       ],
       matchPackageNames: [
         '/renovate/',
