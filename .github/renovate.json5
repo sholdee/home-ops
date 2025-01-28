@@ -81,7 +81,7 @@
         'docker',
       ],
       schedule: [
-        'before 6am every day',
+        'before 6am',
       ],
       matchPackageNames: [
         '/renovate/',
@@ -104,7 +104,7 @@
         '/reloader/',
         '/velero/',
       ],
-      automerge: true
+      automerge: true,
     },
   ],
   customManagers: [
