@@ -219,7 +219,6 @@ spec:
         kubeProxyReplacement: true
         bpf:
           masquerade: false
-          datapathMode: "netkit"
         loadBalancer:
           algorithm: "maglev"
           mode: "dsr"
