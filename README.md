@@ -48,7 +48,6 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
   - Wireguard
   - Adguard
   - Gravity cluster
-  - Homepage
 - **Storage**: Longhorn
 - **Network**: Cilium
 - **Control LB**: Kube-VIP
