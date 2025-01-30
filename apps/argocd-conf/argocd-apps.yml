@@ -200,9 +200,7 @@ spec:
       kind: Secret
       name: hubble-relay-client-certs
     - jsonPointers:
-      - /data/ca.crt
-      - /data/tls.crt
-      - /data/tls.key
+      - /data
       kind: Secret
       name: hubble-server-certs
   project: k3s
