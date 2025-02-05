@@ -34,7 +34,6 @@ spec:
             cpu: "10m"
           limits:
             memory: 300Mi
-            sholdee.net/zwave: 1
         livenessProbe: &probe
           httpGet:
             path: /health/zwave
