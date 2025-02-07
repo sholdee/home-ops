@@ -19,6 +19,8 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
         runAsGroup: 65534
+        fsGroup: 65534
+        fsGroupChangePolicy: "OnRootMismatch"
         seccompProfile:
           type: RuntimeDefault
       affinity:
@@ -46,10 +48,6 @@ spec:
             value: unifi
           - name: TZ
             value: America/Chicago
-          - name: PGID
-            value: "65534"
-          - name: PUID
-            value: "65534"
           - name: RUN_CHOWN
             value: "false"
           - name: DB_MONGO_URI
@@ -83,6 +81,12 @@ spec:
           - name: certs
             mountPath: /usr/lib/unifi/cert/privkey.pem
             subPath: tls.key
+          - name: tmp
+            mountPath: /tmp
+            subPath: tmp
+          - name: tmp
+            mountPath: /usr/lib/unifi/run
+            subPath: run
         resources:
           requests:
             memory: 1200Mi
@@ -91,7 +95,7 @@ spec:
             memory: 1200Mi
         securityContext:
           allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: false
+          readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
       volumes:
@@ -105,3 +109,5 @@ spec:
       - name: certs
         secret:
           secretName: unifi-cert
+      - name: tmp
+        emptyDir: {}
