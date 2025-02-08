@@ -295,7 +295,7 @@ spec:
   source:
     chart: emqx-operator
     repoURL: https://repos.emqx.io/charts
-    targetRevision: 2.2.26
+    targetRevision: 2.2.28
   syncPolicy:
     automated:
       prune: true
