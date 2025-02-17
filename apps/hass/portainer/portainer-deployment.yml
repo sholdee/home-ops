@@ -44,7 +44,7 @@ spec:
             memory: 200Mi
         livenessProbe: &probe
           httpGet:
-            path: /api/system/info
+            path: /
             port: https
             scheme: HTTPS
         readinessProbe: *probe
