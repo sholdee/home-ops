@@ -39,6 +39,7 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
 #### Primary Applications:
   - Home Assistant and related services
     - Appdaemon
+      - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
     - Z-Wave JS UI
     - EMQX Cluster
     - Codeserver
