@@ -36,20 +36,45 @@ This repository contains the configurations for my home operations k3s cluster.
 
 My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository. Renovate automatically scans and submits pull requests for dependency updates. This also includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-<br>
-
-- **Primary Applications**:
+#### Primary Applications:
   - Home Assistant and related services
     - Appdaemon
     - Z-Wave JS UI
-    - EMQX
+    - EMQX Cluster
     - Codeserver
+    - Venstar MQTT bridge
   - Unifi
   - Wireguard
   - Adguard
+    - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
   - Gravity cluster
-- **Storage**: Longhorn
-- **Network**: Cilium
-- **Control LB**: Kube-VIP
-- **Service LB**: Cilium BGP
-- **Hardware**: RPi 5 8gb with 512GB NVMe SSD via PCIe hat
+  - Renovate
+  - Portainer
+    - GitOps for remote Docker hosts
+#### Core Components:
+  - ArgoCD
+  - 1Password Connect
+  - External Secrets
+  - Cert-Manager
+  - Kube-VIP
+  - CloudNativePG
+  - EMQX Operator
+  - ETCD Operator
+  - MongoDB Community Operator
+  - Kube Prometheus Stack
+  - Kromgo
+  - System Upgrade Controller
+  - Ingress-NGINX
+  - Kubernetes Dashboard
+  - Stakater Reloader
+  - Velero
+#### Network: Cilium
+  - Gateway API
+  - Netkit
+  - eBPF host-routing
+  - Native routing
+  - BGP control plane
+  - Hubble observability
+#### Storage: Longhorn
+#### Hardware:
+  - RPi 5 8gb with 512GB NVMe SSD via PCIe hat
