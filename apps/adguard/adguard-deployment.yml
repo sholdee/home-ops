@@ -52,7 +52,7 @@ spec:
             name: adguard-conf
       containers:
       - name: adguard-home
-        image: adguard/adguardhome:v0.107.56
+        image: adguard/adguardhome:v0.107.57
         securityContext:
           capabilities:
             drop:
