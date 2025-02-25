@@ -633,7 +633,7 @@ spec:
             http:
               enabled: true
     repoURL: https://kubernetes.github.io/dashboard
-    targetRevision: 7.10.4
+    targetRevision: 7.10.5
   syncPolicy:
     automated:
       prune: true
