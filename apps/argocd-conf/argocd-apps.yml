@@ -592,7 +592,7 @@ spec:
         kubeProxy:
           enabled: false
     repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 69.5.1
+    targetRevision: 69.5.2
   syncPolicy:
     automated:
       prune: true
