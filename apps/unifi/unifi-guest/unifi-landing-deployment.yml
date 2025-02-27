@@ -34,7 +34,7 @@ spec:
             name: unifi-landing-secret
           - mountPath: /var/www
             name: unifi-landing-static-secret
-          - mountPath: /data
+          - mountPath: /config/caddy
             name: tmp
             subPath: data
         resources:
