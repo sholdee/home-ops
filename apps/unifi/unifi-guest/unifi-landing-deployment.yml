@@ -36,6 +36,9 @@ spec:
             name: unifi-landing-static-secret
           - mountPath: /config/caddy
             name: tmp
+            subPath: conf
+          - mountPath: /config/caddy
+            name: tmp
             subPath: data
         resources:
           requests:
