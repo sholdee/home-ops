@@ -22,40 +22,23 @@ spec:
         fsGroupChangePolicy: "OnRootMismatch"
         seccompProfile:
           type: RuntimeDefault
-      initContainers:
-      - name: unifi-landing-conf-init
-        image: busybox:1.37.0
-        command: ["sh", "-c", "cp /home/unifi-landing-secret/unifi-landing.conf /home/unifi-landing-config/default.conf;chmod 644 /home/unifi-landing-config/default.conf"]
-        volumeMounts:
-          - mountPath: /home/unifi-landing-config
-            name: unifi-landing-config
-            subPath: conf
-          - mountPath: /home/unifi-landing-secret
-            name: unifi-landing-secret
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
       containers:
       - name: unifi-landing
-        image: nginx:1.27.3
+        image: caddy:2.9.1@sha256:1c4bc9ead95a0888f1eea3a56ef79f30bd0d271229828fdd25090d898f553571
         ports:
         - containerPort: 80
           protocol: TCP
           name: http
         volumeMounts:
-          - mountPath: /etc/nginx/conf.d/
-            name: unifi-landing-config
-            subPath: conf
+          - mountPath: /etc/caddy
+            name: unifi-landing-secret
+            subPath: Caddyfile
           - mountPath: /var/www
             name: unifi-landing-static-secret
-          - mountPath: /var/cache/nginx
-            name: unifi-landing-config
-            subPath: cache
-          - mountPath: /var/run
-            name: unifi-landing-config
-            subPath: run
+            subPath: index.html
+          - mountPath: /data
+            name: tmp
+            subPath: data
         resources:
           requests:
             memory: 10Mi
@@ -74,7 +57,7 @@ spec:
             drop: ["ALL"]
       volumes:
       - emptyDir: {}
-        name: unifi-landing-config
+        name: tmp
       - name: unifi-landing-secret
         secret:
           secretName: unifi-landing
