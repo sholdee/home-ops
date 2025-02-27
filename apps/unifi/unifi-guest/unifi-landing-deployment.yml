@@ -32,10 +32,8 @@ spec:
         volumeMounts:
           - mountPath: /etc/caddy
             name: unifi-landing-secret
-            subPath: Caddyfile
           - mountPath: /var/www
             name: unifi-landing-static-secret
-            subPath: index.html
           - mountPath: /data
             name: tmp
             subPath: data
