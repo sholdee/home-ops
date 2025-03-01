@@ -1,4 +1,4 @@
-name: Verify ARM64 image availability
+name: Verify image pull
 
 on:
   pull_request_target:
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   check-title:
-    runs-on: ubuntu-latest
+    runs-on: ARM64
     outputs:
       matched: ${{ steps.check_title.outputs.matched }}
     steps:
@@ -28,23 +28,14 @@ jobs:
             echo "matched=false" >> $GITHUB_OUTPUT
           fi
 
-  check-arm64-image:
+  verify-image-pull:
     needs: check-title
     if: needs.check-title.outputs.matched == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ARM64
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install requests
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
@@ -55,13 +46,14 @@ jobs:
         run: |
           python .github/scripts/extract_image_info.py
 
-      - name: Run ARM64 Availability Check
-        id: arm64_check
+      - name: Attempt to pull image
+        id: pull_image
         run: |
-          python .github/scripts/check_arm64.py "${{ env.IMAGE }}" "${{ env.TAG }}" "${{ env.DIGEST }}"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: false
+          IMAGE_FULL="${IMAGE}:${TAG}"
+          [ -n "$DIGEST" ] && IMAGE_FULL="${IMAGE}@${DIGEST}"
+          
+          echo "Pulling image: $IMAGE_FULL"
+          sudo crictl --debug pull "$IMAGE_FULL"
 
       - name: Add `donotmerge` Label if Arm64 Not Available
         if: failure()
