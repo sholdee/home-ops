@@ -2,7 +2,7 @@
 
 # K3s Home Operations
 
-_... managed with ArgoCD and Renovate_
+🤖 _... managed with ArgoCD, Renovate, and GitHub Actions_ 🤖
 
 </div>
 
@@ -30,13 +30,17 @@ _... managed with ArgoCD and Renovate_
 
 </div>
 
-### Overview
+### Overview 📔
 
 This repository contains the configurations for my home operations k3s cluster.
 
-My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository. Renovate automatically scans and submits pull requests for dependency updates. This also includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
+My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository.
 
-#### Primary Applications:
+Renovate automatically scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
+
+Image update pull requests trigger a workflow to pull the new image to the cluster for verification. This has the added benefit of caching images in the local embedded registry mirror, Spegel, prior to merging.
+
+#### Primary Applications ⭐
   - Home Assistant and related services
     - Appdaemon
       - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
@@ -52,7 +56,7 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
   - Renovate
   - Portainer
     - GitOps for remote Docker hosts
-#### Core Components:
+#### Core Components 🔥
   - ArgoCD
   - 1Password Connect
   - External Secrets
@@ -69,13 +73,13 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
   - Kubernetes Dashboard
   - Stakater Reloader
   - Velero
-#### Network: Cilium
+#### Network: Cilium 🕸️
   - Gateway API
   - Netkit
   - eBPF host-routing
   - Native routing
   - BGP control plane
   - Hubble observability
-#### Storage: Longhorn
-#### Hardware:
+#### Storage: Longhorn 💾
+#### Hardware 🖥️
   - RPi 5 8gb with 512GB NVMe SSD via PCIe hat
