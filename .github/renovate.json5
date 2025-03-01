@@ -4,7 +4,6 @@
     'config:recommended',
     'docker:enableMajor',
   ],
-  commitMessagePrefix: ':arrow_up:',
   dependencyDashboardTitle: 'Dependency Dashboard :robot:',
   kubernetes: {
     fileMatch: [
