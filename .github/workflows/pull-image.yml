@@ -67,14 +67,14 @@ jobs:
           echo "Pulling image: $IMAGE_FULL"
           sudo crictl --debug pull "$IMAGE_FULL"
 
-      - name: Add `donotmerge` Label if Arm64 Not Available
+      - name: Add `donotmerge` Label if pull fails
         if: failure()
         run: |
           gh pr edit ${{ github.event.number }} --add-label "donotmerge"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove `donotmerge` Label if Arm64 Available
+      - name: Remove `donotmerge` Label if pull succeeds
         if: success()
         run: |
           gh pr edit ${{ github.event.number }} --remove-label "donotmerge"
