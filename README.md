@@ -2,7 +2,8 @@
 
 # K3s Home Operations
 
-🤖 _... managed with ArgoCD, Renovate, and GitHub Actions_ 🤖
+...managed with<br />
+🤖 ArgoCD, Renovate, and GitHub Actions 🤖
 
 </div>
 
