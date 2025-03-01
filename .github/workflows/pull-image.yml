@@ -19,7 +19,7 @@ jobs:
       matched: ${{ steps.check_title.outputs.matched }}
     steps:
       - name: Check PR Author and Title
-        id: check_pr
+        id: check_title
         run: |
           PR_TITLE="${{ github.event.pull_request.title }}"
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
