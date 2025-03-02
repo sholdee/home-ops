@@ -204,7 +204,7 @@ jobs:
           DIFF_TXT_PATH: diff.txt
         run: |
           echo "Starting extract_image_info.py..."
-          python .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
+          python .github/scripts/extract_image_info.py 2>&1 || { echo "❌ Script failed!"; exit 1; }
           echo "Finished extract_image_info.py!"
           echo "Environment variables set:"
           env | grep IMAGE
