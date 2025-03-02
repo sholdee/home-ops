@@ -93,6 +93,9 @@ def main():
         return
 
     with open(os.environ['GITHUB_ENV'], 'a') as f:
+        f.write(f"IMAGE_COUNT={len(images)}\n")
+
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
         if helm_diff:
             print("Using indexed variables for Helm images.")
             for index, (image, tag, digest) in enumerate(images):
