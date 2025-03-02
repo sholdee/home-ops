@@ -207,7 +207,7 @@ jobs:
           python .github/scripts/extract_image_info.py 2>&1 || { echo "❌ Script failed!"; exit 1; }
           echo "Finished extract_image_info.py!"
           echo "Environment variables set:"
-          env | grep IMAGE
+          printenv | grep IMAGE
           
 
       - name: Attempt to Pull Extracted Images
