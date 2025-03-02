@@ -2,6 +2,50 @@ import os
 import re
 import requests
 
+def extract_images_from_pr_diff():
+    """Extracts image updates from PR files (Docker PR updates)."""
+    pr_number = os.environ['PR_NUMBER']
+    repo = os.environ['GITHUB_REPOSITORY']
+    token = os.environ['GITHUB_TOKEN']
+    diff_url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}/files'
+
+    headers = {
+        'Authorization': f'token {token}',
+        'Accept': 'application/vnd.github.v3+json'
+    }
+
+    response = requests.get(diff_url, headers=headers)
+    files = response.json()
+
+    images = []
+
+    for file in files:
+        if file['filename'].endswith('.yaml') or file['filename'].endswith('.yml'):
+            patch = file['patch']
+            lines = patch.split('\n')
+
+            if re.search(r'^apps/.*/unifi-db.yml$', file['filename']):
+                for line in lines:
+                    match = re.match(r'^\+ *version:\s*"?([^"\s]+)"?', line, re.IGNORECASE)
+                    if match:
+                        version = match.group(1).strip()
+                        images.append(("mongodb/mongodb-community-server", f"{version}-ubi8", ""))
+                        break  # Stop after first match
+            else:
+                for line in lines:
+                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^"\s]+)"?', line, re.IGNORECASE)
+                    if match:
+                        image_tag = match.group(1).strip()
+                        
+                        image = image_tag.split('@')[0].split(':')[0].strip()
+                        tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
+                        digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+
+                        images.append((image, tag, digest))
+                        break  # Stop after first match
+
+    return images
+
 def extract_images_from_helm_diff():
     """Extracts image updates from Helm diff.txt if it exists."""
     images = []
