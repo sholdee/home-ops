@@ -51,7 +51,7 @@ spec:
           httpGet:
             path: /manifest.json
             port: http
-          initialDelaySeconds: 15
+          initialDelaySeconds: 7
         readinessProbe: *probe
         securityContext:
           allowPrivilegeEscalation: false
