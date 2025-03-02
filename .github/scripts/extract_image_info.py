@@ -47,29 +47,34 @@ def extract_images_from_pr_diff():
     return images
 
 def extract_images_from_helm_diff():
-    """Extracts image updates from Helm diff.txt if it exists."""
+    """Extracts image updates from Helm diff.txt or stdin."""
     images = []
+    diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
-    diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")  # Default to diff.txt if not set
+    if os.path.exists(diff_txt_path):
+        print(f"✅ Reading {diff_txt_path}...")
+        with open(diff_txt_path, "r") as f:
+            diff_lines = f.readlines()
+    else:
+        print(f"⚠️ {diff_txt_path} not found! Reading from stdin...")
+        diff_lines = sys.stdin.readlines()
 
-    if not os.path.exists(diff_txt_path):
-        print(f"{diff_txt_path} not found, skipping Helm image extraction.")
-        return images
-
-    with open(diff_txt_path, "r") as f:
-        diff_lines = f.readlines()
-
-    for line in diff_lines:
-        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?(.+)"?', line, re.IGNORECASE)
+    print(f"📂 Loaded {len(diff_lines)} lines.")
+    
+    for i, line in enumerate(diff_lines):
+        print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line.strip())}")
+        
+        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?(.+?)"?$', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
-
             image = image_tag.split('@')[0].split(':')[0].strip()
             tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
             digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
+            print(f"✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
             images.append((image, tag, digest))
 
+    print(f"📊 Extracted {len(images)} images.")
     return images
 
 def main():
@@ -82,9 +87,6 @@ def main():
     else:
         print("No Helm diff found, extracting updated image from PR.")
         images = extract_images_from_pr_diff()
-
-    with open(os.environ['GITHUB_ENV'], 'a') as f:
-        f.write(f"IMAGE_COUNT={len(images)}\n")
 
     if not images:
         print("No image updates detected.")
