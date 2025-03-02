@@ -31,7 +31,7 @@ jobs:
           FILE="apps/argocd-conf/argocd-apps.yml"
           
           # Extract list of applications where `targetRevision` changed
-          CHANGED_APPS=$(git diff --unified=0 --no-color origin/main -- $FILE | grep -E "^\+\s+targetRevision:" | awk '{$NF=$NF};1' | awk '{print $NF}' | tr -d '[:space:]' || true)
+          CHANGED_APPS=$(git diff --unified=0 --no-color origin/master -- $FILE | grep -E "^\+\s+targetRevision:" | awk '{$NF=$NF};1' | awk '{print $NF}' | tr -d '[:space:]' || true)
           
           if [ -z "$CHANGED_APPS" ]; then
             echo "No Helm chart updates detected."
@@ -45,7 +45,7 @@ jobs:
             APP_NAME=$(yq e "select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name" "$FILE")
             
             # Extract old and new `targetRevision`
-            OLD_VERSION=$(git show origin/main:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.targetRevision" -)
+            OLD_VERSION=$(git show origin/master:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.targetRevision" -)
             NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.targetRevision" "$FILE")
             
             # Skip if there's no version change
@@ -61,7 +61,7 @@ jobs:
             echo "Processing $APP_NAME: $OLD_VERSION → $NEW_VERSION"
             
             # Extract `valuesObject` for Helm rendering
-            git show origin/main:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" - > old-values.yaml
+            git show origin/master:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" - > old-values.yaml
             yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
             
             # Render Helm manifests for both versions
