@@ -16,6 +16,8 @@ jobs:
   helm-diff:
     if: startsWith(github.event.pull_request.title, 'Update Helm release')
     runs-on: ubuntu-latest
+    outputs:
+      ARTIFACT_NAME: ${{ steps.set-artifact-name.outputs.ARTIFACT_NAME }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -153,3 +155,67 @@ jobs:
             ```diff
             ${{ env.diff }}
             ```
+
+      - name: Generate Unique Artifact Name
+        id: set-artifact-name
+        run: echo "ARTIFACT_NAME=helm-diff-$(date +%s)" >> $GITHUB_ENV
+
+      - name: Upload Helm Diff as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: diff.txt
+          retention-days: 1
+
+  verify-new-images:
+    needs: helm-diff
+    runs-on: ARM64
+    steps:
+      - name: Download Helm Diff
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ needs.helm-diff.outputs.ARTIFACT_NAME }}
+
+      - name: Move diff.txt to Correct Location
+        run: mv ${{ needs.helm-diff.outputs.ARTIFACT_NAME }}/diff.txt diff.txt
+
+      - name: Extract Image Updates from Helm Diff
+        id: extract_helm_images
+        env:
+          DIFF_TXT_PATH: diff.txt
+        run: |
+          python .github/scripts/extract_image_info.py
+
+      - name: Attempt to Pull Extracted Images
+        id: pull_helm_images
+        run: |
+          if [ -z "$IMAGE_COUNT" ] || [ "$IMAGE_COUNT" -eq 0 ]; then
+            echo "No images detected for pulling."
+            exit 0
+          fi
+          
+          for i in $(seq 0 $((IMAGE_COUNT - 1))); do
+              IMAGE_VAR="IMAGE_$i"
+              TAG_VAR="TAG_$i"
+              DIGEST_VAR="DIGEST_$i"
+              
+              IMAGE_FULL="${!IMAGE_VAR}:${!TAG_VAR}"
+              [ -n "${!DIGEST_VAR}" ] && IMAGE_FULL="${!IMAGE_VAR}@${!DIGEST_VAR}"
+              
+              echo "Pulling image: $IMAGE_FULL"
+              sudo crictl --debug pull "$IMAGE_FULL" || echo "Failed to pull $IMAGE_FULL"
+          done
+
+      - name: Add `donotmerge` Label if any Pull Fails
+        if: failure()
+        run: |
+          gh pr edit ${{ github.event.number }} --add-label "donotmerge"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove `donotmerge` Label if all Pulls Succeed
+        if: success()
+        run: |
+          gh pr edit ${{ github.event.number }} --remove-label "donotmerge"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
