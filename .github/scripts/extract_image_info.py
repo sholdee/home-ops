@@ -3,12 +3,19 @@ import re
 import requests
 import sys
 
+def debug_log(message):
+    """Forces log output to appear immediately in GitHub Actions."""
+    sys.stderr.write(message + "\n")
+    sys.stderr.flush()
+
 def extract_images_from_pr_diff():
     """Extracts image updates from PR files (Docker PR updates)."""
     pr_number = os.environ['PR_NUMBER']
     repo = os.environ['GITHUB_REPOSITORY']
     token = os.environ['GITHUB_TOKEN']
     diff_url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}/files'
+
+    debug_log(f"🔍 Fetching PR diff from {diff_url}")
 
     headers = {
         'Authorization': f'token {token}',
@@ -20,31 +27,35 @@ def extract_images_from_pr_diff():
 
     images = []
 
+    debug_log(f"📂 Retrieved {len(files)} files from PR.")
+
     for file in files:
         if file['filename'].endswith('.yaml') or file['filename'].endswith('.yml'):
-            patch = file['patch']
+            patch = file.get('patch', '')  # Ensure we have a patch
             lines = patch.split('\n')
 
-            if re.search(r'^apps/.*/unifi-db.yml$', file['filename']):
-                for line in lines:
-                    match = re.match(r'^\+ *version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
-                    if match:
-                        version = match.group(1).strip()
-                        images.append(("mongodb/mongodb-community-server", f"{version}-ubi8", ""))
-                        break  # Stop after first match
-            else:
-                for line in lines:
-                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
-                    if match:
-                        image_tag = match.group(1).strip()
-                        
-                        image = image_tag.split('@')[0].split(':')[0].strip()
-                        tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-                        digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+            debug_log(f"📜 Processing file: {file['filename']} with {len(lines)} changed lines.")
 
-                        images.append((image, tag, digest))
-                        break  # Stop after first match
+            for line in lines:
+                debug_log(f"🔎 Checking line: {repr(line.strip())}")
 
+                match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
+                if match:
+                    image_tag = match.group(1).strip()
+                    debug_log(f"✅ Matched Image Line: {repr(line.strip())}")
+                    debug_log(f"  - Extracted Image Tag: {image_tag}")
+
+                    image = image_tag.split('@')[0].split(':')[0].strip()
+                    tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
+                    digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+
+                    debug_log(f"  - Image: {image}")
+                    debug_log(f"  - Tag: {tag}")
+                    debug_log(f"  - Digest: {digest}")
+
+                    images.append((image, tag, digest))
+
+    debug_log(f"📊 Extracted {len(images)} images from PR diff.")
     return images
 
 def extract_images_from_helm_diff():
@@ -52,66 +63,66 @@ def extract_images_from_helm_diff():
     images = []
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
-    print(f"🔍 Checking for diff.txt at: {diff_txt_path}")
-    sys.stdout.flush()
+    debug_log(f"🔍 Checking for diff.txt at: {diff_txt_path}")
 
     if not os.path.exists(diff_txt_path):
-        print("❌ diff.txt NOT FOUND! Exiting script early.")
+        debug_log("❌ diff.txt NOT FOUND! Exiting script early.")
         return images
 
-    print("✅ diff.txt found! Reading contents...")
-    sys.stdout.flush()
+    debug_log("✅ diff.txt found! Reading contents...")
 
     with open(diff_txt_path, "r") as f:
         diff_lines = f.readlines()
 
-    print(f"📂 Loaded {len(diff_lines)} lines from diff.txt")
-    sys.stdout.flush()
+    debug_log(f"📂 Loaded {len(diff_lines)} lines from diff.txt")
 
     if not diff_lines:
-        print("❌ diff.txt is empty! Exiting.")
+        debug_log("❌ diff.txt is empty! Exiting.")
         return images
 
     for i, line in enumerate(diff_lines):
-        print(f"🔎 [{i+1}/{len(diff_lines)}] Processing line: {repr(line.strip())}")  # Use repr() to see raw formatting
-        sys.stdout.flush()
+        debug_log(f"🔎 [{i+1}/{len(diff_lines)}] Processing line: {repr(line.strip())}")
 
         match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
-            print(f"✅ Matched Image Line: {repr(line.strip())}")
-            print(f"  - Extracted Image Tag: {image_tag}")
-            sys.stdout.flush()
+            debug_log(f"✅ Matched Image Line: {repr(line.strip())}")
+            debug_log(f"  - Extracted Image Tag: {image_tag}")
 
             image = image_tag.split('@')[0].split(':')[0].strip()
             tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
             digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
-            print(f"  - Image: {image}")
-            print(f"  - Tag: {tag}")
-            print(f"  - Digest: {digest}")
-            sys.stdout.flush()
+            debug_log(f"  - Image: {image}")
+            debug_log(f"  - Tag: {tag}")
+            debug_log(f"  - Digest: {digest}")
 
             images.append((image, tag, digest))
-        else:
-            print(f"❌ No match found for line: {repr(line.strip())}")
-            sys.stdout.flush()
 
-    print(f"📊 Extracted {len(images)} images from diff.")
+    debug_log(f"📊 Extracted {len(images)} images from Helm diff.")
     return images
 
 def main():
     """Main function to extract image updates, preferring Helm diff if present."""
-    helm_diff = os.path.exists(os.getenv("DIFF_TXT_PATH", "diff.txt"))
+    debug_log("🚀 extract_image_info.py script started!")
 
+    helm_diff = os.path.exists(os.getenv("DIFF_TXT_PATH", "diff.txt"))
+    
     if helm_diff:
+        debug_log("🔍 Helm diff detected, extracting updated images.")
         images = extract_images_from_helm_diff()
     else:
+        debug_log("🔍 No Helm diff found, extracting updated image from PR.")
         images = extract_images_from_pr_diff()
 
-    if not images:
-        return
+    debug_log(f"✅ Images Extracted: {len(images)}")
 
+    if not images:
+        debug_log("❌ No image updates detected. Exiting.")
+        sys.exit(1)  # 🔥 Force failure to confirm script execution
+
+    debug_log(f"✅ Writing {len(images)} extracted images to GitHub Environment Variables.")
+    
     with open(os.environ['GITHUB_ENV'], 'a') as f:
         if helm_diff:
             for index, (image, tag, digest) in enumerate(images):
