@@ -163,10 +163,6 @@ jobs:
             ${{ env.diff }}
             ```
 
-      - name: Generate Unique Artifact Name
-        id: set-artifact-name
-        run: echo "ARTIFACT_NAME=helm-diff-$(date +%s)" >> $GITHUB_ENV
-
       - name: Upload Helm Diff as Artifact
         uses: actions/upload-artifact@v4
         with:
