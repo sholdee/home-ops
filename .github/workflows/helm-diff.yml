@@ -94,9 +94,14 @@ jobs:
                   git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" - > old-values.yaml
                   yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
                   
+                  # Dynamically add Helm repo and update
+                  REPO_NAME=$(echo "$REPO_URL" | awk -F/ '{print $NF}')  # Extract last part of the repo URL as a name
+                  helm repo add "$REPO_NAME" "$REPO_URL"
+                  helm repo update
+                  
                   # Render Helm manifests
-                  helm template "$APP_NAME" "$REPO_URL/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" -f old-values.yaml > old.yaml
-                  helm template "$APP_NAME" "$REPO_URL/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml
+                  helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" -f old-values.yaml > old.yaml
+                  helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml
                   
                   # Generate diff output
                   echo "- **Application**: $APP_NAME" >> diff.txt
