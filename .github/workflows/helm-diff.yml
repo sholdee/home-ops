@@ -50,7 +50,7 @@ jobs:
             # Loop over changed targetRevision versions
             for REV in $CHANGED_VERSIONS; do
                   # Find the Application name based on the changed targetRevision
-                  APP_NAME=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name" "$FILE")
+                  APP_NAME=$(yq e '. | select(.kind == "Application" and .spec.source.targetRevision == "'"$REV"'") | .metadata.name' "$FILE")
                   
                   if [ -z "$APP_NAME" ]; then
                         echo "No matching application found for targetRevision: $REV"
