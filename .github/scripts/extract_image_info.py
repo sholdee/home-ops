@@ -1,6 +1,7 @@
 import os
 import re
 import requests
+import sys
 
 def extract_images_from_pr_diff():
     """Extracts image updates from PR files (Docker PR updates)."""
