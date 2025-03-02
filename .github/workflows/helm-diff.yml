@@ -202,11 +202,12 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
-          PYTHONUNBUFFERED: "1"
         run: |
           echo "Starting extract_image_info.py..."
           python .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
           echo "Finished extract_image_info.py!"
+          echo $IMAGE_0
+          
 
       - name: Attempt to Pull Extracted Images
         id: pull_helm_images
