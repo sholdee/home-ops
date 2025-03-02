@@ -26,14 +26,14 @@ def extract_images_from_pr_diff():
 
             if re.search(r'^apps/.*/unifi-db.yml$', file['filename']):
                 for line in lines:
-                    match = re.match(r'^\+ *version:\s*"?([^"\s]+)"?', line, re.IGNORECASE)
+                    match = re.match(r'^\+ *version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         version = match.group(1).strip()
                         images.append(("mongodb/mongodb-community-server", f"{version}-ubi8", ""))
                         break  # Stop after first match
             else:
                 for line in lines:
-                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^"\s]+)"?', line, re.IGNORECASE)
+                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         image_tag = match.group(1).strip()
                         
@@ -64,7 +64,7 @@ def extract_images_from_helm_diff():
     for line in diff_lines:
         print(f"🔎 Processing line: {line.strip()}")  # Debug print each line
 
-        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^"\s]+)"?', line, re.IGNORECASE)
+        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
             print(f"✅ Matched Image Line: {line.strip()}")
