@@ -198,16 +198,8 @@ jobs:
       - name: Extract Image Updates from Helm Diff
         id: extract_helm_images
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
-        run: |
-          ls -lha
-          echo "Starting extract_image_info.py..."
-          cat diff.txt | python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
-          echo "Finished extract_image_info.py!"
-          echo $IMAGE_COUNT
+        run: .github/scripts/extract_image_info.sh
 
       - name: Attempt to Pull Extracted Images
         id: pull_helm_images
