@@ -19,6 +19,13 @@ jobs:
     outputs:
       ARTIFACT_NAME: ${{ steps.set-artifact-name.outputs.ARTIFACT_NAME }}
     steps:
+      - name: Generate Unique Artifact Name
+        id: set-artifact-name
+        run: |
+          ARTIFACT_NAME="helm-diff-$(date +%s)"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -178,11 +185,13 @@ jobs:
 
       - name: Move diff.txt to Correct Location
         run: |
-          ARTIFACT_DIR="${{ needs.helm-diff.outputs.ARTIFACT_NAME }}"
+          ARTIFACT_DIR=$(ls -d */ | grep '^helm-diff-' | head -n 1)
           if [ -d "$ARTIFACT_DIR" ] && [ -f "$ARTIFACT_DIR/diff.txt" ]; then
             mv "$ARTIFACT_DIR/diff.txt" diff.txt
+            echo "diff.txt moved successfully."
           else
             echo "diff.txt not found in $ARTIFACT_DIR, skipping move."
+            ls -l  # Debugging step
           fi
 
       - name: Extract Image Updates from Helm Diff
