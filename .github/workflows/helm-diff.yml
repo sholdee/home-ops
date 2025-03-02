@@ -28,10 +28,25 @@ jobs:
 
       - name: Install Dependencies
         run: |
-            sudo add-apt-repository -y ppa:rmescandon/yq
             sudo apt-get update
-            sudo apt-get install -y yq
-            yq --version  # Verify installation
+            sudo apt-get install -y wget curl jq
+
+      - name: Install yq (Latest Version)
+        run: |
+            YQ_VERSION=$(curl -sL https://api.github.com/repos/mikefarah/yq/releases/latest | jq -r ".tag_name" | sed 's/v//')
+            ARCH=$(uname -m)
+            
+            if [ "$ARCH" = "x86_64" ]; then
+                PLATFORM="amd64"
+            elif [ "$ARCH" = "aarch64" ]; then
+                PLATFORM="arm64"
+            else
+                PLATFORM="386"
+            fi
+            
+            wget "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq_linux_${PLATFORM}" -O /usr/local/bin/yq
+            chmod +x /usr/local/bin/yq
+            yq --version
             curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Find Modified Helm Applications
