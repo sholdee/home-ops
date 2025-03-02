@@ -203,6 +203,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
         run: |
+          ls -lha
           echo "Starting extract_image_info.py..."
           cat diff.txt | python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
           echo "Finished extract_image_info.py!"
