@@ -190,6 +190,11 @@ jobs:
             ls -l  # Debugging step
           fi
 
+      - name: Debug Helm Diff Contents
+        run: |
+          echo "===== DIFF.TXT CONTENTS ====="
+          cat diff.txt || echo "diff.txt is empty!"
+
       - name: Extract Image Updates from Helm Diff
         id: extract_helm_images
         env:
