@@ -176,8 +176,7 @@ jobs:
         with:
           name: ${{ needs.helm-diff.outputs.ARTIFACT_NAME }}
 
-      - name: Move diff.txt to Correct Location (If Exists)
-        if: ${{ needs.helm-diff.outputs.ARTIFACT_NAME != '' }}
+      - name: Move diff.txt to Correct Location
         run: |
           ARTIFACT_DIR="${{ needs.helm-diff.outputs.ARTIFACT_NAME }}"
           if [ -d "$ARTIFACT_DIR" ] && [ -f "$ARTIFACT_DIR/diff.txt" ]; then
