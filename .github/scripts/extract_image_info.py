@@ -4,7 +4,7 @@ import requests
 import sys
 
 def debug_log(message):
-    """Forces log output to appear immediately in GitHub Actions."""
+    print(f"::debug::{message}")
     sys.stderr.write(message + "\n")
     sys.stderr.flush()
 
