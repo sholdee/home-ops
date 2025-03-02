@@ -83,6 +83,9 @@ def main():
         print("No Helm diff found, extracting updated image from PR.")
         images = extract_images_from_pr_diff()
 
+    with open(os.environ['GITHUB_ENV'], 'a') as f:
+        f.write(f"IMAGE_COUNT={len(images)}\n")
+
     if not images:
         print("No image updates detected.")
         return
