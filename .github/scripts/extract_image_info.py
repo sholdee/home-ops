@@ -49,15 +49,8 @@ def extract_images_from_pr_diff():
 def extract_images_from_helm_diff():
     """Extracts image updates from Helm diff.txt or stdin."""
     images = []
-    diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
-    if os.path.exists(diff_txt_path):
-        print(f"✅ Reading {diff_txt_path}...")
-        with open(diff_txt_path, "r") as f:
-            diff_lines = f.readlines()
-    else:
-        print(f"⚠️ {diff_txt_path} not found! Reading from stdin...")
-        diff_lines = sys.stdin.readlines()
+    diff_lines = sys.stdin.readlines()
 
     print(f"📂 Loaded {len(diff_lines)} lines.")
     
@@ -91,9 +84,6 @@ def main():
     if not images:
         print("No image updates detected.")
         return
-
-    with open(os.environ['GITHUB_ENV'], 'a') as f:
-        f.write(f"IMAGE_COUNT={len(images)}\n")
 
     with open(os.environ['GITHUB_ENV'], 'a') as f:
         if helm_diff:
