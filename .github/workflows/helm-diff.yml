@@ -123,17 +123,32 @@ jobs:
                   
             done
 
-      - name: Debug Diff Output
+      - name: Read Helm Diff Output
+        id: diff
         run: |
-            echo "Final diff.txt content:"
-            cat diff.txt || echo "diff.txt does not exist or is empty!"
+            if [ -s diff.txt ]; then
+                echo "diff<<EOF" >> $GITHUB_ENV
+                cat diff.txt >> $GITHUB_ENV
+                echo "EOF" >> $GITHUB_ENV
+            fi
 
-      - name: Post Diff as PR Comment
+      - name: Generate Token
+        if: ${{ env.diff != '' }}
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: "${{ secrets.BOT_APP_ID }}"
+          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+
+      - name: Add Comment
+        if: ${{ env.diff != '' }}
+        continue-on-error: true
         uses: mshick/add-pr-comment@v2
         with:
+          repo-token: "${{ steps.app-token.outputs.token }}"
+          message-id: "${{ github.event.pull_request.number }}/helm-diff"
+          message-failure: Diff was not successful
           message: |
-            $(cat <<EOF
-            $(cat diff.txt)
-            EOF
-            )
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+            ```diff
+            ${{ env.diff }}
+            ```
