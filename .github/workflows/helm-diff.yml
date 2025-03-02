@@ -189,6 +189,9 @@ jobs:
       - name: Extract Image Updates from Helm Diff
         id: extract_helm_images
         env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
         run: |
           python .github/scripts/extract_image_info.py
