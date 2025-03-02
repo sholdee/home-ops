@@ -97,7 +97,7 @@ jobs:
                   # Dynamically add Helm repo and update
                   REPO_NAME=$(echo "$REPO_URL" | awk -F/ '{print $NF}')  # Extract last part of the repo URL as a name
                   helm repo add "$REPO_NAME" "$REPO_URL"
-                  helm repo update
+                  helm repo update > /dev/null 2>&1
                   
                   # Render Helm manifests
                   helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" -f old-values.yaml > old.yaml
