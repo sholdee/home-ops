@@ -162,7 +162,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: diff.txt
-          retention-days: 1
+          retention-days: 7
 
   verify-new-images:
     needs: helm-diff
