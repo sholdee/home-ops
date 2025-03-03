@@ -68,13 +68,9 @@ def extract_images_from_helm_diff():
 
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
-    if os.path.exists(diff_txt_path):
-        print(f"✅ Reading {diff_txt_path}...")
-        with open(diff_txt_path, "r") as f:
-            diff_lines = f.readlines()
-    else:
-        print(f"⚠️ {diff_txt_path} not found! Reading from stdin...")
-        diff_lines = sys.stdin.readlines()
+    print(f"✅ Reading {diff_txt_path}...")
+    with open(diff_txt_path, "r") as f:
+        diff_lines = f.readlines()
 
     print(f"📂 Loaded {len(diff_lines)} lines.")
     
