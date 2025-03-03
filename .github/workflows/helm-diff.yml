@@ -153,8 +153,8 @@ jobs:
                         
                         # Remove excluded fields, process in chunks, and stream the diff using git diff
                         echo "Processing inflated manifests and pruning excluded fields..."
-                        yq eval "del(${EXCLUDE_FIELDS})" old.yaml | split -l 10000 - old_chunk_
-                        yq eval "del(${EXCLUDE_FIELDS})" new.yaml | split -l 10000 - new_chunk_
+                        yq eval "del(${EXCLUDE_FIELDS})" old.yaml | select(.kind != \"Secret\")" | split -l 10000 - old_chunk_
+                        yq eval "del(${EXCLUDE_FIELDS})" new.yaml | select(.kind != \"Secret\")" | split -l 10000 - new_chunk_
                         
                         # For first chunk, use normal git diff
                         first_chunk=true
