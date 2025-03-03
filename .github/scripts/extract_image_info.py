@@ -59,7 +59,7 @@ def extract_images_from_helm_diff():
     for i, line in enumerate(diff_lines):
         print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line.strip())}")
         
-        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?(.+?)"?$', line, re.IGNORECASE)
+        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?(.+)"?$', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
             image = image_tag.split('@')[0].split(':')[0].strip()
