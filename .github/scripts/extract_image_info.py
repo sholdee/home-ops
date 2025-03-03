@@ -39,7 +39,7 @@ def extract_images_from_pr_diff():
             if re.search(r'^apps/.*/unifi-db.yml$', filename):
                 for line_idx, line in enumerate(lines):
                     print(f"   🔍 Checking line {line_idx+1}: {repr(line.strip())}")
-                    match = re.match(r'^\+ *version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
+                    match = re.match(r'^\+\s*version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         version = match.group(1).strip()
                         print(f"   ✅ Found Unifi DB version update: {version}-ubi8")
@@ -77,7 +77,7 @@ def extract_images_from_helm_diff():
     for i, line in enumerate(diff_lines):
         print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line.strip())}")
         
-        match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?$', line, re.IGNORECASE)
+        match = re.match(r'^\+\s*(?:image):\s*"?([^\s"]+)"?$', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
             image = image_tag.split('@')[0].split(':')[0].strip()
