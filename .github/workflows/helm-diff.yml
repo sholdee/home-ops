@@ -121,8 +121,8 @@ jobs:
                         echo "Rendering new Helm template..."
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
                         
-                        echo "Checking diff output:"
-                        diff -u old.yaml new.yaml >> diff.txt || echo "No changes detected"
+                        echo "Generating diff..."
+                        diff -u old.yaml new.yaml >> diff.txt
                         
                   done
             done
