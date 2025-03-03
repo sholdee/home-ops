@@ -142,12 +142,29 @@ jobs:
                         echo "Rendering new Helm template..."
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
 
-                        echo "Compressing YAML files..."
-                        gzip -c old.yaml > old.yaml.gz
-                        gzip -c new.yaml > new.yaml.gz
-
-                        echo "Generating diff..."
-                        zdiff --speed-large-files -u old.yaml.gz new.yaml.gz >> diff.txt
+                        # Process in chunks and stream the diff using git diff
+                        echo "Formatting and diffing manifests..."
+                        yq eval old.yaml | split -l 10000 - old_chunk_
+                        yq eval new.yaml | split -l 10000 - new_chunk_
+                        
+                        # For first chunk, use normal git diff
+                        first_chunk=true
+                        # Loop through chunks and diff them using git diff
+                        for old_chunk in old_chunk_*; do
+                          chunk_num=${old_chunk#old_chunk_}
+                          new_chunk="new_chunk_$chunk_num"
+                          
+                          if [ -f "$new_chunk" ]; then
+                            echo "Processing chunk $chunk_num..." 
+                            if [ "$first_chunk" = true ]; then
+                              git diff --no-index --text "$old_chunk" "$new_chunk" >> diff.txt
+                              first_chunk=false
+                            else
+                              # For subsequent chunks, use --no-prefix to avoid headers
+                              git diff --no-index --text --no-prefix "$old_chunk" "$new_chunk" >> diff.txt
+                            fi
+                          fi
+                        done
                   done
             done
 
