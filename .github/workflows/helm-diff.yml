@@ -142,10 +142,19 @@ jobs:
                         echo "Rendering new Helm template..."
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
 
-                        # Process in chunks and stream the diff using git diff
-                        echo "Formatting and diffing manifests..."
-                        yq eval old.yaml | split -l 10000 - old_chunk_
-                        yq eval new.yaml | split -l 10000 - new_chunk_
+                        # Define fields to remove
+                        EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
+                        EXCLUDE_FIELDS+=',.metadata.labels.chart'
+                        EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
+                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels."helm.sh/chart"'
+                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels.chart'
+                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
+                        EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
+                        
+                        # Remove excluded fields, process in chunks, and stream the diff using git diff
+                        echo "Processing inflated manifests and pruning excluded fields..."
+                        yq eval "del(${EXCLUDE_FIELDS})" old.yaml | split -l 10000 - old_chunk_
+                        yq eval "del(${EXCLUDE_FIELDS})" new.yaml | split -l 10000 - new_chunk_
                         
                         # For first chunk, use normal git diff
                         first_chunk=true
@@ -155,7 +164,7 @@ jobs:
                           new_chunk="new_chunk_$chunk_num"
                           
                           if [ -f "$new_chunk" ]; then
-                            echo "Processing chunk $chunk_num..." 
+                            echo "Processing chunk $chunk_num diff..." 
                             if [ "$first_chunk" = true ]; then
                               git diff --no-index --text "$old_chunk" "$new_chunk" >> diff.txt || true
                               first_chunk=false
