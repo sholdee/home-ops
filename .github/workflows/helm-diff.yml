@@ -141,10 +141,13 @@ jobs:
                         
                         echo "Rendering new Helm template..."
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
-                        
+
+                        echo "Compressing YAML files..."
+                        gzip -c old.yaml > old.yaml.gz
+                        gzip -c new.yaml > new.yaml.gz
+
                         echo "Generating diff..."
-                        diff --speed-large-files -u old.yaml new.yaml >> diff.txt
-                        
+                        zdiff --speed-large-files -u old.yaml.gz new.yaml.gz >> diff.txt
                   done
             done
 
