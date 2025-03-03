@@ -143,7 +143,7 @@ jobs:
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
                         
                         echo "Generating diff..."
-                        diff -u old.yaml new.yaml >> diff.txt
+                        diff --speed-large-files -u old.yaml new.yaml >> diff.txt
                         
                   done
             done
