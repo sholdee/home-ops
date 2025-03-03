@@ -5,7 +5,7 @@ import sys
 import json
 
 def extract_images_from_pr_diff():
-    """Extracts image updates from PR files (Docker PR updates)."""
+    """Extracts image updates from PR files (Docker PR updates) with logging."""
     pr_number = os.environ['PR_NUMBER']
     repo = os.environ['GITHUB_REPOSITORY']
     token = os.environ['GITHUB_TOKEN']
@@ -16,36 +16,50 @@ def extract_images_from_pr_diff():
         'Accept': 'application/vnd.github.v3+json'
     }
 
+    print(f"📡 Fetching PR diff from: {diff_url}")
     response = requests.get(diff_url, headers=headers)
+    
+    if response.status_code != 200:
+        print(f"❌ Failed to fetch PR diff: {response.status_code} - {response.text}")
+        return []
+
     files = response.json()
+    print(f"📂 Loaded {len(files)} files from PR.")
 
     images = []
 
-    for file in files:
-        if file['filename'].endswith('.yaml') or file['filename'].endswith('.yml'):
+    for file_idx, file in enumerate(files):
+        filename = file['filename']
+        print(f"🔎 [{file_idx+1}/{len(files)}] Processing file: {filename}")
+
+        if filename.endswith('.yaml') or filename.endswith('.yml'):
             patch = file['patch']
             lines = patch.split('\n')
 
-            if re.search(r'^apps/.*/unifi-db.yml$', file['filename']):
-                for line in lines:
-                    match = re.match(r'^\+ *version:\s*"?(.+)"?', line, re.IGNORECASE)
+            if re.search(r'^apps/.*/unifi-db.yml$', filename):
+                for line_idx, line in enumerate(lines):
+                    print(f"   🔍 Checking line {line_idx+1}: {repr(line.strip())}")
+                    match = re.match(r'^\+ *version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         version = match.group(1).strip()
+                        print(f"   ✅ Found Unifi DB version update: {version}-ubi8")
                         images.append(("mongodb/mongodb-community-server", f"{version}-ubi8", ""))
                         break  # Stop after first match
             else:
-                for line in lines:
-                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?(.+)"?', line, re.IGNORECASE)
+                for line_idx, line in enumerate(lines):
+                    print(f"   🔍 Checking line {line_idx+1}: {repr(line.strip())}")
+                    match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         image_tag = match.group(1).strip()
-                        
                         image = image_tag.split('@')[0].split(':')[0].strip()
                         tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
                         digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
+                        print(f"   ✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
                         images.append((image, tag, digest))
                         break  # Stop after first match
 
+    print(f"📊 Extracted {len(images)} images from PR diff.")
     return images
 
 def extract_images_from_helm_diff():
