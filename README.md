@@ -39,7 +39,7 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
 
 Renovate automatically scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-Image update pull requests trigger a workflow to pull the new image to the cluster for verification. This has the added benefit of caching images in the local embedded registry mirror, Spegel, prior to merging.
+Helm application update pull requests trigger a workflow to calculate and post the diff between the different versions' inflated manifests, as well as detect and pull all new images to the cluster for verification. Image update pull requests trigger a workflow to pull the new image. This has the added benefit of caching images in the local embedded registry mirror, Spegel, prior to merging.
 
 #### Primary Applications ⭐
   - Home Assistant and related services
