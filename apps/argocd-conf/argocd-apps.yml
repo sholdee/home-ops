@@ -165,7 +165,7 @@ spec:
           kind: ControllerConfiguration
           enableGatewayAPI: true
     repoURL: https://charts.jetstack.io
-    targetRevision: v1.17.0
+    targetRevision: v1.17.1
   syncPolicy:
     automated:
       prune: true
@@ -273,7 +273,7 @@ spec:
   source:
     chart: cloudnative-pg
     repoURL: https://cloudnative-pg.github.io/charts
-    targetRevision: 0.23.0
+    targetRevision: 0.22.1
   syncPolicy:
     automated:
       prune: true
