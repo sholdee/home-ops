@@ -63,7 +63,7 @@ def extract_images_from_pr_diff():
     return images
 
 def extract_images_from_helm_diff():
-    """Extracts image updates from Helm diff.txt or stdin."""
+    """Extracts image updates from Helm diff.txt with logging."""
     images = []
 
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
