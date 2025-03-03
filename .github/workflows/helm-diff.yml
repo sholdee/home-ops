@@ -80,7 +80,7 @@ jobs:
             curl -sSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
       - name: Find Modified Helm Applications
-        run: bash .github/scripts/helm-diff.sh
+        run: .github/scripts/helm-diff.sh
 
       - name: Read Helm Diff Output
         id: diff
