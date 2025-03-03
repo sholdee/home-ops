@@ -1,4 +1,4 @@
-name: Verify image pull
+name: Verify Docker image
 
 on:
   pull_request_target:
@@ -13,13 +13,14 @@ permissions:
   issues: write
 
 jobs:
-  check-title:
+  check-author:
+    if: startsWith(github.event.pull_request.title, 'Update') && (contains(github.event.pull_request.title, 'Docker tag') || contains(github.event.pull_request.title, 'Docker digest'))
     runs-on: ARM64
     outputs:
-      matched: ${{ steps.check_title.outputs.matched }}
+      matched: ${{ steps.check_author.outputs.matched }}
     steps:
-      - name: Check PR Author and Title
-        id: check_title
+      - name: Check PR Author
+        id: check_author
         run: |
           PR_TITLE='${{ github.event.pull_request.title }}'
           PR_AUTHOR="${{ github.event.pull_request.user.login }}"
@@ -29,20 +30,11 @@ jobs:
             echo "matched=false" >> $GITHUB_OUTPUT
             exit 0
           fi
-          if [[ "$PR_TITLE" =~ ^Revert ]]; then
-            echo "PR is a revert. Skipping."
-            echo "matched=false" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-          if echo "$PR_TITLE" | grep -E -q 'Update .* Docker (tag|digest)'; then
-            echo "matched=true" >> $GITHUB_OUTPUT
-          else
-            echo "matched=false" >> $GITHUB_OUTPUT
-          fi
+          echo "matched=true" >> $GITHUB_OUTPUT
 
   verify-image-pull:
-    needs: check-title
-    if: needs.check-title.outputs.matched == 'true'
+    needs: check-author
+    if: needs.check-author.outputs.matched == 'true'
     runs-on: ARM64
 
     steps:
