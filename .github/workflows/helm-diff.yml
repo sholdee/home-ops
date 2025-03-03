@@ -227,7 +227,7 @@ jobs:
               [ -n "${!DIGEST_VAR}" ] && IMAGE_FULL="${!IMAGE_VAR}@${!DIGEST_VAR}"
               
               echo "Pulling image: $IMAGE_FULL"
-              sudo crictl --debug pull "$IMAGE_FULL" || echo "Failed to pull $IMAGE_FULL"
+              sudo crictl --debug pull "$IMAGE_FULL"
           done
 
       - name: Add `donotmerge` Label if any Pull Fails
