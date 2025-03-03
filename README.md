@@ -35,11 +35,13 @@
 
 This repository contains the configurations for my home operations k3s cluster.
 
-My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Push events trigger ArgoCD to sync the cluster state with this repository.
+My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Repository push events trigger a webhook to ArgoCD, causing it to immediately sync the cluster state with this repository.
 
-Renovate automatically scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
+Renovate continuously scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-Helm application update pull requests trigger a workflow to calculate and post the diff between the different versions' inflated manifests, as well as detect and pull all new images to the cluster for verification. Image update pull requests trigger a workflow to pull the new image. This has the added benefit of caching images in the local embedded registry mirror, Spegel, prior to merging.
+Pull requests for Helm application updates trigger a workflow to calculate and post the diff between the old and new versions' inflated manifests, as well as detect and pull all new container images to the cluster for verification.
+
+Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
 
 #### Primary Applications ⭐
   - Home Assistant and related services
