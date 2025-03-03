@@ -13,8 +13,28 @@ permissions:
   issues: write
 
 jobs:
-  helm-diff:
+  check-author:
     if: startsWith(github.event.pull_request.title, 'Update Helm release')
+    runs-on: ubuntu-latest
+    outputs:
+      matched: ${{ steps.check_author.outputs.matched }}
+    steps:
+      - name: Check PR Author
+        id: check_author
+        run: |
+          PR_TITLE='${{ github.event.pull_request.title }}'
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          BOT_USERNAME="pull-bunyan[bot]"
+          if [[ "$PR_AUTHOR" != "$BOT_USERNAME" ]]; then
+            echo "PR is not from the GitHub App bot. Skipping."
+            echo "matched=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "matched=true" >> $GITHUB_OUTPUT
+
+  helm-diff:
+    needs: check-author
+    if: needs.check-author.outputs.matched == 'true'
     runs-on: ubuntu-latest
     outputs:
       ARTIFACT_NAME: ${{ steps.set-artifact-name.outputs.ARTIFACT_NAME }}
