@@ -157,11 +157,11 @@ jobs:
                           if [ -f "$new_chunk" ]; then
                             echo "Processing chunk $chunk_num..." 
                             if [ "$first_chunk" = true ]; then
-                              git diff --no-index --text "$old_chunk" "$new_chunk" >> diff.txt
+                              git diff --no-index --text "$old_chunk" "$new_chunk" >> diff.txt || true
                               first_chunk=false
                             else
                               # For subsequent chunks, use --no-prefix to avoid headers
-                              git diff --no-index --text --no-prefix "$old_chunk" "$new_chunk" >> diff.txt
+                              git diff --no-index --text --no-prefix "$old_chunk" "$new_chunk" >> diff.txt || true
                             fi
                           fi
                         done
