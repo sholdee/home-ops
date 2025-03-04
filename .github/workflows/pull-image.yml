@@ -54,11 +54,53 @@ jobs:
       - name: Attempt to pull image
         id: pull_image
         run: |
+          > pull_results.txt
+          PULL_FAILED=0  # Track failures
+          
           IMAGE_FULL="${IMAGE}:${TAG}"
           [ -n "$DIGEST" ] && IMAGE_FULL="${IMAGE}@${DIGEST}"
           
           echo "Pulling image: $IMAGE_FULL"
-          sudo crictl --debug pull "$IMAGE_FULL" || exit 1
+          if sudo crictl --debug pull "$IMAGE_FULL"; then
+              echo "✅ $IMAGE_FULL" >> pull_results.txt
+          else
+              echo "❌ $IMAGE_FULL" >> pull_results.txt
+              PULL_FAILED=1  # Mark failure
+          fi
+          
+          if [ "$PULL_FAILED" -eq 1 ]; then
+            exit 1
+          fi
+
+      - name: Format Image Pull Status
+        id: format_image_pull_status
+        run: |
+          echo "IMAGE_PULL_COMMENT<<EOF" >> $GITHUB_ENV
+          echo "| Status | Image  |" >> $GITHUB_ENV
+          echo "|--------|--------|" >> $GITHUB_ENV
+          while read -r line; do
+            STATUS=$(echo "$line" | awk '{print $1}')
+            IMAGE=$(echo "$line" | awk '{$1=""; print $0}' | xargs)
+            echo "| $STATUS | \`$IMAGE\` |" >> $GITHUB_ENV
+          done < pull_results.txt
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Generate Token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: "${{ secrets.BOT_APP_ID }}"
+          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+
+      - name: Add Comment
+        continue-on-error: true
+        uses: mshick/add-pr-comment@v2
+        with:
+          repo-token: "${{ steps.app-token.outputs.token }}"
+          message-id: "${{ github.event.pull_request.number }}/docker-verify"
+          message-failure: "Error adding comment"
+          message: |
+            ${{ env.IMAGE_PULL_COMMENT }}
 
       - name: Add `donotmerge` Label if pull fails
         if: failure()
