@@ -281,6 +281,14 @@ jobs:
           done < pull_results.txt
           echo "EOF" >> $GITHUB_ENV
 
+      - name: Store Helm Diff Output
+        if: ${{ env.IMAGE_PULL_COMMENT != '' }}
+        id: store-diff
+        run: |
+            echo "diff<<EOF" >> $GITHUB_ENV
+            cat diff.txt >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+
       - name: Generate Token
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
         uses: actions/create-github-app-token@v1
