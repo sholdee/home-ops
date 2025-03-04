@@ -80,40 +80,55 @@ jobs:
 
       - name: Find Modified Helm Applications
         run: |
-            FILE="apps/argocd-conf/argocd-apps.yml"
+            # Fetch PR diff from GitHub API
+            DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
+            RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github.v3+json" "$DIFF_URL")
             
-            # Extract list of modified targetRevision values
-            CHANGED_VERSIONS=$(git diff --unified=0 --no-color origin/${{ github.event.pull_request.base.ref }} -- "$FILE" | grep -E "^\+\s+targetRevision:" | awk '{$NF=$NF};1' | awk '{print $NF}' | tr -d '[:space:]' || true)
+            # Extract modified file(s)
+            FILES=$(echo "$RESPONSE" | jq -r '.[].filename')
             
-            if [ -z "$CHANGED_VERSIONS" ]; then
-                  echo "No Helm chart updates detected."
-                  exit 0
+            # Extract targetRevision changes from patch(es)
+            CHANGED_VERSIONS=$(echo "$RESPONSE" | jq -r '.[].patch' | grep -E "^\+\s+targetRevision:" | awk '{$NF=$NF};1' | awk '{print $NF}' | tr -d '[:space:]' || true)
+            
+            if [ -z "$FILES" ]; then
+                echo "❌ No modified files found in the PR."
+                exit 1
             fi
             
-            echo "Modified Versions: $CHANGED_VERSIONS"
+            if [ -z "$CHANGED_VERSIONS" ]; then
+                echo "✅ No Helm chart updates detected."
+                exit 0
+            fi
+            
+            echo "📂 Modified files: $FILES"
+            echo "🔄 Modified versions: $CHANGED_VERSIONS"
             
             > diff.txt
             
-            # Loop over changed targetRevision versions
-            for REV in $CHANGED_VERSIONS; do
-                  # Extract all app names that now have this targetRevision
-                  APP_NAMES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name" "$FILE")
-                  
-                  # Loop through each app and check if it actually changed
-                  for APP_NAME in $APP_NAMES; do
+            # Loop over modified files
+            for FILE in $FILES; do
+                echo "📄 Processing file: $FILE"
+                
+                # Loop over changed targetRevision versions
+                for REV in $CHANGED_VERSIONS; do
+                    # Extract all app names that now have this targetRevision
+                    APP_NAMES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name" "$FILE")
+                    
+                    # Loop through each app and check if it actually changed
+                    for APP_NAME in $APP_NAMES; do
                         OLD_VERSION=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.targetRevision" -)
                         NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.targetRevision" "$FILE")
                         
                         # Skip apps where targetRevision didn't actually change
                         if [[ "$OLD_VERSION" == "$NEW_VERSION" || -z "$NEW_VERSION" ]]; then
-                              continue
+                            continue
                         fi
                         
                         CHART_NAME=$(yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.chart" "$FILE")
                         REPO_URL=$(yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.repoURL" "$FILE")
                         NAMESPACE=$(yq e "select(.metadata.name == \"$APP_NAME\") | .spec.destination.namespace" "$FILE")
                         
-                        echo "Processing $APP_NAME: $OLD_VERSION → $NEW_VERSION"
+                        echo "🔄 Processing $APP_NAME: $OLD_VERSION → $NEW_VERSION"
                         
                         git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" - > old-values.yaml
                         yq e "select(.metadata.name == \"$APP_NAME\") | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
@@ -122,24 +137,24 @@ jobs:
                         helm repo add "$REPO_NAME" "$REPO_URL"
                         helm repo update
                         
-                        echo "Checking available versions for $CHART_NAME..."
+                        echo "📡 Checking available versions for $CHART_NAME..."
                         helm search repo "$REPO_NAME/$CHART_NAME" --versions
                         
                         if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$OLD_VERSION"; then
-                              echo "Error: Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
-                              continue
+                            echo "⚠️ Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
+                            continue
                         fi
                         
                         if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$NEW_VERSION"; then
-                              echo "Error: Chart $CHART_NAME version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
-                              continue
+                            echo "⚠️ Chart $CHART_NAME version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
+                            continue
                         fi
                         
-                        echo "Rendering old Helm template..."
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" -f old-values.yaml > old.yaml || { echo "Helm template failed for old version"; continue; }
+                        echo "🎭 Rendering old Helm template..."
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" -f old-values.yaml > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
                         
-                        echo "Rendering new Helm template..."
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "Helm template failed for new version"; continue; }
+                        echo "🎭 Rendering new Helm template..."
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" -f new-values.yaml > new.yaml || { echo "❌ Helm template failed for new version"; continue; }
                         
                         # Define fields to remove
                         EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
@@ -150,13 +165,14 @@ jobs:
                         EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
                         EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
                         
-                        echo "Processing inflated charts..."
+                        echo "🛠️ Processing inflated charts..."
                         yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
                         yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
                         
-                        echo "Generating diff..."
+                        echo "🔍 Generating diff..."
                         git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
-                  done
+                    done
+                done
             done
 
       - name: Read Helm Diff Output
