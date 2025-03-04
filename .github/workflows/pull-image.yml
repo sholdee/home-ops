@@ -58,7 +58,7 @@ jobs:
           [ -n "$DIGEST" ] && IMAGE_FULL="${IMAGE}@${DIGEST}"
           
           echo "Pulling image: $IMAGE_FULL"
-          sudo crictl --debug pull "$IMAGE_FULL"
+          sudo crictl --debug pull "$IMAGE_FULL" || exit 1
 
       - name: Add `donotmerge` Label if pull fails
         if: failure()
