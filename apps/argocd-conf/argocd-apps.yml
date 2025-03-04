@@ -472,9 +472,9 @@ spec:
     helm:
       valuesObject:
         crds:
-          enabled: true
+          enabled: false
           upgradeJob:
-            enabled: true
+            enabled: false
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
