@@ -149,29 +149,12 @@ jobs:
                         EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
                         EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
                         
-                        # Remove excluded fields, process in chunks, and stream the diff using git diff
-                        echo "Processing inflated manifests and pruning excluded fields..."
-                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml | split -l 10000 - old_chunk_
-                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml | split -l 10000 - new_chunk_
+                        echo "Processing inflated charts..."
+                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
+                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
                         
-                        # For first chunk, use normal git diff
-                        first_chunk=true
-                        # Loop through chunks and diff them using git diff
-                        for old_chunk in old_chunk_*; do
-                          chunk_num=${old_chunk#old_chunk_}
-                          new_chunk="new_chunk_$chunk_num"
-                          
-                          if [ -f "$new_chunk" ]; then
-                            echo "Processing chunk $chunk_num diff..." 
-                            if [ "$first_chunk" = true ]; then
-                              git diff --no-index --text "$old_chunk" "$new_chunk" >> diff.txt || true
-                              first_chunk=false
-                            else
-                              # For subsequent chunks, use --no-prefix to avoid headers
-                              git diff --no-index --text --no-prefix "$old_chunk" "$new_chunk" >> diff.txt || true
-                            fi
-                          fi
-                        done
+                        echo "Generating diff..."
+                        git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
                   done
             done
 
