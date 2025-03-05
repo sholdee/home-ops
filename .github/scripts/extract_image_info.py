@@ -4,8 +4,19 @@ import requests
 import sys
 import json
 
+# Regex adapted from output of distribution/reference Go module: fmt.Printf("%q\n", reference.ReferenceRegexp)
+DOCKER_IMAGE_REGEX = re.compile(
+    r"^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?"
+    r"[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)"
+    r"(?::([\w][\w.-]{0,127}))?"
+    r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?$"
+)
+
+def is_valid_docker_image(image):
+    return bool(DOCKER_IMAGE_REGEX.fullmatch(image))
+
 def extract_images_from_pr_diff():
-    """Extracts image updates from PR files (Docker PR updates) with logging."""
+    """Extracts container image updates from PR files with validation."""
     pr_number = os.environ['PR_NUMBER']
     repo = os.environ['GITHUB_REPOSITORY']
     token = os.environ['GITHUB_TOKEN']
@@ -51,19 +62,22 @@ def extract_images_from_pr_diff():
                     match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         image_tag = match.group(1).strip()
-                        image = image_tag.split('@')[0].split(':')[0].strip()
-                        tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-                        digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+                        if is_valid_docker_image(image_tag):
+                            image = image_tag.split('@')[0].split(':')[0].strip()
+                            tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
+                            digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
-                        print(f"   ✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
-                        images.append((image, tag, digest))
-                        break  # Stop after first match
+                            print(f"   ✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
+                            images.append((image, tag, digest))
+                            break  # Stop after first match
+                        else:
+                            print(f"❌ Invalid Image Format: {image_tag}")
 
     print(f"📊 Extracted {len(images)} images from PR diff.")
     return images
 
 def extract_images_from_helm_diff():
-    """Extracts unique image updates from Helm diff.txt with logging."""
+    """Extracts unique image updates from Helm diff.txt with validation."""
     unique_images = set()  # Using a set to deduplicate images
 
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
@@ -80,16 +94,19 @@ def extract_images_from_helm_diff():
         match = re.match(r'^\+\s*(?:image):\s*"?([^\s"]+)"?$', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
-            image = image_tag.split('@')[0].split(':')[0].strip()
-            tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-            digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+            if is_valid_docker_image(image_tag):
+                image = image_tag.split('@')[0].split(':')[0].strip()
+                tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
+                digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
-            image_entry = (image, tag, digest)
-            if image_entry not in unique_images:
-                print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
-                unique_images.add(image_entry)
+                image_entry = (image, tag, digest)
+                if image_entry not in unique_images:
+                    print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
+                    unique_images.add(image_entry)
+                else:
+                    print(f"ℹ️ Duplicate Image Found: {image}, Tag: {tag}, Digest: {digest} (Skipping)")
             else:
-                print(f"ℹ️ Duplicate Image Found: {image}, Tag: {tag}, Digest: {digest} (Skipping)")
+                print(f"❌ Invalid Image Format: {image_tag}")
 
     print(f"📊 Extracted {len(unique_images)} unique images.")
     return list(unique_images)  # Convert set back to list before returning
