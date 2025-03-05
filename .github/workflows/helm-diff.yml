@@ -246,7 +246,6 @@ jobs:
         id: pull_helm_images
         run: |
           > pull_results.txt
-          > images.txt
           PULL_FAILED=0  # Track failures
           
           if [ -z "$IMAGE_COUNT" ] || [ "$IMAGE_COUNT" -eq 0 ]; then
@@ -254,7 +253,6 @@ jobs:
             exit 0
           fi
           
-          # Deduplicate images before pulling
           for i in $(seq 0 $((IMAGE_COUNT - 1))); do
               IMAGE_VAR="IMAGE_$i"
               TAG_VAR="TAG_$i"
@@ -263,14 +261,6 @@ jobs:
               IMAGE_FULL="${!IMAGE_VAR}:${!TAG_VAR}"
               [ -n "${!DIGEST_VAR}" ] && IMAGE_FULL="${!IMAGE_VAR}@${!DIGEST_VAR}"
               
-              echo "$IMAGE_FULL" >> images.txt
-          done
-          
-          # Remove duplicate images
-          sort -u images.txt > deduped_images.txt
-          
-          # Pull only unique images
-          while read -r IMAGE_FULL; do
               echo "Pulling image: $IMAGE_FULL"
               if sudo crictl --debug pull "$IMAGE_FULL"; then
                   echo "✅ $IMAGE_FULL" >> pull_results.txt
@@ -278,7 +268,7 @@ jobs:
                   echo "❌ $IMAGE_FULL" >> pull_results.txt
                   PULL_FAILED=1  # Mark failure
               fi
-          done < deduped_images.txt
+          done
           
           if [ "$PULL_FAILED" -eq 1 ]; then
             exit 1  # Ensure job fails if any image pull fails
