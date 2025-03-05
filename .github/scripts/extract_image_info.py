@@ -12,7 +12,18 @@ DOCKER_IMAGE_REGEX = re.compile(
     r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?$"
 )
 
+# Primary regex for `+ image:` Helm diff lines
+IMAGE_KEY_REGEX = re.compile(r'^\+\s*image:\s*"?([^\s"]+)"?$', re.IGNORECASE)
+
+# Fallback regex: Matches `repo/image:tag` or `repo/image@sha256:digest` in Helm diff lines
+FALLBACK_IMAGE_REGEX = re.compile(
+    r"([a-zA-Z0-9.-]+(?:/[a-zA-Z0-9._-]+)+)"  # Matches `repo/image`
+    r"(?:\:([a-zA-Z0-9._-]+))?"               # Optional :tag
+    r"(?:\@([A-Za-z][A-Za-z0-9]*[-_+.][A-Za-z0-9]*:[0-9A-Fa-f]{32,}))?"  # Optional @digest
+)
+
 def is_valid_docker_image(image):
+    """Validates whether an image reference conforms to Docker standard."""
     return bool(DOCKER_IMAGE_REGEX.fullmatch(image))
 
 def extract_images_from_pr_diff():
@@ -77,9 +88,8 @@ def extract_images_from_pr_diff():
     return images
 
 def extract_images_from_helm_diff():
-    """Extracts unique image updates from Helm diff.txt with validation."""
+    """Extracts unique image updates from Helm diff.txt, prioritizing `+ image:` lines but allowing a stricter fallback match."""
     unique_images = set()  # Using a set to deduplicate images
-
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
     print(f"✅ Reading {diff_txt_path}...")
@@ -89,24 +99,46 @@ def extract_images_from_helm_diff():
     print(f"📂 Loaded {len(diff_lines)} lines.")
 
     for i, line in enumerate(diff_lines):
-        print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line.strip())}")
+        line = line.strip()
+        if not line.startswith("+ "):  # Only process added lines
+            continue
 
-        match = re.match(r'^\+\s*(?:image):\s*"?([^\s"]+)"?$', line, re.IGNORECASE)
+        print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line)}")
+
+        image_tag = None  # Initialize variable for image match
+
+        # **Primary Match: `+ image:` lines**
+        match = IMAGE_KEY_REGEX.match(line)
         if match:
             image_tag = match.group(1).strip()
-            if is_valid_docker_image(image_tag):
-                image = image_tag.split('@')[0].split(':')[0].strip()
-                tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-                digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+        else:
+            # **Fallback Match: Look for valid `repo/image` format with a tag or digest**
+            match = FALLBACK_IMAGE_REGEX.search(line)
+            if match:
+                repo_image = match.group(1)
+                tag = match.group(2) or ""
+                digest = match.group(3) or ""
 
-                image_entry = (image, tag, digest)
-                if image_entry not in unique_images:
-                    print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
-                    unique_images.add(image_entry)
-                else:
-                    print(f"ℹ️ Duplicate Image Found: {image}, Tag: {tag}, Digest: {digest} (Skipping)")
+                if not tag and not digest:
+                    print(f"❌ Skipping invalid reference (missing tag/digest): {repo_image}")
+                    continue  # Skip matches that lack a tag/digest
+
+                image_tag = f"{repo_image}@{digest}" if digest else f"{repo_image}:{tag}"
+
+        if image_tag and is_valid_docker_image(image_tag):
+            # Extract components
+            image = image_tag.split('@')[0].split(':')[0].strip()
+            tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
+            digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+
+            image_entry = (image, tag, digest)
+            if image_entry not in unique_images:
+                print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
+                unique_images.add(image_entry)
             else:
-                print(f"❌ Invalid Image Format: {image_tag}")
+                print(f"ℹ️ Skipped Duplicate Image: {image}, Tag: {tag}, Digest: {digest}")
+        elif image_tag:
+            print(f"❌ Invalid Docker Image Reference: {image_tag}")
 
     print(f"📊 Extracted {len(unique_images)} unique images.")
     return list(unique_images)  # Convert set back to list before returning
