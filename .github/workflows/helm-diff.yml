@@ -138,7 +138,7 @@ jobs:
                         helm repo update
                         
                         echo "📡 Checking available versions for $CHART_NAME..."
-                        helm search repo "$REPO_NAME/$CHART_NAME" --versions
+                        helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
                         
                         if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$OLD_VERSION"; then
                             echo "⚠️ Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
