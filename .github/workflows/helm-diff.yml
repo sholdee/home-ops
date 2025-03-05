@@ -111,30 +111,36 @@ jobs:
                 
                 # Loop over changed targetRevision versions
                 for REV in $CHANGED_VERSIONS; do
-                    # Extract app names and namespaces
-                    APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | {name: .metadata.name, namespace: .metadata.namespace}" "$FILE" -o=json)
+                    # Extract app names and namespaces properly
+                    APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
+
+                    if [[ -z "$APP_ENTRIES" ]]; then
+                        echo "⚠️ No matching applications found for targetRevision: $REV"
+                        continue
+                    fi
                     
                     # Loop through each app entry
-                    echo "$APP_ENTRIES" | jq -c '.[]' | while read -r APP_ENTRY; do
-                        APP_NAME=$(echo "$APP_ENTRY" | jq -r '.name')
-                        NAMESPACE=$(echo "$APP_ENTRY" | jq -r '.namespace')  # Keep unset if not defined
-                        
-                        OLD_VERSION=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.targetRevision" -)
-                        NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.targetRevision" "$FILE")
+                    echo "$APP_ENTRIES" | while IFS="|" read -r APP_NAME NAMESPACE; do
+                        if [[ -z "$APP_NAME" ]]; then
+                            continue
+                        fi
+
+                        OLD_VERSION=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" -)
+                        NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" "$FILE")
                         
                         # Skip apps where targetRevision didn't actually change
                         if [[ "$OLD_VERSION" == "$NEW_VERSION" || -z "$NEW_VERSION" ]]; then
                             continue
                         fi
                         
-                        CHART_NAME=$(yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.chart" "$FILE")
-                        REPO_URL=$(yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.repoURL" "$FILE")
-                        DEST_NAMESPACE=$(yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.destination.namespace" "$FILE" || echo "default")
+                        CHART_NAME=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.chart" "$FILE")
+                        REPO_URL=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.repoURL" "$FILE")
+                        DEST_NAMESPACE=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" "$FILE" || echo "default")
                         
                         echo "🔄 Processing $APP_NAME (Namespace: ${NAMESPACE:-unset}, Dest: $DEST_NAMESPACE): $OLD_VERSION → $NEW_VERSION"
                         
-                        git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.helm.valuesObject" - > old-values.yaml
-                        yq e "select(.metadata.name == \"$APP_NAME\" and .metadata.namespace == \"$NAMESPACE\") | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
+                        git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" - > old-values.yaml
+                        yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
                         
                         REPO_NAME=$(echo "$REPO_URL" | awk -F/ '{print $NF}')
                         helm repo add "$REPO_NAME" "$REPO_URL"
