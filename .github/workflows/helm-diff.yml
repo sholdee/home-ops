@@ -113,7 +113,7 @@ jobs:
                 for REV in $CHANGED_VERSIONS; do
                     # Extract app names and namespaces properly
                     APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
-
+                    
                     if [[ -z "$APP_ENTRIES" ]]; then
                         echo "⚠️ No matching applications found for targetRevision: $REV"
                         continue
@@ -124,7 +124,7 @@ jobs:
                         if [[ -z "$APP_NAME" ]]; then
                             continue
                         fi
-
+                        
                         OLD_VERSION=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" -)
                         NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" "$FILE")
                         
@@ -139,8 +139,22 @@ jobs:
                         
                         echo "🔄 Processing $APP_NAME (Namespace: ${NAMESPACE:-unset}, Dest: $DEST_NAMESPACE): $OLD_VERSION → $NEW_VERSION"
                         
-                        git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" - > old-values.yaml
-                        yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" "$FILE" > new-values.yaml
+                        OLD_IGNORE_MISSING=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.ignoreMissingValueFiles // \"false\"" -)
+                        NEW_IGNORE_MISSING=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.ignoreMissingValueFiles // \"false\"" "$FILE")
+                        
+                        [[ "$NEW_IGNORE_MISSING" == "true" ]] && HELM_IGNORE_FLAG="--ignore-missing-value-files" || HELM_IGNORE_FLAG=""
+                        
+                        OLD_VALUES_OBJECT=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" -)
+                        NEW_VALUES_OBJECT=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" "$FILE")
+                        
+                        OLD_VALUES_STRING=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.values" -)
+                        NEW_VALUES_STRING=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.values" "$FILE")
+                        
+                        OLD_VALUE_FILES=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valueFiles | select(.) | select(length > 0) | join(\"\\n\")" -)
+                        NEW_VALUE_FILES=$(yq e -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valueFiles | select(.) | select(length > 0) | join(\"\\n\")" "$FILE")
+                        
+                        OLD_PARAMETERS=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" -)
+                        NEW_PARAMETERS=$(yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE")
                         
                         REPO_NAME=$(echo "$REPO_URL" | awk -F/ '{print $NF}')
                         helm repo add "$REPO_NAME" "$REPO_URL"
@@ -160,10 +174,42 @@ jobs:
                         fi
                         
                         echo "🎭 Rendering old Helm template..."
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" -f old-values.yaml > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
+                        HELM_ARGS_OLD="$HELM_IGNORE_FLAG"
+                        
+                        for vf in $OLD_VALUE_FILES; do
+                            HELM_ARGS_OLD="$HELM_ARGS_OLD -f $vf"
+                        done
+                        
+                        [ -n "$OLD_VALUES_STRING" ] && echo "$OLD_VALUES_STRING" > old-values.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values.yaml"
+                        [ -n "$OLD_VALUES_OBJECT" ] && echo "$OLD_VALUES_OBJECT" > old-values-object.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values-object.yaml"
+                        
+                        HELM_ARGS_OLD=()
+                        while IFS= read -r p; do
+                            HELM_ARGS_OLD+=("$p")
+                        done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "--set " + .name + "=" + @sh .value')
+                        
+                        HELM_ARGS_OLD="${HELM_ARGS_OLD[@]}"
+                        
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" $HELM_ARGS_OLD > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
                         
                         echo "🎭 Rendering new Helm template..."
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" -f new-values.yaml > new.yaml || { echo "❌ Helm template failed for new version"; continue; }
+                        HELM_ARGS_NEW="$HELM_IGNORE_FLAG"
+                        
+                        for vf in $NEW_VALUE_FILES; do
+                            HELM_ARGS_NEW="$HELM_ARGS_NEW -f $vf"
+                        done
+                        
+                        [ -n "$NEW_VALUES_STRING" ] && echo "$NEW_VALUES_STRING" > new-values.yaml && HELM_ARGS_NEW="$HELM_ARGS_NEW -f new-values.yaml"
+                        [ -n "$NEW_VALUES_OBJECT" ] && echo "$NEW_VALUES_OBJECT" > new-values-object.yaml && HELM_ARGS_NEW="$HELM_ARGS_NEW -f new-values-object.yaml"
+                        
+                        HELM_ARGS_NEW=()
+                        while IFS= read -r p; do
+                            HELM_ARGS_NEW+=("$p")
+                        done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "--set " + .name + "=" + @sh .value')
+                        
+                        HELM_ARGS_NEW="${HELM_ARGS_NEW[@]}"
+                        
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" $HELM_ARGS_NEW > new.yaml || { echo "❌ Helm template failed for new version"; continue; }
                         
                         # Define fields to remove
                         EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
