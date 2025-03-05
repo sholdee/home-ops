@@ -173,22 +173,6 @@ jobs:
                             continue
                         fi
                         
-                        echo "🎭 Rendering old Helm template..."
-                        HELM_ARGS_OLD="$HELM_IGNORE_FLAG"
-                        
-                        for vf in $OLD_VALUE_FILES; do
-                            HELM_ARGS_OLD="$HELM_ARGS_OLD -f $vf"
-                        done
-                        
-                        [ -n "$OLD_VALUES_STRING" ] && echo "$OLD_VALUES_STRING" > old-values.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values.yaml"
-                        [ -n "$OLD_VALUES_OBJECT" ] && echo "$OLD_VALUES_OBJECT" > old-values-object.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values-object.yaml"
-                        
-                        while IFS= read -r p; do
-                            HELM_ARGS_OLD+=" $p"
-                        done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "--set " + .name + "=" + @sh .value')
-                        
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" $HELM_ARGS_OLD > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
-                        
                         echo "🎭 Rendering new Helm template..."
                         HELM_ARGS_NEW="$HELM_IGNORE_FLAG"
                         
@@ -204,6 +188,27 @@ jobs:
                         done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "--set " + .name + "=" + @sh .value')
                         
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" $HELM_ARGS_NEW > new.yaml || { echo "❌ Helm template failed for new version"; continue; }
+                        
+                        # Now overwrite the value files with the base branch versions
+                        for vf in $OLD_VALUE_FILES; do
+                            git show origin/${{ github.event.pull_request.base.ref }}:"$vf" > "$vf" 2>/dev/null || echo "# Missing file from base branch: $vf" > "$vf"
+                        done
+                        
+                        echo "🎭 Rendering old Helm template..."
+                        HELM_ARGS_OLD="$HELM_IGNORE_FLAG"
+                        
+                        for vf in $OLD_VALUE_FILES; do
+                            HELM_ARGS_OLD="$HELM_ARGS_OLD -f $vf"
+                        done
+                        
+                        [ -n "$OLD_VALUES_STRING" ] && echo "$OLD_VALUES_STRING" > old-values.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values.yaml"
+                        [ -n "$OLD_VALUES_OBJECT" ] && echo "$OLD_VALUES_OBJECT" > old-values-object.yaml && HELM_ARGS_OLD="$HELM_ARGS_OLD -f old-values-object.yaml"
+                        
+                        while IFS= read -r p; do
+                            HELM_ARGS_OLD+=" $p"
+                        done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "--set " + .name + "=" + @sh .value')
+                        
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" $HELM_ARGS_OLD > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
                         
                         # Define fields to remove
                         EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
