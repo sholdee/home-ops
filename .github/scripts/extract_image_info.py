@@ -63,8 +63,8 @@ def extract_images_from_pr_diff():
     return images
 
 def extract_images_from_helm_diff():
-    """Extracts image updates from Helm diff.txt with logging."""
-    images = []
+    """Extracts unique image updates from Helm diff.txt with logging."""
+    unique_images = set()  # Using a set to deduplicate images
 
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
@@ -73,10 +73,10 @@ def extract_images_from_helm_diff():
         diff_lines = f.readlines()
 
     print(f"📂 Loaded {len(diff_lines)} lines.")
-    
+
     for i, line in enumerate(diff_lines):
         print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line.strip())}")
-        
+
         match = re.match(r'^\+\s*(?:image):\s*"?([^\s"]+)"?$', line, re.IGNORECASE)
         if match:
             image_tag = match.group(1).strip()
@@ -84,11 +84,15 @@ def extract_images_from_helm_diff():
             tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
             digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
 
-            print(f"✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
-            images.append((image, tag, digest))
+            image_entry = (image, tag, digest)
+            if image_entry not in unique_images:
+                print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
+                unique_images.add(image_entry)
+            else:
+                print(f"ℹ️ Duplicate Image Found: {image}, Tag: {tag}, Digest: {digest} (Skipping)")
 
-    print(f"📊 Extracted {len(images)} images.")
-    return images
+    print(f"📊 Extracted {len(unique_images)} unique images.")
+    return list(unique_images)  # Convert set back to list before returning
 
 def main():
     """Main function to extract image updates, preferring Helm diff if present."""
