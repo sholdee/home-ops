@@ -120,7 +120,7 @@ def extract_images_from_helm_diff():
                 digest = match.group(3) or ""
 
                 if not tag and not digest:
-                    print(f"❌ Skipping invalid reference (missing tag/digest): {repo_image}")
+                    print(f"⚠️ Skipping potential image reference (missing tag/digest): {repo_image}")
                     continue  # Skip matches that lack a tag/digest
 
                 image_tag = f"{repo_image}@{digest}" if digest else f"{repo_image}:{tag}"
