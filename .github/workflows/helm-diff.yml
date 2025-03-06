@@ -153,12 +153,12 @@ jobs:
                         
                         HELM_ARGS_NEW=()
                         
-                        if [ -n "$NEW_VALUES_STRING" ]; then
+                        if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
                             echo "$NEW_VALUES_STRING" > new-values.yaml
                             HELM_ARGS_NEW+=("-f" "new-values.yaml")
                         fi
                         
-                        if [ -n "$NEW_VALUES_OBJECT" ]; then
+                        if [[ -n "$NEW_VALUES_OBJECT" && "$NEW_VALUES_OBJECT" != "null" ]]; then
                             echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
                             HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
                         fi
@@ -172,12 +172,12 @@ jobs:
                         
                         HELM_ARGS_OLD=()
                         
-                        if [ -n "$OLD_VALUES_STRING" ]; then
+                        if [[ -n "$OLD_VALUES_STRING" && "$OLD_VALUES_STRING" != "null" ]]; then
                             echo "$OLD_VALUES_STRING" > old-values.yaml
                             HELM_ARGS_OLD+=("-f" "old-values.yaml")
                         fi
                         
-                        if [ -n "$OLD_VALUES_OBJECT" ]; then
+                        if [[ -n "$OLD_VALUES_OBJECT" && "$OLD_VALUES_OBJECT" != "null" ]]; then
                             echo "$OLD_VALUES_OBJECT" > old-values-object.yaml
                             HELM_ARGS_OLD+=("-f" "old-values-object.yaml")
                         fi
@@ -185,7 +185,7 @@ jobs:
                         while IFS= read -r p; do
                             HELM_ARGS_OLD+=("$p")
                         done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "--set " + .name + "=\"" + .value + "\""')
-
+                        
                         echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_OLD[@]}"
                         helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
                         
