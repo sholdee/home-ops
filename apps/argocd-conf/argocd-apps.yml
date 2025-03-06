@@ -657,6 +657,8 @@ spec:
       parameters:
       - name: defaultSettings.backupTarget
         value: "s3://test@test-bucket.s3.com"
+      - name: defaultSettings.backupTargetCredentialSecret
+        value: longhorn-test
       valuesObject:
         defaultSettings:
           defaultDataLocality: best-effort
