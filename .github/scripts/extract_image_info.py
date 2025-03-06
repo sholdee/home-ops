@@ -18,8 +18,8 @@ IMAGE_KEY_REGEX = re.compile(r'^\+\s*image:\s*"?([^\s"]+)"?$', re.IGNORECASE)
 # Fallback regex: Matches `repo/image:tag` or `repo/image@sha256:digest` in Helm diff lines
 FALLBACK_IMAGE_REGEX = re.compile(
     r"([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}|\d{1,3}(?:\.\d{1,3}){3})?(?::\d+)?(?:/[a-zA-Z0-9._-]+)+)"  # Registry (optional) + repo/image
-    r"(?:\:([a-zA-Z0-9._-]+))?"               # Optional :tag
-    r"(?:\@([A-Za-z][A-Za-z0-9]*[-_+.][A-Za-z0-9]*:[0-9A-Fa-f]{32,}))?"  # Optional @digest
+    r"(?:\:([a-zA-Z0-9._-]+))?"  # Optional :tag
+    r"(?:\@([a-zA-Z0-9]+:[0-9A-Fa-f]{32,}))?"  # Optional @digest
 )
 
 def is_valid_docker_image(image):
