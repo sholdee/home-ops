@@ -656,7 +656,7 @@ spec:
     helm:
       parameters:
       - name: defaultSettings.backupTarget
-        value: test-value
+        value: "s3://test@test-bucket.s3.com"
       - name: defaultSettings.backupTargetCredentialSecret
         value: longhorn-test-key
       valuesObject:
