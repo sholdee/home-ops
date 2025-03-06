@@ -84,33 +84,19 @@ jobs:
             DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
             RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github.v3+json" "$DIFF_URL")
             
-            # Extract modified file(s)
-            FILES=$(echo "$RESPONSE" | jq -r '.[].filename')
-            
-            # Extract targetRevision changes from patch(es)
-            CHANGED_VERSIONS=$(echo "$RESPONSE" | jq -r '.[].patch' | grep -E "^\+\s+targetRevision:" | awk '{print $NF}' | tr -d '[:space:]' || true)
-            
-            if [ -z "$FILES" ]; then
-                echo "❌ No modified files found in the PR."
-                exit 1
-            fi
-            
-            if [ -z "$CHANGED_VERSIONS" ]; then
-                echo "✅ No Helm chart updates detected."
-                exit 0
-            fi
-            
-            echo "📂 Modified files: $FILES"
-            echo "🔄 Modified versions: $CHANGED_VERSIONS"
-            
-            > diff.txt
-            
-            # Loop over modified files
-            for FILE in $FILES; do
-                echo "📄 Processing file: $FILE"
-                
-                # Loop over changed targetRevision versions
-                for REV in $CHANGED_VERSIONS; do
+            # Process each modified file and targetRevision pair from JSON
+            echo "$RESPONSE" | jq -c '.[] | select(.patch) | 
+                 .filename as $file | 
+                 .patch |
+                 capture("\\+\\s+targetRevision:\\s+(?<ver>v?\\d+\\.\\d+\\.\\d+(-[0-9A-Za-z.-]+)?)") | 
+                 {file: $file, version: .ver}' | 
+                 while read -r json; do
+                 
+                    FILE=$(echo "$json" | jq -r '.file')
+                    REV=$(echo "$json" | jq -r '.version')
+                    
+                    echo "📄 Processing file: $FILE with targetRevision $REV"
+                    
                     # Extract app names and namespaces properly
                     APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
                     
@@ -227,7 +213,6 @@ jobs:
                         git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
                     done
                 done
-            done
 
       - name: Read Helm Diff Output
         id: read-diff
