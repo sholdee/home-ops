@@ -154,8 +154,15 @@ jobs:
                         echo "🎭 Rendering new Helm template..."
                         HELM_ARGS_NEW=()
                         
-                        [ -n "$NEW_VALUES_STRING" ] && echo "$NEW_VALUES_STRING" > new-values.yaml && HELM_ARGS_NEW+=("-f" "new-values.yaml")
-                        [ -n "$NEW_VALUES_OBJECT" ] && echo "$NEW_VALUES_OBJECT" > new-values-object.yaml && HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
+                        if [ -n "$NEW_VALUES_STRING" ]; then
+                            echo "$NEW_VALUES_STRING" > new-values.yaml
+                            HELM_ARGS_NEW+=("-f" "new-values.yaml")
+                        fi
+                        
+                        if [ -n "$NEW_VALUES_OBJECT" ]; then
+                            echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
+                            HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
+                        fi
                         
                         while IFS= read -r p; do
                             HELM_ARGS_NEW+=("$p")
@@ -167,8 +174,15 @@ jobs:
                         echo "🎭 Rendering old Helm template..."
                         HELM_ARGS_OLD=()
                         
-                        [ -n "$OLD_VALUES_STRING" ] && echo "$OLD_VALUES_STRING" > old-values.yaml && HELM_ARGS_OLD+=("-f" "old-values.yaml")
-                        [ -n "$OLD_VALUES_OBJECT" ] && echo "$OLD_VALUES_OBJECT" > old-values-object.yaml && HELM_ARGS_OLD+=("-f" "old-values-object.yaml")
+                        if [ -n "$OLD_VALUES_STRING" ]; then
+                            echo "$OLD_VALUES_STRING" > old-values.yaml
+                            HELM_ARGS_OLD+=("-f" "old-values.yaml")
+                        fi
+                        
+                        if [ -n "$OLD_VALUES_OBJECT" ]; then
+                            echo "$OLD_VALUES_OBJECT" > old-values-object.yaml
+                            HELM_ARGS_OLD+=("-f" "old-values-object.yaml")
+                        fi
                         
                         while IFS= read -r p; do
                             HELM_ARGS_OLD+=("$p")
