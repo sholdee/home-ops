@@ -654,6 +654,11 @@ spec:
   source:
     chart: longhorn
     helm:
+      parameters:
+      - name: defaultSettings.backupTarget
+        value: "s3://test@us-west-002/"
+      - name: defaultSettings.backupTargetCredentialSecret
+        value: longhorn-test-key
       valuesObject:
         defaultSettings:
           defaultDataLocality: best-effort
