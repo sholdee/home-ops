@@ -164,8 +164,7 @@ jobs:
                         fi
                         
                         while IFS= read -r p; do
-                            HELM_ARGS_NEW+=("--set")
-                            HELM_ARGS_NEW+=("$p")
+                            HELM_ARGS_NEW+=("--set" "$p")
                         done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
                         echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_NEW[@]}"
@@ -184,8 +183,7 @@ jobs:
                         fi
                         
                         while IFS= read -r p; do
-                            HELM_ARGS_OLD+=("--set")
-                            HELM_ARGS_OLD+=("$p")
+                            HELM_ARGS_OLD+=("--set" "$p")
                         done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
                         echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_OLD[@]}"
