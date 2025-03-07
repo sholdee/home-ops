@@ -12,14 +12,18 @@ DOCKER_IMAGE_REGEX = re.compile(
     r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?$"
 )
 
-# Primary regex for `+ image:` Helm diff lines
+# Primary regex for image: keyed Helm diff lines
 IMAGE_KEY_REGEX = re.compile(r'^\+\s*image:\s*"?([^\s"]+)"?$', re.IGNORECASE)
 
-# Fallback regex: Matches `repo/image:tag` or `repo/image@sha256:digest` in Helm diff lines
+# Fallback regex for Helm diff lines
 FALLBACK_IMAGE_REGEX = re.compile(
-    r"([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}|\d{1,3}(?:\.\d{1,3}){3})?(?::\d+)?(?:/[a-zA-Z0-9._-]+)+)"  # Registry (optional) + repo/image
-    r"(?:\:([a-zA-Z0-9._-]+))?"  # Optional :tag
-    r"(?:\@([a-zA-Z0-9]+:[0-9A-Fa-f]{32,}))?"  # Optional @digest
+    r"([a-zA-Z0-9.-]+(?:\.[a-zA-Z]{2,}|\d{1,3}(?:\.\d{1,3}){3})?(?::\d+)?(?:/[a-zA-Z0-9_.-]+)+)"  # group 1: optional registry and required repo/image
+    r"(?="  # positive lookahead to require at least one of:
+    r"(?::[\w][\w.-]{0,127}" # :tag
+    r"|@[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,})" # @digest
+    r")"
+    r"(?::([\w][\w.-]{0,127}))?"  # group 2: optional tag
+    r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?"  # group 3: optional digest
 )
 
 def is_valid_docker_image(image):
