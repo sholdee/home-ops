@@ -208,6 +208,9 @@ spec:
     chart: cilium
     helm:
       valuesObject:
+        cluster:
+          name: k3s
+          id: 7
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
