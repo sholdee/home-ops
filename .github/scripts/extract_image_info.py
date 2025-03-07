@@ -4,7 +4,7 @@ import requests
 import sys
 import json
 
-# Regex adapted from output of distribution/reference Go module: fmt.Printf("%q\n", reference.ReferenceRegexp)
+# Regex derived from output of distribution/reference Go module: fmt.Printf("%q\n", reference.ReferenceRegexp)
 DOCKER_IMAGE_REGEX = re.compile(
     r"^((?:(?:(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9])(?:\.(?:[a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]))*|\[(?:[a-fA-F0-9:]+)\])(?::[0-9]+)?/)?"
     r"[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*(?:/[a-z0-9]+(?:(?:[._]|__|[-]+)[a-z0-9]+)*)*)"
@@ -22,8 +22,8 @@ FALLBACK_IMAGE_REGEX = re.compile(
     r"(?::[\w][\w.-]{0,127}" # :tag
     r"|@[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,})" # @digest
     r")"
-    r"(?::([\w][\w.-]{0,127}))?"  # group 2: optional tag
-    r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?"  # group 3: optional digest
+    r"(?::([\w][\w.-]{0,127}))?"  # group 2: optional :tag
+    r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?"  # group 3: optional @digest
 )
 
 def is_valid_docker_image(image):
