@@ -211,6 +211,8 @@ spec:
         cluster:
           name: k3s
           id: 7
+        clustermesh:
+          useAPIServer: true
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
