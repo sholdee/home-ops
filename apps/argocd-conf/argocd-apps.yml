@@ -216,6 +216,8 @@ spec:
           apiserver:
             metrics:
               enabled: true
+              serviceMonitor:
+                enabled: true
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
