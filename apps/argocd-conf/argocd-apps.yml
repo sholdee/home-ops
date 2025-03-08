@@ -216,7 +216,7 @@ spec:
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
-        ipv4NativeRoutingCIDR: "10.52.0.0/16"
+        ipv4NativeRoutingCIDR: "10.0.0.0/8"
         k8sServiceHost: "127.0.0.1"
         k8sServicePort: "6444"
         routingMode: "native"
