@@ -214,6 +214,8 @@ spec:
           apiserver:
             metrics:
               enabled: true
+              kvstoremesh:
+                enabled: true
               serviceMonitor:
                 enabled: true
         ipam:
