@@ -213,6 +213,9 @@ spec:
           id: 7
         clustermesh:
           useAPIServer: true
+          apiserver:
+            metrics:
+              enabled: true
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
