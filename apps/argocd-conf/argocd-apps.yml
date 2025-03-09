@@ -223,6 +223,10 @@ spec:
     helm:
       releaseName: cilium
       valuesObject:
+        commonLabels:
+          app.kubernetes.io/managed-by: Helm
+          meta.helm.sh/release-name: cilium
+          meta.helm.sh/release-namespace: kube-system
         cluster:
           name: k3s
           id: 7
