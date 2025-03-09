@@ -221,6 +221,7 @@ spec:
   source:
     chart: cilium
     helm:
+      releaseName: cilium
       valuesObject:
         cluster:
           name: k3s
