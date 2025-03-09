@@ -242,6 +242,7 @@ spec:
         k8sServicePort: "6444"
         routingMode: "native"
         autoDirectNodeRoutes: true
+        directRoutingSkipUnreachable: true
         kubeProxyReplacement: true
         bpf:
           masquerade: false
