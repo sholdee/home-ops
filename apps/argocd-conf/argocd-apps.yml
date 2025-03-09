@@ -203,22 +203,18 @@ spec:
       name: hubble-server-certs
     - jsonPointers:
       - /data
-      - /metadata
       kind: Secret
       name: clustermesh-apiserver-server-cert
     - jsonPointers:
       - /data
-      - /metadata
       kind: Secret
       name: clustermesh-apiserver-remote-cert
     - jsonPointers:
       - /data
-      - /metadata
       kind: Secret
       name: clustermesh-apiserver-admin-cert
     - jsonPointers:
       - /data
-      - /metadata
       kind: Secret
       name: clustermesh-apiserver-local-cert
     - jsonPointers:
