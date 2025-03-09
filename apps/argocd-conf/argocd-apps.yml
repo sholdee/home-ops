@@ -201,6 +201,18 @@ spec:
       - /data
       kind: Secret
       name: hubble-server-certs
+    - jsonPointers:
+      - /data
+      kind: Secret
+      name: clustermesh-apiserver-server-cert
+    - jsonPointers:
+      - /data
+      kind: Secret
+      name: clustermesh-apiserver-remote-cert
+    - jsonPointers:
+      - /data
+      kind: Secret
+      name: clustermesh-apiserver-admin-cert
   project: k3s
   source:
     chart: cilium
