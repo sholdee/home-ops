@@ -33,7 +33,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-deployment
+  name: hello-k3s
 spec:
   replicas: 1
   selector:
