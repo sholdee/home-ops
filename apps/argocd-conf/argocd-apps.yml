@@ -269,7 +269,7 @@ spec:
             enabled: true
           ui:
             enabled: true
-        installNoConntrackIptablesRules: true
+        #installNoConntrackIptablesRules: true
         operator:
           replicas: 3
           prometheus:
