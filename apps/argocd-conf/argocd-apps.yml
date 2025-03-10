@@ -201,27 +201,6 @@ spec:
       - /data
       kind: Secret
       name: hubble-server-certs
-    - jsonPointers:
-      - /data
-      kind: Secret
-      name: clustermesh-apiserver-server-cert
-    - jsonPointers:
-      - /data
-      kind: Secret
-      name: clustermesh-apiserver-remote-cert
-    - jsonPointers:
-      - /data
-      kind: Secret
-      name: clustermesh-apiserver-admin-cert
-    - jsonPointers:
-      - /data
-      kind: Secret
-      name: clustermesh-apiserver-local-cert
-    - jsonPointers:
-      - /spec
-      - /status
-      kind: Service
-      name: clustermesh-apiserver
   project: k3s
   source:
     chart: cilium
@@ -235,32 +214,22 @@ spec:
         cluster:
           name: k3s
           id: 7
-        clustermesh:
-          useAPIServer: true
-          apiserver:
-            metrics:
-              enabled: true
-              kvstoremesh:
-                enabled: true
-              serviceMonitor:
-                enabled: true
         ipam:
           operator:
             clusterPoolIPv4PodCIDRList: "10.52.0.0/16"
-        #ipv4NativeRoutingCIDR: "10.0.0.0/8"
-        #k8sServiceHost: "127.0.0.1"
-        #k8sServicePort: "6444"
-        routingMode: "tunnel"
-        #autoDirectNodeRoutes: true
-        #directRoutingSkipUnreachable: true
+        ipv4NativeRoutingCIDR: "10.52.0.0/16"
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+        routingMode: "native"
+        autoDirectNodeRoutes: true
         kubeProxyReplacement: true
         bpf:
-          masquerade: true
+          masquerade: false
           datapathMode: "netkit"
         loadBalancer:
           algorithm: "maglev"
-          #mode: "dsr"
-        #enableIPv4Masquerade: false
+          mode: "dsr"
+        enableIPv4Masquerade: false
         bgpControlPlane:
           enabled: true
         hubble:
@@ -269,7 +238,7 @@ spec:
             enabled: true
           ui:
             enabled: true
-        #installNoConntrackIptablesRules: true
+        installNoConntrackIptablesRules: true
         operator:
           replicas: 3
           prometheus:
