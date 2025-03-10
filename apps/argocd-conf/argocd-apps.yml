@@ -259,7 +259,7 @@ spec:
           datapathMode: "netkit"
         loadBalancer:
           algorithm: "maglev"
-          mode: "dsr"
+          #mode: "dsr"
         #enableIPv4Masquerade: false
         bgpControlPlane:
           enabled: true
