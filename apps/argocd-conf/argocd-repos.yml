@@ -219,3 +219,16 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: repo-external-secrets
 type: Opaque
+---
+apiVersion: v1
+stringData:
+  name: confluent
+  project: k3s
+  type: helm
+  url: https://packages.confluent.io/helm
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-confluent
+type: Opaque
