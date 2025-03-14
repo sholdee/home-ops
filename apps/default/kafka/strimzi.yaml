@@ -27,6 +27,11 @@ spec:
           labelSelector:
             matchLabels:
               strimzi.io/cluster: kafka
+    persistentVolumeClaim:
+      metadata:
+        annotations:
+          argocd.argoproj.io/compare-options: IgnoreExtraneous
+          argocd.argoproj.io/sync-options: Prune=false
 ---
 apiVersion: kafka.strimzi.io/v1beta2
 kind: Kafka
