@@ -134,7 +134,7 @@ jobs:
                         OLD_PARAMETERS=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" -)
                         NEW_PARAMETERS=$(yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE")
                         
-                        REPO_NAME=$(echo "$REPO_URL" | awk -F/ '{print $NF}')
+                        REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||' | awk -F/ '{print $NF}')
                         helm repo add "$REPO_NAME" "$REPO_URL"
                         helm repo update
                         
