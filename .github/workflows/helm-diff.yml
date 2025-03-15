@@ -168,7 +168,7 @@ jobs:
                         done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
                         echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_NEW[@]}"
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; continue; }
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; exit 1; }
                         
                         HELM_ARGS_OLD=()
                         
@@ -187,7 +187,7 @@ jobs:
                         done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
                         echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_OLD[@]}"
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; continue; }
+                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; exit 1; }
                         
                         # Define fields to remove
                         EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
