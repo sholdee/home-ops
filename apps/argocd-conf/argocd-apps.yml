@@ -65,7 +65,7 @@ spec:
     helm:
       valuesObject:
         connect:
-          replicas: 2
+          replicas: 3
           serviceType: ClusterIP
           credentialsName: op-credentials
           credentialsKey: 1password-credentials.json
