@@ -12,7 +12,7 @@ spec:
     namespace: default
     sectionName: tls
   hostnames:
-  - "argocd.sholdee.net"
+  - "argocd.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: argocd-server

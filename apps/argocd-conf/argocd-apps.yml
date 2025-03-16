@@ -105,7 +105,7 @@ spec:
     helm:
       valuesObject:
         global:
-          domain: argocd.sholdee.net
+          domain: argocd.<path:vaults/Kubernetes/items/cluster#domain>
         server:
           certificate:
             enabled: true
@@ -588,7 +588,7 @@ spec:
             serviceMonitorSelectorNilUsesHelmValues: false
             ruleSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
-            externalUrl: "https://prometheus.mgmt.sholdee.net"
+            externalUrl: "https://prometheus.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -615,7 +615,7 @@ spec:
           alertmanagerSpec:
             useExistingSecret: true
             configSecret: alertmanager-secret
-            externalUrl: "https://alertmgr.mgmt.sholdee.net"
+            externalUrl: "https://alertmgr.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
             replicas: 3
             podAntiAffinity: "soft"
             storage:

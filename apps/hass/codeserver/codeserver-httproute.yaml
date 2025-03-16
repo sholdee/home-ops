@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "codeserver.mgmt.sholdee.net"
+  - "codeserver.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "codeserver.mgmt.sholdee.net"
+  - "codeserver.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: codeserver

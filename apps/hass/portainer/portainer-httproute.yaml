@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: portainer
   hostnames:
-  - "portainer.sholdee.net"
+  - "portainer.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: portainer

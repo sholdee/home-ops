@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: unifi-guest
   hostnames:
-  - "unifi.guest.sholdee.net"
+  - "unifi.guest.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: unifi-landing

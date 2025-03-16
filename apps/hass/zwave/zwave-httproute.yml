@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "zwave.mgmt.sholdee.net"
+  - "zwave.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "zwave.mgmt.sholdee.net"
+  - "zwave.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: zwave

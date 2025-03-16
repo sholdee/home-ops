@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: unifi-tls
   hostnames:
-  - "unifi.mgmt.sholdee.net"
+  - "unifi.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: unifi-service

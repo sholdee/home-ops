@@ -62,15 +62,3 @@ curl -sLS https://get.arkade.dev | sudo sh
 # Verify Arkade installation
 arkade version
 ```
-
-## Rancher Install
-
-```bash
-sudo kubectl create namespace cattle-system
-
-helm install rancher rancher-latest/rancher \
-  --namespace cattle-system \
-  --set hostname=rancher.mgmt.sholdee.net \
-  --set replicas=3 \
-  --set tls=external
-```

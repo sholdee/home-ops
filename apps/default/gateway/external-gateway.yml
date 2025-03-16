@@ -12,7 +12,7 @@ spec:
       io.cilium/lb-ipam-ips: 192.168.77.31
   listeners:
   - name: unifi-guest
-    hostname: "unifi.guest.sholdee.net"
+    hostname: "unifi.guest.<path:vaults/Kubernetes/items/cluster#domain>"
     protocol: HTTPS
     port: 443
     allowedRoutes:
@@ -23,7 +23,7 @@ spec:
       certificateRefs:
       - name: unifi-guest
   - name: kromgo
-    hostname: "kromgo.sholdee.net"
+    hostname: "kromgo.<path:vaults/Kubernetes/items/cluster#domain>"
     protocol: HTTPS
     port: 443
     allowedRoutes:
@@ -34,7 +34,7 @@ spec:
       certificateRefs:
       - name: kromgo
   - name: portainer
-    hostname: "portainer.sholdee.net"
+    hostname: "portainer.<path:vaults/Kubernetes/items/cluster#domain>"
     protocol: HTTPS
     port: 443
     allowedRoutes:

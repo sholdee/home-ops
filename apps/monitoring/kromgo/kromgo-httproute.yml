@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: kromgo
   hostnames:
-  - "kromgo.sholdee.net"
+  - "kromgo.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: kromgo

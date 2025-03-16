@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "grafana.mgmt.sholdee.net"
+  - "grafana.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "grafana.mgmt.sholdee.net"
+  - "grafana.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: kube-prometheus-stack-grafana

@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "kdash.mgmt.sholdee.net"
+  - "kdash.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "kdash.mgmt.sholdee.net"
+  - "kdash.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
   rules:
   - backendRefs:
     - name: kubernetes-dashboard-kong-proxy
