@@ -41,6 +41,8 @@ spec:
         path: '{{.path.path}}'
         directory:
           recurse: true
+        plugin:
+          name: avp-directory-include
       destination:
         name: in-cluster
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
@@ -105,7 +107,7 @@ spec:
     helm:
       valuesObject:
         global:
-          domain: argocd.sholdee.net
+          domain: argocd.<path:vaults/Kubernetes/items/cluster#domain>
         server:
           certificate:
             enabled: true
@@ -613,7 +615,7 @@ spec:
           alertmanagerSpec:
             useExistingSecret: true
             configSecret: alertmanager-secret
-            externalUrl: "https://alertmgr.mgmt.sholdee.net"
+            externalUrl: "https://alertmgr.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
             replicas: 3
             podAntiAffinity: "soft"
             storage:
