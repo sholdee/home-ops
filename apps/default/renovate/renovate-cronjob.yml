@@ -47,7 +47,7 @@ spec:
                 - |
                   export RENOVATE_TOKEN=$(cat /token-volume/install-token)
                   export GITHUB_COM_TOKEN=$RENOVATE_TOKEN
-                  /usr/local/sbin/renovate-entrypoint.sh <path:vaults/Kubernetes/items/renovate#repos>
+                  /usr/local/sbin/renovate-entrypoint.sh <path:vaults/Kubernetes/items/cluster#repos>
               env:
                 - name: LOG_LEVEL
                   value: 'debug'
