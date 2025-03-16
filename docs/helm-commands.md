@@ -5,8 +5,7 @@ helm repo add argo https://argoproj.github.io/argo-helm
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo add longhorn https://charts.longhorn.io
 helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
-helm repo add jetstack https://charts.jetstack.io # cert-manager
-helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
+helm repo add jetstack https://charts.jetstack.io
 helm repo update
 ```
 
