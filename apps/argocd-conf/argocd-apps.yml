@@ -105,7 +105,7 @@ spec:
     helm:
       valuesObject:
         global:
-          domain: argocd.<path:vaults/Kubernetes/items/cluster#domain>
+          domain: argocd.sholdee.net
         server:
           certificate:
             enabled: true
