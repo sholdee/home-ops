@@ -46,7 +46,7 @@ spec:
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
       syncPolicy:
         automated:
-          prune: false
+          prune: true
         syncOptions:
         - CreateNamespace=true
         - ApplyOutOfSyncOnly=true
