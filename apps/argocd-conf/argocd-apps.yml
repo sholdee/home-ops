@@ -101,13 +101,11 @@ spec:
     namespace: argocd
   project: k3s
   source:
-    plugin:
-      name: avp-directory-include
     chart: argo-cd
     helm:
       valuesObject:
         global:
-          domain: argocd.<path:vaults/Kubernetes/items/cluster#domain>
+          domain: argocd.sholdee.net
         server:
           certificate:
             enabled: true
@@ -576,8 +574,6 @@ spec:
     namespace: monitoring
   project: k3s
   source:
-    plugin:
-      name: avp-directory-include
     chart: kube-prometheus-stack
     helm:
       valuesObject:
@@ -617,7 +613,7 @@ spec:
           alertmanagerSpec:
             useExistingSecret: true
             configSecret: alertmanager-secret
-            externalUrl: "https://alertmgr.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+            externalUrl: "https://alertmgr.mgmt.sholdee.net"
             replicas: 3
             podAntiAffinity: "soft"
             storage:
