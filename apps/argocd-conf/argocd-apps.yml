@@ -101,6 +101,8 @@ spec:
     namespace: argocd
   project: k3s
   source:
+    plugin:
+      name: avp-directory-include
     chart: argo-cd
     helm:
       valuesObject:
@@ -574,6 +576,8 @@ spec:
     namespace: monitoring
   project: k3s
   source:
+    plugin:
+      name: avp-directory-include
     chart: kube-prometheus-stack
     helm:
       valuesObject:
