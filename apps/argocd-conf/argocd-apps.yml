@@ -65,6 +65,7 @@ spec:
     helm:
       valuesObject:
         connect:
+          replicas: 2
           serviceType: ClusterIP
           credentialsName: op-credentials
           credentialsKey: 1password-credentials.json
@@ -82,6 +83,16 @@ spec:
                 memory: 64Mi
               limits:
                 memory: 64Mi
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - onepassword-connect
+                  topologyKey: kubernetes.io/hostname
     repoURL: https://1password.github.io/connect-helm-charts
     targetRevision: 1.17.0
   syncPolicy:
@@ -470,6 +481,17 @@ spec:
   project: k3s
   source:
     chart: external-secrets
+    helm:
+      valuesObject:
+        global:
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/instance: external-secrets
+        replicaCount: 2
     repoURL: https://charts.external-secrets.io
     targetRevision: 0.14.4
   syncPolicy:
