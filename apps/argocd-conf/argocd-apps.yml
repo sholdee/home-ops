@@ -39,14 +39,14 @@ spec:
         repoURL: https://github.com/sholdee/home-ops
         targetRevision: master
         path: '{{.path.path}}'
-        directory:
-          recurse: true
+        plugin:
+          name: avp-directory-include
       destination:
         name: in-cluster
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
       syncPolicy:
         automated:
-          prune: true
+          prune: false
         syncOptions:
         - CreateNamespace=true
         - ApplyOutOfSyncOnly=true
