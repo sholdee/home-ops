@@ -41,8 +41,6 @@ spec:
         path: '{{.path.path}}'
         directory:
           recurse: true
-#        plugin:
-#          name: avp-directory-include
       destination:
         name: in-cluster
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
