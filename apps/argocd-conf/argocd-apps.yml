@@ -15,7 +15,7 @@ spec:
   - group: '*'
     kind: '*'
   sourceRepos:
-  - `*`
+  - https://github.com/sholdee/home-ops
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
