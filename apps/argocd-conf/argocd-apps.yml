@@ -132,6 +132,8 @@ spec:
                clusters:
                  - "*"
         repoServer:
+          deploymentAnnotations:
+            reloader.stakater.com/auto: "true"
           initContainers:
             - name: download-tools
               image: registry.access.redhat.com/ubi8
@@ -204,7 +206,7 @@ spec:
                       - bash
                       - "-c"
                       - |
-                        argocd-vault-plugin generate $ARGOCD_ENV_FILE_NAME
+                        argocd-vault-plugin generate ./
                   lockRepo: false
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 7.8.11
