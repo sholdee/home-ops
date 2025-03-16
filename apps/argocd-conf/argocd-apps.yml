@@ -489,7 +489,7 @@ spec:
             whenUnsatisfiable: DoNotSchedule
             labelSelector:
               matchLabels:
-                app.kubernetes.io/instance: external-secrets
+                app.kubernetes.io/name: external-secrets
         replicaCount: 2
         leaderElect: true
     repoURL: https://charts.external-secrets.io
