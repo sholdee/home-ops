@@ -490,7 +490,7 @@ spec:
             labelSelector:
               matchLabels:
                 app.kubernetes.io/name: external-secrets
-        replicaCount: 3
+        replicaCount: 2
         leaderElect: true
     repoURL: https://charts.external-secrets.io
     targetRevision: 0.14.4
