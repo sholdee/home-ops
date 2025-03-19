@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: zwave
-        image: ghcr.io/zwave-js/zwave-js-ui:10.0.1
+        image: ghcr.io/zwave-js/zwave-js-ui:10.0.2
         resources:
           requests:
             memory: 300Mi
