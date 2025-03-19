@@ -493,7 +493,7 @@ spec:
         replicaCount: 2
         leaderElect: true
     repoURL: https://charts.external-secrets.io
-    targetRevision: 0.14.4
+    targetRevision: 0.15.0
   syncPolicy:
     automated:
       prune: true
