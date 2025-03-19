@@ -13,7 +13,7 @@ DOCKER_IMAGE_REGEX = re.compile(
 )
 
 # Primary regex for image: keyed Helm diff lines
-IMAGE_KEY_REGEX = re.compile(r'^\+\s*image:\s*"?([^\s"]+)"?$', re.IGNORECASE)
+IMAGE_KEY_REGEX = re.compile(r'^\+\s*image:\s*(?:(["\'])(?P<image_quoted>[^"\']+)\1|(?P<image>\S+))', re.IGNORECASE)
 
 # Fallback regex for Helm diff lines
 FALLBACK_IMAGE_REGEX = re.compile(
@@ -114,7 +114,7 @@ def extract_images_from_helm_diff():
         # **Primary Match: `+ image:` lines**
         match = IMAGE_KEY_REGEX.match(line)
         if match:
-            image_tag = match.group(1).strip()
+            image_tag = match.group('image_quoted') or match.group('image')
         else:
             # **Fallback Match: Look for valid `repo/image` format with a tag or digest**
             match = FALLBACK_IMAGE_REGEX.search(line)
