@@ -43,6 +43,48 @@ Pull requests for Helm application updates trigger a workflow to calculate and p
 
 Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
 
+<br />
+
+### ArgoCD Project Structure 🏗️
+
+The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd-conf` application, which is also an app-of-apps holding all Helm applications.
+
+<br />
+
+```mermaid
+erDiagram
+    ApplicationSet {
+      string name "k3s-apps"
+      boolean goTemplate "true"
+      string kind "ApplicationSet"
+    }
+    "Git Generator" {
+      string repoURL "https://github.com/sholdee/home-ops"
+      string path "apps/*"
+    }
+    Directory
+    Application {
+      string name ".path.basename"
+      string destinationNamespace ".path.basename (minus '-conf' suffix if present)"
+      string kind "Application"
+    }
+    argocd-conf
+    "Helm Applications"
+    Cilium
+    ArgoCD
+    Cert-Manager
+
+    ApplicationSet ||--|| "Git Generator" : "uses"
+    "Git Generator" ||--|{ Directory : "scans each"
+    Directory ||--|| Application : "generates"
+    argocd-conf ||..|| Application : "is a type of"
+    argocd-conf ||--|{ "Helm Applications" : "app-of-apps aggregates"
+    "Helm Applications" ||--|| Cilium : "example"
+    "Helm Applications" ||--|| ArgoCD : "example"
+    "Helm Applications" ||--|| Cert-Manager : "example"
+    argocd-conf ||--|| ApplicationSet : "self-manages"
+```
+
 #### Primary Applications ⭐
   - Home Assistant and related services
     - Appdaemon
