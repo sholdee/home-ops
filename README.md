@@ -43,8 +43,6 @@ Pull requests for Helm application updates trigger a workflow to calculate and p
 
 Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
 
-<br />
-
 ### ArgoCD Project Structure 🏗️
 
 The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd-conf` application, which is also an app-of-apps holding all Helm applications.
