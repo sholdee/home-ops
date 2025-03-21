@@ -374,35 +374,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: confluent-operator
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
-spec:
-  destination:
-    name: in-cluster
-    namespace: confluent
-  project: k3s
-  source:
-    chart: confluent-for-kubernetes
-    repoURL: https://packages.confluent.io/helm
-    targetRevision: 0.1193.1
-    helm:
-      valuesObject:
-        replicas: 2
-        kRaftEnabled: true
-        namespaceList:
-          - default
-          - confluent
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: emqx-operator
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
