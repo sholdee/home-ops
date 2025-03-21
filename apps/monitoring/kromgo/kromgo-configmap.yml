@@ -28,9 +28,9 @@ data:
         query: round((sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes)) * 100, 0.1)
         suffix: "%"
         colors:
-          - { color: "green", min: 0, max: 65 }
-          - { color: "orange", min: 65, max: 75 }
-          - { color: "red", min: 75, max: 9999 }
+          - { color: "green", min: 0, max: 75 }
+          - { color: "orange", min: 75, max: 85 }
+          - { color: "red", min: 85, max: 9999 }
       - name: cluster_age_days
         query: round((time() - min(kube_node_created)) / 86400)
         suffix: "d"
