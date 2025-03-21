@@ -34,7 +34,7 @@ spec:
               app: kromgo
       containers:
         - name: kromgo
-          image: ghcr.io/kashalls/kromgo:v0.5.0@sha256:2ab429f5276e1cd2b306701588a7b5cdbf968c5a4298058a29a4d1e37ed9b97c
+          image: ghcr.io/kashalls/kromgo:v0.5.1@sha256:1f86c6151c676fa6d368230f1b228d67ed030fd4409ae0a53763c60d522ea425
           env:
             - name: PROMETHEUS_URL
               value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
