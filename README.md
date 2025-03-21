@@ -64,9 +64,15 @@ erDiagram
     Application {
       string name ".path.basename"
       string destinationNamespace ".path.basename (minus '-conf' suffix if present)"
+      string path ".path.path"
       string kind "Application"
     }
-    argocd-conf
+    argocd-conf {
+      string name "argocd-conf"
+      string destinationNamespace "argocd"
+      string path "apps/argocd-conf"
+      string kind "Application"
+    }
     "Helm Applications"
     Cilium
     ArgoCD
