@@ -225,7 +225,7 @@ jobs:
             fi
 
       - name: Generate Token
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
@@ -334,7 +334,7 @@ jobs:
 
       - name: Generate Token
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
-        uses: actions/create-github-app-token@v1
+        uses: actions/create-github-app-token@v2
         id: app-token
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
