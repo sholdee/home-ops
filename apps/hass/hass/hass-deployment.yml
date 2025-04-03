@@ -47,12 +47,6 @@ spec:
             cpu: "15m"
           limits:
             memory: 700Mi
-        livenessProbe: &probe
-          httpGet:
-            path: /manifest.json
-            port: http
-          initialDelaySeconds: 15
-        readinessProbe: *probe
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
