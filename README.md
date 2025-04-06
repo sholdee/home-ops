@@ -131,4 +131,4 @@ erDiagram
   - Hubble observability
 #### Storage: Longhorn 💾
 #### Hardware 🖥️
-  - RPi 5 8gb with 512GB NVMe SSD via PCIe hat
+  - RPi 5 with 512GB NVMe SSD via PCIe hat
