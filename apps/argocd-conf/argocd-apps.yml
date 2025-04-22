@@ -433,7 +433,7 @@ spec:
           seccompProfile:
             type: RuntimeDefault
     repoURL: ghcr.io/aenix-io/charts
-    targetRevision: 0.4.1
+    targetRevision: 0.4.2
   syncPolicy:
     automated:
       prune: true
