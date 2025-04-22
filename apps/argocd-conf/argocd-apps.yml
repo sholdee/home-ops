@@ -409,21 +409,25 @@ spec:
     helm:
       valuesObject:
         etcdOperator:
-           resources:
-             limits:
-               cpu: ~
-               memory: 200Mi
-             requests:
-               cpu: 3m
-               memory: 200Mi
+          vpa:
+            enabled: false
+          resources:
+            limits:
+              cpu: ~
+              memory: 200Mi
+            requests:
+              cpu: 3m
+              memory: 200Mi
         kubeRbacProxy:
-           resources:
-             limits:
-               cpu: ~
-               memory: 128Mi
-             requests:
-               cpu: 3m
-               memory: 128Mi
+          vpa:
+            enabled: false
+          resources:
+            limits:
+              cpu: ~
+              memory: 128Mi
+            requests:
+              cpu: 3m
+              memory: 128Mi
         podSecurityContext:
           runAsNonRoot: true
           runAsUser: 65534
