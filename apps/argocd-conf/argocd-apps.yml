@@ -253,7 +253,7 @@ spec:
           kind: ControllerConfiguration
           enableGatewayAPI: true
     repoURL: https://charts.jetstack.io
-    targetRevision: v1.17.1
+    targetRevision: v1.17.2
   syncPolicy:
     automated:
       prune: true
