@@ -57,7 +57,7 @@ erDiagram
       string kind "ApplicationSet"
     }
     "Git Generator" {
-      string repoURL "https://github.com/sholdee/home-ops"
+      string repoURL "https:&sol;&sol;github&period;com/sholdee/home-ops"
       string path "apps/*"
     }
     Directory
