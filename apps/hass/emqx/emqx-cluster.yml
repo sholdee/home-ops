@@ -3,7 +3,7 @@ kind: EMQX
 metadata:
   name: emqx
 spec:
-  image: emqx/emqx-enterprise:5.8.6
+  image: emqx/emqx-enterprise:5.9.0
   config:
     data: |
       authentication {
