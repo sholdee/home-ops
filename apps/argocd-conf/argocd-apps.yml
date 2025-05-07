@@ -142,9 +142,6 @@ spec:
                  - CiliumIdentity
                clusters:
                  - "*"
-            resource.customizations.ignoreResourceUpdates.apiextensions.k8s.io_CustomResourceDefinition: |
-              jsonPointers:
-                - /spec/preserveUnknownFields
         repoServer:
           deploymentAnnotations:
             reloader.stakater.com/auto: "true"
@@ -758,6 +755,11 @@ spec:
   destination:
     name: in-cluster
     namespace: longhorn-system
+  ignoreDifferences:
+  - group: '*'
+    kind: CustomResourceDefinition
+    jsonPointers:
+    - /spec/preserveUnknownFields
   project: k3s
   source:
     chart: longhorn
@@ -787,6 +789,7 @@ spec:
     syncOptions:
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
+    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
