@@ -10,7 +10,6 @@ spec:
     kind: Plan
     plural: plans
     singular: plan
-  preserveUnknownFields: false
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -130,6 +129,9 @@ spec:
                     nullable: true
                     type: object
                 type: object
+              postCompleteDelay:
+                nullable: true
+                type: string
               prepare:
                 nullable: true
                 properties:
@@ -248,6 +250,16 @@ spec:
                       allowPrivilegeEscalation:
                         nullable: true
                         type: boolean
+                      appArmorProfile:
+                        nullable: true
+                        properties:
+                          localhostProfile:
+                            nullable: true
+                            type: string
+                          type:
+                            nullable: true
+                            type: string
+                        type: object
                       capabilities:
                         nullable: true
                         properties:
@@ -497,6 +509,16 @@ spec:
                       allowPrivilegeEscalation:
                         nullable: true
                         type: boolean
+                      appArmorProfile:
+                        nullable: true
+                        properties:
+                          localhostProfile:
+                            nullable: true
+                            type: string
+                          type:
+                            nullable: true
+                            type: string
+                        type: object
                       capabilities:
                         nullable: true
                         properties:
@@ -593,6 +615,25 @@ spec:
               version:
                 nullable: true
                 type: string
+              window:
+                nullable: true
+                properties:
+                  days:
+                    items:
+                      nullable: true
+                      type: string
+                    nullable: true
+                    type: array
+                  endTime:
+                    nullable: true
+                    type: string
+                  startTime:
+                    nullable: true
+                    type: string
+                  timeZone:
+                    nullable: true
+                    type: string
+                type: object
             required:
             - upgrade
             type: object
