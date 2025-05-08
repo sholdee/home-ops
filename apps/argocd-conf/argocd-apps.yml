@@ -467,6 +467,8 @@ spec:
                 app.kubernetes.io/name: external-secrets
         replicaCount: 2
         leaderElect: true
+        serviceMonitor:
+          enabled: true
         grafanaDashboard:
           enabled: true
     repoURL: https://charts.external-secrets.io
