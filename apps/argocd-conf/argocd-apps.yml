@@ -472,7 +472,7 @@ spec:
         grafanaDashboard:
           enabled: true
     repoURL: https://charts.external-secrets.io
-    targetRevision: 0.16.2
+    targetRevision: 0.17.0
   syncPolicy:
     automated:
       prune: true
