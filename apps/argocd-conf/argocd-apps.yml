@@ -383,9 +383,9 @@ spec:
     namespace: emqx-operator-system
   project: k3s
   source:
-    chart: emqx-operator
+    chart: emqx
     repoURL: https://repos.emqx.io/charts
-    targetRevision: 2.2.29
+    targetRevision: 5.8.6
   syncPolicy:
     automated:
       prune: true
