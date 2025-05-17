@@ -232,3 +232,16 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: repo-confluent
 type: Opaque
+---
+apiVersion: v1
+stringData:
+  name: vernemq
+  project: k3s
+  type: helm
+  url: https://vernemq.github.io/docker-vernemq
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: repo-vernemq
+type: Opaque

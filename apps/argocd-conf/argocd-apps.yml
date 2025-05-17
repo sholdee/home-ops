@@ -942,3 +942,31 @@ spec:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
 ---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vernemq
+spec:
+  destination:
+    name: in-cluster
+    namespace: hass
+  project: k3s
+  source:
+    chart: vernemq
+    helm:
+      valuesObject:
+        replicaCount: 3
+        serviceMonitor:
+          create: true
+        service:
+          type: LoadBalancer
+        envFrom:
+          - secretRef:
+              name: vernemq-env
+    repoURL: https://vernemq.github.io/docker-vernemq
+    targetRevision: 2.0.1
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
