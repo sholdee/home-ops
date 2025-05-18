@@ -951,10 +951,10 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 400Mi
+            memory: 300Mi
           requests:
-            cpu: 10m
-            memory: 400Mi
+            cpu: 50m
+            memory: 300Mi
     repoURL: https://vernemq.github.io/docker-vernemq
     targetRevision: 2.0.1
   syncPolicy:
