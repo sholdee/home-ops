@@ -960,6 +960,7 @@ spec:
           create: true
         service:
           type: LoadBalancer
+          loadBalancerIP: 192.168.77.25
         envFrom:
           - secretRef:
               name: vernemq-env
