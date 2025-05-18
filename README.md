@@ -94,7 +94,7 @@ erDiagram
     - Appdaemon
       - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
     - Z-Wave JS UI
-    - EMQX Cluster
+    - VerneMQ Cluster
     - Codeserver
     - Venstar MQTT bridge
   - Unifi
@@ -112,7 +112,6 @@ erDiagram
   - Cert-Manager
   - Kube-VIP
   - CloudNativePG
-  - EMQX Operator
   - ETCD Operator
   - MongoDB Community Operator
   - Kube Prometheus Stack
