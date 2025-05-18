@@ -53,4 +53,4 @@ spec:
       labels:
         app: gravity-cluster
     spec:
-      minAvailable: 2
+      minAvailable: 1
