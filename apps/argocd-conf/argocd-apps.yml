@@ -948,6 +948,13 @@ spec:
         pdb:
           enabled: true
           minAvailable: 1
+        resources:
+          limits:
+            cpu: 500m
+            memory: 400Mi
+          requests:
+            cpu: 10m
+            memory: 400Mi
     repoURL: https://vernemq.github.io/docker-vernemq
     targetRevision: 2.0.1
   syncPolicy:
