@@ -4,6 +4,7 @@ metadata:
   name: gravity
   namespace: gravity
 spec:
+  serviceName: "gravity"
   selector:
     matchLabels:
       app: gravity
