@@ -9,7 +9,6 @@ metadata:
     app.kubernetes.io/instance: "hivemq-platform"
     app.kubernetes.io/version: "4.39.0"
 spec:
-  configMapName: hivemq-platform-configuration
   logLevel: INFO
   operatorRestApiPort: 7979
   healthApiPort: 8889
