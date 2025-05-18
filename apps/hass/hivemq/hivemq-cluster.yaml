@@ -1,0 +1,71 @@
+---
+# Source: hivemq-platform/templates/hivemq-custom-resource.yml
+apiVersion: hivemq.com/v1
+kind: HiveMQPlatform
+metadata:
+  name: "hivemq"
+  labels:
+    app.kubernetes.io/name: "hivemq"
+    app.kubernetes.io/instance: "hivemq-platform"
+    app.kubernetes.io/version: "4.39.0"
+spec:
+  configMapName: hivemq-platform-configuration
+  logLevel: INFO
+  operatorRestApiPort: 7979
+  healthApiPort: 8889
+  metricsPort: 9399
+  metricsPath: /
+  statefulSet:
+    spec:
+      replicas: 3
+      template:
+        spec:
+          containers:
+            - name: hivemq
+              env:
+                - name: JAVA_OPTS
+                  value: "-XX:+UnlockExperimentalVMOptions -XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=50"
+              image: "docker.io/hivemq/hivemq4:4.39.0"
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: mqtt-1883
+                  containerPort: 1883
+                - name: cc-8080
+                  containerPort: 8080
+                - name: metrics-9399
+                  containerPort: 9399
+              resources:
+                limits:
+                  cpu: "1000m"
+                  memory: "500M"
+                requests:
+                  cpu: "1000m"
+                  memory: "500M"
+  services:
+    - metadata:
+        name: hivemq-platform-mqtt-1883
+      spec:
+        ports:
+          - name: mqtt-1883
+            targetPort: mqtt-1883
+            port: 1883
+    - metadata:
+        name: hivemq-platform-cc-8080
+      spec:
+        sessionAffinity: ClientIP
+        ports:
+          - name: cc-8080
+            targetPort: cc-8080
+            port: 8080
+    - metadata:
+        name: hivemq-platform-metrics-9399
+      spec:
+        ports:
+          - name: metrics-9399
+            targetPort: metrics-9399
+            port: 9399
+  extensions:
+    - id: hivemq-allow-all-extension
+      enabled: true
+      supportsHotReload: false
+      extensionUri: "preinstalled"
