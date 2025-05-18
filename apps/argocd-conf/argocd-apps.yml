@@ -942,6 +942,12 @@ spec:
         envFrom:
           - secretRef:
               name: vernemq-env
+        statefulset:
+          annotations:
+            reloader.stakater.com/auto: "true"
+        pdb:
+          enabled: true
+          minAvailable: 1
     repoURL: https://vernemq.github.io/docker-vernemq
     targetRevision: 2.0.1
   syncPolicy:
