@@ -471,9 +471,6 @@ spec:
     chart: hivemq-platform-operator
     helm:
       valuesObject:
-        resources:
-          cpu: 700m
-          memory: 200Mi
         monitoring:
           enabled: true
     repoURL: https://hivemq.github.io/helm-charts
