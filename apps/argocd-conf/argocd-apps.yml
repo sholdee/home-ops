@@ -472,8 +472,8 @@ spec:
     helm:
       valuesObject:
         resources:
-          cpu: 10m
-          memory: 200Gi
+          cpu: 100m
+          memory: 500Gi
         monitoring:
           enabled: true
     repoURL: https://hivemq.github.io/helm-charts
