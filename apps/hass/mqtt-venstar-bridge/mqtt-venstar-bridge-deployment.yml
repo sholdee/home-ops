@@ -35,7 +35,7 @@ spec:
           - name: VENSTAR_QUERY_INTERVAL
             value: "7"
           - name: MQTT_HOST
-            value: mqtt://emqx-listeners
+            value: mqtt://vernemq
           - name: MQTT_USER
             value: admin
           - name: MQTT_PASS
