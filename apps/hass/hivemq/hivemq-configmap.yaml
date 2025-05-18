@@ -13,6 +13,9 @@ data:
   config.xml: |-
     <?xml version="1.0"?>
     <hivemq xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="config.xsd">
+      <license>
+        <license-folder>/opt/hivemq/license</license-folder>
+      </license>
       <listeners>
         <tcp-listener>
           <port>1883</port>
