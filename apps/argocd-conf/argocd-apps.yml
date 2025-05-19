@@ -220,7 +220,7 @@ spec:
                         argocd-vault-plugin generate ./
                   lockRepo: false
     repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 8.0.4
+    targetRevision: 8.0.5
   syncPolicy:
     automated:
       prune: true
