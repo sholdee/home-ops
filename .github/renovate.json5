@@ -7,14 +7,14 @@
   ],
   dependencyDashboardTitle: 'Dependency Dashboard :robot:',
   kubernetes: {
-    fileMatch: [
-      'apps/.*\\.ya?ml$',
+    managerFilePatterns: [
+      '/apps/.*\\.ya?ml$/',
     ],
   },
   argocd: {
-    fileMatch: [
-      'apps/argocd-conf/argocd-apps\\.ya?ml$',
-      'apps/argocd-conf/cilium-preflight\\.ya?ml$',
+    managerFilePatterns: [
+      '/apps/argocd-conf/argocd-apps\\.ya?ml$/',
+      '/apps/argocd-conf/cilium-preflight\\.ya?ml$/',
     ],
   },
   packageRules: [
@@ -110,8 +110,8 @@
   customManagers: [
     {
       customType: 'regex',
-      fileMatch: [
-        'apps/system-upgrade/k3s-upgrade-plan\\.ya?ml$',
+      managerFilePatterns: [
+        '/apps/system-upgrade/k3s-upgrade-plan\\.ya?ml$/',
       ],
       matchStrings: [
         'version: (?<currentValue>v[\\d\\.\\+\\w-]+)',
@@ -122,8 +122,8 @@
     },
     {
       customType: 'regex',
-      fileMatch: [
-        'apps/system-upgrade/system-upgrade-controller\\.ya?ml$',
+      managerFilePatterns: [
+        '/apps/system-upgrade/system-upgrade-controller\\.ya?ml$/',
       ],
       matchStrings: [
         'SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)',
@@ -137,8 +137,8 @@
       description: [
         'Process CloudnativePG Postgresql version',
       ],
-      fileMatch: [
-        'apps/.*\\.ya?ml$',
+      managerFilePatterns: [
+        '/apps/.*\\.ya?ml$/',
       ],
       matchStrings: [
         'imageName: (?<depName>\\S+):(?<currentValue>.*\\-.*)',
@@ -151,8 +151,8 @@
       description: [
         'Process MongoDB version',
       ],
-      fileMatch: [
-        '^apps/.*/unifi-db.yml$',
+      managerFilePatterns: [
+        '/^apps/.*/unifi-db.yml$/',
       ],
       matchStrings: [
         'version: "(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"',
