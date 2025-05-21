@@ -811,7 +811,7 @@ metadata:
 spec:
   destination:
     name: in-cluster
-    namespace: mongodb
+    namespace: mongodb-operator
   project: k3s
   source:
     chart: mongodb-kubernetes
