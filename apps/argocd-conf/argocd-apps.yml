@@ -821,9 +821,9 @@ spec:
           operator: docker.io/sholdee
         operator:
           name: mongodb-kubernetes-operator
-          operator_image_name: mongodb-kubernetes-operator
+          operator_image_name: mongodb-kubernetes
           deployment_name: mongodb-kubernetes-operator
-          version: multi
+          version: 1.0.1
           replicas: 1
           resources:
             limits:
