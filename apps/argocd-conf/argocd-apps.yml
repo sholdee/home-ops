@@ -787,6 +787,7 @@ spec:
     helm:
       valuesObject:
         operator:
+          replicas: 0
           watchNamespace: "*"
           resources:
             limits:
