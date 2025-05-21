@@ -818,6 +818,10 @@ spec:
     helm:
       valuesObject:
         operator:
+          name: mongodb-kubernetes-operator
+          operator_image_name: mongodb-kubernetes-operator
+          deployment_name: mongodb-kubernetes-operator
+          version: 0.9.0
           replicas: 1
           resources:
             limits:
