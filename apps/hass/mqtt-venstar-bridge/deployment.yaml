@@ -41,8 +41,8 @@ spec:
           - name: MQTT_PASS
             valueFrom:
               secretKeyRef:
-                name: emqx-secret
-                key: EMQX_DASHBOARD__DEFAULT_PASSWORD
+                name: vernemq-env
+                key: DOCKER_VERNEMQ_USER_ADMIN
         resources:
           requests:
             cpu: "5m"
