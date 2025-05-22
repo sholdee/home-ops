@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -88,6 +89,7 @@ spec:
             memory: 300Mi
             cpu: "15m"
           limits:
+            cpu: 500m
             memory: 700Mi
         livenessProbe: &probe
           exec:
@@ -115,6 +117,13 @@ spec:
         volumeMounts:
         - name: adguard-data
           mountPath: /opt/adguardhome/work
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: "5m"
+          limits:
+            cpu: 100m
+            memory: 100Mi
         livenessProbe:
           httpGet:
             path: /livez

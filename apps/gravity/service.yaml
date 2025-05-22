@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 kind: Service
 metadata:
@@ -20,3 +21,25 @@ spec:
   type: LoadBalancer
   loadBalancerIP: 192.168.77.53
   externalTrafficPolicy: Cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gravity-http
+  namespace: gravity
+  labels:
+    app: gravity
+    metrics: gravity
+spec:
+  selector:
+    app: gravity
+  ports:
+  - protocol: TCP
+    port: 8008
+    targetPort: 8008
+    name: http
+  - protocol: TCP
+    port: 8009
+    targetPort: 8009
+    name: http-metrics
+  type: ClusterIP

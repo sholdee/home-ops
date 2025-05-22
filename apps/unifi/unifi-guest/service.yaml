@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unifi-guest
+  namespace: unifi
+spec:
+  selector:
+    app: unifi
+  ports:
+  - port: 8843
+    protocol: TCP
+    name: guestportaltls
+  type: ClusterIP
+  clusterIP: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unifi-landing
+  namespace: unifi
+spec:
+  selector:
+    app: unifi-landing
+  ports:
+  - protocol: TCP
+    port: 80
+    name: http
+  type: ClusterIP
+  clusterIP: None

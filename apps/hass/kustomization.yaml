@@ -1,19 +1,26 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
-  - "externalsecret.yaml"
-  - "httproute.yaml" 
+  - "appdaemon"
+  - "codeserver"
+  - "hass"
+  - "hass-db"
+  - "mqtt-venstar-bridge"
+  - "portainer"
+  - "vernemq"
+  - "zwave"
 helmCharts:
   - name: vernemq
     repo: https://vernemq.github.io/docker-vernemq
     version: 2.0.1
     releaseName: vernemq
     namespace: hass
-    valuesFile: values.yaml
+    valuesFile: vernemq-values.yaml
 patches:
   - target:
       group: apps
       version: v1
       kind: StatefulSet
       name: vernemq
-    path: startup-patch.yaml
+    path: vernemq-patch.yaml
