@@ -5,7 +5,7 @@ metadata:
   namespace: unifi
 spec:
   dnsNames:
-  - 'unifi.mgmt.<path:vaults/Kubernetes/items/cluster#domain>'
+  - 'unifi.mgmt.sholdee.net'
   issuerRef:
     kind: ClusterIssuer
     name: cloudflare

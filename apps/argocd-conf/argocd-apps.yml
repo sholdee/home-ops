@@ -39,8 +39,8 @@ spec:
         repoURL: https://github.com/sholdee/home-ops
         targetRevision: master
         path: '{{.path.path}}'
-        plugin:
-          name: avp-directory-include
+        directory:
+          recurse: true
       destination:
         name: in-cluster
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
@@ -116,7 +116,7 @@ spec:
     helm:
       valuesObject:
         global:
-          domain: argocd.<path:vaults/Kubernetes/items/cluster#domain>
+          domain: argocd.sholdee.net
         server:
           certificate:
             enabled: true
@@ -143,83 +143,6 @@ spec:
                  - CiliumIdentity
                clusters:
                  - "*"
-        repoServer:
-          deploymentAnnotations:
-            reloader.stakater.com/auto: "true"
-          initContainers:
-            - name: download-tools
-              image: registry.access.redhat.com/ubi8
-              env:
-                - name: AVP_VERSION
-                  value: 1.18.1
-              command: [sh, -c]
-              args:
-                - >-
-                  curl -L https://github.com/argoproj-labs/argocd-vault-plugin/releases/download/v$(AVP_VERSION)/argocd-vault-plugin_$(AVP_VERSION)_linux_$(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) -o argocd-vault-plugin &&
-                  chmod +x argocd-vault-plugin &&
-                  mv argocd-vault-plugin /custom-tools/
-              volumeMounts:
-                - mountPath: /custom-tools
-                  name: custom-tools
-          extraContainers:
-            - name: plugin-avp-directory-include
-              command: [/var/run/argocd/argocd-cmp-server]
-              image: "{{ default .Values.global.image.repository .Values.server.image.repository }}:{{ default (include \"argo-cd.defaultTag\" .) .Values.server.image.tag }}"
-              env:
-                - name: AVP_TYPE
-                  value: 1passwordconnect
-                - name: OP_CONNECT_HOST
-                  value: http://onepassword-connect.external-secrets.svc.cluster.local:8080
-                - name: OP_CONNECT_TOKEN
-                  valueFrom:
-                    secretKeyRef:
-                      name: avp
-                      key: token
-              securityContext:
-                runAsNonRoot: true
-                runAsUser: 999
-              volumeMounts:
-                - mountPath: /var/run/argocd
-                  name: var-files
-                - mountPath: /home/argocd/cmp-server/plugins
-                  name: plugins
-                - mountPath: /tmp
-                  name: cmp-tmp
-                - mountPath: /home/argocd/cmp-server/config/plugin.yaml
-                  subPath: avp-directory-include.yaml
-                  name: cmp-plugin
-                - name: custom-tools
-                  subPath: argocd-vault-plugin
-                  mountPath: /usr/local/bin/argocd-vault-plugin
-          volumes:
-            - name: cmp-plugin
-              configMap:
-                name: cmp-plugin
-            - name: custom-tools
-              emptyDir: {}
-            - name: cmp-tmp
-              emptyDir: {}
-        extraObjects:
-          - apiVersion: v1
-            kind: ConfigMap
-            metadata:
-              name: cmp-plugin
-              namespace: "{{ .Release.Namespace }}"
-            data:
-              avp-directory-include.yaml: |
-                apiVersion: argoproj.io/v1alpha1
-                kind: ConfigManagementPlugin
-                metadata:
-                  name: avp-directory-include
-                spec:
-                  allowConcurrency: true
-                  generate:
-                    command:
-                      - bash
-                      - "-c"
-                      - |
-                        argocd-vault-plugin generate ./
-                  lockRepo: false
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 8.0.9
   syncPolicy:
@@ -568,7 +491,7 @@ spec:
             serviceMonitorSelectorNilUsesHelmValues: false
             ruleSelectorNilUsesHelmValues: false
             podMonitorSelectorNilUsesHelmValues: false
-            externalUrl: "https://prometheus.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+            externalUrl: "https://prometheus.mgmt.sholdee.net"
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -595,7 +518,7 @@ spec:
           alertmanagerSpec:
             useExistingSecret: true
             configSecret: alertmanager-secret
-            externalUrl: "https://alertmgr.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+            externalUrl: "https://alertmgr.mgmt.sholdee.net"
             replicas: 3
             podAntiAffinity: "soft"
             storage:

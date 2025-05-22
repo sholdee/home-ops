@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "prometheus.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "prometheus.mgmt.sholdee.net"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "prometheus.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "prometheus.mgmt.sholdee.net"
   rules:
   - backendRefs:
     - name: kube-prometheus-stack-prometheus

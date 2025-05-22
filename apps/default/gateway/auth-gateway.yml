@@ -12,14 +12,14 @@ spec:
       io.cilium/lb-ipam-ips: 192.168.77.32
   listeners:
   - name: http
-    hostname: "*.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+    hostname: "*.mgmt.sholdee.net"
     protocol: HTTP
     port: 80
     allowedRoutes:
       namespaces:
         from: All
   - name: https
-    hostname: "*.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+    hostname: "*.mgmt.sholdee.net"
     protocol: HTTPS
     port: 443
     allowedRoutes:

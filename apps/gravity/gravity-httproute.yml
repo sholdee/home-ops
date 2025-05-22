@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "gravity.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "gravity.mgmt.sholdee.net"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "gravity.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "gravity.mgmt.sholdee.net"
   rules:
   - backendRefs:
     - name: gravity-http

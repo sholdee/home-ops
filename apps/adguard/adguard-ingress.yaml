@@ -10,7 +10,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: adguard.mgmt.<path:vaults/Kubernetes/items/cluster#domain>
+  - host: adguard.mgmt.sholdee.net
     http:
       paths:
         - path: /

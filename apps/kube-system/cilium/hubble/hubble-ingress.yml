@@ -13,7 +13,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: hubble.mgmt.<path:vaults/Kubernetes/items/cluster#domain>
+  - host: hubble.mgmt.sholdee.net
     http:
       paths:
         - path: /

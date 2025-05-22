@@ -9,7 +9,7 @@ spec:
     namespace: default
     sectionName: http
   hostnames:
-  - "hass.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "hass.mgmt.sholdee.net"
   rules:
     - filters:
         - requestRedirect:
@@ -28,7 +28,7 @@ spec:
     namespace: default
     sectionName: https
   hostnames:
-  - "hass.mgmt.<path:vaults/Kubernetes/items/cluster#domain>"
+  - "hass.mgmt.sholdee.net"
   rules:
   - backendRefs:
     - name: hass
