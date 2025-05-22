@@ -1,0 +1,34 @@
+apiVersion: kustomize.config.k8s.io/v1beta1 
+kind: Kustomization
+resources:
+  - "vernemq-externalsecret.yaml"
+  - "vernemq-httproute.yaml" 
+helmCharts:
+  - name: vernemq
+    repo: https://vernemq.github.io/docker-vernemq
+    version: 2.0.1
+    releaseName: vernemq
+    namespace: hass
+    valuesFile: values.yaml
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: StatefulSet
+      name: vernemq
+    patch: |-
+      spec:
+        template:
+          spec:
+            containers:
+            - name: vernemq
+              startupProbe:
+                exec:
+                  command:
+                    - /bin/sh
+                    - -c
+                    - >-
+                      curl -s localhost:8888/status.json |
+                      jq -e '.[0] | [to_entries.[].value.num_retained] | .[0] as $x | all(.[]; . == $x)'
+                periodSeconds:      10
+                timeoutSeconds:     5

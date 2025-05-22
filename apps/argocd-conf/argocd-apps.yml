@@ -135,6 +135,7 @@ spec:
                         operator: DoesNotExist
         configs:
           cm:
+            kustomize.buildOptions: --enable-helm
             resource.exclusions: |
              - apiGroups:
                  - cilium.io
@@ -919,47 +920,4 @@ spec:
       prune: true
     syncOptions:
     - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: vernemq
-spec:
-  destination:
-    name: in-cluster
-    namespace: hass
-  project: k3s
-  source:
-    chart: vernemq
-    helm:
-      valuesObject:
-        replicaCount: 3
-        serviceMonitor:
-          create: true
-        service:
-          type: LoadBalancer
-          loadBalancerIP: 192.168.77.25
-        envFrom:
-          - secretRef:
-              name: vernemq-env
-        statefulset:
-          annotations:
-            reloader.stakater.com/auto: "true"
-        pdb:
-          enabled: true
-          minAvailable: 1
-        resources:
-          limits:
-            cpu: 500m
-            memory: 450Mi
-          requests:
-            cpu: 50m
-            memory: 450Mi
-    repoURL: https://vernemq.github.io/docker-vernemq
-    targetRevision: 2.0.1
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
     - ApplyOutOfSyncOnly=true
