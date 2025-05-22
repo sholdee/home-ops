@@ -16,7 +16,13 @@ patches:
       version: v1
       kind: StatefulSet
       name: vernemq
+      namespace: hass
     patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: vernemq
+        namespace: hass
       spec:
         template:
           spec:
