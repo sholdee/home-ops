@@ -1,0 +1,9 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1 
+kind: Kustomization
+resources:
+  - "httproute.yaml"
+  - "prometheusrule-cert-manager.yaml"
+  - "prometheusrule-cilium.yaml"
+  - "prometheusrule-longhorn.yaml"
+  - "prometheusrule-misc.yaml"
