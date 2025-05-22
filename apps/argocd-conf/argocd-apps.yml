@@ -858,7 +858,6 @@ spec:
     repoURL: https://github.com/sholdee/home-ops
     targetRevision: master
     path: kustomize/vernemq
-    kustomize: {}
   syncPolicy:
     automated:
       prune: true
