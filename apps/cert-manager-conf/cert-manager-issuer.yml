@@ -4,7 +4,7 @@ metadata:
   name: cloudflare
 spec:
   acme:
-    email: <path:vaults/Kubernetes/items/cluster#email>
+    email: sholdee@gmail.com
     server: https://acme-v02.api.letsencrypt.org/directory
     privateKeySecretRef:
       name: cloudflare-issuer-acme-key
