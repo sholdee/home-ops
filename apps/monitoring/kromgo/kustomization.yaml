@@ -5,7 +5,6 @@ kind: Kustomization
 resources:
   - "manifests/httproute.yaml"
   - "manifests/deployment.yaml"
-  - "manifests/configmap.yaml"
   - "manifests/service.yaml"
 configMapGenerator:
   - name: kromgo-configmap

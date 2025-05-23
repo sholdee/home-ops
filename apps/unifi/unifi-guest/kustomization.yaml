@@ -5,7 +5,6 @@ kind: Kustomization
 resources:
   - "manifests/deployment.yaml"
   - "manifests/service.yaml"
-  - "manifests/secret.yaml"
   - "manifests/httproute.yaml"
 configMapGenerator:
   - name: unifi-landing
