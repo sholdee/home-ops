@@ -2,9 +2,8 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
-crds:
-  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml
 resources:
+  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.3.0/experimental-install.yaml
   - "manifests/mgmt-gateway.yaml"
   - "manifests/external-gateway.yaml"
   - "manifests/auth-gateway.yaml"
