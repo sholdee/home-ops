@@ -2,21 +2,16 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: hass-db
+  name: hass-db2
   namespace: hass
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:16.9-1
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.5-202505190807-standard-bookworm
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   bootstrap:
-    initdb:
-      database: hass
-      owner: hass
-      secret:
-        name: hass-db-app-user
-      dataChecksums: true
-      encoding: 'UTF8'
+    recovery:
+      source: hass-db-backup
   superuserSecret:
     name: hass-db-superuser
   storage:
@@ -24,7 +19,27 @@ spec:
     size: 7Gi
   monitoring:
     enablePodMonitor: true
-  backup:
+#  backup:
+#    barmanObjectStore:
+#      destinationPath: s3://sholdee-cnpg-hass/
+#      endpointURL: https://s3.us-west-002.backblazeb2.com
+#      s3Credentials:
+#        accessKeyId:
+#          name: hass-db-backup-creds
+#          key: ACCESS_KEY_ID
+#        secretAccessKey:
+#          name: hass-db-backup-creds
+#          key: ACCESS_SECRET_KEY
+#      wal:
+#        compression: gzip
+#        encryption: AES256
+#      data:
+#        compression: gzip
+#        encryption: AES256
+#        jobs: 2
+#    retentionPolicy: "30d"
+  externalClusters:
+  - name: hass-db-backup
     barmanObjectStore:
       destinationPath: s3://sholdee-cnpg-hass/
       endpointURL: https://s3.us-west-002.backblazeb2.com
@@ -35,25 +50,19 @@ spec:
         secretAccessKey:
           name: hass-db-backup-creds
           key: ACCESS_SECRET_KEY
-      wal:
-        compression: gzip
-        encryption: AES256
-      data:
-        compression: gzip
-        encryption: AES256
-        jobs: 2
-    retentionPolicy: "30d"
+        wal:
+          maxParallel: 7
 ---
-apiVersion: postgresql.cnpg.io/v1
-kind: ScheduledBackup
-metadata:
-  name:  hass-db-backup-schedule
-  namespace: hass
-spec:
-  schedule: "0 0 7 * * *"
-  backupOwnerReference: self
-  cluster:
-    name: hass-db
+#apiVersion: postgresql.cnpg.io/v1
+#kind: ScheduledBackup
+#metadata:
+#  name:  hass-db2-backup-schedule
+#  namespace: hass
+#spec:
+#  schedule: "0 0 7 * * *"
+#  backupOwnerReference: self
+#  cluster:
+#    name: hass-db
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
@@ -62,7 +71,7 @@ metadata:
   namespace: hass
 spec:
   cluster:
-    name: hass-db
+    name: hass-db2
   instances: 3
   type: rw
   pgbouncer:
