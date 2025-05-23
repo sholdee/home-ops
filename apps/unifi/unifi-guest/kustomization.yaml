@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
@@ -6,3 +7,14 @@ resources:
   - "manifests/service.yaml"
   - "manifests/secret.yaml"
   - "manifests/httproute.yaml"
+configMapGenerator:
+  - name: unifi-landing
+    namespace: unifi
+    files:
+      - Caddyfile=manifests/Caddyfile
+  - name: unifi-landing-static
+    namespace: unifi
+    files:
+      - index.html=manifests/index.html
+generatorOptions:
+  disableNameSuffixHash: true

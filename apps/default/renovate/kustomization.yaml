@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
@@ -6,3 +7,10 @@ resources:
   - "manifests/cronjob.yaml"
   - "manifests/externalsecret.yaml"
   - "manifests/pvc.yaml"
+configMapGenerator:
+  - name: renovate-config
+    files:
+      - config.js=manifests/config.js
+    namespace: default
+generatorOptions:
+  disableNameSuffixHash: true

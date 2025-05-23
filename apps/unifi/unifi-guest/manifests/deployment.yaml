@@ -30,9 +30,9 @@ spec:
           name: http
         volumeMounts:
           - mountPath: /etc/caddy
-            name: unifi-landing-secret
+            name: unifi-landing
           - mountPath: /var/www
-            name: unifi-landing-static-secret
+            name: unifi-landing-static
           - mountPath: /config/caddy
             name: tmp
             subPath: conf
@@ -59,9 +59,9 @@ spec:
       volumes:
       - emptyDir: {}
         name: tmp
-      - name: unifi-landing-secret
-        secret:
-          secretName: unifi-landing
-      - name: unifi-landing-static-secret
-        secret:
-          secretName: unifi-landing-static
+      - name: unifi-landing
+        configMap:
+          name: unifi-landing
+      - name: unifi-landing-static
+        configMap:
+          name: unifi-landing-static

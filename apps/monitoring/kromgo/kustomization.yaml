@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
@@ -6,3 +7,10 @@ resources:
   - "manifests/deployment.yaml"
   - "manifests/configmap.yaml"
   - "manifests/service.yaml"
+configMapGenerator:
+  - name: kromgo-configmap
+    files:
+      - config.yaml=manifests/config.yaml
+    namespace: monitoring
+generatorOptions:
+  disableNameSuffixHash: true
