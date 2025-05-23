@@ -7,3 +7,10 @@ resources:
   - "manifests/httproute.yaml"
   - "manifests/rbac.yaml"
   - "manifests/secret.yaml"
+helmCharts:
+  - name: kubernetes-dashboard
+    repo: https://kubernetes.github.io/dashboard
+    version: 7.12.0
+    releaseName: kubernetes-dashboard
+    namespace: kubernetes-dashboard
+    valuesFile: manifests/values.yaml

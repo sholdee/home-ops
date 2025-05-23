@@ -48,6 +48,26 @@ spec:
         syncOptions:
         - CreateNamespace=true
         - ApplyOutOfSyncOnly=true
+        - RespectIgnoreDifferences=true
+  templatePatch: |
+    {{- if eq .path.basename "kubernetes-dashboard" }}
+    spec:
+      ignoreDifferences:
+      - group: '*'
+        kind: ConfigMap
+        name: kubernetes-dashboard-web-settings
+        jsonPointers:
+        - /data
+      - group: '*'
+        kind: Secret
+        name: kubernetes-dashboard-csrf
+        jsonPointers:
+        - /data/private.key
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+        - /spec/template/metadata/annotations/checksum~1config
+    {{- end }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -490,48 +510,6 @@ spec:
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: kubernetes-dashboard
-spec:
-  destination:
-    name: in-cluster
-    namespace: kubernetes-dashboard
-  ignoreDifferences:
-  - group: '*'
-    kind: ConfigMap
-    name: kubernetes-dashboard-web-settings
-    jsonPointers:
-    - /data
-  - group: '*'
-    kind: Secret
-    name: kubernetes-dashboard-csrf
-    jsonPointers:
-    - /data/private.key
-  - group: apps
-    kind: Deployment
-    jsonPointers:
-    - /spec/template/metadata/annotations/checksum~1config
-  project: k3s
-  source:
-    chart: kubernetes-dashboard
-    helm:
-      valuesObject:
-        kong:
-          proxy:
-            http:
-              enabled: true
-    repoURL: https://kubernetes.github.io/dashboard
-    targetRevision: 7.12.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
-    - RespectIgnoreDifferences=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
