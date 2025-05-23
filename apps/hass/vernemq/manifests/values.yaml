@@ -1,6 +1,6 @@
-replicaCount: 3
+replicaCount: 2
 serviceMonitor:
-  create: true
+  create: false
 service:
   type: LoadBalancer
   loadBalancerIP: 192.168.77.25
