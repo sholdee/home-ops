@@ -7,7 +7,7 @@ resources:
 helmCharts:
   - name: vernemq
     repo: https://vernemq.github.io/docker-vernemq
-    version: 2.0.1
+    version: 1.9.0
     releaseName: vernemq
     namespace: hass
     valuesFile: manifests/values.yaml
