@@ -88,8 +88,6 @@ jobs:
               OLD_VERSION="$4"
               NEW_VERSION="$5"
               NAMESPACE="$6"
-              HELM_ARGS_OLD=("${@:7:$((${#}-12))}")
-              HELM_ARGS_NEW=("${@:$((${#}-5)):6}")
               
               echo "📡 Checking available versions for $CHART_NAME..."
               helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
@@ -186,8 +184,10 @@ jobs:
                         helm repo add "$REPO_NAME" "$REPO_URL"
                         helm repo update
                         
-                        # Prepare args for OLD version
                         HELM_ARGS_OLD=()
+                        HELM_ARGS_NEW=()
+                        
+                        # Prepare args for OLD version
                         if [[ -n "$OLD_VALUES_STRING" && "$OLD_VALUES_STRING" != "null" ]]; then
                             echo "$OLD_VALUES_STRING" > old-values.yaml
                             HELM_ARGS_OLD+=("-f" "old-values.yaml")
@@ -203,7 +203,6 @@ jobs:
                         done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
                         # Prepare args for NEW version
-                        HELM_ARGS_NEW=()
                         if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
                             echo "$NEW_VALUES_STRING" > new-values.yaml
                             HELM_ARGS_NEW+=("-f" "new-values.yaml")
@@ -218,7 +217,7 @@ jobs:
                             HELM_ARGS_NEW+=("--set" "$p")
                         done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
-                        generate_helm_diff "$APP_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" "${HELM_ARGS_NEW[@]}"
+                        generate_helm_diff "$APP_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE"
                     done
                 done
                 
@@ -262,8 +261,10 @@ jobs:
                         helm repo add "$REPO_NAME" "$REPO_URL"
                         helm repo update
                         
+                        HELM_ARGS_NEW=() 
+                        HELM_ARGS_OLD=()
+                        
                         # Process values files for NEW version
-                        HELM_ARGS_NEW=()
                         VALUES_FILE=$(echo "$chart_json" | jq -r '.valuesFile // "null"')
                         if [[ "$VALUES_FILE" != "null" && -n "$VALUES_FILE" ]]; then
                             NEW_VALUES_PATH="$kustomize_dir/$VALUES_FILE"
@@ -283,7 +284,6 @@ jobs:
                         fi
                         
                         # Process values files for OLD version
-                        HELM_ARGS_OLD=()
                         OLD_VALUES_FILE=$(echo "$OLD_VERSION_JSON" | jq -r '.valuesFile // "null"')
                         if [[ "$OLD_VALUES_FILE" != "null" && -n "$OLD_VALUES_FILE" ]]; then
                             OLD_VALUES_PATH="$kustomize_dir/$OLD_VALUES_FILE"
@@ -304,7 +304,7 @@ jobs:
                             done
                         fi
                         
-                        generate_helm_diff "$RELEASE_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE" "${HELM_ARGS_OLD[@]}" "${HELM_ARGS_NEW[@]}"
+                        generate_helm_diff "$RELEASE_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE"
                     done
                 else
                     echo "ℹ️ No Helm charts found in kustomization"
