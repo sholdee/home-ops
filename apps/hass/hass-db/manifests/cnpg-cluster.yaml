@@ -11,7 +11,7 @@ spec:
   primaryUpdateStrategy: unsupervised
   bootstrap:
     recovery:
-      source: hass-db-backup
+      source: hass-db
   superuserSecret:
     name: hass-db-superuser
   storage:
@@ -39,7 +39,7 @@ spec:
 #        jobs: 2
 #    retentionPolicy: "30d"
   externalClusters:
-  - name: hass-db-backup
+  - name: hass-db
     barmanObjectStore:
       destinationPath: s3://sholdee-cnpg-hass/
       endpointURL: https://s3.us-west-002.backblazeb2.com
@@ -50,8 +50,6 @@ spec:
         secretAccessKey:
           name: hass-db-backup-creds
           key: ACCESS_SECRET_KEY
-        wal:
-          maxParallel: 7
 ---
 #apiVersion: postgresql.cnpg.io/v1
 #kind: ScheduledBackup
