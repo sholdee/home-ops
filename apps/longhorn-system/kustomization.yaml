@@ -2,10 +2,10 @@
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
-  - "externalsecret.yaml"
-  - "ingress.yaml"
-  - "recurringjob.yaml"
-  - "storageclass-backups.yaml"
-  - "storageclass-confluent.yaml"
-  - "storageclass-mongo.yaml"
-  - "storageclass-singlereplica.yaml"
+  - "manifests/externalsecret.yaml"
+  - "manifests/ingress.yaml"
+  - "manifests/recurringjob.yaml"
+  - "manifests/storageclass-backups.yaml"
+  - "manifests/storageclass-confluent.yaml"
+  - "manifests/storageclass-mongo.yaml"
+  - "manifests/storageclass-singlereplica.yaml"
