@@ -103,38 +103,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: cert-manager
-spec:
-  destination:
-    name: in-cluster
-    namespace: cert-manager
-  project: k3s
-  source:
-    chart: cert-manager
-    helm:
-      valuesObject:
-        installCRDs: true
-        dns01RecursiveNameservers: "1.1.1.1:53,1.0.0.1:53"
-        dns01RecursiveNameserversOnly: true
-        prometheus:
-          servicemonitor:
-            enabled: true
-        config:
-          apiVersion: controller.config.cert-manager.io/v1alpha1
-          kind: ControllerConfiguration
-          enableGatewayAPI: true
-    repoURL: https://charts.jetstack.io
-    targetRevision: v1.17.2
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: cilium
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
