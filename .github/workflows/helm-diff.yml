@@ -80,11 +80,59 @@ jobs:
 
       - name: Find Modified Helm Applications
         run: |
+            # Helper function for Helm templating and diff generation
+            generate_helm_diff() {
+              APP_NAME="$1"
+              REPO_NAME="$2"
+              CHART_NAME="$3"
+              OLD_VERSION="$4"
+              NEW_VERSION="$5"
+              NAMESPACE="$6"
+              HELM_ARGS_OLD=("${@:7:$((${#}-12))}")
+              HELM_ARGS_NEW=("${@:$((${#}-5)):6}")
+              
+              echo "📡 Checking available versions for $CHART_NAME..."
+              helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
+              
+              if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$OLD_VERSION"; then
+                echo "⚠️ Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
+                return 1
+              fi
+              
+              if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$NEW_VERSION"; then
+                echo "⚠️ Chart $CHART_NAME version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
+                return 1
+              fi
+              
+              echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $NAMESPACE ${HELM_ARGS_NEW[*]}"
+              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; return 1; }
+              
+              echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $NAMESPACE ${HELM_ARGS_OLD[*]}"
+              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; return 1; }
+              
+              # Define fields to remove
+              EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
+              EXCLUDE_FIELDS+=',.metadata.labels.chart'
+              EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
+              EXCLUDE_FIELDS+=',.spec.template.metadata.labels."helm.sh/chart"'
+              EXCLUDE_FIELDS+=',.spec.template.metadata.labels.chart'
+              EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
+              EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
+              
+              echo "🛠️ Processing inflated charts..."
+              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
+              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
+              
+              echo "🔍 Generating diff..."
+              git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
+              return 0
+            }
+            
             # Fetch PR diff from GitHub API
             DIFF_URL="https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files"
             RESPONSE=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" -H "Accept: application/vnd.github.v3+json" "$DIFF_URL")
             
-            # Process each modified file and targetRevision pair from JSON
+            # ===== PROCESS ARGOCD APPLICATIONS =====
             echo "$RESPONSE" | jq -c '.[] | select(.patch) | 
                  .filename as $file | 
                  .patch |
@@ -95,7 +143,7 @@ jobs:
                     FILE=$(echo "$json" | jq -r '.file')
                     REV=$(echo "$json" | jq -r '.version')
                     
-                    echo "📄 Processing file: $FILE with targetRevision $REV"
+                    echo "📄 Processing ArgoCD Application file: $FILE with targetRevision $REV"
                     
                     # Extract app names and namespaces properly
                     APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
@@ -138,40 +186,8 @@ jobs:
                         helm repo add "$REPO_NAME" "$REPO_URL"
                         helm repo update
                         
-                        echo "📡 Checking available versions for $CHART_NAME..."
-                        helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
-                        
-                        if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$OLD_VERSION"; then
-                            echo "⚠️ Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
-                            continue
-                        fi
-                        
-                        if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$NEW_VERSION"; then
-                            echo "⚠️ Chart $CHART_NAME version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
-                            continue
-                        fi
-                        
-                        HELM_ARGS_NEW=()
-                        
-                        if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
-                            echo "$NEW_VALUES_STRING" > new-values.yaml
-                            HELM_ARGS_NEW+=("-f" "new-values.yaml")
-                        fi
-                        
-                        if [[ -n "$NEW_VALUES_OBJECT" && "$NEW_VALUES_OBJECT" != "null" ]]; then
-                            echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
-                            HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
-                        fi
-                        
-                        while IFS= read -r p; do
-                            HELM_ARGS_NEW+=("--set" "$p")
-                        done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
-                        
-                        echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_NEW[@]}"
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; exit 1; }
-                        
+                        # Prepare args for OLD version
                         HELM_ARGS_OLD=()
-                        
                         if [[ -n "$OLD_VALUES_STRING" && "$OLD_VALUES_STRING" != "null" ]]; then
                             echo "$OLD_VALUES_STRING" > old-values.yaml
                             HELM_ARGS_OLD+=("-f" "old-values.yaml")
@@ -186,26 +202,114 @@ jobs:
                             HELM_ARGS_OLD+=("--set" "$p")
                         done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
-                        echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $DEST_NAMESPACE ${HELM_ARGS_OLD[@]}"
-                        helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; exit 1; }
+                        # Prepare args for NEW version
+                        HELM_ARGS_NEW=()
+                        if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
+                            echo "$NEW_VALUES_STRING" > new-values.yaml
+                            HELM_ARGS_NEW+=("-f" "new-values.yaml")
+                        fi
                         
-                        # Define fields to remove
-                        EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
-                        EXCLUDE_FIELDS+=',.metadata.labels.chart'
-                        EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
-                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels."helm.sh/chart"'
-                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels.chart'
-                        EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
-                        EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
+                        if [[ -n "$NEW_VALUES_OBJECT" && "$NEW_VALUES_OBJECT" != "null" ]]; then
+                            echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
+                            HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
+                        fi
                         
-                        echo "🛠️ Processing inflated charts..."
-                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
-                        yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
+                        while IFS= read -r p; do
+                            HELM_ARGS_NEW+=("--set" "$p")
+                        done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
-                        echo "🔍 Generating diff..."
-                        git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
+                        generate_helm_diff "$APP_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE" "${HELM_ARGS_OLD[@]}" "${HELM_ARGS_NEW[@]}"
                     done
                 done
+                
+            # ===== PROCESS KUSTOMIZE HELM CHARTS =====
+            echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename' | while read -r kustomization_file; do
+                kustomization_file=$(echo $kustomization_file | tr -d '"')
+                echo "📄 Processing kustomization file: $kustomization_file"
+                
+                # Check if this is a Helm kustomization (has helmCharts section)
+                if ! yq e '.helmCharts' "$kustomization_file" | grep -q "null"; then
+                    echo "🔍 Found Helm charts in kustomization"
+                    
+                    # Get directory containing the kustomization file
+                    kustomize_dir=$(dirname "$kustomization_file")
+                    
+                    # For each Helm chart in the kustomization
+                    yq e '.helmCharts[]' -o=json "$kustomization_file" | jq -c '.' | while read -r chart_json; do
+                        # Extract chart details
+                        CHART_NAME=$(echo "$chart_json" | jq -r '.name')
+                        REPO_URL=$(echo "$chart_json" | jq -r '.repo')
+                        NEW_VERSION=$(echo "$chart_json" | jq -r '.version')
+                        RELEASE_NAME=$(echo "$chart_json" | jq -r '.releaseName // .name')
+                        NAMESPACE=$(echo "$chart_json" | jq -r '.namespace // "default"')
+                        
+                        echo "🔄 Processing Kustomize Helm chart: $CHART_NAME ($RELEASE_NAME) in namespace $NAMESPACE"
+                        
+                        # Get old version from base branch
+                        OLD_VERSION_JSON=$(git show origin/${{ github.event.pull_request.base.ref }}:"$kustomization_file" | yq e '.helmCharts[] | select(.name == "'$CHART_NAME'")' -o=json 2>/dev/null || echo '{"version": ""}')
+                        OLD_VERSION=$(echo "$OLD_VERSION_JSON" | jq -r '.version')
+                        
+                        # Skip if versions are the same
+                        if [[ "$OLD_VERSION" == "$NEW_VERSION" || -z "$NEW_VERSION" || -z "$OLD_VERSION" ]]; then
+                            echo "ℹ️ Chart version unchanged or missing: $OLD_VERSION → $NEW_VERSION. Skipping..."
+                            continue
+                        fi
+                        
+                        echo "⬆️ Version change detected: $OLD_VERSION → $NEW_VERSION"
+                        
+                        # Add the Helm repo
+                        REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||' | awk -F/ '{print $NF}')
+                        helm repo add "$REPO_NAME" "$REPO_URL"
+                        helm repo update
+                        
+                        # Process values files for NEW version
+                        HELM_ARGS_NEW=()
+                        VALUES_FILE=$(echo "$chart_json" | jq -r '.valuesFile // "null"')
+                        if [[ "$VALUES_FILE" != "null" && -n "$VALUES_FILE" ]]; then
+                            NEW_VALUES_PATH="$kustomize_dir/$VALUES_FILE"
+                            if [[ -f "$NEW_VALUES_PATH" ]]; then
+                                echo "📝 Using values file: $NEW_VALUES_PATH"
+                                cp "$NEW_VALUES_PATH" new-values-kustomize.yaml
+                                HELM_ARGS_NEW+=("-f" "new-values-kustomize.yaml")
+                            fi
+                        fi
+                        
+                        # Handle valuesMerge if present for NEW version
+                        VALUE_MERGES=$(echo "$chart_json" | jq -r '.valuesMerge // []')
+                        if [[ "$VALUE_MERGES" != "[]" ]]; then
+                            echo "$VALUE_MERGES" | jq -c '.[]' | while read -r value_merge; do
+                                HELM_ARGS_NEW+=("--set" "$value_merge")
+                            done
+                        fi
+                        
+                        # Process values files for OLD version
+                        HELM_ARGS_OLD=()
+                        OLD_VALUES_FILE=$(echo "$OLD_VERSION_JSON" | jq -r '.valuesFile // "null"')
+                        if [[ "$OLD_VALUES_FILE" != "null" && -n "$OLD_VALUES_FILE" ]]; then
+                            OLD_VALUES_PATH="$kustomize_dir/$OLD_VALUES_FILE"
+                            if git show origin/${{ github.event.pull_request.base.ref }}:"$OLD_VALUES_PATH" > old-values-kustomize.yaml 2>/dev/null; then
+                                HELM_ARGS_OLD+=("-f" "old-values-kustomize.yaml")
+                            else
+                                echo "⚠️ Cannot retrieve old values file. Using empty values for old version."
+                                echo "{}" > old-values-kustomize.yaml
+                                HELM_ARGS_OLD+=("-f" "old-values-kustomize.yaml")
+                            fi
+                        fi
+                        
+                        # Handle valuesMerge if present for OLD version
+                        OLD_VALUE_MERGES=$(echo "$OLD_VERSION_JSON" | jq -r '.valuesMerge // []')
+                        if [[ "$OLD_VALUE_MERGES" != "[]" ]]; then
+                            echo "$OLD_VALUE_MERGES" | jq -c '.[]' | while read -r old_value_merge; do
+                                HELM_ARGS_OLD+=("--set" "$old_value_merge")
+                            done
+                        fi
+                        
+                        generate_helm_diff "$RELEASE_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE" "${HELM_ARGS_OLD[@]}" "${HELM_ARGS_NEW[@]}"
+                    done
+                else
+                    echo "ℹ️ No Helm charts found in kustomization"
+                fi
+            done
 
       - name: Read Helm Diff Output
         id: read-diff
