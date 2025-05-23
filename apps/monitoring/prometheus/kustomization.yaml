@@ -6,4 +6,4 @@ resources:
   - "manifests/prometheusrule-cert-manager.yaml"
   - "manifests/prometheusrule-cilium.yaml"
   - "manifests/prometheusrule-longhorn.yaml"
-  - "manifests/rometheusrule-misc.yaml"
+  - "manifests/prometheusrule-misc.yaml"
