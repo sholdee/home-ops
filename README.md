@@ -45,7 +45,7 @@ Container image update pull requests against base manifests in the repository al
 
 ### ArgoCD Project Structure 🏗️
 
-The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd-conf` application, which is also an app-of-apps holding all Helm applications.
+The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd` application, which is also an app-of-apps holding Helm applications.
 
 <br />
 
@@ -67,10 +67,10 @@ erDiagram
       string path ".path.path"
       string kind "Application"
     }
-    argocd-conf {
-      string name "argocd-conf"
+    argocd {
+      string name "argocd"
       string destinationNamespace "argocd"
-      string path "apps/argocd-conf"
+      string path "apps/argocd"
       string kind "Application"
     }
     "Helm Applications"
@@ -81,12 +81,12 @@ erDiagram
     ApplicationSet ||--|| "Git Generator" : "uses"
     "Git Generator" ||--|{ Directory : "scans each"
     Directory ||--|| Application : "generates"
-    argocd-conf ||..|| Application : "is a type of"
-    argocd-conf ||--|{ "Helm Applications" : "app-of-apps aggregates"
+    argocd ||..|| Application : "is a type of"
+    argocd ||--|{ "Helm Applications" : "app-of-apps aggregates"
     "Helm Applications" ||--|| Cilium : "example"
     "Helm Applications" ||--|| ArgoCD : "example"
     "Helm Applications" ||--|| Cert-Manager : "example"
-    argocd-conf ||--|| ApplicationSet : "self-manages"
+    argocd ||--|| ApplicationSet : "self-manages"
 ```
 
 #### Primary Applications ⭐

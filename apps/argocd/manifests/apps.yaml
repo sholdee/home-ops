@@ -103,57 +103,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd
-spec:
-  destination:
-    name: in-cluster
-    namespace: argocd
-  project: k3s
-  source:
-    chart: argo-cd
-    helm:
-      valuesObject:
-        global:
-          domain: argocd.sholdee.net
-        server:
-          certificate:
-            enabled: true
-            issuer:
-              group: "cert-manager.io"
-              kind: "ClusterIssuer"
-              name: "cloudflare"
-        controller:
-          affinity:
-            nodeAffinity:
-              preferredDuringSchedulingIgnoredDuringExecution:
-                - weight: 1
-                  preference:
-                    matchExpressions:
-                      - key: node-role.kubernetes.io/control-plane
-                        operator: DoesNotExist
-        configs:
-          cm:
-            kustomize.buildOptions: --enable-helm
-            resource.exclusions: |
-             - apiGroups:
-                 - cilium.io
-               kinds:
-                 - CiliumIdentity
-               clusters:
-                 - "*"
-    repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 8.0.9
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: cert-manager
 spec:
   destination:

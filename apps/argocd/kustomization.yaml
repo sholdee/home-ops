@@ -6,3 +6,10 @@ resources:
   - "manifests/repos.yaml"
   - "manifests/tlsroute.yaml"
   - "manifests/cilium-preflight.yaml"
+helmCharts:
+  - name: argo-cd
+    repo: https://argoproj.github.io/argo-helm
+    version: 8.0.9
+    releaseName: argo-cd
+    namespace: argo-cd
+    valuesFile: manifests/values.yaml
