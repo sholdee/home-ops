@@ -348,41 +348,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: external-secrets
-spec:
-  destination:
-    name: in-cluster
-    namespace: external-secrets
-  project: k3s
-  source:
-    chart: external-secrets
-    helm:
-      valuesObject:
-        topologySpreadConstraints:
-          - maxSkew: 1
-            topologyKey: kubernetes.io/hostname
-            whenUnsatisfiable: DoNotSchedule
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/name: external-secrets
-        replicaCount: 2
-        leaderElect: true
-        serviceMonitor:
-          enabled: true
-        grafanaDashboard:
-          enabled: true
-    repoURL: https://charts.external-secrets.io
-    targetRevision: 0.17.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: ingress-nginx
 spec:
   destination:
