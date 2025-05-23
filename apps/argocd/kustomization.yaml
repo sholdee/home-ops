@@ -7,7 +7,7 @@ resources:
   - "manifests/tlsroute.yaml"
   - "manifests/cilium-preflight.yaml"
 helmCharts:
-  - name: argocd
+  - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
     version: 8.0.9
     releaseName: argocd
