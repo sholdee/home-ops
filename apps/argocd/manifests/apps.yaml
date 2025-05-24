@@ -33,6 +33,8 @@ spec:
   template:
     metadata:
       name: '{{.path.basename}}'
+      annotations:
+        argocd.argoproj.io/compare-options: ServerSideDiff=true
     spec:
       project: k3s
       source:
@@ -49,6 +51,7 @@ spec:
         - CreateNamespace=true
         - ApplyOutOfSyncOnly=true
         - RespectIgnoreDifferences=true
+        - ServerSideApply=true
   templatePatch: |
     {{- if eq .path.basename "kubernetes-dashboard" }}
     spec:
@@ -69,19 +72,10 @@ spec:
         - /spec/template/metadata/annotations/checksum~1config
     {{- end }}
     {{- if eq .path.basename "kube-prometheus-stack" }}
-    metadata:
-      annotations:
-        argocd.argoproj.io/compare-options: ServerSideDiff=true
     spec:
       destination:
         name: in-cluster
         namespace: monitoring
-      syncPolicy:
-        automated:
-          prune: true
-        syncOptions:
-          - ServerSideApply=true
-          - CreateNamespace=true
     {{- end }}
 ---
 apiVersion: argoproj.io/v1alpha1
@@ -222,28 +216,6 @@ spec:
     syncOptions:
     - ServerSideApply=true
     - RespectIgnoreDifferences=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: cnpg
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
-spec:
-  destination:
-    name: in-cluster
-    namespace: cnpg-system
-  project: k3s
-  source:
-    chart: cloudnative-pg
-    repoURL: https://cloudnative-pg.github.io/charts
-    targetRevision: 0.24.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
