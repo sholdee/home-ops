@@ -237,7 +237,7 @@ spec:
             enabled: false
           resources:
             limits:
-              cpu: ~
+              cpu: 150m
               memory: 200Mi
             requests:
               cpu: 3m
@@ -247,7 +247,7 @@ spec:
             enabled: false
           resources:
             limits:
-              cpu: ~
+              cpu: 150m
               memory: 128Mi
             requests:
               cpu: 3m
