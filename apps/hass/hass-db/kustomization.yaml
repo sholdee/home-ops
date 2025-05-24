@@ -6,3 +6,4 @@ resources:
   - "manifests/cnpg-cluster.yaml"
   - "manifests/externalsecret.yaml"
   - "manifests/rbac.yaml"
+  - "manifests/objectstore.yaml"
