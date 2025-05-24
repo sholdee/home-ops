@@ -9,9 +9,14 @@ spec:
   imageName: ghcr.io/cloudnative-pg/postgresql:16.9-1
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
-#  bootstrap:
-#    recovery:
-#      source: hass-db
+  bootstrap:
+    initdb:
+      database: hass
+      owner: hass
+      secret:
+        name: hass-db-app-user
+      dataChecksums: true
+      encoding: 'UTF8'
   superuserSecret:
     name: hass-db-superuser
   storage:
