@@ -24,11 +24,11 @@ spec:
     size: 7Gi
   monitoring:
     enablePodMonitor: true
-#  plugins:
-#  - name: barman-cloud.cloudnative-pg.io
-#    isWALArchiver: true
-#    parameters:
-#      barmanObjectName: cnpg-hass-b2
+  plugins:
+  - name: barman-cloud.cloudnative-pg.io
+    isWALArchiver: true
+    parameters:
+      barmanObjectName: cnpg-hass-b2
 #---
 #apiVersion: postgresql.cnpg.io/v1
 #kind: ScheduledBackup
