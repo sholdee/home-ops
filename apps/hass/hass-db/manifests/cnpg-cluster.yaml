@@ -9,9 +9,9 @@ spec:
   imageName: ghcr.io/cloudnative-pg/postgresql:16.9-1
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
-  bootstrap:
-    recovery:
-      source: hass-db
+#  bootstrap:
+#    recovery:
+#      source: hass-db
   superuserSecret:
     name: hass-db-superuser
   storage:
@@ -19,48 +19,25 @@ spec:
     size: 7Gi
   monitoring:
     enablePodMonitor: true
-#  backup:
-#    barmanObjectStore:
-#      destinationPath: s3://sholdee-cnpg-hass/
-#      endpointURL: https://s3.us-west-002.backblazeb2.com
-#      s3Credentials:
-#        accessKeyId:
-#          name: hass-db-backup-creds
-#          key: ACCESS_KEY_ID
-#        secretAccessKey:
-#          name: hass-db-backup-creds
-#          key: ACCESS_SECRET_KEY
-#      wal:
-#        compression: gzip
-#        encryption: AES256
-#      data:
-#        compression: gzip
-#        encryption: AES256
-#        jobs: 2
-#    retentionPolicy: "30d"
-  externalClusters:
-  - name: hass-db
-    barmanObjectStore:
-      destinationPath: s3://sholdee-cnpg-hass/
-      endpointURL: https://s3.us-west-002.backblazeb2.com
-      s3Credentials:
-        accessKeyId:
-          name: hass-db-backup-creds
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: hass-db-backup-creds
-          key: ACCESS_SECRET_KEY
+  plugins:
+  - name: barman-cloud.cloudnative-pg.io
+    isWALArchiver: true
+    parameters:
+      barmanObjectName: cnpg-hass-b2
 ---
-#apiVersion: postgresql.cnpg.io/v1
-#kind: ScheduledBackup
-#metadata:
-#  name:  hass-db2-backup-schedule
-#  namespace: hass
-#spec:
-#  schedule: "0 0 7 * * *"
-#  backupOwnerReference: self
-#  cluster:
-#    name: hass-db
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name:  hass-db2-backup-schedule
+  namespace: hass
+spec:
+  cluster:
+    name: hass-db2
+  schedule: "0 0 7 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
