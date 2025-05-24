@@ -50,18 +50,6 @@
       matchDatasources: [
         'docker',
       ],
-      allowedVersions: '<17',
-      schedule: [
-        'on sunday',
-      ],
-      matchPackageNames: [
-        '/postgresql/',
-      ],
-    },
-    {
-      matchDatasources: [
-        'docker',
-      ],
       allowedVersions: '<8',
       matchPackageNames: [
         '/mongodb-community-server/',
