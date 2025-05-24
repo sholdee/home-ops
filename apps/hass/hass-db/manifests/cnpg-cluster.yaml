@@ -24,25 +24,25 @@ spec:
     size: 7Gi
   monitoring:
     enablePodMonitor: true
-  plugins:
-  - name: barman-cloud.cloudnative-pg.io
-    isWALArchiver: true
-    parameters:
-      barmanObjectName: cnpg-hass-b2
----
-apiVersion: postgresql.cnpg.io/v1
-kind: ScheduledBackup
-metadata:
-  name:  hass-db2-backup-schedule
-  namespace: hass
-spec:
-  cluster:
-    name: hass-db2
-  schedule: "0 0 7 * * *"
-  backupOwnerReference: self
-  method: plugin
-  pluginConfiguration:
-    name: barman-cloud.cloudnative-pg.io
+#  plugins:
+#  - name: barman-cloud.cloudnative-pg.io
+#    isWALArchiver: true
+#    parameters:
+#      barmanObjectName: cnpg-hass-b2
+#---
+#apiVersion: postgresql.cnpg.io/v1
+#kind: ScheduledBackup
+#metadata:
+#  name:  hass-db2-backup-schedule
+#  namespace: hass
+#spec:
+#  cluster:
+#    name: hass-db2
+#  schedule: "0 0 7 * * *"
+#  backupOwnerReference: self
+#  method: plugin
+#  pluginConfiguration:
+#    name: barman-cloud.cloudnative-pg.io
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: Pooler
