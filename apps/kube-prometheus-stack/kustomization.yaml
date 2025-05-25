@@ -14,3 +14,14 @@ helmCharts:
     releaseName: kube-prometheus-stack
     namespace: monitoring
     valuesFile: values.yaml
+patches:
+  - target:
+      kind: StatefulSet
+      name: kube-prometheus-stack-grafana
+    patch: |-
+      - op: add
+        path: /spec/volumeClaimTemplates/0/spec/dataSourceRef
+        value:
+          apiGroup: volsync.backube
+          kind: ReplicationDestination
+          name: grafana-bootstrap

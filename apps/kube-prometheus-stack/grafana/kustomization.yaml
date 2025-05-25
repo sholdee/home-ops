@@ -64,13 +64,3 @@ patches:
       - op: replace
         path: /spec/target/template/data/RESTIC_REPOSITORY
         value: "s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/grafana"
-  - target:
-      kind: StatefulSet
-      name: kube-prometheus-stack-grafana
-    patch: |-
-      - op: add
-        path: /spec/volumeClaimTemplates/0/spec/dataSourceRef
-        value:
-          apiGroup: volsync.backube
-          kind: ReplicationDestination
-          name: grafana-bootstrap
