@@ -7,7 +7,6 @@ resources:
   - "manifests/deployment.yaml"
   - "manifests/service.yaml"
   - "manifests/httproute.yaml"
-  - "manifests/pvc.yaml"
 components:
   - ../../../components/volsync
 patches:
