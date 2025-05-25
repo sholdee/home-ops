@@ -10,3 +10,4 @@ resources:
   - "manifests/storageclass-confluent.yaml"
   - "manifests/storageclass-mongo.yaml"
   - "manifests/storageclass-singlereplica.yaml"
+  - "manifests/volumesnapshotclass.yaml"

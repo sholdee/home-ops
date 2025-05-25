@@ -1,0 +1,30 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/volsync.backube/replicationsource_v1alpha1.json
+apiVersion: volsync.backube/v1alpha1
+kind: ReplicationSource
+metadata:
+  name: app
+spec:
+  restic:
+    accessModes:
+      - ReadWriteOnce
+    cacheAccessModes:
+      - ReadWriteOnce
+    cacheCapacity: 1Gi
+    cacheStorageClassName: local-path
+    copyMethod: Snapshot
+    moverSecurityContext:
+      fsGroup: 65534
+      runAsGroup: 65534
+      runAsUser: 65534
+    pruneIntervalDays: 7
+    repository: app-volsync-b2
+    retain:
+      daily: 7
+      hourly: 24
+    storageClassName: longhorn
+    unlock: u1
+    volumeSnapshotClassName: longhorn
+  sourcePVC: app-pvc
+  trigger:
+    schedule: "0 * * * *"
