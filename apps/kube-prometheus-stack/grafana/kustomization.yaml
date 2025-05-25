@@ -68,25 +68,9 @@ patches:
       kind: StatefulSet
       name: kube-prometheus-stack-grafana
     patch: |-
-      apiVersion: apps/v1
-      kind: StatefulSet
-      metadata:
-        name: kube-prometheus-stack-grafana
-      spec:
-        persistentVolumeClaimRetentionPolicy:
-          whenDeleted: Retain
-          whenScaled: Retain
-        volumeClaimTemplates:
-          - metadata:
-              name: storage
-            spec:
-              accessModes:
-                - ReadWriteOnce
-              resources:
-                requests:
-                  storage: 20Gi
-              storageClassName: longhorn
-              dataSourceRef:
-                apiGroup: volsync.backube
-                kind: ReplicationDestination
-                name: grafana-bootstrap
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/dataSourceRef
+        value:
+          apiGroup: volsync.backube
+          kind: ReplicationDestination
+          name: grafana-bootstrap
