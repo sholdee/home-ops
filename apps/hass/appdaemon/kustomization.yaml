@@ -8,3 +8,61 @@ resources:
   - "manifests/externalsecret.yaml"
   - "manifests/httproute.yaml"
   - "manifests/pvc.yaml"
+components:
+  - ../../../components/volsync
+patches:
+  - target:
+      kind: ReplicationSource
+      name: app
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: appdaemon
+      - op: replace
+        path: /spec/sourcePVC
+        value: appdaemon-pvc
+      - op: replace
+        path: /spec/restic/repository
+        value: appdaemon-volsync-b2
+      - op: replace
+        path: /spec/restic/accessModes/0
+        value: ReadWriteMany
+  - target:
+      kind: ReplicationDestination
+      name: app-bootstrap
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: appdaemon-bootstrap
+      - op: replace
+        path: /spec/restic/repository
+        value: appdaemon-volsync-b2
+      - op: replace
+        path: /spec/restic/accessModes/0
+        value: ReadWriteMany
+  - target:
+      kind: ExternalSecret
+      name: app-volsync-b2
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: appdaemon-volsync-b2
+      - op: replace
+        path: /spec/target/name
+        value: appdaemon-volsync-b2
+      - op: replace
+        path: /spec/target/template/data/RESTIC_REPOSITORY
+        value: "s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/appdaemon"
+  - target:
+      kind: PersistentVolumeClaim
+      name: app-pvc
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: appdaemon-pvc
+      - op: replace
+        path: /spec/accessModes/0
+        value: ReadWriteMany
+      - op: replace
+        path: /spec/dataSourceRef/name
+        value: appdaemon-bootstrap
