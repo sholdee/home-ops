@@ -18,6 +18,7 @@ spec:
       name: '{{.path.basename}}'
       annotations:
         argocd.argoproj.io/compare-options: ServerSideDiff=true
+        argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     spec:
       project: k3s
       source:
