@@ -53,7 +53,7 @@ patches:
         value: 472
   - target:
       kind: ExternalSecret
-      name: grafana-volsync-b2
+      name: app-volsync-b2
     patch: |-
       - op: replace
         path: /metadata/name
