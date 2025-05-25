@@ -1,0 +1,62 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/applicationset_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: k3s-apps
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/sholdee/home-ops
+        revision: master
+        directories:
+          - path: 'apps/*'
+  template:
+    metadata:
+      name: '{{.path.basename}}'
+      annotations:
+        argocd.argoproj.io/compare-options: ServerSideDiff=true
+    spec:
+      project: k3s
+      source:
+        repoURL: https://github.com/sholdee/home-ops
+        targetRevision: master
+        path: '{{.path.path}}'
+      destination:
+        name: in-cluster
+        namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'
+      syncPolicy:
+        automated:
+          prune: true
+        syncOptions:
+        - CreateNamespace=true
+        - ApplyOutOfSyncOnly=true
+        - RespectIgnoreDifferences=true
+        - ServerSideApply=true
+  templatePatch: |
+    {{- if eq .path.basename "kubernetes-dashboard" }}
+    spec:
+      ignoreDifferences:
+      - group: '*'
+        kind: ConfigMap
+        name: kubernetes-dashboard-web-settings
+        jsonPointers:
+        - /data
+      - group: '*'
+        kind: Secret
+        name: kubernetes-dashboard-csrf
+        jsonPointers:
+        - /data/private.key
+      - group: apps
+        kind: Deployment
+        jsonPointers:
+        - /spec/template/metadata/annotations/checksum~1config
+    {{- end }}
+    {{- if eq .path.basename "kube-prometheus-stack" }}
+    spec:
+      destination:
+        name: in-cluster
+        namespace: monitoring
+    {{- end }}

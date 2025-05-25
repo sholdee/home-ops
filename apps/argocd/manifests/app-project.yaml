@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/appproject_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: k3s
+spec:
+  clusterResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  description: Home automation and management
+  destinations:
+  - name: in-cluster
+    namespace: '*'
+    server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+  - group: '*'
+    kind: '*'
+  sourceRepos:
+  - https://github.com/sholdee/home-ops

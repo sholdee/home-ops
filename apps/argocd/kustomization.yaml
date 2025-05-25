@@ -4,6 +4,8 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - "manifests/apps.yaml"
+  - "manifests/app-project.yaml"
+  - "manifests/app-set.yaml"
   - "manifests/repos.yaml"
   - "manifests/tlsroute.yaml"
   - "manifests/cilium-preflight.yaml"
