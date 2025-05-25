@@ -10,7 +10,3 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: "longhorn"
-  dataSourceRef:
-    apiGroup: volsync.backube
-    kind: ReplicationDestination
-    name: hass-bootstrap
