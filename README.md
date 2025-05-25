@@ -111,6 +111,7 @@ erDiagram
   - External Secrets
   - Cert-Manager
   - Kube-VIP
+  - VolSync
   - CloudNativePG
   - ETCD Operator
   - MongoDB Community Operator
