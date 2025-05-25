@@ -3,16 +3,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
-  - "cilium"
-  - "kube-vip"
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotclasses.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshotcontents.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/groupsnapshot.storage.k8s.io_volumegroupsnapshots.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/deploy/kubernetes/csi-snapshotter/rbac-csi-snapshotter.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/deploy/kubernetes/csi-snapshotter/rbac-external-provisioner.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/deploy/kubernetes/csi-snapshotter/setup-csi-snapshotter.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
-  - https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/refs/heads/release-8.2/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml
+  - cilium
+  - kube-vip
+  - external-snapshotter
