@@ -10,6 +10,7 @@ resources:
   - "manifests/certificate.yaml"
 components:
   - ../../../components/volsync
+  - ../../../components/volsync/b2
 patches:
   - target:
       kind: ReplicationSource

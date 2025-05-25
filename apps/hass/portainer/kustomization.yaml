@@ -8,6 +8,7 @@ resources:
   - "manifests/httproute.yaml"
 components:
   - ../../../components/volsync
+  - ../../../components/volsync/b2
 patches:
   - target:
       kind: ReplicationSource
