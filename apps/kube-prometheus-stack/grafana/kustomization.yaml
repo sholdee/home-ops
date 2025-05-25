@@ -68,7 +68,7 @@ patches:
       kind: StatefulSet
       name: kube-prometheus-stack-grafana
     patch: |-
-      - op: replace
+      - op: add
         path: /spec/volumeClaimTemplates/0/spec/dataSourceRef
         value:
           apiGroup: volsync.backube
