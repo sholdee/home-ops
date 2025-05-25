@@ -7,3 +7,54 @@ resources:
   - "manifests/service.yaml"
   - "manifests/httproute.yaml"
   - "manifests/pvc.yaml"
+components:
+  - ../../../components/volsync/manifests/externalsecret.yaml
+  - ../../../components/volsync/manifests/replicationsource.yaml
+  - ../../../components/volsync/manifests/replicationdestination.yaml
+patches:
+  - target:
+      kind: ReplicationSource
+      name: app
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: codeserver
+      - op: replace
+        path: /spec/sourcePVC
+        value: codeserver-pvc
+      - op: replace
+        path: /spec/restic/repository
+        value: codeserver-volsync-b2
+  - target:
+      kind: ReplicationDestination
+      name: app-bootstrap
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: codeserver-bootstrap
+      - op: replace
+        path: /spec/restic/repository
+        value: codeserver-volsync-b2
+  - target:
+      kind: ExternalSecret
+      name: app-volsync-b2
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: codeserver-volsync-b2
+      - op: replace
+        path: /spec/target/name
+        value: codeserver-volsync-b2
+      - op: replace
+        path: /spec/target/template/data/RESTIC_REPOSITORY
+        value: "s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/codeserver"
+  - target:
+      kind: PersistentVolumeClaim
+      name: app-pvc
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: codeserver-pvc
+      - op: replace
+        path: /spec/dataSourceRef/name
+        value: codeserver-bootstrap
