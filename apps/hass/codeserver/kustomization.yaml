@@ -8,9 +8,7 @@ resources:
   - "manifests/httproute.yaml"
   - "manifests/pvc.yaml"
 components:
-  - ../../../components/volsync/manifests/externalsecret.yaml
-  - ../../../components/volsync/manifests/replicationsource.yaml
-  - ../../../components/volsync/manifests/replicationdestination.yaml
+  - ../../../components/volsync
 patches:
   - target:
       kind: ReplicationSource
