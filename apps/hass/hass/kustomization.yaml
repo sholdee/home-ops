@@ -40,7 +40,7 @@ patches:
       - op: replace
         path: /spec/restic/capacity
         value: 5Gi
-      - op: replace # Add this
+      - op: replace
         path: /spec/restic/accessModes/0
         value: ReadWriteMany
   - target:
