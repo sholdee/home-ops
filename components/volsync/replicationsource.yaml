@@ -27,4 +27,4 @@ spec:
     volumeSnapshotClassName: longhorn
   sourcePVC: app-pvc
   trigger:
-    schedule: "0 4 * * *"
+    schedule: "0 6 * * *"
