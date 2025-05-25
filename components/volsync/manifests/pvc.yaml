@@ -1,12 +1,16 @@
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: hass-pvc
-  namespace: hass
+  name: app-pvc
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
   resources:
     requests:
       storage: 5Gi
   storageClassName: "longhorn"
+  dataSourceRef:
+    apiGroup: volsync.backube
+    kind: ReplicationDestination
+    name: app-bootstrap

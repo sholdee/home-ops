@@ -56,3 +56,16 @@ patches:
       - op: replace
         path: /spec/target/template/data/RESTIC_REPOSITORY
         value: "s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/hass"
+  - target:
+      kind: PersistentVolumeClaim
+      name: app-pvc
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: hass-pvc
+      - op: replace
+        path: /spec/accessModes/0
+        value: ReadWriteMany
+      - op: replace
+        path: /spec/dataSourceRef/name
+        value: hass-bootstrap
