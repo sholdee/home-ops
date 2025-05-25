@@ -469,9 +469,9 @@ spec:
     helm:
       valuesObject:
         image:
-          tag: "0.13.0-rc.1"
+          tag: &tag "0.13.0-rc.1"
         restic:
-          tag: "0.13.0-rc.1"
+          tag: *tag
         replicaCount: 2
         manageCRDs: true
         metrics:
