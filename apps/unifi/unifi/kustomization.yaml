@@ -8,7 +8,6 @@ resources:
   - "manifests/service.yaml"
   - "manifests/tlsroute.yaml"
   - "manifests/certificate.yaml"
-  - "manifests/pvc.yaml"
 components:
   - ../../../components/volsync
 patches:
