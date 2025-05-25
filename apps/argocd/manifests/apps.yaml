@@ -454,3 +454,29 @@ spec:
       prune: true
     syncOptions:
     - ApplyOutOfSyncOnly=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: volsync
+spec:
+  destination:
+    name: in-cluster
+    namespace: volsync-system
+  project: k3s
+  source:
+    chart: volsync
+    helm:
+      valuesObject:
+        replicaCount: 2
+        manageCRDs: true
+        metrics:
+          disableAuth: true
+    repoURL: https://backube.github.io/helm-charts/
+    targetRevision: 0.12.1
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
