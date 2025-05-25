@@ -16,7 +16,7 @@ spec:
     cleanupCachePVC: true
     cleanupTempPVC: true
     copyMethod: Snapshot
-    enableFileDeletion: true
+    enableFileDeletion: false
     moverSecurityContext:
       runAsUser: 65534
       runAsGroup: 65534
