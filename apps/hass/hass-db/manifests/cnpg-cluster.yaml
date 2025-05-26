@@ -43,7 +43,7 @@ metadata:
 spec:
   cluster:
     name: hass-db2
-  schedule: "0 0 * * * *"
+  schedule: "0 0 0 * * *"
   backupOwnerReference: self
   method: volumeSnapshot
 ---
