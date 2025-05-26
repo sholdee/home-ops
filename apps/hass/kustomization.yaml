@@ -18,6 +18,7 @@ patches:
   - target:
       kind: ServiceAccount
       name: default
+      namespace: hass
     patch: |-
       apiVersion: v1
       kind: ServiceAccount
