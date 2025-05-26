@@ -8,3 +8,63 @@ resources:
   - "manifests/prometheusrule-cilium.yaml"
   - "manifests/prometheusrule-longhorn.yaml"
   - "manifests/prometheusrule-misc.yaml"
+components:
+  - ../../../components/volsync/b2
+patches:
+  - target:
+      kind: ReplicationSource
+      name: app
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: prometheus
+      - op: replace
+        path: /spec/sourcePVC
+        value: prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0
+      - op: replace
+        path: /spec/restic/repository
+        value: prometheus-volsync-b2
+      - op: replace
+        path: /spec/restic/moverSecurityContext/runAsUser
+        value: 1000
+      - op: replace
+        path: /spec/restic/moverSecurityContext/runAsGroup
+        value: 2000
+      - op: replace
+        path: /spec/restic/moverSecurityContext/fsGroup
+        value: 2000
+  - target:
+      kind: ReplicationDestination
+      name: app-bootstrap
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: prometheus-bootstrap
+      - op: replace
+        path: /spec/restic/repository
+        value: prometheus-volsync-b2
+      - op: replace
+        path: /spec/restic/capacity
+        value: 50Gi
+      - op: replace
+        path: /spec/restic/moverSecurityContext/runAsUser
+        value: 1000
+      - op: replace
+        path: /spec/restic/moverSecurityContext/runAsGroup
+        value: 2000
+      - op: replace
+        path: /spec/restic/moverSecurityContext/fsGroup
+        value: 2000
+  - target:
+      kind: ExternalSecret
+      name: app-volsync-b2
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: prometheus-volsync-b2
+      - op: replace
+        path: /spec/target/name
+        value: prometheus-volsync-b2
+      - op: replace
+        path: /spec/target/template/data/RESTIC_REPOSITORY
+        value: "s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/prometheus"
