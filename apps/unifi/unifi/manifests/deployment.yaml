@@ -112,6 +112,7 @@ spec:
         volumeMounts:
           - name: unifi-data
             mountPath: /usr/lib/unifi/data
+            subPath: data
         resources:
           requests:
             memory: 50Mi
