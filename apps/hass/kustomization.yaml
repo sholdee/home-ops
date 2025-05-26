@@ -23,5 +23,6 @@ patches:
       kind: ServiceAccount
       metadata:
         name: default
+        namespace: hass
       imagePullSecrets:
       - name: docker-hub
