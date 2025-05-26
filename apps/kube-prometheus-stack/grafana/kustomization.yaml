@@ -21,14 +21,11 @@ patches:
         path: /spec/restic/repository
         value: grafana-volsync-b2
       - op: replace
-        path: /spec/restic/moverSecurityContext/runAsUser
-        value: 472
-      - op: replace
-        path: /spec/restic/moverSecurityContext/runAsGroup
-        value: 472
-      - op: replace
-        path: /spec/restic/moverSecurityContext/fsGroup
-        value: 472
+        path: /spec/restic/moverSecurityContext
+        value:
+          runAsUser: 472
+          runAsGroup: 472
+          fsGroup: 472
   - target:
       kind: ReplicationDestination
       name: app-bootstrap
@@ -43,14 +40,11 @@ patches:
         path: /spec/restic/capacity
         value: 20Gi
       - op: replace
-        path: /spec/restic/moverSecurityContext/runAsUser
-        value: 472
-      - op: replace
-        path: /spec/restic/moverSecurityContext/runAsGroup
-        value: 472
-      - op: replace
-        path: /spec/restic/moverSecurityContext/fsGroup
-        value: 472
+        path: /spec/restic/moverSecurityContext
+        value:
+          runAsUser: 472
+          runAsGroup: 472
+          fsGroup: 472
   - target:
       kind: ExternalSecret
       name: app-volsync-b2
