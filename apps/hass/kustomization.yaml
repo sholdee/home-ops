@@ -14,3 +14,14 @@ resources:
   - "portainer"
   - "vernemq"
   - "zwave"
+patches:
+  - target:
+      kind: ServiceAccount
+      name: default
+    patch: |-
+      apiVersion: v1
+      kind: ServiceAccount
+      metadata:
+        name: default
+      imagePullSecrets:
+      - name: docker-hub
