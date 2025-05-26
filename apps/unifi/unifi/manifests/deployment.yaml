@@ -90,12 +90,40 @@ spec:
         resources:
           requests:
             memory: 1200Mi
-            cpu: "20m"
+            cpu: 20m
           limits:
+            cpu: 700m
             memory: 1200Mi
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
+          capabilities:
+            drop: ["ALL"]
+      - name: backup-cleaner
+        image: busybox:1.37.0
+        command:
+          - sh
+          - -c
+          - |
+            while true; do
+              find /usr/lib/unifi/data/backup/autobackup -maxdepth 1 -name '*.unf' -type f -mtime +7 -delete
+              sleep 86400
+            done
+        volumeMounts:
+          - name: unifi-data
+            mountPath: /usr/lib/unifi/data
+        resources:
+          requests:
+            memory: 50Mi
+            cpu: "20m"
+          limits:
+            cpu: "200m"
+            memory: 50Mi
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
           capabilities:
             drop: ["ALL"]
       volumes:
