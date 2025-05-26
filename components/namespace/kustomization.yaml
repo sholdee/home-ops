@@ -4,14 +4,4 @@ apiVersion: kustomize.config.k8s.io/v1alpha1
 kind: Component
 resources:
   - externalsecret.yaml
-patches:
-  - target:
-      kind: ServiceAccount
-      name: default
-      version: v1
-      group: ""
-    patch: |-
-      - op: add
-        path: /imagePullSecrets
-        value:
-          - name: docker-hub
+  - serviceaccount.yaml
