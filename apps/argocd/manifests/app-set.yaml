@@ -55,9 +55,3 @@ spec:
         jsonPointers:
         - /spec/template/metadata/annotations/checksum~1config
     {{- end }}
-    {{- if eq .path.basename "kube-prometheus-stack" }}
-    spec:
-      destination:
-        name: in-cluster
-        namespace: monitoring
-    {{- end }}
