@@ -12,12 +12,11 @@ spec:
     namespace: kube-system
   ignoreDifferences:
     - jsonPointers:
-      - /data/ca.crt
-      - /data/ca.key
+      - /data
       kind: Secret
       name: cilium-ca
     - jsonPointers:
-      - /data/ca.crt
+      - /data
       kind: Secret
       name: hubble-ca-cert
     - jsonPointers:
