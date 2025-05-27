@@ -1,0 +1,29 @@
+connect:
+  replicas: 2
+  serviceType: ClusterIP
+  credentialsName: op-credentials
+  credentialsKey: 1password-credentials.json
+  api:
+    resources:
+      requests:
+        cpu: 5m
+        memory: 64Mi
+      limits:
+        memory: 64Mi
+  sync:
+    resources:
+      requests:
+        cpu: 5m
+        memory: 64Mi
+      limits:
+        memory: 64Mi
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        - labelSelector:
+            matchExpressions:
+              - key: app
+                operator: In
+                values:
+                  - onepassword-connect
+          topologyKey: kubernetes.io/hostname

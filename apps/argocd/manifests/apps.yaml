@@ -3,58 +3,6 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: 1password-connect
-spec:
-  destination:
-    name: in-cluster
-    namespace: external-secrets
-  project: k3s
-  source:
-    chart: connect
-    helm:
-      valuesObject:
-        connect:
-          replicas: 2
-          serviceType: ClusterIP
-          credentialsName: op-credentials
-          credentialsKey: 1password-credentials.json
-          api:
-            resources:
-              requests:
-                cpu: 5m
-                memory: 64Mi
-              limits:
-                memory: 64Mi
-          sync:
-            resources:
-              requests:
-                cpu: 5m
-                memory: 64Mi
-              limits:
-                memory: 64Mi
-          affinity:
-            podAntiAffinity:
-              requiredDuringSchedulingIgnoredDuringExecution:
-                - labelSelector:
-                    matchExpressions:
-                      - key: app
-                        operator: In
-                        values:
-                          - onepassword-connect
-                  topologyKey: kubernetes.io/hostname
-    repoURL: https://1password.github.io/connect-helm-charts
-    targetRevision: 1.17.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ApplyOutOfSyncOnly=true
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: cilium
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true

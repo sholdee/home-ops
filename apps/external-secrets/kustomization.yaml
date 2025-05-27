@@ -3,8 +3,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 namespace: external-secrets
-components:
-  - ../../components/namespace
 resources:
   - "manifests/clustersecretstore.yaml"
 helmCharts:
@@ -14,3 +12,9 @@ helmCharts:
     releaseName: external-secrets
     namespace: external-secrets
     valuesFile: manifests/values.yaml
+  - name: connect
+    repo: https://1password.github.io/connect-helm-charts
+    version: 1.17.0
+    releaseName: 1password-connect
+    namespace: external-secrets
+    valuesFile: manifests/values-op.yaml
