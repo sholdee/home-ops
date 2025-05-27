@@ -4,6 +4,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: external-secrets
 resources:
+  - "manifests/namespace.yaml"
   - "manifests/clustersecretstore.yaml"
 helmCharts:
   - name: external-secrets
