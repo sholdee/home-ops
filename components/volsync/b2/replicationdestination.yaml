@@ -15,7 +15,7 @@ spec:
     capacity: 5Gi
     cleanupCachePVC: true
     cleanupTempPVC: true
-    copyMethod: Snapshot
+    copyMethod: Clone
     enableFileDeletion: false
     moverSecurityContext:
       runAsUser: 65534
