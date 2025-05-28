@@ -108,7 +108,8 @@ erDiagram
 #### Core Components 🔥
   - ArgoCD
   - 1Password Connect
-  - External Secrets
+  - External-Secrets
+  - External-DNS
   - Cert-Manager
   - Kube-VIP
   - VolSync
