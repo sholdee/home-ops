@@ -19,3 +19,9 @@ provider:
           secretKeyRef:
             name: gravity
             key: ADMIN_TOKEN
+    extraVolumeMounts:
+      - name: data-volume
+        mountPath: /data
+extraVolumes:
+  - name: data-volume
+    emptyDir: {}
