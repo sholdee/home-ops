@@ -13,6 +13,7 @@ spec:
     annotations:
       io.cilium/lb-ipam-ips: 192.168.77.30
       external-dns.alpha.kubernetes.io/hostname: gateway.mgmt.sholdee.net
+      external-dns.alpha.kubernetes.io/target: gateway.mgmt.sholdee.net
   listeners:
   - name: http
     hostname: "*.mgmt.sholdee.net"
