@@ -6,7 +6,7 @@ namespace: external-dns
 components:
   - ../../components/namespace
 resources:
-  - ../gravity/manifests/externalsecret.yaml
+  - manifests/externalsecret.yaml
   - manifests/namespace.yaml
 helmCharts:
   - name: external-dns
