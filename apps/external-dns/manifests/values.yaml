@@ -1,0 +1,19 @@
+provider:
+  name: webhook
+  webhook:
+    image:
+      repository: ghcr.io/beryju/gravity-external-dns
+      tag: v0.27.0
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 65534
+      runAsGroup: 65534
+      allowPrivilegeEscalation: false
+    env:
+      - name: GRAVITY_URL
+        value: http://gravity-http.gravity:8008/
+      - name: GRAVITY_TOKEN
+        valueFrom:
+          secretKeyRef:
+            name: gravity
+            key: ADMIN_TOKEN

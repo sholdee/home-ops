@@ -1,0 +1,17 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1 
+kind: Kustomization
+namespace: external-dns
+components:
+  - ../../components/namespace
+resources:
+  - ../gravity/manifests/externalsecret.yaml
+  - manifests/namespace.yaml
+helmCharts:
+  - name: external-dns
+    repo: https://kubernetes-sigs.github.io/external-dns/
+    version: 1.16.1
+    releaseName: external-dns
+    namespace: external-dns
+    valuesFile: manifests/values.yaml
