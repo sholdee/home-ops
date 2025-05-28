@@ -5,7 +5,7 @@ provider:
   webhook:
     image:
       repository: ghcr.io/beryju/gravity-external-dns
-      tag: stable
+      tag: latest
     securityContext:
       runAsNonRoot: true
       runAsUser: 65534
