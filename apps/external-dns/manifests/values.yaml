@@ -4,6 +4,8 @@ sources:
   - gateway-httproute
   - gateway-tlsroute
   - ingress
+serviceMonitor:
+  enabled: true
 provider:
   name: webhook
   webhook:
