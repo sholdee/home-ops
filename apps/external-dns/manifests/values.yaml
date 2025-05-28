@@ -1,5 +1,9 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/heads/master/charts/external-dns/values.schema.json
+sources:
+  - gateway-httproute
+  - gateway-tlsroute
+  - ingress
 provider:
   name: webhook
   webhook:
