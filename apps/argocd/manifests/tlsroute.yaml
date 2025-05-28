@@ -7,9 +7,6 @@ metadata:
   namespace: argocd
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: default
-    sectionName: tls
   - name: external-gateway
     namespace: default
     sectionName: tls
