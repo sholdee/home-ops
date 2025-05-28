@@ -35,6 +35,9 @@ spec:
             value: dns;dhcp;api;backup;discovery;monitoring;debug;tsdb
           - name: ETCD_ENDPOINT
             value: gravity-cluster-headless.gravity:2379
+        envFrom:
+          - secretRef:
+              name: gravity
         ports:
         - containerPort: 53
           name: dns

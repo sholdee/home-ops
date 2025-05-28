@@ -11,3 +11,4 @@ resources:
   - "manifests/service.yaml"
   - "manifests/httproute.yaml"
   - "manifests/etcd-cluster.yaml"
+  - "manifests/externalsecret.yaml"
