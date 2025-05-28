@@ -8,7 +8,7 @@ spec:
   storage:
     volumeClaimTemplate:
       spec:
-        storageClassName: longhorn-noreplicas
+        storageClassName: longhorn
         accessModes: [ "ReadWriteOnce" ]
         resources:
           requests:
