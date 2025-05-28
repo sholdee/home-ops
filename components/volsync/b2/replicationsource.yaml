@@ -20,7 +20,7 @@ spec:
     pruneIntervalDays: 7
     repository: app-volsync-b2
     retain:
-      daily: 7
+      daily: 14
       hourly: 24
     storageClassName: longhorn
     unlock: u1
