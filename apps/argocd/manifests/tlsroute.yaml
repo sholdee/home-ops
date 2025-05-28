@@ -5,6 +5,8 @@ kind: TLSRoute
 metadata:
   name: argocd
   namespace: argocd
+  annotations:
+    external-dns.alpha.kubernetes.io/target: gateway.mgmt.sholdee.net
 spec:
   parentRefs:
   - name: mgmt-gateway
