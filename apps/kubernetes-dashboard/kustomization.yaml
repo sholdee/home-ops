@@ -18,11 +18,3 @@ helmCharts:
     releaseName: kubernetes-dashboard
     namespace: kubernetes-dashboard
     valuesFile: manifests/values.yaml
-patches:
-  - target:
-      kind: Deployment
-      group: apps
-    patch: |-
-      - op: add
-        path: /spec/template/metadata/annotations/dummy
-        value: "value"
