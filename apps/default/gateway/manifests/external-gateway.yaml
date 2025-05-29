@@ -46,7 +46,8 @@ spec:
       mode: Terminate
       certificateRefs:
       - name: portainer
-  - name: tls
+  - name: argocd
+    hostname: "argocd.sholdee.net"
     protocol: TLS
     port: 443
     allowedRoutes:
