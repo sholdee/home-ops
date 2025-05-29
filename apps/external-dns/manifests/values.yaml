@@ -4,6 +4,7 @@ sources:
   - gateway-httproute
   - gateway-tlsroute
   - ingress
+  - dnsendpoint
 serviceMonitor:
   enabled: true
 provider:
