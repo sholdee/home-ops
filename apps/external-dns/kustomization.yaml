@@ -6,6 +6,7 @@ namespace: external-dns
 components:
   - ../../components/namespace
 resources:
+  - https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/tags/v0.17.0/charts/external-dns/crds/dnsendpoint.yaml
   - manifests/externalsecret.yaml
   - manifests/namespace.yaml
   - manifests/dnsendpoint.yaml
