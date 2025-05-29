@@ -8,6 +8,7 @@ components:
 resources:
   - manifests/externalsecret.yaml
   - manifests/namespace.yaml
+  - manifests/dnsendpoint.yaml
 helmCharts:
   - name: external-dns
     repo: https://kubernetes-sigs.github.io/external-dns/
