@@ -9,3 +9,4 @@ resources:
   - manifests/crd.yaml
   - manifests/controller.yaml
   - manifests/plan.yaml
+  - manifests/namespace.yaml
