@@ -23,5 +23,6 @@ patches:
       kind: Deployment
       group: apps
     patch: |-
-      - op: remove
-        path: /spec/template/metadata/annotations/checksum~1config
+      - op: add
+        path: /spec/template/metadata/annotations/dummy
+        value: "value"
