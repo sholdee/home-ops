@@ -6,10 +6,11 @@ namespace: kubernetes-dashboard
 components:
   - ../../components/namespace
 resources:
-  - "manifests/account.yaml"
-  - "manifests/httproute.yaml"
-  - "manifests/rbac.yaml"
-  - "manifests/secret.yaml"
+  - manifests/account.yaml
+  - manifests/httproute.yaml
+  - manifests/rbac.yaml
+  - manifests/secret.yaml
+  - manifests/namespace.yaml
 helmCharts:
   - name: kubernetes-dashboard
     repo: https://kubernetes.github.io/dashboard

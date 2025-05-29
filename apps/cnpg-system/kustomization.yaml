@@ -7,6 +7,7 @@ components:
   - ../../components/namespace
 resources:
   - https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.4.0/manifest.yaml
+  - namespace.yaml
 helmCharts:
   - name: cloudnative-pg
     repo: https://cloudnative-pg.github.io/charts

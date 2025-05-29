@@ -6,8 +6,8 @@ namespace: longhorn-system
 components:
   - ../../components/namespace
 resources:
-  - "manifests/externalsecret.yaml"
-  - "manifests/ingress.yaml"
-  - "manifests/recurringjob.yaml"
-  - "manifests/storageclass.yaml"
-  - "manifests/volumesnapshotclass.yaml"
+  - manifests/externalsecret.yaml
+  - manifests/ingress.yaml
+  - manifests/recurringjob.yaml
+  - manifests/storageclass.yaml
+  - manifests/volumesnapshotclass.yaml

@@ -6,9 +6,9 @@ namespace: adguard
 components:
   - ../../components/namespace
 resources:
-  - "manifests/namespace.yaml"
-  - "manifests/deployment.yaml"
-  - "manifests/service.yaml"
-  - "manifests/ingress.yaml"
-  - "manifests/externalsecret.yaml"
-  - "manifests/servicemonitor.yaml"
+  - manifests/namespace.yaml
+  - manifests/deployment.yaml
+  - manifests/service.yaml
+  - manifests/ingress.yaml
+  - manifests/externalsecret.yaml
+  - manifests/servicemonitor.yaml

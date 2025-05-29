@@ -6,6 +6,6 @@ namespace: unifi
 components:
   - ../../components/namespace
 resources:
-  - "unifi"
-  - "unifi-db"
-  - "unifi-guest"
+  - unifi
+  - unifi-db
+  - unifi-guest

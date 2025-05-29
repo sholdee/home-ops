@@ -6,5 +6,5 @@ namespace: default
 components:
   - ../../components/namespace
 resources:
-  - "gateway"
-  - "renovate"
+  - gateway
+  - renovate

@@ -6,12 +6,13 @@ namespace: argocd
 components:
   - ../../components/namespace
 resources:
-  - "manifests/apps.yaml"
-  - "manifests/app-project.yaml"
-  - "manifests/app-set.yaml"
-  - "manifests/repos.yaml"
-  - "manifests/tlsroute.yaml"
-  - "manifests/cilium-preflight.yaml"
+  - manifests/apps.yaml
+  - manifests/app-project.yaml
+  - manifests/app-set.yaml
+  - manifests/repos.yaml
+  - manifests/tlsroute.yaml
+  - manifests/cilium-preflight.yaml
+  - manifests/namespace.yaml
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm

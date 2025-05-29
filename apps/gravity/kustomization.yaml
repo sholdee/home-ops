@@ -6,9 +6,9 @@ namespace: gravity
 components:
   - ../../components/namespace
 resources:
-  - "manifests/namespace.yaml"
-  - "manifests/statefulset.yaml"
-  - "manifests/service.yaml"
-  - "manifests/httproute.yaml"
-  - "manifests/etcd-cluster.yaml"
-  - "manifests/externalsecret.yaml"
+  - manifests/namespace.yaml
+  - manifests/statefulset.yaml
+  - manifests/service.yaml
+  - manifests/httproute.yaml
+  - manifests/etcd-cluster.yaml
+  - manifests/externalsecret.yaml

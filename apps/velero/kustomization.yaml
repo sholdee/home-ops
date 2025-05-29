@@ -6,7 +6,8 @@ namespace: velero
 components:
   - ../../components/namespace
 resources:
-  - "manifests/externalsecret.yaml"
+  - manifests/externalsecret.yaml
+  - manifests/namespace.yaml
 helmCharts:
   - name: velero
     repo: https://vmware-tanzu.github.io/helm-charts

@@ -5,10 +5,11 @@ kind: Kustomization
 components:
   - ../../components/namespace
 resources:
-  - "alertmanager"
-  - "grafana"
-  - "kromgo"
-  - "prometheus"
+  - alertmanager
+  - grafana
+  - kromgo
+  - prometheus
+  - namespace.yaml
 helmCharts:
   - name: kube-prometheus-stack
     repo: https://prometheus-community.github.io/helm-charts

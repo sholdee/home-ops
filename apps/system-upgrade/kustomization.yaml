@@ -6,6 +6,6 @@ namespace: system-upgrade
 components:
   - ../../components/namespace
 resources:
-  - "manifests/crd.yaml"
-  - "manifests/controller.yaml"
-  - "manifests/plan.yaml"
+  - manifests/crd.yaml
+  - manifests/controller.yaml
+  - manifests/plan.yaml

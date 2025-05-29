@@ -6,11 +6,11 @@ namespace: hass
 components:
   - ../../components/namespace
 resources:
-  - "appdaemon"
-  - "codeserver"
-  - "hass"
-  - "hass-db"
-  - "mqtt-venstar-bridge"
-  - "portainer"
-  - "vernemq"
-  - "zwave"
+  - appdaemon
+  - codeserver
+  - hass
+  - hass-db
+  - mqtt-venstar-bridge
+  - portainer
+  - vernemq
+  - zwave

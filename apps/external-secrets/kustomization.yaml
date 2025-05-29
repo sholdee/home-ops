@@ -6,7 +6,8 @@ namespace: external-secrets
 components:
   - ../../components/namespace
 resources:
-  - "manifests/clustersecretstore.yaml"
+  - manifests/clustersecretstore.yaml
+  - manifests/namespace.yaml
 helmCharts:
   - name: external-secrets
     repo: https://charts.external-secrets.io

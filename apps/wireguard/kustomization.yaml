@@ -6,7 +6,7 @@ namespace: wireguard
 components:
   - ../../components/namespace
 resources:
-  - "manifests/namespace.yaml"
-  - "manifests/deployment.yaml"
-  - "manifests/externalsecret.yaml"
-  - "manifests/service.yaml"
+  - manifests/namespace.yaml
+  - manifests/deployment.yaml
+  - manifests/externalsecret.yaml
+  - manifests/service.yaml

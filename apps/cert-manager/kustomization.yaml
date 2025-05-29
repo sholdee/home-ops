@@ -6,8 +6,9 @@ namespace: cert-manager
 components:
   - ../../components/namespace
 resources:
-  - "manifests/clusterissuer.yaml"
-  - "manifests/externalsecret.yaml"
+  - manifests/clusterissuer.yaml
+  - manifests/externalsecret.yaml
+  - manifests/namespace.yaml
 helmCharts:
   - name: cert-manager
     repo: https://charts.jetstack.io
