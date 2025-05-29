@@ -18,3 +18,11 @@ helmCharts:
     releaseName: kubernetes-dashboard
     namespace: kubernetes-dashboard
     valuesFile: manifests/values.yaml
+patches:
+  - target:
+      kind: Deployment
+      group: apps
+    patch: |-
+      - op: replace
+        path: /spec/template/metadata/annotations/checksum~1config
+        value: none

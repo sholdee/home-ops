@@ -50,8 +50,4 @@ spec:
         name: kubernetes-dashboard-csrf
         jsonPointers:
         - /data/private.key
-      - group: apps
-        kind: Deployment
-        jsonPointers:
-        - /spec/template/metadata/annotations/checksum~1config
     {{- end }}
