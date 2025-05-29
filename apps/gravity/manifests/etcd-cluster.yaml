@@ -32,10 +32,11 @@ spec:
         imagePullPolicy: IfNotPresent
         resources:
           requests:
-            cpu: 20m
-            memory: 120Mi
+            cpu: 50m
+            memory: 220Mi
           limits:
-            memory: 120Mi
+            cpu: 500m
+            memory: 220Mi
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
