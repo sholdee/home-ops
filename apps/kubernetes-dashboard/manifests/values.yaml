@@ -3,6 +3,8 @@ kong:
     http:
       enabled: true
 api:
-  annotations: null
+  annotations:
+    dummy: value
 auth:
-  annotations: null
+  annotations:
+    dummy: value
