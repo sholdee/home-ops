@@ -4,7 +4,7 @@ sources:
   - gateway-httproute
   - gateway-tlsroute
   - ingress
-  - dnsendpoint
+  - crd
 serviceMonitor:
   enabled: true
 provider:
