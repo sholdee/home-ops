@@ -3,10 +3,10 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
-  name: domain
+  name: caddy
 spec:
   endpoints:
-  - dnsName: sholdee.net
+  - dnsName: caddy.sholdee.net
     recordTTL: 60
     recordType: A
     targets:
