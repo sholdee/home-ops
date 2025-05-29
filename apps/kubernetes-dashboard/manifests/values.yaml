@@ -2,3 +2,9 @@ kong:
   proxy:
     http:
       enabled: true
+api:
+  annotations:
+    dummy: value
+auth:
+  annotations:
+    dummy: value
