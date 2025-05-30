@@ -4,6 +4,11 @@ crds:
     enabled: false
 prometheus:
   prometheusSpec:
+    replicas: 2
+    image:
+      registry: docker.io
+      repository: prompp/prompp
+      tag: 2.53.2-0.3.0
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
