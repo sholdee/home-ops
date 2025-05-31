@@ -4,7 +4,7 @@ metadata:
   name: etcd
   namespace: gravity
 spec:
-  replicas: 1
+  replicas: 0
   storage:
     volumeClaimTemplate:
       spec:
