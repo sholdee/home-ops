@@ -42,6 +42,24 @@ spec:
           readOnlyRootFilesystem: true
           capabilities:
             drop: ["ALL"]
+      - name: etcdctl-sidecar
+        image: sholdee/etcdctl:3.6.0
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        resources:
+          requests:
+            cpu: 10m
+            memory: 50Mi
+          limits:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+          - name: data
+            mountPath: /var/run/etcd
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
