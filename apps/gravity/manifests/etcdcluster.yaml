@@ -1,10 +1,10 @@
 apiVersion: etcd.aenix.io/v1alpha1
 kind: EtcdCluster
 metadata:
-  name: gravity-cluster
+  name: etcd
   namespace: gravity
 spec:
-  replicas: 3
+  replicas: 1
   storage:
     volumeClaimTemplate:
       spec:
@@ -16,7 +16,7 @@ spec:
   podTemplate:
     metadata:
       labels:
-        app: gravity-cluster
+        app: etcd
     spec:
       securityContext:
         runAsNonRoot: true
@@ -56,8 +56,8 @@ spec:
             cpu: 10m
             memory: 50Mi
           limits:
-            cpu: 100m
-            memory: 100Mi
+            cpu: 200Mi
+            memory: 200Mi
         volumeMounts:
           - name: data
             mountPath: /var/run/etcd
@@ -67,10 +67,10 @@ spec:
           whenUnsatisfiable: DoNotSchedule
           labelSelector:
             matchLabels:
-              app: gravity-cluster
+              app: etcd
   podDisruptionBudgetTemplate:
     metadata:
       labels:
-        app: gravity-cluster
+        app: etcd
     spec:
       minAvailable: 1
