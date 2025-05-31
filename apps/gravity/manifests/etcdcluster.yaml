@@ -4,7 +4,7 @@ metadata:
   name: etcd
   namespace: gravity
 spec:
-  replicas: 1
+  replicas: 3
   storage:
     volumeClaimTemplate:
       spec:
@@ -44,7 +44,6 @@ spec:
             drop: ["ALL"]
       - name: etcdctl
         image: sholdee/etcdctl:3.6.0-1
-        imagePullPolicy: Always
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
