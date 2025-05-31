@@ -11,5 +11,4 @@ resources:
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/etcd-cluster.yaml
-  - manifests/etcdcluster.yaml
   - manifests/externalsecret.yaml
