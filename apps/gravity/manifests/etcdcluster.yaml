@@ -36,6 +36,7 @@ spec:
           readOnlyRootFilesystem: true
         args:
         - --name=$(POD_NAME)
+        - --listen-metrics-urls=http://0.0.0.0:2381
         - --listen-peer-urls=http://0.0.0.0:2380
         - --listen-client-urls=http://0.0.0.0:2379
         - --initial-advertise-peer-urls=http://$(POD_NAME).etcd-headless.$(POD_NAMESPACE).svc:2380
@@ -44,6 +45,9 @@ spec:
         - --initial-cluster=etcd-0=http://etcd-0.etcd-headless:2380,etcd-1=http://etcd-1.etcd-headless:2380,etcd-2=http://etcd-2.etcd-headless:2380
         - --initial-cluster-state=existing
         - --initial-cluster-token=etcd-cluster
+        - --auto-compaction-retention=5m
+        - --snapshot-count=10000
+        - --quota-backend-bytes=5100273664
         command:
         - etcd
         env:
@@ -57,6 +61,33 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
+        startupProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz?serializable=false
+            port: 2381
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: 2381
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /livez
+            port: 2381
+            scheme: HTTP
+          periodSeconds: 5
+          successThreshold: 1
+          timeoutSeconds: 1
         resources:
           requests:
             cpu: 50m
@@ -106,3 +137,14 @@ spec:
         requests:
           storage: 5Gi
       storageClassName: "local-path"
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: etcd
+  namespace: gravity
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: etcd

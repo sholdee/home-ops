@@ -63,5 +63,9 @@ spec:
     port: 2380
     targetPort: 2380
     name: peer
+  - protocol: TCP
+    port: 2381
+    targetPort: 2381
+    name: metrics
   type: ClusterIP
   clusterIP: None
