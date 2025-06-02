@@ -100,6 +100,8 @@ spec:
           name: client
         - containerPort: 2380
           name: peer
+        - containerPort: 2381
+          name: metrics
         volumeMounts:
         - name: data
           mountPath: /var/run/etcd/

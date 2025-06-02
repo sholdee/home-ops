@@ -1,0 +1,15 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/podmonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: etcd
+  namespace: gravity
+spec:
+  podMetricsEndpoints:
+  - port: metrics
+    path: /metrics
+    interval: 30s
+  selector:
+    matchLabels:
+      app: etcd

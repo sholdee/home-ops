@@ -11,4 +11,5 @@ resources:
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/etcdcluster.yaml
+  - manifests/podmonitor.yaml
   - manifests/externalsecret.yaml
