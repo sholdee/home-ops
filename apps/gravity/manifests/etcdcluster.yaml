@@ -61,15 +61,6 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: metadata.namespace
-        startupProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /readyz?serializable=false
-            port: 2381
-            scheme: HTTP
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 1
         resources:
           requests:
             cpu: 50m
