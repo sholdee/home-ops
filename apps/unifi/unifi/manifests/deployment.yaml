@@ -142,3 +142,4 @@ spec:
       - name: cleanup-script
         configMap:
           name: cleanup-script
+          defaultMode: 0755
