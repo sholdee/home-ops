@@ -21,7 +21,9 @@ cleanup(){
     | while read -r name; do
         if [ ! -e "$BACKUP_DIR/$name" ]; then
           log "Removing metadata for missing file: $name"
-          jq "del(.\"$name\")" -i "$META_FILE"
+          tmp=$(mktemp)
+          jq "del(.\"$name\")" "$META_FILE" > "$tmp"
+          mv "$tmp" "$META_FILE"
         fi
       done
 
