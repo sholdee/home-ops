@@ -11,6 +11,13 @@ resources:
 components:
   - ../../../components/volsync
   - ../../../components/volsync/b2
+configMapGenerator:
+  - name: cleanup-script
+    namespace: unifi
+    files:
+      - cleanup.sh=manifests/cleanup.sh
+generatorOptions:
+  disableNameSuffixHash: true
 patches:
   - target:
       kind: ReplicationSource
