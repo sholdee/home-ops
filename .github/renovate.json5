@@ -136,6 +136,18 @@
     },
     {
       customType: 'regex',
+      managerFilePatterns: [
+        '/^apps/cnpg-system/kustomization\\.ya?ml$/',
+      ],
+      matchStrings: [
+        'https://github\\.com/cloudnative-pg/plugin-barman-cloud/releases/download/v(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)/manifest\\.yaml',
+      ],
+      datasourceTemplate: 'github-releases',
+      packageNameTemplate: 'cloudnative-pg/plugin-barman-cloud',
+      versioningTemplate: 'semver',
+    },
+    {
+      customType: 'regex',
       description: [
         'Process MongoDB version',
       ],
