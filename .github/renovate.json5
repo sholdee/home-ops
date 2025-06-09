@@ -148,6 +148,18 @@
     },
     {
       customType: 'regex',
+      managerFilePatterns: [
+        '/^apps/default/gateway/kustomization\\.ya?ml$/',
+      ],
+      matchStrings: [
+        'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)/experimental-install\\.yaml',
+      ],
+      datasourceTemplate: 'github-releases',
+      packageNameTemplate: 'kubernetes-sigs/gateway-api',
+      versioningTemplate: 'semver',
+    },
+    {
+      customType: 'regex',
       description: [
         'Process MongoDB version',
       ],
