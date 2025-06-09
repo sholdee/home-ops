@@ -185,7 +185,6 @@
       datasourceTemplate: 'github-releases',
       packageNameTemplate: 'kubernetes-csi/external-snapshotter',
       versioningTemplate: 'semver',
-      groupName: "CSI external-snapshotter CRDs",
     },
   ],
   customDatasources: {
