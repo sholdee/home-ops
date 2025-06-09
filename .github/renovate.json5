@@ -156,7 +156,7 @@
         '/^apps/cnpg-system/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
-        'https://github\\.com/cloudnative-pg/plugin-barman-cloud/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/manifest\\.yaml',
+        'https://github\\.com/cloudnative-pg/plugin-barman-cloud/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
       ],
       datasourceTemplate: 'github-releases',
       packageNameTemplate: 'cloudnative-pg/plugin-barman-cloud',
@@ -168,7 +168,7 @@
         '/^apps/default/gateway/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
-        'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/experimental-install\\.yaml',
+        'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
       ],
       datasourceTemplate: 'github-releases',
       packageNameTemplate: 'kubernetes-sigs/gateway-api',
