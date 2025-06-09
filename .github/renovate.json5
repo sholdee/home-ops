@@ -136,11 +136,27 @@
     },
     {
       customType: 'regex',
+      description: [
+        'Process MongoDB version',
+      ],
+      managerFilePatterns: [
+        '/^apps/unifi/unifi-db/manifests/replicaset.yaml$/',
+      ],
+      matchStrings: [
+        'version: "(?<currentValue>\\d+\\.\\d+\\.\\d+)"',
+      ],
+      datasourceTemplate: 'docker',
+      packageNameTemplate: 'docker.io/mongodb/mongodb-community-server',
+      extractVersionTemplate: '^(?<version>\\d+\\.\\d+\\.\\d+)-(ubi8|ubi9)$',
+      versioningTemplate: 'semver',
+    },
+    {
+      customType: 'regex',
       managerFilePatterns: [
         '/^apps/cnpg-system/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
-        'https://github\\.com/cloudnative-pg/plugin-barman-cloud/releases/download/v(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)/manifest\\.yaml',
+        'https://github\\.com/cloudnative-pg/plugin-barman-cloud/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/manifest\\.yaml',
       ],
       datasourceTemplate: 'github-releases',
       packageNameTemplate: 'cloudnative-pg/plugin-barman-cloud',
@@ -152,7 +168,7 @@
         '/^apps/default/gateway/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
-        'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)/experimental-install\\.yaml',
+        'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/experimental-install\\.yaml',
       ],
       datasourceTemplate: 'github-releases',
       packageNameTemplate: 'kubernetes-sigs/gateway-api',
@@ -160,19 +176,16 @@
     },
     {
       customType: 'regex',
-      description: [
-        'Process MongoDB version',
-      ],
       managerFilePatterns: [
-        '/^apps/unifi/unifi-db/manifests/replicaset.yaml$/',
+        '/^apps/kube-system/external-snapshotter/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
-        'version: "(?<currentValue>[0-9]+\\.[0-9]+\\.[0-9]+)"',
+        'https://raw\\.githubusercontent\\.com/kubernetes-csi/external-snapshotter/refs/tags/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
       ],
-      datasourceTemplate: 'docker',
-      packageNameTemplate: 'docker.io/mongodb/mongodb-community-server',
-      extractVersionTemplate: '^(?<version>[0-9]+\\.[0-9]+\\.[0-9]+)-(ubi8|ubi9)$',
+      datasourceTemplate: 'github-releases',
+      packageNameTemplate: 'kubernetes-csi/external-snapshotter',
       versioningTemplate: 'semver',
+      groupName: "CSI external-snapshotter CRDs",
     },
   ],
   customDatasources: {
