@@ -64,10 +64,10 @@ spec:
         resources:
           requests:
             cpu: 50m
-            memory: 1Gi
+            memory: 300Mi
           limits:
             cpu: 1000m
-            memory: 1Gi
+            memory: 300Mi
         ports:
         - containerPort: 2379
           name: client
@@ -112,14 +112,3 @@ spec:
         requests:
           storage: 5Gi
       storageClassName: "local-path"
----
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: etcd
-  namespace: gravity
-spec:
-  minAvailable: 2
-  selector:
-    matchLabels:
-      app: etcd
