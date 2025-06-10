@@ -107,6 +107,7 @@
         '/caddy/',
         '/adguard-exporter/',
         '/system-upgrade-controller/',
+        '/k8s-sidecar/',
       ],
       automerge: true,
     },
