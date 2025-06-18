@@ -62,7 +62,7 @@ def extract_images_from_pr_diff():
             patch = file['patch']
             lines = patch.split('\n')
 
-            if re.search(r'^apps/.*/unifi-db.yml$', filename):
+            if re.search(r'^apps/unifi/unifi-db/manifests/replicaset.yaml$', filename):
                 for line_idx, line in enumerate(lines):
                     print(f"   🔍 Checking line {line_idx+1}: {repr(line.strip())}")
                     match = re.match(r'^\+\s*version:\s*"?([^\s"]+)"?', line, re.IGNORECASE)
