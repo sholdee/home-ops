@@ -79,7 +79,7 @@ spec:
         gatewayAPI:
           enabled: true
     repoURL: https://helm.cilium.io/
-    targetRevision: 1.17.4
+    targetRevision: 1.17.5
   syncPolicy:
     automated:
       prune: true
