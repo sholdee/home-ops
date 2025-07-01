@@ -13,6 +13,17 @@ rules:
   - list
   - watch
 - apiGroups:
+  - "apiextensions.k8s.io"
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - patch
+  - update
+- apiGroups:
   - ""
   resources:
   - namespaces
@@ -26,6 +37,30 @@ rules:
   resources:
   - nodes
   verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - get
+  - create
+  - patch
+  - update
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - leases
+  resourceNames:
+  - "system-upgrade-controller"
+  verbs:
+  - get
   - update
 - apiGroups:
   - upgrade.cattle.io
@@ -45,7 +80,6 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: system-upgrade-controller
-  namespace: system-upgrade
 rules:
 - apiGroups:
   - batch
@@ -69,40 +103,46 @@ rules:
   - list
   - watch
 ---
+# Borrowed from https://stackoverflow.com/a/63553032
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: system-upgrade-controller-drainer
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods/eviction
-  verbs:
-  - create
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-  - list
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - get
-  - patch
-- apiGroups:
-  - apps
-  resources:
-  - statefulsets
-  - daemonsets
-  - replicasets
-  verbs:
-  - get
-  - list
+  # Needed to evict pods
+  - apiGroups:
+      - ""
+    resources:
+      - "pods/eviction"
+    verbs:
+      - "create"
+  # Needed to list/delete pods by Node
+  - apiGroups:
+      - ""
+    resources:
+      - "pods"
+    verbs:
+      - "get"
+      - "list"
+      - "delete"
+  # Needed to cordon Nodes
+  - apiGroups:
+      - ""
+    resources:
+      - "nodes"
+    verbs:
+      - "get"
+      - "patch"
+  # Needed to determine Pod owners
+  - apiGroups:
+      - "apps"
+    resources:
+      - "statefulsets"
+      - "daemonsets"
+      - "replicasets"
+    verbs:
+      - "get"
+      - "list"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -115,7 +155,6 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: system-upgrade
-  namespace: system-upgrade
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -128,13 +167,11 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: system-upgrade
-  namespace: system-upgrade
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: system-upgrade
-  namespace: system-upgrade
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
@@ -142,7 +179,6 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: system-upgrade
-  namespace: system-upgrade
 ---
 apiVersion: v1
 kind: Namespace
