@@ -35,7 +35,7 @@ spec:
                     operator: DoesNotExist
       containers:
       - name: unifi
-        image: ghcr.io/goofball222/unifi:9.3@sha256:79cd53d8b798cf315ee6c5117c10ba1ab270a6ebaacf7f5ec3e6ac941736cfba
+        image: ghcr.io/goofball222/unifi:9.3@sha256:12c9634b11e5b75ce2a434be7d0a4ff88425c56604598ec727c8ffc39439bc76
         env:
           - name: DB_MONGO_LOCAL
             value: "false"
