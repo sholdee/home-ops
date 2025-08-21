@@ -17,7 +17,7 @@ helmCharts:
     valuesFile: manifests/values.yaml
   - name: connect
     repo: https://1password.github.io/connect-helm-charts
-    version: 2.0.2
+    version: 2.0.3
     releaseName: 1password-connect
     namespace: external-secrets
     valuesFile: manifests/values-op.yaml
