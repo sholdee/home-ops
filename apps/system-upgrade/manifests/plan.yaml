@@ -9,7 +9,7 @@ metadata:
     k3s-upgrade: server
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
-  version: v1.33.3+k3s1
+  version: v1.33.4+k3s1
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
@@ -33,7 +33,7 @@ metadata:
     k3s-upgrade: agent
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
-  version: v1.33.3+k3s1
+  version: v1.33.4+k3s1
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
