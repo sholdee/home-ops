@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: etcd
-        image: quay.io/coreos/etcd:v3.6.4
+        image: quay.io/coreos/etcd:v3.6.5
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
