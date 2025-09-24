@@ -26,6 +26,8 @@ spec:
       containers:
       - name: portainer
         image: portainer/portainer-ee:2.33.1
+        args:
+          - --no-csp
         ports:
         - containerPort: 9443
           name: https
