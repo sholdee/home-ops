@@ -29,7 +29,7 @@ spec:
               app: gravity
       containers:
       - name: gravity
-        image: ghcr.io/beryju/gravity:dfc90784a210e40e632eca7bd2ac261a46ae61f5
+        image: ghcr.io/beryju/gravity:v0.28.1
         env:
           - name: BOOTSTRAP_ROLES
             value: dns;dhcp;api;backup;discovery;monitoring;debug;tsdb
