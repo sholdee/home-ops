@@ -7,7 +7,7 @@ metadata:
   namespace: hass
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.0-202509290807-system-bookworm@sha256:cdc3af420f14e6d94ccc97db45d1313db2e681ae32f56e1d3d20aee187c023e9
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.6-standard-bookworm
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   bootstrap:
