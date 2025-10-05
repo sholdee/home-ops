@@ -28,11 +28,6 @@ spec:
   backup:
     volumeSnapshot:
        className: longhorn
-  plugins:
-    - name: barman-cloud.cloudnative-pg.io
-      isWALArchiver: true
-      parameters:
-        barmanObjectName: cnpg-hass-b2
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/scheduledbackup_v1.json
 apiVersion: postgresql.cnpg.io/v1
@@ -46,21 +41,6 @@ spec:
   schedule: "0 0 0 * * *"
   backupOwnerReference: self
   method: volumeSnapshot
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/scheduledbackup_v1.json
-apiVersion: postgresql.cnpg.io/v1
-kind: ScheduledBackup
-metadata:
-  name:  hass-db2-backup-schedule
-  namespace: hass
-spec:
-  cluster:
-    name: hass-db2
-  schedule: "0 0 7 * * *"
-  backupOwnerReference: self
-  method: plugin
-  pluginConfiguration:
-    name: barman-cloud.cloudnative-pg.io
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/pooler_v1.json
 apiVersion: postgresql.cnpg.io/v1
