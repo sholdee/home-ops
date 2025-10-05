@@ -6,7 +6,7 @@ metadata:
   name: hass-db2
   namespace: hass
 spec:
-  instances: 3
+  instances: 1
   imageName: ghcr.io/cloudnative-pg/postgresql:18.0-202509290807-standard-trixie
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
