@@ -12,10 +12,3 @@ helmCharts:
     releaseName: vernemq
     namespace: hass
     valuesFile: manifests/values.yaml
-patches:
-  - target:
-      group: apps
-      version: v1
-      kind: StatefulSet
-      name: vernemq
-    path: manifests/patch.yaml
