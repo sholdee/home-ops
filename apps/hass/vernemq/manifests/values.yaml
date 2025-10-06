@@ -1,4 +1,7 @@
 replicaCount: 3
+image:
+  repository: 11notes/vernemq
+  tag: 2.1.1
 serviceMonitor:
   create: true
 service:
