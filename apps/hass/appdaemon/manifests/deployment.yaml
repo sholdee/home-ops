@@ -57,10 +57,11 @@ spec:
           subPath: tmp
         resources:
           requests:
-            memory: 100Mi
-            cpu: "20m"
+            memory: 120Mi
+            cpu: 100m
           limits:
-            memory: 250Mi
+            memory: 120Mi
+            cpu: 250m
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
