@@ -296,12 +296,6 @@ spec:
               memory: 100Mi
     repoURL: https://mongodb.github.io/helm-charts
     targetRevision: 0.13.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - ApplyOutOfSyncOnly=true
-    - CreateNamespace=true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
