@@ -275,31 +275,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: mongodb-community-operator
-spec:
-  destination:
-    name: in-cluster
-    namespace: mongodb
-  project: k3s
-  source:
-    chart: community-operator
-    helm:
-      valuesObject:
-        operator:
-          replicas: 0
-          watchNamespace: "*"
-          resources:
-            limits:
-              memory: 100Mi
-            requests:
-              cpu: 20m
-              memory: 100Mi
-    repoURL: https://mongodb.github.io/helm-charts
-    targetRevision: 0.13.0
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: mongodb-kubernetes-operator
 spec:
   destination:
