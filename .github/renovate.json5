@@ -50,7 +50,7 @@
       matchDatasources: [
         'docker',
       ],
-      allowedVersions: '<9',
+      allowedVersions: '<8.1',
       matchPackageNames: [
         '/mongodb-community-server/',
       ],
