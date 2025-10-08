@@ -286,7 +286,7 @@ spec:
     helm:
       valuesObject:
         operator:
-          replicas: 1
+          replicas: 0
           watchNamespace: "*"
           resources:
             limits:
@@ -296,6 +296,36 @@ spec:
               memory: 100Mi
     repoURL: https://mongodb.github.io/helm-charts
     targetRevision: 0.13.0
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mongodb-kubernetes-operator
+spec:
+  destination:
+    name: in-cluster
+    namespace: mongodb-operator
+  project: k3s
+  source:
+    chart: mongodb-kubernetes
+    helm:
+      valuesObject:
+        operator:
+          replicas: 1
+          resources:
+            limits:
+              memory: 100Mi
+            requests:
+              cpu: 20m
+              memory: 100Mi
+    repoURL: https://mongodb.github.io/helm-charts
+    targetRevision: 1.4.0
   syncPolicy:
     automated:
       prune: true
