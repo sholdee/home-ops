@@ -91,59 +91,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: etcd-operator
-  annotations:
-    argocd.argoproj.io/compare-options: ServerSideDiff=true
-spec:
-  destination:
-    name: in-cluster
-    namespace: etcd-operator
-  project: k3s
-  source:
-    chart: etcd-operator
-    helm:
-      valuesObject:
-        etcdOperator:
-          vpa:
-            enabled: false
-          resources:
-            limits:
-              cpu: 150m
-              memory: 200Mi
-            requests:
-              cpu: 3m
-              memory: 200Mi
-        kubeRbacProxy:
-          vpa:
-            enabled: false
-          resources:
-            limits:
-              cpu: 150m
-              memory: 128Mi
-            requests:
-              cpu: 3m
-              memory: 128Mi
-        podSecurityContext:
-          runAsNonRoot: true
-          runAsUser: 65534
-          runAsGroup: 65534
-          fsGroup: 65534
-          fsGroupChangePolicy: "OnRootMismatch"
-          seccompProfile:
-            type: RuntimeDefault
-    repoURL: ghcr.io/aenix-io/charts
-    targetRevision: 0.4.2
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-    - CreateNamespace=true
-    - ServerSideApply=true
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: ingress-nginx
 spec:
   destination:
