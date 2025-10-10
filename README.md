@@ -114,8 +114,7 @@ erDiagram
   - Kube-VIP
   - VolSync
   - CloudNativePG
-  - ETCD Operator
-  - MongoDB Community Operator
+  - MongoDB Controllers for Kubernetes
   - Kube Prometheus Stack
   - Kromgo
   - System Upgrade Controller
