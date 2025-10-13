@@ -241,13 +241,15 @@ spec:
             requests:
               cpu: 20m
               memory: 100Mi
+        namespace: unifi
         community:
+          createResource: false
           resource:
             tls:
               enabled: true
               useCertManager: true
     repoURL: https://mongodb.github.io/helm-charts
-    targetRevision: 1.4.0
+    targetRevision: 1.3.0
   syncPolicy:
     automated:
       prune: true
