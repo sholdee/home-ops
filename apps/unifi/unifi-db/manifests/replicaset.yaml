@@ -11,6 +11,13 @@ spec:
   security:
     authentication:
       modes: ["SCRAM-SHA-1", "SCRAM-SHA-256"]
+    tls:
+      enabled: true
+      optional: true
+      caCertificateSecretRef:
+        name: tls-ca-key-pair
+      certificateKeySecretRef:
+        name: tls-certificate
   users:
     - name: unifi
       db: unifi
