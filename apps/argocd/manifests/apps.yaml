@@ -241,6 +241,11 @@ spec:
             requests:
               cpu: 20m
               memory: 100Mi
+        community:
+          resource:
+            tls:
+              enabled: true
+              useCertManager: true
     repoURL: https://mongodb.github.io/helm-charts
     targetRevision: 1.4.0
   syncPolicy:
