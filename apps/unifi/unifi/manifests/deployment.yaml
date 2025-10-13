@@ -53,9 +53,9 @@ spec:
           - name: RUN_CHOWN
             value: "false"
           - name: DB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=true"
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=true&tlsAllowInvalidCertificates=true"
           - name: STATDB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=true"
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=true&tlsAllowInvalidCertificates=true"
         ports:
         - containerPort: 8080
           protocol: TCP
