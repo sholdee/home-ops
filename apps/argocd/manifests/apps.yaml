@@ -234,15 +234,18 @@ spec:
       valuesObject:
         operator:
           replicas: 1
-          watchNamespace: "*"
+          watchNamespace: "unifi"
           resources:
             limits:
               memory: 100Mi
             requests:
               cpu: 20m
               memory: 100Mi
+        namespace: unifi
         community:
+          createResource: false
           resource:
+            name: unifi-db
             tls:
               enabled: true
               useCertManager: true
