@@ -13,7 +13,7 @@ spec:
       modes: ["SCRAM-SHA-1", "SCRAM-SHA-256"]
     tls:
       enabled: true
-      optional: true
+      optional: false
       caCertificateSecretRef:
         name: tls-ca-key-pair
       certificateKeySecretRef:

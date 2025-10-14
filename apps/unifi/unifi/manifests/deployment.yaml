@@ -36,7 +36,22 @@ spec:
       containers:
       - name: unifi
         image: ghcr.io/goofball222/unifi:9.5@sha256:c29b19bf750fcc964a8e30c3d29baea9bc9f35b58abc88ec9e1e8e007a0dadbf
+        command:
+          - /bin/sh
+          - -c
+          - |
+            cp /usr/lib/jvm/java-17-openjdk-arm64/lib/security/cacerts /trust/cacerts
+            keytool -importcert -noprompt \
+              -alias mongo-ca \
+              -file /ca/tls.crt \
+              -keystore /trust/cacerts \
+              -storepass changeit
+            docker-entrypoint.sh unifi
         env:
+          - name: JVM_EXTRA_OPTS
+            value: >-
+              -Djavax.net.ssl.trustStore=/trust/cacerts
+              -Djavax.net.ssl.trustStorePassword=changeit
           - name: DB_MONGO_LOCAL
             value: "false"
           - name: MONGO_PASS
@@ -53,9 +68,9 @@ spec:
           - name: RUN_CHOWN
             value: "false"
           - name: DB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=false"
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=true"
           - name: STATDB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=false"
+            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=true"
         ports:
         - containerPort: 8080
           protocol: TCP
@@ -83,12 +98,18 @@ spec:
           - name: certs
             mountPath: /usr/lib/unifi/cert/privkey.pem
             subPath: tls.key
+          - name: mongo-ca
+            mountPath: /ca
+            readOnly: true
           - name: tmp
             mountPath: /tmp
             subPath: tmp
           - name: tmp
             mountPath: /usr/lib/unifi/run
             subPath: run
+          - name: tmp
+            mountPath: /trust
+            subPath: trust
         resources:
           requests:
             memory: 1200Mi
@@ -146,3 +167,6 @@ spec:
         configMap:
           name: cleanup-script
           defaultMode: 0755
+      - name: mongo-ca
+        secret:
+          secretName: tls-ca-key-pair
