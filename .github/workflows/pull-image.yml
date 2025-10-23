@@ -104,14 +104,17 @@ jobs:
 
       - name: Add `donotmerge` Label if pull fails
         if: failure()
-        run: |
-          gh pr edit ${{ github.event.number }} --add-label "donotmerge"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X POST \
+            repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+            -f labels='["donotmerge"]'
 
       - name: Remove `donotmerge` Label if pull succeeds
         if: success()
-        run: |
-          gh pr edit ${{ github.event.number }} --remove-label "donotmerge"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api -X DELETE \
+            repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/donotmerge
