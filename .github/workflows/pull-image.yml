@@ -107,14 +107,27 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api -X POST \
-            repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
-            -f labels='["donotmerge"]'
+          num=${{ github.event.pull_request.number }}
+          repo=${{ github.repository }}
+          has_label=$(gh api repos/$repo/issues/$num/labels --jq 'map(.name=="donotmerge") | any')
+          if [ "$has_label" != "true" ]; then
+            gh api -X POST repos/$repo/issues/$num/labels -f labels='["donotmerge"]'
+            echo "Added label: donotmerge"
+          else
+            echo "Label already present, skipping add."
+          fi
 
       - name: Remove `donotmerge` Label if pull succeeds
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh api -X DELETE \
-            repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels/donotmerge
+          num=${{ github.event.pull_request.number }}
+          repo=${{ github.repository }}
+          has_label=$(gh api repos/$repo/issues/$num/labels --jq 'map(.name=="donotmerge") | any')
+          if [ "$has_label" = "true" ]; then
+            gh api -X DELETE repos/$repo/issues/$num/labels/donotmerge
+            echo "Removed label: donotmerge"
+          else
+            echo "Label not present, nothing to remove."
+          fi
