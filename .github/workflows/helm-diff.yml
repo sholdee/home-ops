@@ -349,7 +349,7 @@ jobs:
 
       - name: Upload Helm Diff as Artifact
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: diff.txt
@@ -364,7 +364,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Download Helm Diff
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: ${{ needs.helm-diff.outputs.ARTIFACT_NAME }}
 
