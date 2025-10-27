@@ -152,7 +152,7 @@
         '/apps/hass/hass-db/manifests/cnpg-cluster\\.ya?ml$/',
       ],
       matchStrings: [
-        '^\\s*imageName:\\s*(?<depName>\\S+):(?<currentValue>[A-Za-z0-9][A-Za-z0-9._-]*)\\s*$',
+        'imageName: (?<depName>[\\w\\-\\./]+):(?<currentValue>\\d+\\.\\d+-\\d{12}-[A-Za-z]+-[A-Za-z]+)',
       ],
       datasourceTemplate: 'docker',
       versioningTemplate: 'docker',
