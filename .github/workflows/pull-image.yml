@@ -67,7 +67,7 @@ jobs:
           if sudo crictl --debug pull "$IMAGE_FULL"; then
             PULL_STATUS="✅"
             # Inspect the pulled image to verify OS/arch
-            INSPECT_JSON="$(sudo crictl inspecti "$IMAGE_FULL" -o json || true)"
+            INSPECT_JSON="$(sudo crictl inspecti -o json "$IMAGE_FULL" || true)"
             if [ -n "$INSPECT_JSON" ]; then
               ARCH="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.architecture // .imageSpec.architecture // empty')"
               OS="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.os           // .imageSpec.os           // empty')"
