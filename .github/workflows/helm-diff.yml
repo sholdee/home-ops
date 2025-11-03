@@ -378,36 +378,63 @@ jobs:
         run: |
           python .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
 
-      - name: Attempt to Pull Extracted Images
+      - name: Attempt to Pull Extracted Images and Verify Platform
         id: pull_helm_images
         run: |
-          > pull_results.txt
-          PULL_FAILED=0  # Track failures
+          : > pull_results.txt
+          PULL_FAILED=0
           
-          if [ -z "$IMAGE_COUNT" ] || [ "$IMAGE_COUNT" -eq 0 ]; then
+          if [ -z "${IMAGE_COUNT:-}" ] || [ "${IMAGE_COUNT:-0}" -eq 0 ]; then
             echo "No images detected for pulling."
             exit 0
           fi
           
           for i in $(seq 0 $((IMAGE_COUNT - 1))); do
-              IMAGE_VAR="IMAGE_$i"
-              TAG_VAR="TAG_$i"
-              DIGEST_VAR="DIGEST_$i"
+            IMAGE_VAR="IMAGE_$i"
+            TAG_VAR="TAG_$i"
+            DIGEST_VAR="DIGEST_$i"
+            
+            declare -n IMG="$IMAGE_VAR" TAG="$TAG_VAR" DIG="$DIGEST_VAR"
+            IMAGE_FULL="${IMG:-}:${TAG:-}"
+            [ -n "${DIG-}" ] && IMAGE_FULL="${IMG}@${DIG}"
+            
+            echo "Pulling image: $IMAGE_FULL"
+            
+            PULL_STATUS="❌"
+            PLATFORM_STATUS="—"
+            
+            if sudo crictl --debug pull "$IMAGE_FULL"; then
+              PULL_STATUS="✅"
               
-              IMAGE_FULL="${!IMAGE_VAR}:${!TAG_VAR}"
-              [ -n "${!DIGEST_VAR}" ] && IMAGE_FULL="${!IMAGE_VAR}@${!DIGEST_VAR}"
-              
-              echo "Pulling image: $IMAGE_FULL"
-              if sudo crictl --debug pull "$IMAGE_FULL"; then
-                  echo "✅ $IMAGE_FULL" >> pull_results.txt
+              # Inspect pulled image -> verify linux/arm64
+              INSPECT_JSON="$(sudo crictl inspecti -o json "$IMAGE_FULL" || true)"
+              if [ -n "$INSPECT_JSON" ]; then
+                ARCH="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.architecture // .imageSpec.architecture // empty')"
+                OS="$(printf '%s' "$INSPECT_JSON"   | jq -r '.info.imageSpec.os           // .imageSpec.os           // empty')"
+                
+                if [ "$ARCH" = "arm64" ] && [ "$OS" = "linux" ]; then
+                  PLATFORM_STATUS="✅"
+                else
+                  PLATFORM_STATUS="❌"
+                  echo "Platform mismatch for $IMAGE_FULL: expected linux/arm64, got ${OS:-unknown}/${ARCH:-unknown}"
+                  PULL_FAILED=1
+                fi
               else
-                  echo "❌ $IMAGE_FULL" >> pull_results.txt
-                  PULL_FAILED=1  # Mark failure
+                PLATFORM_STATUS="❌"
+                echo "Failed to inspect image metadata for $IMAGE_FULL"
+                PULL_FAILED=1
               fi
+            else
+              echo "Failed to pull $IMAGE_FULL"
+              PULL_FAILED=1
+            fi
+            
+            # TSV: Pulled <tab> Platform <tab> Image
+            printf "%s\t%s\t%s\n" "$PULL_STATUS" "$PLATFORM_STATUS" "$IMAGE_FULL" >> pull_results.txt
           done
           
-          if [ "$PULL_FAILED" -eq 1 ]; then
-            exit 1  # Ensure job fails if any image pull fails
+          if [ "$PULL_FAILED" -ne 0 ]; then
+            exit 1
           fi
 
       - name: Format Image Pull Status
@@ -418,23 +445,23 @@ jobs:
             exit 0
           fi
           
-          echo "IMAGE_PULL_COMMENT<<EOF" >> $GITHUB_ENV
-          echo "| Status | Image  |" >> $GITHUB_ENV
-          echo "|--------|--------|" >> $GITHUB_ENV
-          while read -r line; do
-            STATUS=$(echo "$line" | awk '{print $1}')
-            IMAGE=$(echo "$line" | awk '{$1=""; print $0}' | xargs)
-            echo "| $STATUS | \`$IMAGE\` |" >> $GITHUB_ENV
-          done < pull_results.txt
-          echo "EOF" >> $GITHUB_ENV
-
+          {
+            echo "IMAGE_PULL_COMMENT<<EOF"
+            echo "| Pulled | Platform | Image |"
+            echo "|--------|----------|-------|"
+            while IFS=$'\t' read -r PULLED PLATFORM IMG; do
+              echo "| $PULLED | $PLATFORM | \`$IMG\` |"
+            done < pull_results.txt
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+      
       - name: Store Helm Diff Output
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
         id: store-diff
         run: |
-            echo "diff<<EOF" >> $GITHUB_ENV
-            cat diff.txt >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
+          echo "diff<<EOF" >> $GITHUB_ENV
+          cat diff.txt >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Generate Token
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
@@ -457,33 +484,3 @@ jobs:
             ${{ env.diff }}
             ```
             ${{ env.IMAGE_PULL_COMMENT }}
-
-      - name: Add `donotmerge` Label if any Pull Fails
-        if: failure()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          num=${{ github.event.pull_request.number }}
-          repo=${{ github.repository }}
-          has_label=$(gh api repos/$repo/issues/$num/labels --jq 'map(.name=="donotmerge") | any')
-          if [ "$has_label" != "true" ]; then
-            gh api -X POST repos/$repo/issues/$num/labels -f labels='["donotmerge"]'
-            echo "Added label: donotmerge"
-          else
-            echo "Label already present, skipping add."
-          fi
-
-      - name: Remove `donotmerge` Label if all Pulls Succeed
-        if: success()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          num=${{ github.event.pull_request.number }}
-          repo=${{ github.repository }}
-          has_label=$(gh api repos/$repo/issues/$num/labels --jq 'map(.name=="donotmerge") | any')
-          if [ "$has_label" = "true" ]; then
-            gh api -X DELETE repos/$repo/issues/$num/labels/donotmerge
-            echo "Removed label: donotmerge"
-          else
-            echo "Label not present, nothing to remove."
-          fi
