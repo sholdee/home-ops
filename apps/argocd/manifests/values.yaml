@@ -28,6 +28,6 @@ configs:
          - "*"
     resource.customizations: |
       apps/StatefulSet:
-        ignoreDifferences:
-          - jqPathExpressions:
-            - ".spec.volumeClaimTemplates[].metadata.creationTimestamp"
+        ignoreDifferences: |
+          jqPathExpressions:
+          - ".spec.volumeClaimTemplates[].metadata.creationTimestamp"
