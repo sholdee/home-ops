@@ -26,6 +26,3 @@ configs:
          - CiliumIdentity
        clusters:
          - "*"
-    resource.customizations.ignoreResourceUpdates.apps_StatefulSet: |
-      jqPathExpressions:
-        - ".spec.volumeClaimTemplates[].metadata.creationTimestamp"
