@@ -11,3 +11,12 @@
     periodSeconds: 10
     timeoutSeconds: 5
     failureThreshold: 9
+- op: add
+  path: /spec/template/spec/topologySpreadConstraints
+  value:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app.kubernetes.io/name: vernemq

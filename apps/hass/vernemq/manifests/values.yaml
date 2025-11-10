@@ -1,4 +1,5 @@
 replicaCount: 3
+podAntiAffinity: "none"
 serviceMonitor:
   create: true
 service:
