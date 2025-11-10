@@ -221,6 +221,18 @@
       packageNameTemplate: 'kubernetes-sigs/external-dns',
       versioningTemplate: 'semver',
     },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^apps/system-upgrade/kustomization\\.ya?ml$/',
+      ],
+      matchStrings: [
+        'https://raw\\.githubusercontent\\.com/rancher/system-upgrade-controller/refs/tags/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
+      ],
+      datasourceTemplate: 'github-releases',
+      packageNameTemplate: 'rancher/system-upgrade-controller',
+      versioningTemplate: 'semver',
+    },
   ],
   customDatasources: {
     k3s: {
