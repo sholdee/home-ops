@@ -1,17 +1,4 @@
 - op: add
-  path: /spec/template/spec/containers/0/startupProbe
-  value:
-    exec:
-      command:
-        - /bin/sh
-        - -c
-        - >-
-          curl -s localhost:8888/status.json |
-          jq -e '.[0] | [to_entries.[].value.num_retained] | .[0] as $x | all(.[]; . == $x)'
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 9
-- op: add
   path: /spec/template/spec/topologySpreadConstraints
   value:
     - maxSkew: 1
