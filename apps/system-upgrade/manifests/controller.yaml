@@ -183,9 +183,9 @@ subjects:
 apiVersion: v1
 kind: Namespace
 metadata:
+  name: system-upgrade
   labels:
     pod-security.kubernetes.io/enforce: privileged
-  name: system-upgrade
 ---
 apiVersion: v1
 kind: ServiceAccount
@@ -194,20 +194,21 @@ metadata:
   namespace: system-upgrade
 ---
 apiVersion: v1
-data:
-  SYSTEM_UPGRADE_CONTROLLER_DEBUG: "false"
-  SYSTEM_UPGRADE_CONTROLLER_THREADS: "2"
-  SYSTEM_UPGRADE_JOB_ACTIVE_DEADLINE_SECONDS: "900"
-  SYSTEM_UPGRADE_JOB_BACKOFF_LIMIT: "99"
-  SYSTEM_UPGRADE_JOB_IMAGE_PULL_POLICY: Always
-  SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: rancher/kubectl:v1.34.1
-  SYSTEM_UPGRADE_JOB_PRIVILEGED: "true"
-  SYSTEM_UPGRADE_JOB_TTL_SECONDS_AFTER_FINISH: "900"
-  SYSTEM_UPGRADE_PLAN_POLLING_INTERVAL: 15m
 kind: ConfigMap
 metadata:
   name: default-controller-env
   namespace: system-upgrade
+data:
+  SYSTEM_UPGRADE_CONTROLLER_DEBUG: "false"
+  SYSTEM_UPGRADE_CONTROLLER_THREADS: "2"
+  SYSTEM_UPGRADE_CONTROLLER_LEADER_ELECT: "true"
+  SYSTEM_UPGRADE_JOB_ACTIVE_DEADLINE_SECONDS: "900"
+  SYSTEM_UPGRADE_JOB_BACKOFF_LIMIT: "99"
+  SYSTEM_UPGRADE_JOB_IMAGE_PULL_POLICY: "Always"
+  SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: "rancher/kubectl:v1.34.1"
+  SYSTEM_UPGRADE_JOB_PRIVILEGED: "true"
+  SYSTEM_UPGRADE_JOB_TTL_SECONDS_AFTER_FINISH: "900"
+  SYSTEM_UPGRADE_PLAN_POLLING_INTERVAL: "15m"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -215,88 +216,109 @@ metadata:
   name: system-upgrade-controller
   namespace: system-upgrade
 spec:
+  replicas: 2
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       upgrade.cattle.io/controller: system-upgrade-controller
-  replicas: 1
   template:
     metadata:
       labels:
-        upgrade.cattle.io/controller: system-upgrade-controller
+        app.kubernetes.io/component: controller
+        app.kubernetes.io/name: system-upgrade-controller
+        upgrade.cattle.io/controller: system-upgrade-controller # necessary to avoid drain
     spec:
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: node-role.kubernetes.io/control-plane
-                operator: Exists
-      containers:
-      - env:
-        - name: SYSTEM_UPGRADE_CONTROLLER_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels['upgrade.cattle.io/controller']
-        - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        envFrom:
-        - configMapRef:
-            name: default-controller-env
-        image: rancher/system-upgrade-controller:v0.17.0
-        imagePullPolicy: IfNotPresent
-        name: system-upgrade-controller
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-          runAsGroup: 65534
-          runAsNonRoot: true
-          runAsUser: 65534
-          seccompProfile:
-            type: RuntimeDefault
-        volumeMounts:
-        - mountPath: /etc/ssl
-          name: etc-ssl
-          readOnly: true
-        - mountPath: /etc/pki
-          name: etc-pki
-          readOnly: true
-        - mountPath: /etc/ca-certificates
-          name: etc-ca-certificates
-          readOnly: true
-        - mountPath: /tmp
-          name: tmp
+              - matchExpressions:
+                  - key: "node-role.kubernetes.io/control-plane"
+                    operator: "Exists"
+                  - key: "kubernetes.io/os"
+                    operator: "In"
+                    values:
+                      - "linux"
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchExpressions:
+                  - key: "app.kubernetes.io/name"
+                    operator: "In"
+                    values:
+                      - "system-upgrade-controller"
       serviceAccountName: system-upgrade
       tolerations:
-      - key: CriticalAddonsOnly
-        operator: Exists
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/master
-        operator: Exists
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/controlplane
-        operator: Exists
-      - effect: NoSchedule
-        key: node-role.kubernetes.io/control-plane
-        operator: Exists
-      - effect: NoExecute
-        key: node-role.kubernetes.io/etcd
-        operator: Exists
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+        - key: "node-role.kubernetes.io/master"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/controlplane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+        - key: "node-role.kubernetes.io/etcd"
+          operator: "Exists"
+          effect: "NoExecute"
+      containers:
+        - name: system-upgrade-controller
+          image: rancher/system-upgrade-controller:v0.17.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: default-controller-env
+          env:
+            - name: SYSTEM_UPGRADE_CONTROLLER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['upgrade.cattle.io/controller']
+            - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SYSTEM_UPGRADE_CONTROLLER_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: etc-ssl
+              mountPath: /etc/ssl
+              readOnly: true
+            - name: etc-pki
+              mountPath: /etc/pki
+              readOnly: true
+            - name: etc-ca-certificates
+              mountPath: /etc/ca-certificates
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
-      - hostPath:
-          path: /etc/ssl
-          type: DirectoryOrCreate
-        name: etc-ssl
-      - hostPath:
-          path: /etc/pki
-          type: DirectoryOrCreate
-        name: etc-pki
-      - hostPath:
-          path: /etc/ca-certificates
-          type: DirectoryOrCreate
-        name: etc-ca-certificates
-      - emptyDir: {}
-        name: tmp
+        - name: etc-ssl
+          hostPath:
+            path: /etc/ssl
+            type: DirectoryOrCreate
+        - name: etc-pki
+          hostPath:
+            path: /etc/pki
+            type: DirectoryOrCreate
+        - name: etc-ca-certificates
+          hostPath:
+            path: /etc/ca-certificates
+            type: DirectoryOrCreate
+        - name: tmp
+          emptyDir: {}
