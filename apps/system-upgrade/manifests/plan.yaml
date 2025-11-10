@@ -9,6 +9,7 @@ metadata:
     k3s-upgrade: server
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
+  postCompleteDelay: "1m30s"
   version: v1.33.5+k3s1
   nodeSelector:
     matchExpressions:
@@ -19,7 +20,7 @@ spec:
   serviceAccountName: system-upgrade
   drain:
     force: true
-    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
+    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 180 seconds per pod then moves on)
   upgrade:
     image: rancher/k3s-upgrade
 ---
@@ -33,6 +34,7 @@ metadata:
     k3s-upgrade: agent
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
+  postCompleteDelay: "1m30s"
   version: v1.33.5+k3s1
   nodeSelector:
     matchExpressions:
@@ -45,6 +47,6 @@ spec:
     args: ["prepare", "k3s-server"]
   drain:
     force: true
-    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 120 seconds per pod then moves on)
+    skipWaitForDeleteTimeout: 180 # 1.18+ (honor pod disruption budgets up to 180 seconds per pod then moves on)
   upgrade:
     image: rancher/k3s-upgrade
