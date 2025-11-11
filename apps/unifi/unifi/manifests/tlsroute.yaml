@@ -7,13 +7,13 @@ metadata:
   namespace: unifi
 spec:
   parentRefs:
-  - name: mgmt-gateway
+  - name: mgmt-tls-gateway
     namespace: default
     sectionName: unifi-tls
   hostnames:
   - "unifi.mgmt.sholdee.net"
   rules:
   - backendRefs:
-    - name: unifi-ui
+    - name: unifi-service
       namespace: unifi
       port: 8443

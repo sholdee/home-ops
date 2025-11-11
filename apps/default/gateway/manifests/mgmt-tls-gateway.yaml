@@ -3,7 +3,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: mgmt-gateway
+  name: mgmt-tls-gateway
   namespace: default
   annotations:
     cert-manager.io/cluster-issuer: cloudflare
@@ -11,23 +11,14 @@ spec:
   gatewayClassName: cilium
   addresses:
   - type: IPAddress
-    value: 192.168.77.30
+    value: 192.168.77.32
   listeners:
-  - name: http
-    hostname: "*.mgmt.sholdee.net"
-    protocol: HTTP
-    port: 80
-    allowedRoutes:
-      namespaces:
-        from: All
-  - name: https
-    hostname: "*.mgmt.sholdee.net"
-    protocol: HTTPS
+  - name: unifi-tls
+    hostname: "unifi.mgmt.sholdee.net"
+    protocol: TLS
     port: 443
     allowedRoutes:
       namespaces:
         from: All
     tls:
-      mode: Terminate
-      certificateRefs:
-      - name: mgmt-wildcard
+      mode: Passthrough
