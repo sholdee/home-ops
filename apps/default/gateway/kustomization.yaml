@@ -5,4 +5,5 @@ kind: Kustomization
 resources:
   - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
   - manifests/mgmt-gateway.yaml
+  - manifests/mgmt-tls-gateway.yaml
   - manifests/external-gateway.yaml
