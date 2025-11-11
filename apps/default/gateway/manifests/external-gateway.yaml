@@ -9,9 +9,9 @@ metadata:
     cert-manager.io/cluster-issuer: cloudflare
 spec:
   gatewayClassName: cilium
-  infrastructure:
-    annotations:
-      io.cilium/lb-ipam-ips: 192.168.77.31
+  addresses:
+  - type: IPAddress
+    value: 192.168.77.31
   listeners:
   - name: unifi-guest
     hostname: "unifi.guest.sholdee.net"

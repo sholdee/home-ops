@@ -9,9 +9,9 @@ metadata:
     cert-manager.io/cluster-issuer: cloudflare
 spec:
   gatewayClassName: cilium
-  infrastructure:
-    annotations:
-      io.cilium/lb-ipam-ips: 192.168.77.30
+  addresses:
+  - type: IPAddress
+    value: 192.168.77.30
   listeners:
   - name: http
     hostname: "*.mgmt.sholdee.net"
