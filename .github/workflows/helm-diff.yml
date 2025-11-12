@@ -324,10 +324,10 @@ jobs:
       - name: Prepare Diff Snippet
         id: prepare-diff
         run: |
-          MAX_CHARS=65000
+          MAX_CHARS=65300
           if [ $(wc -c < diff.txt) -gt $MAX_CHARS ]; then
             head -c $MAX_CHARS diff.txt > diff_snippet.txt
-            printf "\n\n…(truncated — see artifact for full diff)…\n" >> diff_snippet.txt
+            printf "\n\n####### TRUNCATED -- see artifact for full diff #######\n" >> diff_snippet.txt
           else
             cp diff.txt diff_snippet.txt
           fi
@@ -355,7 +355,7 @@ jobs:
             ```diff
             ${{ env.DIFF_SNIPPET }}
             ```
-            [Full diff artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            - [Download Artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Upload Helm Diff as Artifact
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
