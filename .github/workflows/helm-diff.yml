@@ -88,6 +88,7 @@ jobs:
               OLD_VERSION="$4"
               NEW_VERSION="$5"
               NAMESPACE="$6"
+              KUBE_VERSION="1.33.0"
               
               echo "📡 Checking available versions for $CHART_NAME..."
               helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
@@ -103,10 +104,10 @@ jobs:
               fi
               
               echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $NAMESPACE ${HELM_ARGS_NEW[*]}"
-              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; return 1; }
+              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; return 1; }
               
               echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $NAMESPACE ${HELM_ARGS_OLD[*]}"
-              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; return 1; }
+              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; return 1; }
               
               # Define fields to remove
               EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
