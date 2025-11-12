@@ -14,6 +14,6 @@ spec:
   - "unifi.mgmt.sholdee.net"
   rules:
   - backendRefs:
-    - name: unifi-service
+    - name: unifi-ui
       namespace: unifi
       port: 8443
