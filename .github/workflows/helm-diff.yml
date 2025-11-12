@@ -314,19 +314,28 @@ jobs:
       - name: Read Helm Diff Output
         id: read-diff
         run: |
-            if [ -s diff.txt ]; then
-                echo "✅ Changes detected"
-                echo "HAS_DIFF=true" >> $GITHUB_OUTPUT
-                echo "diff<<EOF" >> $GITHUB_ENV
-                cat diff.txt >> $GITHUB_ENV
-                echo "EOF" >> $GITHUB_ENV
-            else
-                echo "❌ No changes detected"
-                echo "HAS_DIFF=false" >> $GITHUB_OUTPUT
-                echo "diff<<EOF" >> $GITHUB_ENV
-                echo "No differences detected." >> $GITHUB_ENV
-                echo "EOF" >> $GITHUB_ENV
-            fi
+          if [ -s diff.txt ]; then
+            echo "HAS_DIFF=true" >> $GITHUB_OUTPUT
+          else
+            echo "HAS_DIFF=false" >> $GITHUB_OUTPUT
+            echo "No differences detected." > diff.txt
+          fi
+
+      - name: Prepare Diff Snippet
+        id: prepare-diff
+        run: |
+          MAX_CHARS=65000
+          if [ $(wc -c < diff.txt) -gt $MAX_CHARS ]; then
+            head -c $MAX_CHARS diff.txt > diff_snippet.txt
+            printf "\n\n…(truncated — see artifact for full diff)…\n" >> diff_snippet.txt
+          else
+            cp diff.txt diff_snippet.txt
+          fi
+          {
+            echo "DIFF_SNIPPET<<EOF"
+            cat diff_snippet.txt
+            echo "EOF"
+          } >> $GITHUB_ENV
 
       - name: Generate Token
         uses: actions/create-github-app-token@v2
@@ -344,8 +353,9 @@ jobs:
           message-failure: Diff was not successful
           message: |
             ```diff
-            ${{ env.diff }}
+            ${{ env.DIFF_SNIPPET }}
             ```
+            [Full diff artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
 
       - name: Upload Helm Diff as Artifact
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
@@ -353,7 +363,7 @@ jobs:
         with:
           name: ${{ env.ARTIFACT_NAME }}
           path: diff.txt
-          retention-days: 7
+          retention-days: 30
 
   verify-new-images:
     needs: helm-diff
@@ -454,14 +464,6 @@ jobs:
             done < pull_results.txt
             echo "EOF"
           } >> "$GITHUB_ENV"
-      
-      - name: Store Helm Diff Output
-        if: ${{ env.IMAGE_PULL_COMMENT != '' }}
-        id: store-diff
-        run: |
-          echo "diff<<EOF" >> $GITHUB_ENV
-          cat diff.txt >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
 
       - name: Generate Token
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
@@ -471,16 +473,13 @@ jobs:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
 
-      - name: Update Comment
+      - name: Add Comment
         if: ${{ env.IMAGE_PULL_COMMENT != '' }}
         continue-on-error: true
         uses: mshick/add-pr-comment@v2
         with:
           repo-token: "${{ steps.app-token.outputs.token }}"
-          message-id: "${{ github.event.pull_request.number }}/helm-diff"
+          message-id: "${{ github.event.pull_request.number }}/pull-results"
           message-failure: "Error updating comment"
           message: |
-            ```diff
-            ${{ env.diff }}
-            ```
             ${{ env.IMAGE_PULL_COMMENT }}
