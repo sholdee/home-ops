@@ -80,7 +80,7 @@ spec:
           enabled: true
           enableAlpn: true
     repoURL: https://helm.cilium.io/
-    targetRevision: 1.18.3
+    targetRevision: 1.18.4
   syncPolicy:
     automated:
       prune: true
