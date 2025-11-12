@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: guest-gateway
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: cloudflare
+spec:
+  gatewayClassName: cilium
+  addresses:
+  - type: IPAddress
+    value: 192.168.77.33
+  listeners:
+  - name: unifi-guest
+    hostname: "unifi.guest.sholdee.net"
+    protocol: HTTPS
+    port: 443
+    allowedRoutes:
+      namespaces:
+        from: All
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: unifi-guest

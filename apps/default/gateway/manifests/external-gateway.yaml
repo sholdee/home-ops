@@ -13,17 +13,6 @@ spec:
   - type: IPAddress
     value: 192.168.77.31
   listeners:
-  - name: unifi-guest
-    hostname: "unifi.guest.sholdee.net"
-    protocol: HTTPS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: unifi-guest
   - name: kromgo
     hostname: "kromgo.sholdee.net"
     protocol: HTTPS

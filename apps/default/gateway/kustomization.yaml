@@ -7,3 +7,4 @@ resources:
   - manifests/mgmt-gateway.yaml
   - manifests/mgmt-tls-gateway.yaml
   - manifests/external-gateway.yaml
+  - manifests/guest-gateway.yaml
