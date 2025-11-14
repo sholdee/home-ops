@@ -217,6 +217,9 @@ spec:
       valuesObject:
         controller:
           replicaCount: 3
+        image:
+          registry: ghcr.io/kgateway-dev
+          pullPolicy: Always
         resources:
           requests:
             memory: 100Mi
