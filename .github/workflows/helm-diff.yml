@@ -450,6 +450,7 @@ jobs:
 
       - name: Format Image Pull Status
         id: format_image_pull_status
+        if: always()
         run: |
           if [ ! -s pull_results.txt ]; then
             echo "No new images were found. Skipping PR comment."
@@ -467,7 +468,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Generate Token
-        if: ${{ env.IMAGE_PULL_COMMENT != '' }}
+        if: always() && env.IMAGE_PULL_COMMENT != ''
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
@@ -475,7 +476,7 @@ jobs:
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
 
       - name: Add Comment
-        if: ${{ env.IMAGE_PULL_COMMENT != '' }}
+        if: always() && env.IMAGE_PULL_COMMENT != ''
         continue-on-error: true
         uses: mshick/add-pr-comment@v2
         with:
