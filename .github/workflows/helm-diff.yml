@@ -60,6 +60,91 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
 
+      - name: Install base CLI deps
+        run: |
+          MISSING=()
+          TOOLS=(curl jq)
+
+          for tool in "${TOOLS[@]}"; do
+            if ! command -v "$tool" >/dev/null 2>&1; then
+              MISSING+=("$tool")
+            fi
+          done
+
+          if [ ${#MISSING[@]} -ne 0 ]; then
+            echo "Installing missing packages: ${MISSING[*]}"
+            sudo apt-get update
+            sudo apt-get install -y "${MISSING[@]}"
+          else
+            echo "All required CLI tools already installed: ${TOOLS[*]}"
+          fi
+
+      - name: Check yq presence/version
+        id: check-yq
+        run: |
+          MIN_MAJOR=4
+          NEED_INSTALL=0
+
+          if command -v yq >/dev/null 2>&1; then
+            CURRENT_VER="$(yq --version 2>/dev/null || true)"
+            echo "Found yq: $CURRENT_VER"
+
+            # Extract major version from e.g. "yq (...) version v4.48.1"
+            CURRENT_MAJOR="$(printf '%s\n' "$CURRENT_VER" | sed -n 's/.*version v\([0-9]\+\).*/\1/p')"
+
+            if [ -z "$CURRENT_MAJOR" ] || [ "$CURRENT_MAJOR" -lt "$MIN_MAJOR" ]; then
+              echo "Existing yq major '${CURRENT_MAJOR:-unknown}' is < ${MIN_MAJOR}, will install newer yq."
+              NEED_INSTALL=1
+            else
+              echo "Existing yq is v$CURRENT_MAJOR (>= v${MIN_MAJOR}); will reuse."
+            fi
+          else
+            echo "yq not found; will install."
+            NEED_INSTALL=1
+          fi
+
+          if [ "$NEED_INSTALL" -eq 1 ]; then
+            echo "need_install=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "need_install=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine yq version
+        id: yq-version
+        if: steps.check-yq.outputs.need_install == 'true'
+        run: |
+          YQ_VERSION=$(curl -sL https://api.github.com/repos/mikefarah/yq/releases/latest \
+            | jq -r '.tag_name')  # keep the leading "v"
+          echo "YQ_VERSION=$YQ_VERSION" >> "$GITHUB_ENV"
+          echo "version=$YQ_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install yq
+        if: steps.check-yq.outputs.need_install == 'true'
+        env:
+          YQ_VERSION: ${{ steps.yq-version.outputs.version }}
+        run: |
+          ARCH=$(uname -m)
+          if [ "$ARCH" = "x86_64" ]; then
+            PLATFORM="amd64"
+          elif [ "$ARCH" = "aarch64" ]; then
+            PLATFORM="arm64"
+          else
+            PLATFORM="386"
+          fi
+
+          echo "Installing yq ${YQ_VERSION}..."
+          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${PLATFORM}" \
+            -o yq
+          sudo mv yq /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+
+          echo "yq after install:"
+          yq --version
+
+      - name: Show yq version
+        if: steps.check-yq.outputs.need_install != 'true'
+        run: yq --version
+
       - name: Find Modified Helm Applications
         run: |
             # Resolve kubeVersion from system-upgrade plan, with a safe fallback
