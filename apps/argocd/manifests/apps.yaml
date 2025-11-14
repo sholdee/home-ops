@@ -219,7 +219,7 @@ spec:
           replicaCount: 3
         image:
           registry: ghcr.io/kgateway-dev
-          tag: v2.1.1-arm64
+          tag: v2.2.0-main-arm64
           pullPolicy: Always
         resources:
           requests:
