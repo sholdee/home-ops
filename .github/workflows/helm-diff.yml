@@ -80,6 +80,36 @@ jobs:
 
       - name: Find Modified Helm Applications
         run: |
+            # Resolve kubeVersion from system-upgrade plan, with a safe fallback
+            KUBE_VERSION_DEFAULT="1.33.0"
+            KUBE_VERSION="$KUBE_VERSION_DEFAULT"
+            PLAN_FILE="apps/system-upgrade/manifests/plan.yaml"
+
+            if [ -f "$PLAN_FILE" ]; then
+              RAW_K3S_VERSION=$(
+                yq e '. |
+                  select(.kind == "Plan"
+                         and .metadata.name == "k3s-server") |
+                  .spec.version' "$PLAN_FILE" 2>/dev/null || echo ""
+              )
+              if [ -n "$RAW_K3S_VERSION" ] && [ "$RAW_K3S_VERSION" != "null" ]; then
+                # Strip leading "v" and any "+k3s1" style suffix
+                STRIPPED="${RAW_K3S_VERSION#v}"
+                STRIPPED="${STRIPPED%%+*}"
+
+                # Only accept full semver-like x.y.z
+                if [[ "$STRIPPED" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                  KUBE_VERSION="$STRIPPED"
+                else
+                  echo "⚠️ Parsed kube version '$STRIPPED' did not match x.y.z, using fallback ${KUBE_VERSION_DEFAULT}"
+                fi
+              fi
+            else
+              echo "⚠️ Plan file '$PLAN_FILE' not found, using fallback kube version ${KUBE_VERSION_DEFAULT}"
+            fi
+            
+            echo "📌 Using kubeVersion=${KUBE_VERSION} for Helm templating"
+            
             # Helper function for Helm templating and diff generation
             generate_helm_diff() {
               APP_NAME="$1"
@@ -88,7 +118,6 @@ jobs:
               OLD_VERSION="$4"
               NEW_VERSION="$5"
               NAMESPACE="$6"
-              KUBE_VERSION="1.33.0"
               
               echo "📡 Checking available versions for $CHART_NAME..."
               helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
