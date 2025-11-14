@@ -181,6 +181,7 @@ metadata:
   name: kgateway-crds
   annotations:
     argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
   destination:
     name: in-cluster
@@ -188,8 +189,6 @@ spec:
   project: k3s
   source:
     chart: kgateway-crds
-    helm:
-      skipCrds: false
     repoURL: cr.kgateway.dev/kgateway-dev/charts
     targetRevision: v2.1.1
   syncPolicy:
@@ -198,6 +197,7 @@ spec:
     syncOptions:
     - CreateNamespace=true
     - ApplyOutOfSyncOnly=true
+    - ServerSideApply=true
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
@@ -214,7 +214,6 @@ spec:
   source:
     chart: kgateway
     helm:
-      skipCrds: false
       valuesObject:
         controller:
           replicaCount: 3
