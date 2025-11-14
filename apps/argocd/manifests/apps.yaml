@@ -217,6 +217,9 @@ spec:
       valuesObject:
         controller:
           replicaCount: 3
+        image:
+          registry: docker.io/sholdee
+          tag: v2.1.1
         resources:
           requests:
             memory: 100Mi
