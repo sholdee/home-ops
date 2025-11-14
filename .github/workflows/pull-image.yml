@@ -125,6 +125,5 @@ jobs:
         with:
           repo-token: "${{ steps.app-token.outputs.token }}"
           message-id: "${{ github.event.pull_request.number }}/docker-verify"
-          message-failure: "Error adding comment"
           message: |
             ${{ env.IMAGE_PULL_COMMENT }}

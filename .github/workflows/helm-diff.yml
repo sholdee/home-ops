@@ -482,6 +482,5 @@ jobs:
         with:
           repo-token: "${{ steps.app-token.outputs.token }}"
           message-id: "${{ github.event.pull_request.number }}/pull-results"
-          message-failure: "Error updating comment"
           message: |
             ${{ env.IMAGE_PULL_COMMENT }}
