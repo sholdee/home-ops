@@ -102,8 +102,8 @@ jobs:
           export PATH="$PWD/.tooling/bin:$PATH"
           echo "$PWD/.tooling/bin" >> "$GITHUB_PATH"
 
-          if ! command -v yq >/dev/null 2>&1; then
-            echo "Installing yq..."
+          if [ ! -x .tooling/bin/yq ]; then
+            echo "Installing yq ${YQ_VERSION} into .tooling/bin..."
             ARCH=$(uname -m)
             if [ "$ARCH" = "x86_64" ]; then
               PLATFORM="amd64"
@@ -117,7 +117,7 @@ jobs:
               -o .tooling/bin/yq
             chmod +x .tooling/bin/yq
           else
-            echo "Using cached yq: $(command -v yq)"
+            echo "Using cached yq: $PWD/.tooling/bin/yq"
           fi
 
           yq --version
