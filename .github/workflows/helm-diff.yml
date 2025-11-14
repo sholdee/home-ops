@@ -132,10 +132,10 @@ jobs:
                 return 1
               fi
               
-              echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $NAMESPACE ${HELM_ARGS_NEW[*]}"
+              echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $NAMESPACE --kube-version $KUBE_VERSION ${HELM_ARGS_NEW[*]}"
               helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; return 1; }
               
-              echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $NAMESPACE ${HELM_ARGS_OLD[*]}"
+              echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $NAMESPACE --kube-version $KUBE_VERSION ${HELM_ARGS_OLD[*]}"
               helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; return 1; }
               
               # Define fields to remove
