@@ -251,7 +251,7 @@ spec:
               enabled: true
               useCertManager: true
     repoURL: https://mongodb.github.io/helm-charts
-    targetRevision: 1.5.0
+    targetRevision: 1.6.0
   syncPolicy:
     automated:
       prune: true
