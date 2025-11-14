@@ -40,12 +40,12 @@ spec:
     {{- if eq .path.basename "kubernetes-dashboard" }}
     spec:
       ignoreDifferences:
-      - group: '*'
+      - group: ''
         kind: ConfigMap
         name: kubernetes-dashboard-web-settings
         jsonPointers:
         - /data
-      - group: '*'
+      - group: ''
         kind: Secret
         name: kubernetes-dashboard-csrf
         jsonPointers:
@@ -54,4 +54,13 @@ spec:
         kind: Deployment
         jsonPointers:
         - /spec/template/metadata/annotations/checksum~1config
+    {{- end }}
+    {{- if eq .path.basename "monitoring" }}
+    spec:
+      ignoreDifferences:
+      - group: ''
+        kind: Secret
+        name: kube-prometheus-stack-grafana
+        jsonPointers:
+        - /data/admin-password
     {{- end }}
