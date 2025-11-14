@@ -217,6 +217,23 @@ spec:
       valuesObject:
         controller:
           replicaCount: 3
+        resources:
+          requests:
+            memory: 100Mi
+            cpu: 10m
+          limits:
+            memory: 100Mi
+            cpu: 100m
+        affinity:
+          podAntiAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app.kubernetes.io/name
+                  operator: In
+                  values:
+                  - kgateway
+              topologyKey: "kubernetes.io/hostname"
     repoURL: cr.kgateway.dev/kgateway-dev/charts
     targetRevision: v2.1.1
   syncPolicy:
