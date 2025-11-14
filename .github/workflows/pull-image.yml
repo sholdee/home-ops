@@ -98,6 +98,7 @@ jobs:
   
       - name: Format Image Pull Status
         id: format_image_pull_status
+        if: always()
         run: |
           {
             echo "IMAGE_PULL_COMMENT<<EOF"
@@ -112,11 +113,13 @@ jobs:
       - name: Generate Token
         uses: actions/create-github-app-token@v2
         id: app-token
+        if: always() && env.IMAGE_PULL_COMMENT != ''
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
 
       - name: Add Comment
+        if: always() && env.IMAGE_PULL_COMMENT != ''
         continue-on-error: true
         uses: mshick/add-pr-comment@v2
         with:
