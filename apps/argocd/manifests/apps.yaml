@@ -217,8 +217,11 @@ spec:
       valuesObject:
         controller:
           replicaCount: 3
+          image:
+            registry: cr.kgateway.dev/kgateway-dev
         image:
-          registry: ghcr.io/kgateway-dev
+          registry: envoyproxy/gateway
+          tag: v1.6.0
         resources:
           requests:
             memory: 100Mi
