@@ -141,10 +141,6 @@ jobs:
           echo "yq after install:"
           yq --version
 
-      - name: Show yq version
-        if: steps.check-yq.outputs.need_install != 'true'
-        run: yq --version
-
       - name: Find Modified Helm Applications
         run: |
             # Resolve kubeVersion from system-upgrade plan, with a safe fallback
