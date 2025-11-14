@@ -8,3 +8,4 @@ resources:
   - manifests/mgmt-tls-gateway.yaml
   - manifests/external-gateway.yaml
   - manifests/guest-gateway.yaml
+  - manifests/mgmt-test-gateway.yaml
