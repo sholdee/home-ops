@@ -63,4 +63,9 @@ spec:
         name: kube-prometheus-stack-grafana
         jsonPointers:
         - /data/admin-password
+      - group: 'apps'
+        kind: StatefulSet
+        name: kube-prometheus-stack-grafana
+        jsonPointers:
+        - /spec/template/metadata/annotations/checksum~1secret
     {{- end }}
