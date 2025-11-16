@@ -7,7 +7,7 @@ components:
   - ../../components/namespace
 resources:
   - manifests/externalsecret.yaml
-  - manifests/ingress.yaml
+  - manifests/httproute.yaml
   - manifests/recurringjob.yaml
   - manifests/storageclass.yaml
   - manifests/volumesnapshotclass.yaml

@@ -5,5 +5,5 @@ kind: Kustomization
 resources:
   - manifests/CiliumBGPClusterConfig.yaml
   - manifests/hubble-externalsecret.yaml
-  - manifests/hubble-ingress.yaml
+  - manifests/hubble-httproute.yaml
   - manifests/hubble-relay-network.yaml
