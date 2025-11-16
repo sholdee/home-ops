@@ -3,7 +3,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
 resources:
-  - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/experimental-install.yaml
   - manifests/mgmt-gateway.yaml
   - manifests/mgmt-gateway-envoy.yaml
   - manifests/mgmt-tls-gateway.yaml
