@@ -62,7 +62,7 @@ spec:
         kind: Secret
         name: kube-prometheus-stack-grafana
         jsonPointers:
-        - /data/admin-password
+        - /data
       - group: 'apps'
         kind: StatefulSet
         name: kube-prometheus-stack-grafana
