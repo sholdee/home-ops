@@ -110,6 +110,7 @@ erDiagram
   - 1Password Connect
   - External-Secrets
   - External-DNS
+  - Envoy Gateway
   - Cert-Manager
   - Kube-VIP
   - VolSync
@@ -118,7 +119,6 @@ erDiagram
   - Kube Prometheus Stack
   - Kromgo
   - System Upgrade Controller
-  - Ingress-NGINX
   - Kubernetes Dashboard
   - Stakater Reloader
   - Velero
