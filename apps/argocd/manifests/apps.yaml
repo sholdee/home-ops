@@ -178,6 +178,34 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: istio-gateway
+spec:
+  destination:
+    name: in-cluster
+    namespace: istio-gateway
+  project: k3s
+  source:
+    chart: gateway
+    helm:
+      valuesObject:
+        replicaCount: 3
+        autoscaling:
+          enabled: false
+        podDisruptionBudget:
+          minAvailable: 1
+    repoURL: https://istio-release.storage.googleapis.com/charts
+    targetRevision: 1.28.0
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+    - ApplyOutOfSyncOnly=true
+    - CreateNamespace=true
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: longhorn
 spec:
   destination:
