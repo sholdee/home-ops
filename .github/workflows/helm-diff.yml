@@ -1,3 +1,5 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Helm App Diff
 
 on:
@@ -6,6 +8,10 @@ on:
       - opened
       - synchronize
       - reopened
+    paths:
+      - '**/kustomization.yaml'
+      - 'apps/argocd/manifests/apps.yaml'
+      - 'apps/argocd/manifests/cilium-preflight.yaml'
 
 permissions:
   contents: read
@@ -14,7 +20,16 @@ permissions:
 
 jobs:
   check-author:
-    if: startsWith(github.event.pull_request.title, 'Update Helm release')
+    if: >
+      startsWith(github.event.pull_request.title, 'Update Helm release')
+      || (
+        startsWith(github.event.pull_request.title, 'Update')
+        && (
+          contains(github.event.pull_request.title, 'Docker tag')
+          || contains(github.event.pull_request.title, 'Docker digest')
+        )
+      )
+
     runs-on: ubuntu-latest
     outputs:
       matched: ${{ steps.check_author.outputs.matched }}
@@ -176,32 +191,12 @@ jobs:
             # Helper function for Helm templating and diff generation
             generate_helm_diff() {
               APP_NAME="$1"
-              REPO_NAME="$2"
+              REPO_URL="$2"
               CHART_NAME="$3"
               OLD_VERSION="$4"
               NEW_VERSION="$5"
               NAMESPACE="$6"
               
-              echo "📡 Checking available versions for $CHART_NAME..."
-              helm search repo "$REPO_NAME/$CHART_NAME" --versions | head -n 7
-              
-              if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$OLD_VERSION"; then
-                echo "⚠️ Chart $CHART_NAME version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
-                return 1
-              fi
-              
-              if ! helm search repo "$REPO_NAME/$CHART_NAME" --versions | grep -q "$NEW_VERSION"; then
-                echo "⚠️ Chart $CHART_NAME version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
-                return 1
-              fi
-              
-              echo "🎭 Rendering new Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $NEW_VERSION --namespace $NAMESPACE --kube-version $KUBE_VERSION ${HELM_ARGS_NEW[*]}"
-              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$NEW_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_NEW[@]}" > new.yaml || { echo "❌ Helm template failed for new version"; return 1; }
-              
-              echo "🎭 Rendering old Helm template: helm template $APP_NAME $REPO_NAME/$CHART_NAME --version $OLD_VERSION --namespace $NAMESPACE --kube-version $KUBE_VERSION ${HELM_ARGS_OLD[*]}"
-              helm template "$APP_NAME" "$REPO_NAME/$CHART_NAME" --version "$OLD_VERSION" --namespace "$NAMESPACE" --kube-version "$KUBE_VERSION" "${HELM_ARGS_OLD[@]}" > old.yaml || { echo "❌ Helm template failed for old version"; return 1; }
-              
-              # Define fields to remove
               EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
               EXCLUDE_FIELDS+=',.metadata.labels.chart'
               EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
@@ -210,13 +205,91 @@ jobs:
               EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
               EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
               
+              if [[ "$REPO_URL" == oci://* ]]; then
+                #########################
+                # OCI registry handling #
+                #########################
+                # Build full OCI ref (repoURL may or may not already end with /chartName)
+                CHART_REF="$REPO_URL"
+                if [[ "$CHART_REF" != */"$CHART_NAME" ]]; then
+                  CHART_REF="${CHART_REF%/}/$CHART_NAME"
+                fi
+                
+                echo "📦 OCI chart detected: $CHART_REF"
+                echo "📡 Validating versions in OCI registry..."
+                
+                if ! helm show chart "$CHART_REF" --version "$OLD_VERSION" >/dev/null 2>&1; then
+                  echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in OCI registry. Skipping..."
+                  return 1
+                fi
+                
+                if ! helm show chart "$CHART_REF" --version "$NEW_VERSION" >/dev/null 2>&1; then
+                  echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in OCI registry. Skipping..."
+                  return 1
+                fi
+                
+                echo "🎭 Rendering new Helm template (OCI): helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
+                helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$NEW_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_NEW[@]}" > new.yaml \
+                  || { echo "❌ Helm template failed for new version"; return 1; }
+                
+                echo "🎭 Rendering old Helm template (OCI): helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
+                helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$OLD_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_OLD[@]}" > old.yaml \
+                  || { echo "❌ Helm template failed for old version"; return 1; }
+                
+              else
+                ##########################
+                # Classic HTTP Helm repo #
+                ##########################
+                REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||' | awk -F/ '{print $NF}')
+                CHART_REF="${REPO_NAME}/${CHART_NAME}"
+                
+                echo "📦 HTTP chart repo detected: $REPO_URL (name: $REPO_NAME)"
+                echo "📡 Checking available versions for $CHART_NAME in $REPO_NAME..."
+                
+                helm repo add "$REPO_NAME" "$REPO_URL"
+                helm repo update "$REPO_NAME"
+                
+                if ! helm search repo "$CHART_REF" --versions | grep -q "$OLD_VERSION"; then
+                  echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
+                  return 1
+                fi
+                
+                if ! helm search repo "$CHART_REF" --versions | grep -q "$NEW_VERSION"; then
+                  echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
+                  return 1
+                fi
+                
+                echo "🎭 Rendering new Helm template: helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
+                helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$NEW_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_NEW[@]}" > new.yaml \
+                  || { echo "❌ Helm template failed for new version"; return 1; }
+                
+                echo "🎭 Rendering old Helm template: helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
+                helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$OLD_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_OLD[@]}" > old.yaml \
+                  || { echo "❌ Helm template failed for old version"; return 1; }
+              fi
+              
               echo "🛠️ Processing inflated charts..."
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
               
               echo "🔍 Generating diff..."
               git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
-              return 0
             }
             
             # Fetch PR diff from GitHub API
@@ -273,10 +346,6 @@ jobs:
                         OLD_PARAMETERS=$(git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" | yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" -)
                         NEW_PARAMETERS=$(yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE")
                         
-                        REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||' | awk -F/ '{print $NF}')
-                        helm repo add "$REPO_NAME" "$REPO_URL"
-                        helm repo update
-                        
                         HELM_ARGS_OLD=()
                         HELM_ARGS_NEW=()
                         
@@ -310,7 +379,7 @@ jobs:
                             HELM_ARGS_NEW+=("--set" "$p")
                         done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
                         
-                        generate_helm_diff "$APP_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE"
+                        generate_helm_diff "$APP_NAME" "$REPO_URL" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE"
                     done
                 done
                 
@@ -348,11 +417,6 @@ jobs:
                         fi
                         
                         echo "⬆️ Version change detected: $OLD_VERSION → $NEW_VERSION"
-                        
-                        # Add the Helm repo
-                        REPO_NAME=$(echo "$REPO_URL" | sed 's|/$||' | awk -F/ '{print $NF}')
-                        helm repo add "$REPO_NAME" "$REPO_URL"
-                        helm repo update
                         
                         HELM_ARGS_NEW=() 
                         HELM_ARGS_OLD=()
@@ -397,7 +461,7 @@ jobs:
                             done
                         fi
                         
-                        generate_helm_diff "$RELEASE_NAME" "$REPO_NAME" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE"
+                        generate_helm_diff "$RELEASE_NAME" "$REPO_URL" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE"
                     done
                 else
                     echo "ℹ️ No Helm charts found in kustomization"
