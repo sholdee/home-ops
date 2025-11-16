@@ -117,7 +117,7 @@ spec:
                   matchLabels:
                     control-plane: envoy-gateway
     repoURL: docker.io/envoyproxy
-    targetRevision: v1.6.0
+    targetRevision: v1.5.4
   syncPolicy:
     automated:
       prune: true
