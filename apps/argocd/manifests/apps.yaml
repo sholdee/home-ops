@@ -108,6 +108,14 @@ spec:
           minAvailable: 1
         deployment:
           replicas: 3
+          pod:
+            topologySpreadConstraints:
+              - maxSkew: 1
+                topologyKey: kubernetes.io/hostname
+                whenUnsatisfiable: DoNotSchedule
+                labelSelector:
+                  matchLabels:
+                    control-plane: envoy-gateway
     repoURL: docker.io/envoyproxy
     targetRevision: v1.6.0
   syncPolicy:
