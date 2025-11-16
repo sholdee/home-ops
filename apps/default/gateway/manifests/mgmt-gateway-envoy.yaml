@@ -17,9 +17,6 @@ metadata:
     cert-manager.io/cluster-issuer: cloudflare
 spec:
   gatewayClassName: envoy
-  addresses:
-  - type: IPAddress
-    value: 192.168.77.34
   listeners:
   - name: http
     hostname: "*.mgmt.sholdee.net"
