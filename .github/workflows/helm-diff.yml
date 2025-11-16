@@ -205,24 +205,33 @@ jobs:
               EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
               EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
               
-              if [[ "$REPO_URL" == oci://* ]]; then
+              #####################################
+              # Decide: OCI-backed or HTTP repo?  #
+              #####################################
+              if [[ "$REPO_URL" == oci://* || ( "$REPO_URL" != http://* && "$REPO_URL" != https://* && "$REPO_URL" != file://* ) ]]; then
                 #########################
                 # OCI registry handling #
                 #########################
-                # Build full OCI ref (repoURL may or may not already end with /chartName)
+                
+                # Start with repoURL, add oci:// if missing
                 CHART_REF="$REPO_URL"
+                if [[ "$CHART_REF" != oci://* ]]; then
+                  CHART_REF="oci://$CHART_REF"
+                fi
+                
+                # Append chart name if repoURL doesn't already include it
                 if [[ "$CHART_REF" != */"$CHART_NAME" ]]; then
                   CHART_REF="${CHART_REF%/}/$CHART_NAME"
                 fi
                 
                 echo "📦 OCI chart detected: $CHART_REF"
                 echo "📡 Validating versions in OCI registry..."
-                
+
                 if ! helm show chart "$CHART_REF" --version "$OLD_VERSION" >/dev/null 2>&1; then
                   echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in OCI registry. Skipping..."
                   return 1
                 fi
-                
+
                 if ! helm show chart "$CHART_REF" --version "$NEW_VERSION" >/dev/null 2>&1; then
                   echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in OCI registry. Skipping..."
                   return 1
@@ -261,7 +270,7 @@ jobs:
                   echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
                   return 1
                 fi
-                
+
                 if ! helm search repo "$CHART_REF" --versions | grep -q "$NEW_VERSION"; then
                   echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
                   return 1
