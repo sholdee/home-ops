@@ -108,6 +108,14 @@ spec:
           minAvailable: 1
         deployment:
           replicas: 3
+          envoyGateway:
+            resources:
+              limits:
+                cpu: 100m
+                memory: 150Mi
+              requests:
+                cpu: 10m
+                memory: 150Mi
           pod:
             topologySpreadConstraints:
               - maxSkew: 1
