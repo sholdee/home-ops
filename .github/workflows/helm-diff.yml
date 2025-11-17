@@ -236,23 +236,6 @@ jobs:
                   echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in OCI registry. Skipping..."
                   return 1
                 fi
-                
-                echo "🎭 Rendering new Helm template (OCI): helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
-                helm template "$APP_NAME" "$CHART_REF" \
-                  --version "$NEW_VERSION" \
-                  --namespace "$NAMESPACE" \
-                  --kube-version "$KUBE_VERSION" \
-                  "${HELM_ARGS_NEW[@]}" > new.yaml \
-                  || { echo "❌ Helm template failed for new version"; return 1; }
-                
-                echo "🎭 Rendering old Helm template (OCI): helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
-                helm template "$APP_NAME" "$CHART_REF" \
-                  --version "$OLD_VERSION" \
-                  --namespace "$NAMESPACE" \
-                  --kube-version "$KUBE_VERSION" \
-                  "${HELM_ARGS_OLD[@]}" > old.yaml \
-                  || { echo "❌ Helm template failed for old version"; return 1; }
-                
               else
                 ##########################
                 # Classic HTTP Helm repo #
@@ -275,23 +258,23 @@ jobs:
                   echo "⚠️ Chart $CHART_REF version $NEW_VERSION not found in repo $REPO_NAME. Skipping..."
                   return 1
                 fi
-                
-                echo "🎭 Rendering new Helm template: helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
-                helm template "$APP_NAME" "$CHART_REF" \
-                  --version "$NEW_VERSION" \
-                  --namespace "$NAMESPACE" \
-                  --kube-version "$KUBE_VERSION" \
-                  "${HELM_ARGS_NEW[@]}" > new.yaml \
-                  || { echo "❌ Helm template failed for new version"; return 1; }
-                
-                echo "🎭 Rendering old Helm template: helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
-                helm template "$APP_NAME" "$CHART_REF" \
-                  --version "$OLD_VERSION" \
-                  --namespace "$NAMESPACE" \
-                  --kube-version "$KUBE_VERSION" \
-                  "${HELM_ARGS_OLD[@]}" > old.yaml \
-                  || { echo "❌ Helm template failed for old version"; return 1; }
               fi
+              
+              echo "🎭 Rendering old Helm template: helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
+              helm template "$APP_NAME" "$CHART_REF" \
+                --version "$OLD_VERSION" \
+                --namespace "$NAMESPACE" \
+                --kube-version "$KUBE_VERSION" \
+                "${HELM_ARGS_OLD[@]}" > old.yaml \
+                || { echo "❌ Helm template failed for old version"; return 1; }
+              
+              echo "🎭 Rendering new Helm template: helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
+              helm template "$APP_NAME" "$CHART_REF" \
+                --version "$NEW_VERSION" \
+                --namespace "$NAMESPACE" \
+                --kube-version "$KUBE_VERSION" \
+                "${HELM_ARGS_NEW[@]}" > new.yaml \
+                || { echo "❌ Helm template failed for new version"; return 1; }
               
               echo "🛠️ Processing inflated charts..."
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
