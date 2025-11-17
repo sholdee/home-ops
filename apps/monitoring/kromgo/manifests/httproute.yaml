@@ -9,7 +9,7 @@ spec:
   parentRefs:
   - name: external-gateway
     namespace: default
-    sectionName: kromgo
+    sectionName: https
   hostnames:
   - "kromgo.sholdee.net"
   rules:

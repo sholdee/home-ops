@@ -1,0 +1,33 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd
+  namespace: argocd
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: default
+    sectionName: https
+  hostnames:
+  - argocd.sholdee.net
+  rules:
+  - backendRefs:
+    - name: argocd-server
+      namespace: argocd
+      port: 443
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: argocd-upstream
+spec:
+  targetRefs:
+    - kind: Service
+      name: argocd-server
+      group: ""
+  validation:
+    wellKnownCACertificates: "System"
+    hostname: argocd.sholdee.net

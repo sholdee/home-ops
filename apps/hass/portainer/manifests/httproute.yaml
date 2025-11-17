@@ -9,7 +9,7 @@ spec:
   parentRefs:
   - name: external-gateway
     namespace: default
-    sectionName: portainer
+    sectionName: https
   hostnames:
   - "portainer.sholdee.net"
   rules:

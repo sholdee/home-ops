@@ -8,13 +8,13 @@ metadata:
   annotations:
     cert-manager.io/cluster-issuer: cloudflare
 spec:
-  gatewayClassName: cilium
+  gatewayClassName: envoy
   addresses:
   - type: IPAddress
     value: 192.168.77.31
   listeners:
-  - name: kromgo
-    hostname: "kromgo.sholdee.net"
+  - name: https
+    hostname: "*.sholdee.net"
     protocol: HTTPS
     port: 443
     allowedRoutes:
@@ -23,24 +23,4 @@ spec:
     tls:
       mode: Terminate
       certificateRefs:
-      - name: kromgo
-  - name: portainer
-    hostname: "portainer.sholdee.net"
-    protocol: HTTPS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: portainer
-  - name: argocd
-    hostname: "argocd.sholdee.net"
-    protocol: TLS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Passthrough
+      - name: external-wildcard

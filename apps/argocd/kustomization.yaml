@@ -10,7 +10,7 @@ resources:
   - manifests/app-project.yaml
   - manifests/app-set.yaml
   - manifests/repos.yaml
-  - manifests/tlsroute.yaml
+  - manifests/httproute.yaml
   - manifests/cilium-preflight.yaml
   - manifests/namespace.yaml
 helmCharts:
