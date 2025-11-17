@@ -33,6 +33,6 @@ spec:
   - "kdash.mgmt.sholdee.net"
   rules:
   - backendRefs:
-    - name: kubernetes-dashboard-kong-proxy
+    - name: kubernetes-dashboard-web
       namespace: kubernetes-dashboard
-      port: 80
+      port: 8000
