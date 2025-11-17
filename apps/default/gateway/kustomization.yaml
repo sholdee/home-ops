@@ -5,6 +5,5 @@ kind: Kustomization
 resources:
   - manifests/mgmt-gateway.yaml
   - manifests/mgmt-gateway-envoy.yaml
-  - manifests/mgmt-tls-gateway.yaml
   - manifests/external-gateway.yaml
   - manifests/guest-gateway.yaml
