@@ -6,7 +6,7 @@ resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
   - manifests/service.yaml
-  - manifests/tlsroute.yaml
+  - manifests/httproute.yaml
   - manifests/certificate.yaml
 components:
   - ../../../components/volsync
