@@ -1,7 +1,5 @@
 kong:
-  proxy:
-    http:
-      enabled: true
+  enabled: false
 api:
   annotations:
     dummy: value
