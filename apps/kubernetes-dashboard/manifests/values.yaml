@@ -1,4 +1,2 @@
 kong:
-  proxy:
-    http:
-      enabled: true
+  enabled: false
