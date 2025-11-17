@@ -19,7 +19,6 @@ spec:
             statusCode: 301
           type: RequestRedirect
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -33,31 +32,7 @@ spec:
   hostnames:
   - "kdash.mgmt.sholdee.net"
   rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /auth
-    backendRefs:
-    - name: kubernetes-dashboard-auth
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-    - name: kubernetes-dashboard-api
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /metrics
-    backendRefs:
-    - name: kubernetes-dashboard-metrics-scraper
-      namespace: kubernetes-dashboard
-      port: 8000
   - backendRefs:
-    - name: kubernetes-dashboard-web
+    - name: kubernetes-dashboard-kong-proxy
       namespace: kubernetes-dashboard
-      port: 8000
+      port: 80
