@@ -9,7 +9,7 @@ spec:
   parametersRef:
     group: gateway.envoyproxy.io
     kind: EnvoyProxy
-    name: mgmt-envoy
+    name: envoy
     namespace: default
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/gateway_v1.json
@@ -58,7 +58,7 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
-  name: mgmt-envoy
+  name: envoy
 spec:
   provider:
     type: Kubernetes
@@ -73,6 +73,8 @@ spec:
             labelSelector:
               matchLabels:
                 app.kubernetes.io/component: proxy
+            matchLabelKeys:
+            - gateway.envoyproxy.io/owning-gateway-name
         container:
           resources:
             requests:
