@@ -51,6 +51,13 @@ spec:
           - LoadBalancerIP
       selector:
         matchExpressions:
+        - {key: bgp.cilium.io/no-lb-adv, operator: NotIn, values: ['true']}
+    - advertisementType: "Service"
+      service:
+        addresses:
+          - ExternalIP
+      selector:
+        matchExpressions:
         - {key: somekey, operator: NotIn, values: ['never-used-value']}
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumloadbalancerippool_v2alpha1.json
