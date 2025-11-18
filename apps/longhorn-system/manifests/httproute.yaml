@@ -3,33 +3,12 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: longhorn-http
-  namespace: longhorn-system
-spec:
-  parentRefs:
-  - name: envoy-gateway
-    namespace: default
-    sectionName: http
-  hostnames:
-  - longhorn.mgmt.sholdee.net
-  rules:
-    - filters:
-        - requestRedirect:
-            scheme: https
-            statusCode: 301
-          type: RequestRedirect
----
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
   name: longhorn-https
   namespace: longhorn-system
 spec:
   parentRefs:
     - name: envoy-gateway
       namespace: default
-      sectionName: https
   hostnames:
     - longhorn.mgmt.sholdee.net
   rules:

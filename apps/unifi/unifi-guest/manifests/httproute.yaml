@@ -9,7 +9,6 @@ spec:
   parentRefs:
   - name: guest-gateway
     namespace: default
-    sectionName: unifi-guest
   hostnames:
   - "unifi.guest.sholdee.net"
   rules:
