@@ -56,3 +56,8 @@ spec:
         principal:
           jwt:
             provider: cloudflare-access
+            claims:
+              - name: aud
+                values:
+                  - d83e440f6003179ee0afb4385254921b7af3b89e43ad6302478efb681c427e12
+                  - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555
