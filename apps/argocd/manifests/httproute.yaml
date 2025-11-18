@@ -71,7 +71,11 @@ spec:
           jwt:
             provider: cloudflare-access
             claims:
+              - name: iss
+                values:
+                  - https://sholdee.cloudflareaccess.com
               - name: aud
+                valueType: StringArray
                 values:
                   - 7914bc589a9544a8f8a7425c3edaf6dff734a9c83762d54e5f760251f2fa0bd0
                   - c0cfeff676f9855b7ae1acbf410d081340e2baf126d7798797d72f747eddbb92
