@@ -53,9 +53,9 @@ spec:
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: ClientTrafficPolicy
 metadata:
-  name: external-gateway-client-ip
-  namespace: default
+  name: external-gateway
 spec:
+  http3: {}
   targetRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
