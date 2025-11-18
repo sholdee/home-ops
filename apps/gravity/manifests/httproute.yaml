@@ -3,14 +3,14 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: gravity-https
+  name: gravity
   namespace: gravity
 spec:
   parentRefs:
   - name: mgmt-gateway
     namespace: default
   hostnames:
-  - "gravity.mgmt.sholdee.net"
+  - gravity.mgmt.sholdee.net
   rules:
   - backendRefs:
     - name: gravity-http

@@ -10,7 +10,7 @@ spec:
   - name: guest-gateway
     namespace: default
   hostnames:
-  - "unifi.guest.sholdee.net"
+  - unifi.guest.sholdee.net
   rules:
   - backendRefs:
     - name: unifi-landing

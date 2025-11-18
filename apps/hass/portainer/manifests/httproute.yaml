@@ -10,9 +10,49 @@ spec:
   - name: external-gateway
     namespace: default
   hostnames:
-  - "portainer.sholdee.net"
+  - portainer.sholdee.net
   rules:
   - backendRefs:
     - name: portainer
       namespace: hass
       port: 9000
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: portainer-cloudflare-access
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: portainer
+  jwt:
+    optional: true
+    providers:
+      - name: cloudflare-access
+        issuer: https://sholdee.cloudflareaccess.com
+        audiences:
+          - d83e440f6003179ee0afb4385254921b7af3b89e43ad6302478efb681c427e12
+          - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555
+        remoteJWKS:
+          uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
+        extractFrom:
+          headers:
+            - name: Cf-Access-Jwt-Assertion
+          cookies:
+            - CF_Authorization
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: allow-private-cidrs
+        action: Allow
+        principal:
+          clientCIDRs:
+            - 10.6.0.0/24
+            - 192.168.99.0/24
+      - name: allow-jwt
+        action: Allow
+        principal:
+          jwt:
+            provider: cloudflare-access

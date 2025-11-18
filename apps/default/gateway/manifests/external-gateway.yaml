@@ -48,3 +48,18 @@ spec:
           requestRedirect:
             scheme: https
             statusCode: 301
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/clienttrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: external-gateway-client-ip
+  namespace: default
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: external-gateway
+  clientIPDetection:
+    customHeader:
+      name: Cf-Connecting-Ip
