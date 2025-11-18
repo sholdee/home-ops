@@ -25,4 +25,4 @@ spec:
     storageClassName: longhorn
     volumeSnapshotClassName: longhorn
   trigger:
-    manual: restore-once1
+    manual: restore-once2
