@@ -34,7 +34,7 @@ spec:
      - path:
          type: PathPrefix
          value: /api/stacks/webhooks
-  - backendRefs:
+    backendRefs:
     - name: portainer
       namespace: hass
       port: 9000
