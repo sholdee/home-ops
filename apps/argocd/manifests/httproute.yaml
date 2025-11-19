@@ -35,9 +35,9 @@ spec:
          type: Exact
          value: /api/webhook
     backendRefs:
-    - name: argocd-server
-      namespace: argocd
-      port: 443
+      - name: argocd-server
+        namespace: argocd
+        port: 443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
 apiVersion: gateway.networking.k8s.io/v1
