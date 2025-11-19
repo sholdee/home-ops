@@ -22,7 +22,7 @@ spec:
     type: Kubernetes
     kubernetes:
       envoyService:
-        externalTrafficPolicy: Local
+        externalTrafficPolicy: Cluster # Cilium DSR preserves source IP
         type: LoadBalancer
         labels:
           bgp.cilium.io/no-lb-adv: "true"
