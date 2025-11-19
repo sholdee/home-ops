@@ -17,6 +17,28 @@ spec:
       namespace: hass
       port: 9000
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portainer-webhooks
+  namespace: hass
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: default
+  hostnames:
+  - portainer.sholdee.net
+  rules:
+  - matches:
+     - path:
+         type: PathPrefix
+         value: /api/stacks/webhooks
+  - backendRefs:
+    - name: portainer
+      namespace: hass
+      port: 9000
+---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
@@ -34,7 +56,6 @@ spec:
         issuer: https://sholdee.cloudflareaccess.com
         audiences:
           - d83e440f6003179ee0afb4385254921b7af3b89e43ad6302478efb681c427e12
-          - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555
         remoteJWKS:
           uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
         extractFrom:
@@ -51,19 +72,6 @@ spec:
           clientCIDRs:
             - 10.6.0.0/24
             - 192.168.99.0/24
-      - name: allow-webhook
-        action: Allow
-        principal:
-          jwt:
-            provider: cloudflare-access
-            claims:
-              - name: iss
-                values:
-                  - https://sholdee.cloudflareaccess.com
-              - name: aud
-                valueType: String
-                values:
-                  - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555
       - name: allow-ui
         action: Allow
         principal:
@@ -77,3 +85,46 @@ spec:
                 valueType: StringArray
                 values:
                   - d83e440f6003179ee0afb4385254921b7af3b89e43ad6302478efb681c427e12
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: portainer-cloudflare-access-webhooks
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: portainer-webhooks
+  jwt:
+    optional: false
+    providers:
+      - name: cloudflare-access
+        issuer: https://sholdee.cloudflareaccess.com
+        audiences:
+          - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555
+        remoteJWKS:
+          uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
+        extractFrom:
+          headers:
+            - name: Cf-Access-Jwt-Assertion
+          cookies:
+            - CF_Authorization
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: allow-webhook
+        action: Allow
+        operation:
+          methods: ["POST"]
+        principal:
+          jwt:
+            provider: cloudflare-access
+            claims:
+              - name: iss
+                values:
+                  - https://sholdee.cloudflareaccess.com
+              - name: aud
+                valueType: String
+                values:
+                  - 4233850a32188524522df6fb676f0dbe64464ffd31abd1ee1bc3d1127ca8e555

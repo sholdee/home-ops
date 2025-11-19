@@ -17,6 +17,28 @@ spec:
       namespace: argocd
       port: 443
 ---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: argocd-webhooks
+  namespace: argocd
+spec:
+  parentRefs:
+  - name: external-gateway
+    namespace: default
+  hostnames:
+  - argocd.sholdee.net
+  rules:
+  - matches:
+     - path:
+         type: Exact
+         value: /api/webhook
+  - backendRefs:
+    - name: argocd-server
+      namespace: argocd
+      port: 443
+---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
 apiVersion: gateway.networking.k8s.io/v1
 kind: BackendTLSPolicy
@@ -49,7 +71,6 @@ spec:
         issuer: https://sholdee.cloudflareaccess.com
         audiences:
           - 7914bc589a9544a8f8a7425c3edaf6dff734a9c83762d54e5f760251f2fa0bd0
-          - c0cfeff676f9855b7ae1acbf410d081340e2baf126d7798797d72f747eddbb92
         remoteJWKS:
           uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
         extractFrom:
@@ -66,19 +87,6 @@ spec:
           clientCIDRs:
             - 10.6.0.0/24
             - 192.168.99.0/24
-      - name: allow-webhook
-        action: Allow
-        principal:
-          jwt:
-            provider: cloudflare-access
-            claims:
-              - name: iss
-                values:
-                  - https://sholdee.cloudflareaccess.com
-              - name: aud
-                valueType: String
-                values:
-                  - c0cfeff676f9855b7ae1acbf410d081340e2baf126d7798797d72f747eddbb92
       - name: allow-ui
         action: Allow
         principal:
@@ -92,3 +100,47 @@ spec:
                 valueType: StringArray
                 values:
                   - 7914bc589a9544a8f8a7425c3edaf6dff734a9c83762d54e5f760251f2fa0bd0
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: argocd-cloudflare-access-webhooks
+  namespace: argocd
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: argocd-webhooks
+  jwt:
+    optional: false
+    providers:
+      - name: cloudflare-access
+        issuer: https://sholdee.cloudflareaccess.com
+        audiences:
+          - c0cfeff676f9855b7ae1acbf410d081340e2baf126d7798797d72f747eddbb92
+        remoteJWKS:
+          uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
+        extractFrom:
+          headers:
+            - name: Cf-Access-Jwt-Assertion
+          cookies:
+            - CF_Authorization
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: allow-webhook
+        action: Allow
+        operation:
+          methods: ["POST"]
+        principal:
+          jwt:
+            provider: cloudflare-access
+            claims:
+              - name: iss
+                values:
+                  - https://sholdee.cloudflareaccess.com
+              - name: aud
+                valueType: String
+                values:
+                  - c0cfeff676f9855b7ae1acbf410d081340e2baf126d7798797d72f747eddbb92
