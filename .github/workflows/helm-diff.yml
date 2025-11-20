@@ -64,7 +64,7 @@ jobs:
           echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
           ref: ${{ github.event.pull_request.head.ref }}
@@ -520,7 +520,7 @@ jobs:
     runs-on: ARM64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download Helm Diff
         uses: actions/download-artifact@v6
