@@ -28,4 +28,3 @@ spec:
   sourcePVC: app-pvc
   trigger:
     schedule: "0 6 * * *"
-    manual: backuponce
