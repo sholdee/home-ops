@@ -94,6 +94,37 @@ jobs:
             echo "All required CLI tools already installed: ${TOOLS[*]}"
           fi
 
+      - name: Install kustomize
+        run: |
+          VERSION="5.7.0"
+          ARCH="$(uname -m)"
+          case "$ARCH" in
+            x86_64)
+              PLATFORM="amd64"
+              ;;
+            aarch64 | arm64)
+              PLATFORM="arm64"
+              ;;
+            *)
+              PLATFORM="386"
+              echo "⚠️ Unrecognized architecture '$ARCH', defaulting to linux_${PLATFORM}"
+              ;;
+          esac
+
+          echo "PLATFORM=$PLATFORM" >> "$GITHUB_ENV"
+
+          echo "Installing kustomize v${VERSION} for linux_${PLATFORM} (uname -m=${ARCH})..."
+
+          curl -sSLo kustomize.tar.gz \
+            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${VERSION}/kustomize_v${VERSION}_linux_${PLATFORM}.tar.gz"
+
+          tar -xzf kustomize.tar.gz
+          sudo mv kustomize /usr/local/bin/kustomize
+          rm kustomize.tar.gz
+
+          echo "kustomize version:"
+          kustomize version
+
       - name: Check yq presence/version
         id: check-yq
         run: |
@@ -138,15 +169,6 @@ jobs:
         env:
           YQ_VERSION: ${{ steps.yq-version.outputs.version }}
         run: |
-          ARCH=$(uname -m)
-          if [ "$ARCH" = "x86_64" ]; then
-            PLATFORM="amd64"
-          elif [ "$ARCH" = "aarch64" ]; then
-            PLATFORM="arm64"
-          else
-            PLATFORM="386"
-          fi
-
           echo "Installing yq ${YQ_VERSION}..."
           curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${PLATFORM}" \
             -o yq
@@ -187,6 +209,51 @@ jobs:
             fi
             
             echo "📌 Using kubeVersion=${KUBE_VERSION} for Helm templating"
+
+            BASE_WORKTREE_DIR="../base-worktree"
+
+            if [ ! -d "$BASE_WORKTREE_DIR" ]; then
+              echo "📂 Creating base worktree at $BASE_WORKTREE_DIR from origin/${{ github.event.pull_request.base.ref }}..."
+              git worktree add "$BASE_WORKTREE_DIR" "origin/${{ github.event.pull_request.base.ref }}"
+            fi
+
+            EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
+            EXCLUDE_FIELDS+=',.metadata.labels.chart'
+            EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
+            EXCLUDE_FIELDS+=',.spec.template.metadata.labels."helm.sh/chart"'
+            EXCLUDE_FIELDS+=',.spec.template.metadata.labels.chart'
+            EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
+            EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
+
+            process_and_diff() {
+              local old_file="$1"
+              local new_file="$2"
+              local raw_label="${3:-}"
+
+              local safe_label="$raw_label"
+              safe_label="${safe_label//\//_}"
+              safe_label="${safe_label//:/_}"
+              safe_label="${safe_label// /_}"
+
+              local old_processed new_processed
+              old_processed="$(mktemp "${safe_label:-old}_processed.XXXX.yaml")"
+              new_processed="$(mktemp "${safe_label:-new}_processed.XXXX.yaml")"
+
+              echo "🛠️ Processing manifests for diff..."
+              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$old_file" > "$old_processed"
+              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$new_file" > "$new_processed"
+
+              local old_label="old:${raw_label:-manifests}"
+              local new_label="new:${raw_label:-manifests}"
+
+              echo "🔍 Generating diff for ${raw_label:-manifests}..."
+              git diff --no-index --text \
+                --label "$old_label" \
+                --label "$new_label" \
+                "$old_processed" "$new_processed" >> diff.txt || true
+
+              rm -f "$old_processed" "$new_processed"
+            }
             
             # Helper function for Helm templating and diff generation
             generate_helm_diff() {
@@ -196,14 +263,6 @@ jobs:
               OLD_VERSION="$4"
               NEW_VERSION="$5"
               NAMESPACE="$6"
-              
-              EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
-              EXCLUDE_FIELDS+=',.metadata.labels.chart'
-              EXCLUDE_FIELDS+=',.metadata.labels."app.kubernetes.io/version"'
-              EXCLUDE_FIELDS+=',.spec.template.metadata.labels."helm.sh/chart"'
-              EXCLUDE_FIELDS+=',.spec.template.metadata.labels.chart'
-              EXCLUDE_FIELDS+=',.spec.template.metadata.labels."app.kubernetes.io/version"'
-              EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
               
               #####################################
               # Decide: OCI-backed or HTTP repo?  #
@@ -259,29 +318,34 @@ jobs:
                   return 1
                 fi
               fi
-              
-              echo "🎭 Rendering old Helm template: helm template $APP_NAME $CHART_REF --version $OLD_VERSION ..."
-              helm template "$APP_NAME" "$CHART_REF" \
-                --version "$OLD_VERSION" \
-                --namespace "$NAMESPACE" \
-                --kube-version "$KUBE_VERSION" \
-                "${HELM_ARGS_OLD[@]}" > old.yaml \
-                || { echo "❌ Helm template failed for old version"; return 1; }
-              
-              echo "🎭 Rendering new Helm template: helm template $APP_NAME $CHART_REF --version $NEW_VERSION ..."
-              helm template "$APP_NAME" "$CHART_REF" \
-                --version "$NEW_VERSION" \
-                --namespace "$NAMESPACE" \
-                --kube-version "$KUBE_VERSION" \
-                "${HELM_ARGS_NEW[@]}" > new.yaml \
-                || { echo "❌ Helm template failed for new version"; return 1; }
-              
-              echo "🛠️ Processing inflated charts..."
-              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" old.yaml > old_processed.yaml
-              yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" new.yaml > new_processed.yaml
-              
-              echo "🔍 Generating diff..."
-              git diff --no-index --text old_processed.yaml new_processed.yaml >> diff.txt || true
+
+              local workdir
+              workdir="$(mktemp -d "helm_diff_${APP_NAME}_XXXX")"
+
+              echo "🎭 Rendering old Helm template: $APP_NAME $CHART_REF --version $OLD_VERSION ..."
+              if ! helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$OLD_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_OLD[@]}" > "${workdir}/old.yaml"; then
+                echo "❌ Helm template failed for old version"
+                rm -rf "$workdir"
+                return 1
+              fi
+
+              echo "🎭 Rendering new Helm template: $APP_NAME $CHART_REF --version $NEW_VERSION ..."
+              if ! helm template "$APP_NAME" "$CHART_REF" \
+                  --version "$NEW_VERSION" \
+                  --namespace "$NAMESPACE" \
+                  --kube-version "$KUBE_VERSION" \
+                  "${HELM_ARGS_NEW[@]}" > "${workdir}/new.yaml"; then
+                echo "❌ Helm template failed for new version"
+                rm -rf "$workdir"
+                return 1
+              fi
+
+              process_and_diff "${workdir}/old.yaml" "${workdir}/new.yaml" "helm:${APP_NAME}"
+              rm -rf "$workdir"
             }
             
             # Fetch PR diff from GitHub API
@@ -377,87 +441,53 @@ jobs:
                 
             # ===== PROCESS KUSTOMIZE HELM CHARTS =====
             echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename' | while read -r kustomization_file; do
-                kustomization_file=$(echo $kustomization_file | tr -d '"')
-                echo "📄 Processing kustomization file: $kustomization_file"
-                
-                # Check if this is a Helm kustomization (has helmCharts section)
-                if ! yq e '.helmCharts' "$kustomization_file" | grep -q "null"; then
-                    echo "🔍 Found Helm charts in kustomization"
-                    
-                    # Get directory containing the kustomization file
-                    kustomize_dir=$(dirname "$kustomization_file")
-                    
-                    # For each Helm chart in the kustomization
-                    yq e '.helmCharts[]' -o=json "$kustomization_file" | jq -c '.' | while read -r chart_json; do
-                        # Extract chart details
-                        CHART_NAME=$(echo "$chart_json" | jq -r '.name')
-                        REPO_URL=$(echo "$chart_json" | jq -r '.repo')
-                        NEW_VERSION=$(echo "$chart_json" | jq -r '.version')
-                        RELEASE_NAME=$(echo "$chart_json" | jq -r '.releaseName // .name')
-                        NAMESPACE=$(echo "$chart_json" | jq -r '.namespace // "default"')
-                        
-                        echo "🔄 Processing Kustomize Helm chart: $CHART_NAME ($RELEASE_NAME) in namespace $NAMESPACE"
-                        
-                        # Get old version from base branch
-                        OLD_VERSION_JSON=$(git show origin/${{ github.event.pull_request.base.ref }}:"$kustomization_file" | yq e '.helmCharts[] | select(.name == "'$CHART_NAME'")' -o=json 2>/dev/null || echo '{"version": ""}')
-                        OLD_VERSION=$(echo "$OLD_VERSION_JSON" | jq -r '.version')
-                        
-                        # Skip if versions are the same
-                        if [[ "$OLD_VERSION" == "$NEW_VERSION" || -z "$NEW_VERSION" || -z "$OLD_VERSION" ]]; then
-                            echo "ℹ️ Chart version unchanged or missing: $OLD_VERSION → $NEW_VERSION. Skipping..."
-                            continue
-                        fi
-                        
-                        echo "⬆️ Version change detected: $OLD_VERSION → $NEW_VERSION"
-                        
-                        HELM_ARGS_NEW=() 
-                        HELM_ARGS_OLD=()
-                        
-                        # Process values files for NEW version
-                        VALUES_FILE=$(echo "$chart_json" | jq -r '.valuesFile // "null"')
-                        if [[ "$VALUES_FILE" != "null" && -n "$VALUES_FILE" ]]; then
-                            NEW_VALUES_PATH="$kustomize_dir/$VALUES_FILE"
-                            if [[ -f "$NEW_VALUES_PATH" ]]; then
-                                echo "📝 Using values file: $NEW_VALUES_PATH"
-                                cp "$NEW_VALUES_PATH" new-values-kustomize.yaml
-                                HELM_ARGS_NEW+=("-f" "new-values-kustomize.yaml")
-                            fi
-                        fi
-                        
-                        # Handle valuesMerge if present for NEW version
-                        VALUE_MERGES=$(echo "$chart_json" | jq -r '.valuesMerge // []')
-                        if [[ "$VALUE_MERGES" != "[]" ]]; then
-                            echo "$VALUE_MERGES" | jq -c '.[]' | while read -r value_merge; do
-                                HELM_ARGS_NEW+=("--set" "$value_merge")
-                            done
-                        fi
-                        
-                        # Process values files for OLD version
-                        OLD_VALUES_FILE=$(echo "$OLD_VERSION_JSON" | jq -r '.valuesFile // "null"')
-                        if [[ "$OLD_VALUES_FILE" != "null" && -n "$OLD_VALUES_FILE" ]]; then
-                            OLD_VALUES_PATH="$kustomize_dir/$OLD_VALUES_FILE"
-                            if git show origin/${{ github.event.pull_request.base.ref }}:"$OLD_VALUES_PATH" > old-values-kustomize.yaml 2>/dev/null; then
-                                HELM_ARGS_OLD+=("-f" "old-values-kustomize.yaml")
-                            else
-                                echo "⚠️ Cannot retrieve old values file. Using empty values for old version."
-                                echo "{}" > old-values-kustomize.yaml
-                                HELM_ARGS_OLD+=("-f" "old-values-kustomize.yaml")
-                            fi
-                        fi
-                        
-                        # Handle valuesMerge if present for OLD version
-                        OLD_VALUE_MERGES=$(echo "$OLD_VERSION_JSON" | jq -r '.valuesMerge // []')
-                        if [[ "$OLD_VALUE_MERGES" != "[]" ]]; then
-                            echo "$OLD_VALUE_MERGES" | jq -c '.[]' | while read -r old_value_merge; do
-                                HELM_ARGS_OLD+=("--set" "$old_value_merge")
-                            done
-                        fi
-                        
-                        generate_helm_diff "$RELEASE_NAME" "$REPO_URL" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$NAMESPACE"
-                    done
-                else
-                    echo "ℹ️ No Helm charts found in kustomization"
+              kustomization_file=$(echo "$kustomization_file" | tr -d '"')
+              echo "📄 Processing kustomization file: $kustomization_file"
+
+              # Check if this is a Helm kustomization (has helmCharts section)
+              if ! yq e '.helmCharts' "$kustomization_file" | grep -q "null"; then
+                echo "🔍 Found Helm charts in kustomization"
+
+                # Get directory containing the kustomization file
+                kustomize_dir=$(dirname "$kustomization_file")
+
+                # Use yq to detect version changes per chart
+                CHANGED=0
+
+                while IFS="|" read -r CHART_NAME NEW_VERSION; do
+                  OLD_VERSION=$(
+                    git show origin/${{ github.event.pull_request.base.ref }}:"$kustomization_file" \
+                      | yq e ".helmCharts[] | select(.name == \"$CHART_NAME\") | .version" - 2>/dev/null || echo ""
+                  )
+
+                  if [[ -z "$OLD_VERSION" ]]; then
+                    echo "🆕 Chart $CHART_NAME appears new (no old version found)."
+                    CHANGED=1
+                    break
+                  fi
+
+                  if [[ "$OLD_VERSION" != "$NEW_VERSION" ]]; then
+                    echo "⬆️ Chart $CHART_NAME version changed: $OLD_VERSION → $NEW_VERSION"
+                    CHANGED=1
+                    break
+                  fi
+                done < <(yq e '.helmCharts[] | .name + "|" + .version' -r "$kustomization_file")
+
+                if [[ "$CHANGED" -eq 0 ]]; then
+                  echo "ℹ️ No helmCharts version changes detected in $kustomization_file. Skipping kustomize diff."
+                  continue
                 fi
+
+                tmpdir="$(mktemp -d "kustomize_${kustomize_dir##*/}_XXXX")"
+
+                (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
+                (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
+
+                process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml" "kustomize:${kustomization_file}"
+                rm -rf "$tmpdir"
+              else
+                echo "ℹ️ No Helm charts found in kustomization"
+              fi
             done
 
       - name: Read Helm Diff Output
