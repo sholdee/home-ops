@@ -211,6 +211,7 @@ jobs:
             echo "📌 Using kubeVersion=${KUBE_VERSION} for Helm templating"
 
             BASE_WORKTREE_DIR="../base-worktree"
+            TMP_ROOT="$(mktemp -d helm_diff_tmp_XXXX)"
 
             if [ ! -d "$BASE_WORKTREE_DIR" ]; then
               echo "📂 Creating base worktree at $BASE_WORKTREE_DIR from origin/${{ github.event.pull_request.base.ref }}..."
@@ -228,31 +229,22 @@ jobs:
             process_and_diff() {
               local old_file="$1"
               local new_file="$2"
-              local raw_label="${3:-}"
+              local raw_label="${3:-manifests}"
 
               local safe_label="$raw_label"
               safe_label="${safe_label//\//_}"
               safe_label="${safe_label//:/_}"
               safe_label="${safe_label// /_}"
 
-              local old_processed new_processed
-              old_processed="$(mktemp "${safe_label:-old}_processed.XXXX.yaml")"
-              new_processed="$(mktemp "${safe_label:-new}_processed.XXXX.yaml")"
+              local old_processed="${TMP_ROOT}/${safe_label}_old.yaml"
+              local new_processed="${TMP_ROOT}/${safe_label}_new.yaml"
 
-              echo "🛠️ Processing manifests for diff..."
+              echo "🛠️ Processing manifests for diff (${raw_label})..."
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$old_file" > "$old_processed"
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$new_file" > "$new_processed"
-
-              local old_label="old:${raw_label:-manifests}"
-              local new_label="new:${raw_label:-manifests}"
-
-              echo "🔍 Generating diff for ${raw_label:-manifests}..."
-              git diff --no-index --text \
-                --label "$old_label" \
-                --label "$new_label" \
-                "$old_processed" "$new_processed" >> diff.txt || true
-
-              rm -f "$old_processed" "$new_processed"
+            
+              echo "🔍 Generating diff for ${raw_label}..."
+              git diff --no-index --text "$old_processed" "$new_processed" >> diff.txt || true
             }
             
             # Helper function for Helm templating and diff generation
