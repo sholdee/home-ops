@@ -229,21 +229,15 @@ jobs:
             process_and_diff() {
               local old_file="$1"
               local new_file="$2"
-              local raw_label="${3:-manifests}"
 
-              local safe_label="$raw_label"
-              safe_label="${safe_label//\//_}"
-              safe_label="${safe_label//:/_}"
-              safe_label="${safe_label// /_}"
+              local old_processed="${TMP_ROOT}/old.yaml"
+              local new_processed="${TMP_ROOT}/new.yaml"
 
-              local old_processed="${TMP_ROOT}/${safe_label}_old.yaml"
-              local new_processed="${TMP_ROOT}/${safe_label}_new.yaml"
-
-              echo "🛠️ Processing manifests for diff (${raw_label})..."
+              echo "🛠️ Processing manifests for diff..."
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$old_file" > "$old_processed"
               yq eval "del(${EXCLUDE_FIELDS}) | select(.kind != \"Secret\")" "$new_file" > "$new_processed"
             
-              echo "🔍 Generating diff for ${raw_label}..."
+              echo "🔍 Generating diff"
               git diff --no-index --text "$old_processed" "$new_processed" >> diff.txt || true
             }
             
@@ -336,7 +330,7 @@ jobs:
                 return 1
               fi
 
-              process_and_diff "${workdir}/old.yaml" "${workdir}/new.yaml" "helm:${APP_NAME}"
+              process_and_diff "${workdir}/old.yaml" "${workdir}/new.yaml"
               rm -rf "$workdir"
             }
             
@@ -475,7 +469,7 @@ jobs:
                 (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
                 (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
 
-                process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml" "kustomize:${kustomization_file}"
+                process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml"
                 rm -rf "$tmpdir"
               else
                 echo "ℹ️ No Helm charts found in kustomization"
