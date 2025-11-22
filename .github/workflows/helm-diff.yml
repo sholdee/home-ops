@@ -184,8 +184,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          .github/scripts/helm_diff.sh
+        run: bash .github/scripts/helm_diff.sh
 
       - name: Read Helm Diff Output
         id: read-diff
