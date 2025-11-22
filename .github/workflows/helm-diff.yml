@@ -178,13 +178,24 @@ jobs:
           echo "yq after install:"
           yq --version
 
+      - name: Prepare base worktree
+        run: |
+          BASE_WORKTREE_DIR="../base-worktree"
+          echo "BASE_WORKTREE_DIR=$BASE_WORKTREE_DIR" >> "$GITHUB_ENV"
+      
+          if [ ! -d "$BASE_WORKTREE_DIR" ]; then
+            echo "📂 Creating base worktree at $BASE_WORKTREE_DIR from origin/${{ github.event.pull_request.base.ref }}..."
+            git worktree add "$BASE_WORKTREE_DIR" "origin/${{ github.event.pull_request.base.ref }}"
+          fi
+
       - name: Process Helm diffs
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: bash .github/scripts/helm_diff.sh
+          BASE_WORKTREE_DIR: ${{ env.BASE_WORKTREE_DIR }}
+        run: bash "$BASE_WORKTREE_DIR/.github/scripts/helm_diff.sh"
 
       - name: Read Helm Diff Output
         id: read-diff
