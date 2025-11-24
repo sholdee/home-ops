@@ -28,6 +28,17 @@ EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
 ## Setup functions ##
 #####################
 get_kube_version() {
+    # Optional override (e.g. from spec.source.helm.kubeVersion)
+    local override="${1:-}"
+
+    if [[ -n "$override" && "$override" != "null" ]]; then
+        # Argo expects semver without leading "v", but be lenient
+        local stripped="${override#v}"
+        KUBE_VERSION="$stripped"
+        echo "📌 Using override kubeVersion=${KUBE_VERSION} for Helm templating"
+        return
+    fi
+
     KUBE_VERSION="$KUBE_VERSION_DEFAULT"
     if [ -f "$PLAN_FILE" ]; then
         RAW_K3S_VERSION=$(
@@ -79,10 +90,34 @@ helm_template_and_diff() {
     CHART_NAME="$3"
     OLD_VERSION="$4"
     NEW_VERSION="$5"
-    NAMESPACE="$6"
+    OLD_NAMESPACE="$6"
+    NEW_NAMESPACE="$7"
+    OLD_RELEASE_NAME="$8"
+    NEW_RELEASE_NAME="$9"
+    OLD_KUBE_VERSION_OVERRIDE="${10:-}"
+    NEW_KUBE_VERSION_OVERRIDE="${11:-}"
 
-    get_kube_version
+    # HELM_ARGS_OLD / HELM_ARGS_NEW are populated by the caller
 
+    # Default release names if not set
+    if [[ -z "$OLD_RELEASE_NAME" || "$OLD_RELEASE_NAME" == "null" ]]; then
+        OLD_RELEASE_NAME="$APP_NAME"
+    fi
+    if [[ -z "$NEW_RELEASE_NAME" || "$NEW_RELEASE_NAME" == "null" ]]; then
+        NEW_RELEASE_NAME="$APP_NAME"
+    fi
+
+    # Default namespaces if somehow empty
+    if [[ -z "$OLD_NAMESPACE" || "$OLD_NAMESPACE" == "null" ]]; then
+        OLD_NAMESPACE="default"
+    fi
+    if [[ -z "$NEW_NAMESPACE" || "$NEW_NAMESPACE" == "null" ]]; then
+        NEW_NAMESPACE="default"
+    fi
+
+    #######################
+    ## Resolve chart ref ##
+    #######################
     if [[ "$REPO_URL" == oci://* || ( "$REPO_URL" != http://* && "$REPO_URL" != https://* && "$REPO_URL" != file://* ) ]]; then
         ########################
         # ===== OCI REPO ===== #
@@ -140,9 +175,10 @@ helm_template_and_diff() {
     workdir="$(mktemp -d "helm_diff_${APP_NAME}_XXXX")"
 
     echo "🎭 Rendering old Helm template: $APP_NAME $CHART_REF --version $OLD_VERSION ..."
-    if ! helm template "$APP_NAME" "$CHART_REF" \
+    get_kube_version "$OLD_KUBE_VERSION_OVERRIDE"
+    if ! helm template "$OLD_RELEASE_NAME" "$CHART_REF" \
         --version "$OLD_VERSION" \
-        --namespace "$NAMESPACE" \
+        --namespace "$OLD_NAMESPACE" \
         --kube-version "$KUBE_VERSION" \
         "${HELM_ARGS_OLD[@]}" > "${workdir}/old.yaml"; then
         echo "❌ Helm template failed for old version"
@@ -151,9 +187,10 @@ helm_template_and_diff() {
     fi
 
     echo "🎭 Rendering new Helm template: $APP_NAME $CHART_REF --version $NEW_VERSION ..."
-    if ! helm template "$APP_NAME" "$CHART_REF" \
+    get_kube_version "$NEW_KUBE_VERSION_OVERRIDE"
+    if ! helm template "$NEW_RELEASE_NAME" "$CHART_REF" \
         --version "$NEW_VERSION" \
-        --namespace "$NAMESPACE" \
+        --namespace "$NEW_NAMESPACE" \
         --kube-version "$KUBE_VERSION" \
         "${HELM_ARGS_NEW[@]}" > "${workdir}/new.yaml"; then
         echo "❌ Helm template failed for new version"
@@ -163,6 +200,173 @@ helm_template_and_diff() {
 
     process_and_diff "${workdir}/old.yaml" "${workdir}/new.yaml"
     rm -rf "$workdir"
+}
+
+process_argo_source() {
+    local FILE="$1"
+    local APP_NAME="$2"
+    local NAMESPACE="$3"
+    local SRC_EXPR="$4"   # e.g. .spec.source or .spec.sources[0]
+    local SRC_LABEL="$5"  # for logging, e.g. "source" or "sources[0]"
+
+    # OLD (base) fields
+    local OLD_VERSION OLD_VALUES_OBJECT OLD_VALUES_STRING OLD_PARAMETERS
+    local OLD_FILE_PARAMETERS OLD_RELEASE_NAME OLD_HELM_NAMESPACE
+    local OLD_HELM_KUBEVERSION OLD_DEST_NAMESPACE
+
+    OLD_VERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.targetRevision" -)
+    OLD_VALUES_OBJECT=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.valuesObject" -)
+    OLD_VALUES_STRING=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.values" -)
+    OLD_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" - 2>/dev/null || echo "")
+    OLD_FILE_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" - 2>/dev/null || echo "")
+    OLD_RELEASE_NAME=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.releaseName" -)
+    OLD_HELM_NAMESPACE=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.namespace" -)
+    OLD_HELM_KUBEVERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.kubeVersion" -)
+    OLD_DEST_NAMESPACE=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" - 2>/dev/null || echo "default")
+
+    # NEW (PR) fields
+    local NEW_VERSION NEW_VALUES_OBJECT NEW_VALUES_STRING NEW_PARAMETERS
+    local NEW_FILE_PARAMETERS NEW_RELEASE_NAME NEW_HELM_NAMESPACE
+    local NEW_HELM_KUBEVERSION NEW_DEST_NAMESPACE
+
+    NEW_VERSION=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.targetRevision" "$FILE")
+    NEW_VALUES_OBJECT=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.valuesObject" "$FILE")
+    NEW_VALUES_STRING=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.values" "$FILE")
+    NEW_PARAMETERS=$(yq e -o=json -r "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE" 2>/dev/null || echo "")
+    NEW_FILE_PARAMETERS=$(yq e -o=json -r "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" "$FILE" 2>/dev/null || echo "")
+    NEW_RELEASE_NAME=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.releaseName" "$FILE")
+    NEW_HELM_NAMESPACE=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.namespace" "$FILE")
+    NEW_HELM_KUBEVERSION=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.kubeVersion" "$FILE")
+    NEW_DEST_NAMESPACE=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" "$FILE" 2>/dev/null || echo "default")
+
+    # If no version in either old or new, this "source" probably isn't a Helm chart
+    if [[ -z "$OLD_VERSION" && -z "$NEW_VERSION" ]]; then
+        return 0
+    fi
+
+    # Chart/repoURL (required)
+    local CHART_NAME REPO_URL
+    CHART_NAME=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.chart" "$FILE")
+    REPO_URL=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.repoURL" "$FILE")
+
+    if [[ -z "$CHART_NAME" || "$CHART_NAME" == "null" || -z "$REPO_URL" || "$REPO_URL" == "null" ]]; then
+        # Not a Helm-from-repo source, skip
+        return 0
+    fi
+
+    # Fingerprint all helm inputs we care about
+    local OLD_FP NEW_FP
+    OLD_FP="${OLD_VERSION}|${OLD_VALUES_STRING}|${OLD_VALUES_OBJECT}|${OLD_PARAMETERS}|${OLD_FILE_PARAMETERS}|${OLD_RELEASE_NAME}|${OLD_HELM_NAMESPACE}|${OLD_HELM_KUBEVERSION}"
+    NEW_FP="${NEW_VERSION}|${NEW_VALUES_STRING}|${NEW_VALUES_OBJECT}|${NEW_PARAMETERS}|${NEW_FILE_PARAMETERS}|${NEW_RELEASE_NAME}|${NEW_HELM_NAMESPACE}|${NEW_HELM_KUBEVERSION}"
+
+    if [[ "$OLD_FP" == "$NEW_FP" ]]; then
+        echo "ℹ️ No relevant Helm changes detected for Application ${APP_NAME} ${SRC_LABEL} in $FILE. Skipping."
+        return 0
+    fi
+
+    # Effective namespaces: helm.namespace overrides destination.namespace
+    local EFFECTIVE_OLD_NAMESPACE EFFECTIVE_NEW_NAMESPACE
+    if [[ -n "$OLD_HELM_NAMESPACE" && "$OLD_HELM_NAMESPACE" != "null" ]]; then
+        EFFECTIVE_OLD_NAMESPACE="$OLD_HELM_NAMESPACE"
+    else
+        EFFECTIVE_OLD_NAMESPACE="${OLD_DEST_NAMESPACE:-default}"
+    fi
+    if [[ -n "$NEW_HELM_NAMESPACE" && "$NEW_HELM_NAMESPACE" != "null" ]]; then
+        EFFECTIVE_NEW_NAMESPACE="$NEW_HELM_NAMESPACE"
+    else
+        EFFECTIVE_NEW_NAMESPACE="${NEW_DEST_NAMESPACE:-default}"
+    fi
+
+    echo "🔄 Processing $APP_NAME ${SRC_LABEL} (Dest(old): $EFFECTIVE_OLD_NAMESPACE, Dest(new): $EFFECTIVE_NEW_NAMESPACE): ${OLD_VERSION:-<none>} → ${NEW_VERSION:-<none>}"
+
+    local HELM_ARGS_OLD=()
+    local HELM_ARGS_NEW=()
+
+    ############################
+    # Prepare args for OLD rev #
+    ############################
+
+    # 1. values
+    if [[ -n "$OLD_VALUES_STRING" && "$OLD_VALUES_STRING" != "null" ]]; then
+        echo "$OLD_VALUES_STRING" > old-values.yaml
+        HELM_ARGS_OLD+=("-f" "old-values.yaml")
+    fi
+
+    # 2. valuesObject (overrides values)
+    if [[ -n "$OLD_VALUES_OBJECT" && "$OLD_VALUES_OBJECT" != "null" ]]; then
+        echo "$OLD_VALUES_OBJECT" > old-values-object.yaml
+        HELM_ARGS_OLD+=("-f" "old-values-object.yaml")
+    fi
+
+    # 3. fileParameters (--set-file)
+    if [[ -n "$OLD_FILE_PARAMETERS" && "$OLD_FILE_PARAMETERS" != "null" ]]; then
+        while IFS= read -r fp; do
+            local NAME PATH_VAL
+            NAME=$(echo "$fp" | jq -r '.name')
+            PATH_VAL=$(echo "$fp" | jq -r '.path')
+            [[ -z "$NAME" || -z "$PATH_VAL" ]] && continue
+            HELM_ARGS_OLD+=("--set-file" "${NAME}=${PATH_VAL}")
+        done < <(echo "$OLD_FILE_PARAMETERS" | jq -c '.[]')
+    fi
+
+    # 4. parameters (--set, highest precedence)
+    if [[ -n "$OLD_PARAMETERS" && "$OLD_PARAMETERS" != "null" ]]; then
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            HELM_ARGS_OLD+=("--set" "$p")
+        done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
+    fi
+
+    ############################
+    # Prepare args for NEW rev #
+    ############################
+
+    # 1. values
+    if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
+        echo "$NEW_VALUES_STRING" > new-values.yaml
+        HELM_ARGS_NEW+=("-f" "new-values.yaml")
+    fi
+
+    # 2. valuesObject (overrides values)
+    if [[ -n "$NEW_VALUES_OBJECT" && "$NEW_VALUES_OBJECT" != "null" ]]; then
+        echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
+        HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
+    fi
+
+    # 3. fileParameters (--set-file)
+    if [[ -n "$NEW_FILE_PARAMETERS" && "$NEW_FILE_PARAMETERS" != "null" ]]; then
+        while IFS= read -r fp; do
+            local NAME PATH_VAL
+            NAME=$(echo "$fp" | jq -r '.name')
+            PATH_VAL=$(echo "$fp" | jq -r '.path')
+            [[ -z "$NAME" || -z "$PATH_VAL" ]] && continue
+            HELM_ARGS_NEW+=("--set-file" "${NAME}=${PATH_VAL}")
+        done < <(echo "$NEW_FILE_PARAMETERS" | jq -c '.[]')
+    fi
+
+    # 4. parameters (--set, highest precedence)
+    if [[ -n "$NEW_PARAMETERS" && "$NEW_PARAMETERS" != "null" ]]; then
+        while IFS= read -r p; do
+            [[ -z "$p" ]] && continue
+            HELM_ARGS_NEW+=("--set" "$p")
+        done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
+    fi
+
+    ############################################
+    # Call templating with per-rev settings   #
+    ############################################
+    helm_template_and_diff \
+        "$APP_NAME" \
+        "$REPO_URL" \
+        "$CHART_NAME" \
+        "$OLD_VERSION" \
+        "$NEW_VERSION" \
+        "$EFFECTIVE_OLD_NAMESPACE" \
+        "$EFFECTIVE_NEW_NAMESPACE" \
+        "$OLD_RELEASE_NAME" \
+        "$NEW_RELEASE_NAME" \
+        "$OLD_HELM_KUBEVERSION" \
+        "$NEW_HELM_KUBEVERSION"
 }
 
 ##########################
@@ -182,89 +386,36 @@ RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: applica
 #################################
 ## Process ArgoCD Applications ##
 #################################
-echo "$RESPONSE" | jq -c '.[] | select(.patch) | 
-     .filename as $file | 
-     .patch |
-     capture("\\+\\s+targetRevision:\\s+(?<ver>.+)") | 
-     {file: $file, version: .ver}' | 
-     while read -r json; do
-
+echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read -r json; do
     FILE=$(echo "$json" | jq -r '.file')
-    REV=$(echo "$json" | jq -r '.version')
 
-    echo "📄 Processing ArgoCD Application file: $FILE with targetRevision $REV"
+    echo "📄 Processing ArgoCD Application file: $FILE"
 
-    # Extract app names and namespaces properly
-    APP_ENTRIES=$(yq e ". | select(.kind == \"Application\" and .spec.source.targetRevision == \"$REV\") | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
+    # All Application objects in this file (namespace may be empty in raw YAML)
+    APP_ENTRIES=$(yq e '. | select(.kind == "Application") | .metadata.name + "|" + (.metadata.namespace // "")' "$FILE" -r)
 
     if [[ -z "$APP_ENTRIES" ]]; then
-        echo "⚠️ No matching applications found for targetRevision: $REV"
+        echo "⚠️ No ArgoCD Applications found in: $FILE"
         continue
     fi
 
-    # Loop through each app entry
     echo "$APP_ENTRIES" | while IFS="|" read -r APP_NAME NAMESPACE; do
         if [[ -z "$APP_NAME" ]]; then
             continue
         fi
 
-        OLD_VERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" -)
-        NEW_VERSION=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" "$FILE")
+        # 1) Single-source .spec.source
+        process_argo_source "$FILE" "$APP_NAME" "$NAMESPACE" ".spec.source" "source"
 
-        # Skip apps where targetRevision didn't actually change
-        if [[ "$OLD_VERSION" == "$NEW_VERSION" || -z "$NEW_VERSION" ]]; then
-            continue
+        # 2) Multi-source .spec.sources[]
+        SRC_INDEXES=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | (.spec.sources // []) | to_entries | .[].key" "$FILE" -r 2>/dev/null || true)
+
+        if [[ -n "$SRC_INDEXES" ]]; then
+            while read -r IDX; do
+                [[ -z "$IDX" ]] && continue
+                process_argo_source "$FILE" "$APP_NAME" "$NAMESPACE" ".spec.sources[${IDX}]" "sources[${IDX}]"
+            done <<< "$SRC_INDEXES"
         fi
-
-        CHART_NAME=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.chart" "$FILE")
-        REPO_URL=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.repoURL" "$FILE")
-        DEST_NAMESPACE=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" "$FILE" || echo "default")
-
-        echo "🔄 Processing $APP_NAME (Namespace: ${NAMESPACE:-unset}, Dest: $DEST_NAMESPACE): $OLD_VERSION → $NEW_VERSION"
-
-        OLD_VALUES_OBJECT=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" -)
-        NEW_VALUES_OBJECT=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" "$FILE")
-
-        OLD_VALUES_STRING=$(git show origin/"${BASE_REF}":"$FILE" | yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.values" -)
-        NEW_VALUES_STRING=$(yq e "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.values" "$FILE")
-
-        OLD_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" -)
-        NEW_PARAMETERS=$(yq e -o=json -r "select(.metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE")
-
-        HELM_ARGS_OLD=()
-        HELM_ARGS_NEW=()
-
-        # Prepare args for OLD version
-        if [[ -n "$OLD_VALUES_STRING" && "$OLD_VALUES_STRING" != "null" ]]; then
-            echo "$OLD_VALUES_STRING" > old-values.yaml
-            HELM_ARGS_OLD+=("-f" "old-values.yaml")
-        fi
-
-        if [[ -n "$OLD_VALUES_OBJECT" && "$OLD_VALUES_OBJECT" != "null" ]]; then
-            echo "$OLD_VALUES_OBJECT" > old-values-object.yaml
-            HELM_ARGS_OLD+=("-f" "old-values-object.yaml")
-        fi
-
-        while IFS= read -r p; do
-            HELM_ARGS_OLD+=("--set" "$p")
-        done < <(echo "$OLD_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
-
-        # Prepare args for NEW version
-        if [[ -n "$NEW_VALUES_STRING" && "$NEW_VALUES_STRING" != "null" ]]; then
-            echo "$NEW_VALUES_STRING" > new-values.yaml
-            HELM_ARGS_NEW+=("-f" "new-values.yaml")
-        fi
-
-        if [[ -n "$NEW_VALUES_OBJECT" && "$NEW_VALUES_OBJECT" != "null" ]]; then
-            echo "$NEW_VALUES_OBJECT" > new-values-object.yaml
-            HELM_ARGS_NEW+=("-f" "new-values-object.yaml")
-        fi
-
-        while IFS= read -r p; do
-            HELM_ARGS_NEW+=("--set" "$p")
-        done < <(echo "$NEW_PARAMETERS" | jq -r '.[] | "\(.name)=\(.value)" ')
-
-        helm_template_and_diff "$APP_NAME" "$REPO_URL" "$CHART_NAME" "$OLD_VERSION" "$NEW_VERSION" "$DEST_NAMESPACE"
     done
 done
 
