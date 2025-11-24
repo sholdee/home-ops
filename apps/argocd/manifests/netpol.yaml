@@ -13,9 +13,8 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
-            app.kubernetes.io/component: proxy
-            app.kubernetes.io/managed-by: envoy-gateway
-            gateway.envoyproxy.io/owning-gateway-name: exernal-gateway
+            io.kubernetes.pod.namespace: envoy-gateway-system
+            gateway.envoyproxy.io/owning-gateway-name: external-gateway
       toPorts:
         - ports:
             - port: "8080"
