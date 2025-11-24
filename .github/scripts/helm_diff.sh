@@ -433,30 +433,80 @@ echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml"
         # Get directory containing the kustomization file
         kustomize_dir=$(dirname "$kustomization_file")
 
-        # Use yq to detect version changes per chart
         CHANGED=0
 
-        while IFS="|" read -r CHART_NAME NEW_VERSION; do
-            OLD_VERSION=$(
-                git show origin/"${BASE_REF}":"$kustomization_file" \
-                | yq e ".helmCharts[] | select(.name == \"$CHART_NAME\") | .version" - 2>/dev/null || echo ""
-            )
+        ##########################################
+        # 1) Detect changes to helmCharts entries
+        ##########################################
 
-            if [[ -z "$OLD_VERSION" ]]; then
-                echo "🆕 Chart $CHART_NAME appears new (no old version found)."
-                CHANGED=1
-                break
-            fi
+        # Compare set of chart names first (added/removed charts)
+        OLD_NAMES=$(
+            git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
+            | yq e '.helmCharts[]?.name' -r 2>/dev/null \
+            | sort | tr '\n' ','
+        )
+        NEW_NAMES=$(
+            yq e '.helmCharts[]?.name' -r "$kustomization_file" 2>/dev/null \
+            | sort | tr '\n' ','
+        )
 
-            if [[ "$OLD_VERSION" != "$NEW_VERSION" ]]; then
-                echo "⬆️ Chart $CHART_NAME version changed: $OLD_VERSION → $NEW_VERSION"
-                CHANGED=1
-                break
-            fi
-        done < <(yq e '.helmCharts[] | .name + "|" + .version' -r "$kustomization_file")
+        if [[ "$OLD_NAMES" != "$NEW_NAMES" ]]; then
+            echo "⬆️ helmCharts set changed (added/removed charts or renamed) in $kustomization_file"
+            CHANGED=1
+        fi
+
+        # If names are the same, compare full chart entries per name
+        if [[ "$CHANGED" -eq 0 ]]; then
+            while read -r CHART_NAME; do
+                [[ -z "$CHART_NAME" ]] && continue
+
+                OLD_ENTRY=$(
+                    git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
+                    | yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" - 2>/dev/null || echo ""
+                )
+                NEW_ENTRY=$(
+                    yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" "$kustomization_file" 2>/dev/null || echo ""
+                )
+
+                if [[ -z "$OLD_ENTRY" ]]; then
+                    echo "🆕 Chart $CHART_NAME appears new (no old entry found)."
+                    CHANGED=1
+                    break
+                fi
+
+                if [[ "$OLD_ENTRY" != "$NEW_ENTRY" ]]; then
+                    echo "⬆️ helmCharts entry for $CHART_NAME changed."
+                    CHANGED=1
+                    if [[ "$OLD_VERSION" != "$NEW_VERSION" ]]; then
+                        echo "⬆️ Chart $CHART_NAME version changed: $OLD_VERSION → $NEW_VERSION"
+                    fi
+                    break
+                fi
+            done < <(yq e '.helmCharts[]?.name' -r "$kustomization_file")
+        fi
+
+        #########################################################
+        # 2) Detect changes to underlying valuesFile(s) on disk #
+        #########################################################
+        # valuesFile is relative to the kustomization directory.
+        # If any such file is in the PR's changed files, we should
+        # run the kustomize diff even if helmCharts YAML is identical.
+        if [[ "$CHANGED" -eq 0 ]]; then
+            while read -r VFILE; do
+                [[ -z "$VFILE" || "$VFILE" == "null" ]] && continue
+                # Resolve to the path as it appears in the PR file list
+                local_path="${kustomize_dir%/}/$VFILE"
+
+                if echo "$RESPONSE" | jq -e --arg f "$local_path" '.[] | select(.filename == $f)' >/dev/null 2>&1; then
+                    echo "📝 values file $local_path changed; forcing kustomize Helm diff."
+                    CHANGED=1
+                    break
+                fi
+            done < <(yq e '.helmCharts[]? | .valuesFile // ""' -r "$kustomization_file")
+        fi
 
         if [[ "$CHANGED" -eq 0 ]]; then
-            echo "ℹ️ No helmCharts version changes detected in $kustomization_file. Skipping kustomize diff."
+            echo "ℹ️ No helmCharts or valuesFile changes detected in $kustomization_file. Skipping kustomize diff."
             continue
         fi
 
