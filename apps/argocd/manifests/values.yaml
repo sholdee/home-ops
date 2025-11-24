@@ -26,5 +26,6 @@ configs:
          - CiliumIdentity
        clusters:
          - "*"
+    users.anonymous.enabled: "true"
   rbac:
-    policy.default: 'readonly'
+    policy.default: 'role:readonly'
