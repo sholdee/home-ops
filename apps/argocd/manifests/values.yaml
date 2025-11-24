@@ -26,3 +26,5 @@ configs:
          - CiliumIdentity
        clusters:
          - "*"
+rbac:
+  policy.default: 'role:readonly'
