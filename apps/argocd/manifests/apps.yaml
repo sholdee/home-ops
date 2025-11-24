@@ -260,12 +260,12 @@ spec:
     chart: volsync
     helm:
       valuesObject:
-        replicaCount: 2
+        replicaCount: 1
         manageCRDs: true
         metrics:
-          disableAuth: true
+          disableAuth: false
     repoURL: https://backube.github.io/helm-charts/
-    targetRevision: 0.13.1
+    targetRevision: 0.14.0
   syncPolicy:
     automated:
       prune: true
