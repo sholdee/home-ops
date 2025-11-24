@@ -8,13 +8,14 @@ metadata:
 spec:
   endpointSelector:
     matchLabels:
-      component: server
-      name: argocd-server
+      app.kubernetes.io/component: server
+      app.kubernetes.io/name: argocd-server
   ingress:
     - fromEndpoints:
         - matchLabels:
-            component: proxy
-            managed-by: envoy-gateway
+            app.kubernetes.io/component: proxy
+            app.kubernetes.io/managed-by: envoy-gateway
+            gateway.envoyproxy.io/owning-gateway-name: exernal-gateway
       toPorts:
         - ports:
             - port: "8080"
