@@ -27,4 +27,4 @@ configs:
        clusters:
          - "*"
   rbac:
-    policy.default: 'role:readonly'
+    policy.default: 'readonly'
