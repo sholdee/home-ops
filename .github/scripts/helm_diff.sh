@@ -477,9 +477,6 @@ echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml"
                 if [[ "$OLD_ENTRY" != "$NEW_ENTRY" ]]; then
                     echo "⬆️ helmCharts entry for $CHART_NAME changed."
                     CHANGED=1
-                    if [[ "$OLD_VERSION" != "$NEW_VERSION" ]]; then
-                        echo "⬆️ Chart $CHART_NAME version changed: $OLD_VERSION → $NEW_VERSION"
-                    fi
                     break
                 fi
             done < <(yq e '.helmCharts[]?.name' -r "$kustomization_file")
