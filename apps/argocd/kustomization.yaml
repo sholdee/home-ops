@@ -13,6 +13,7 @@ resources:
   - manifests/httproute.yaml
   - manifests/cilium-preflight.yaml
   - manifests/namespace.yaml
+  - manifests/netpol.yaml
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm

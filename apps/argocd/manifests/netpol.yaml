@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-server
+  namespace: argocd
+spec:
+  endpointSelector:
+    matchLabels:
+      component: server
+      name: argocd-server
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            component: proxy
+            managed-by: envoy-gateway
+      toPorts:
+        - ports:
+            - port: "8080"
