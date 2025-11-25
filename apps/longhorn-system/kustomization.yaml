@@ -8,6 +8,7 @@ components:
 resources:
   - manifests/externalsecret.yaml
   - manifests/httproute.yaml
+  - manifests/netpol.yaml
   - manifests/recurringjob.yaml
   - manifests/storageclass.yaml
   - manifests/volumesnapshotclass.yaml
