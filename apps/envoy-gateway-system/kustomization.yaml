@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1 
+kind: Kustomization
+namespace: envoy-gateway-system
+components:
+  - ../../components/namespace
+resources:
+  - manifests/podmonitor.yaml
+helmCharts:
+  - name: gateway-helm
+    repo: oci://docker.io/envoyproxy
+    version: v1.6.0
+    releaseName: envoy-gateway
+    namespace: envoy-gateway-system
+    valuesFile: manifests/values.yaml
