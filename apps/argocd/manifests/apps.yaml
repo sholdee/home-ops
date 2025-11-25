@@ -126,25 +126,6 @@ spec:
                       control-plane: envoy-gateway
       repoURL: docker.io/envoyproxy
       targetRevision: v1.6.0
-    - chart: gateway-addons-helm
-      helm:
-        valuesObject:
-          alloy:
-            enabled: false
-          fluent-bit:
-            enabled: false
-          grafana:
-            enabled: false
-          loki:
-            enabled: false
-          opentelemetry-collector:
-            enabled: false
-          prometheus:
-            enabled: false
-          tempo:
-            enabled: false
-      repoURL: docker.io/envoyproxy
-      targetRevision: v1.6.0
   syncPolicy:
     automated:
       prune: true
