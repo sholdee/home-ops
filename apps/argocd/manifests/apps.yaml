@@ -100,32 +100,51 @@ spec:
     name: in-cluster
     namespace: envoy-gateway-system
   project: k3s
-  source:
-    chart: gateway-helm
-    helm:
-      valuesObject:
-        podDisruptionBudget:
-          minAvailable: 1
-        deployment:
-          replicas: 3
-          envoyGateway:
-            resources:
-              limits:
-                cpu: 100m
-                memory: 150Mi
-              requests:
-                cpu: 10m
-                memory: 150Mi
-          pod:
-            topologySpreadConstraints:
-              - maxSkew: 1
-                topologyKey: kubernetes.io/hostname
-                whenUnsatisfiable: DoNotSchedule
-                labelSelector:
-                  matchLabels:
-                    control-plane: envoy-gateway
-    repoURL: docker.io/envoyproxy
-    targetRevision: v1.6.0
+  sources:
+    - chart: gateway-helm
+      helm:
+        valuesObject:
+          podDisruptionBudget:
+            minAvailable: 1
+          deployment:
+            replicas: 3
+            envoyGateway:
+              resources:
+                limits:
+                  cpu: 100m
+                  memory: 150Mi
+                requests:
+                  cpu: 10m
+                  memory: 150Mi
+            pod:
+              topologySpreadConstraints:
+                - maxSkew: 1
+                  topologyKey: kubernetes.io/hostname
+                  whenUnsatisfiable: DoNotSchedule
+                  labelSelector:
+                    matchLabels:
+                      control-plane: envoy-gateway
+      repoURL: docker.io/envoyproxy
+      targetRevision: v1.6.0
+    - chart: gateway-addons-helm
+      helm:
+        valuesObject:
+          alloy:
+            enabled: false
+          fluent-bit:
+            enabled: false
+          grafana:
+            enabled: false
+          loki:
+            enabled: false
+          opentelemetry-collector:
+            enabled: false
+          prometheus:
+            enabled: false
+          tempo:
+            enabled: false
+      repoURL: docker.io/envoyproxy
+      targetRevision: v1.6.0
   syncPolicy:
     automated:
       prune: true
