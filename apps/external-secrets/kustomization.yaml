@@ -21,3 +21,4 @@ helmCharts:
     releaseName: 1password-connect
     namespace: external-secrets
     valuesFile: manifests/values-op.yaml
+#
