@@ -389,15 +389,14 @@ RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: applica
 echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read -r json; do
     FILE=$(echo "$json" | jq -r '.file')
 
-    echo "📄 Processing ArgoCD Application file: $FILE"
-
     # All Application objects in this file (namespace may be empty in raw YAML)
-    APP_ENTRIES=$(yq e '. | select(.kind == "Application") | .metadata.name + "|" + (.metadata.namespace // "")' "$FILE" -r)
+    APP_ENTRIES=$(yq e '. | select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application") | .metadata.name + "|" + (.metadata.namespace // "")' "$FILE" -r)
 
     if [[ -z "$APP_ENTRIES" ]]; then
-        echo "⚠️ No ArgoCD Applications found in: $FILE"
         continue
     fi
+
+    echo "📄 Processing ArgoCD Application file: $FILE"
 
     echo "$APP_ENTRIES" | while IFS="|" read -r APP_NAME NAMESPACE; do
         if [[ -z "$APP_NAME" ]]; then
@@ -408,7 +407,7 @@ echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read
         process_argo_source "$FILE" "$APP_NAME" "$NAMESPACE" ".spec.source" "source"
 
         # 2) Multi-source .spec.sources[]
-        SRC_INDEXES=$(yq e "select(.kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | (.spec.sources // []) | to_entries | .[].key" "$FILE" -r 2>/dev/null || true)
+        SRC_INDEXES=$(yq e 'select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "$APP_NAME" and (.metadata.namespace == "$NAMESPACE" or .metadata.namespace == null)) | (.spec.sources // []) | to_entries | .[].key' "$FILE" -r 2>/dev/null || true)
 
         if [[ -n "$SRC_INDEXES" ]]; then
             while read -r IDX; do
