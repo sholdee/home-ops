@@ -99,6 +99,29 @@ helm_template_and_diff() {
 
     # HELM_ARGS_OLD / HELM_ARGS_NEW are populated by the caller
 
+    # Track whether we actually have versions
+    local HAS_OLD_VERSION=1
+    local HAS_NEW_VERSION=1
+
+    if [[ -z "$OLD_VERSION" || "$OLD_VERSION" == "null" ]]; then
+        HAS_OLD_VERSION=0
+    fi
+    if [[ -z "$NEW_VERSION" || "$NEW_VERSION" == "null" ]]; then
+        HAS_NEW_VERSION=0
+    fi
+
+    # If neither side has a version, nothing to render
+    if (( HAS_OLD_VERSION == 0 && HAS_NEW_VERSION == 0 )); then
+        echo "ℹ️ No targetRevision found for $APP_NAME/$CHART_NAME; skipping templating."
+        return 0
+    fi
+
+    # We must have a new version to render anything useful
+    if (( HAS_NEW_VERSION == 0 )); then
+        echo "⚠️ New targetRevision missing for $APP_NAME/$CHART_NAME; skipping templating."
+        return 1
+    fi
+
     # Default release names if not set
     if [[ -z "$OLD_RELEASE_NAME" || "$OLD_RELEASE_NAME" == "null" ]]; then
         OLD_RELEASE_NAME="$APP_NAME"
@@ -135,9 +158,11 @@ helm_template_and_diff() {
         echo "📦 OCI chart detected: $CHART_REF"
         echo "📡 Validating versions in OCI registry..."
 
-        if ! helm show chart "$CHART_REF" --version "$OLD_VERSION" >/dev/null 2>&1; then
-            echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in OCI registry. Skipping..."
-            return 1
+        if (( HAS_OLD_VERSION == 1 )); then
+            if ! helm show chart "$CHART_REF" --version "$OLD_VERSION" >/dev/null 2>&1; then
+                echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in OCI registry. Skipping old side..."
+                HAS_OLD_VERSION=0
+            fi
         fi
 
         if ! helm show chart "$CHART_REF" --version "$NEW_VERSION" >/dev/null 2>&1; then
@@ -157,9 +182,11 @@ helm_template_and_diff() {
         helm repo add "$REPO_NAME" "$REPO_URL"
         helm repo update "$REPO_NAME"
 
-        if ! helm search repo "$CHART_REF" --versions | grep -q "$OLD_VERSION"; then
-            echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in repo $REPO_NAME. Skipping..."
-            return 1
+        if (( HAS_OLD_VERSION == 1 )); then
+            if ! helm search repo "$CHART_REF" --versions | grep -q "$OLD_VERSION"; then
+                echo "⚠️ Chart $CHART_REF version $OLD_VERSION not found in repo $REPO_NAME. Skipping old side..."
+                HAS_OLD_VERSION=0
+            fi
         fi
 
         if ! helm search repo "$CHART_REF" --versions | grep -q "$NEW_VERSION"; then
@@ -174,18 +201,25 @@ helm_template_and_diff() {
     local workdir
     workdir="$(mktemp -d "helm_diff_${APP_NAME}_XXXX")"
 
-    echo "🎭 Rendering old Helm template: $APP_NAME $CHART_REF --version $OLD_VERSION ..."
-    get_kube_version "$OLD_KUBE_VERSION_OVERRIDE"
-    if ! helm template "$OLD_RELEASE_NAME" "$CHART_REF" \
-        --version "$OLD_VERSION" \
-        --namespace "$OLD_NAMESPACE" \
-        --kube-version "$KUBE_VERSION" \
-        "${HELM_ARGS_OLD[@]}" > "${workdir}/old.yaml"; then
-        echo "❌ Helm template failed for old version"
-        rm -rf "$workdir"
-        return 1
+    # OLD side
+    if (( HAS_OLD_VERSION == 1 )); then
+        echo "🎭 Rendering old Helm template: $APP_NAME $CHART_REF --version $OLD_VERSION ..."
+        get_kube_version "$OLD_KUBE_VERSION_OVERRIDE"
+        if ! helm template "$OLD_RELEASE_NAME" "$CHART_REF" \
+            --version "$OLD_VERSION" \
+            --namespace "$OLD_NAMESPACE" \
+            --kube-version "$KUBE_VERSION" \
+            "${HELM_ARGS_OLD[@]}" > "${workdir}/old.yaml"; then
+            echo "❌ Helm template failed for old version"
+            rm -rf "$workdir"
+            return 1
+        fi
+    else
+        echo "🆕 No old version for $APP_NAME/$CHART_NAME; treating old manifests as empty."
+        echo "" > "${workdir}/old.yaml"
     fi
 
+    # NEW side (must exist)
     echo "🎭 Rendering new Helm template: $APP_NAME $CHART_REF --version $NEW_VERSION ..."
     get_kube_version "$NEW_KUBE_VERSION_OVERRIDE"
     if ! helm template "$NEW_RELEASE_NAME" "$CHART_REF" \
@@ -407,7 +441,14 @@ echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read
         process_argo_source "$FILE" "$APP_NAME" "$NAMESPACE" ".spec.source" "source"
 
         # 2) Multi-source .spec.sources[]
-        SRC_INDEXES=$(yq e 'select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "$APP_NAME" and (.metadata.namespace == "$NAMESPACE" or .metadata.namespace == null)) | (.spec.sources // []) | to_entries | .[].key' "$FILE" -r 2>/dev/null || true)
+        SRC_INDEXES=$(
+          yq e "select(.apiVersion == \"argoproj.io/v1alpha1\" \
+                and .kind == \"Application\" \
+                and .metadata.name == \"$APP_NAME\" \
+                and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) \
+             | (.spec.sources // []) | to_entries | .[].key" \
+             "$FILE" -r 2>/dev/null || true
+        )
 
         if [[ -n "$SRC_INDEXES" ]]; then
             while read -r IDX; do
