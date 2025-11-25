@@ -213,11 +213,9 @@ jobs:
           MAX_BYTES=65000
           if [ -s diff.txt ]; then
             if [ "$(wc -c < diff.txt)" -gt "$MAX_BYTES" ]; then
-              # Truncate by bytes
-              head -c "$MAX_BYTES" diff.txt \
-              # Clean up any invalid UTF-8 sequences
+              # Truncate by bytes and clean up any invalid UTF-8 sequences
               # caused by cutting in the middle of a multibyte char.
-              | iconv -c -f utf-8 -t utf-8 > diff_snippet.txt
+              head -c "$MAX_BYTES" diff.txt | iconv -c -f utf-8 -t utf-8 > diff_snippet.txt
 
               printf "\n\n####### TRUNCATED -- see artifact for full diff #######\n" >> diff_snippet.txt
             else
