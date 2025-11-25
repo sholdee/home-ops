@@ -210,7 +210,7 @@ jobs:
       - name: Prepare Diff Comment
         id: prepare-diff
         run: |
-          MAX_CHARS=63000
+          MAX_CHARS=60000
           if [ ! -s diff.txt ]; then
             echo "No differences detected." > diff_snippet.txt
           else
