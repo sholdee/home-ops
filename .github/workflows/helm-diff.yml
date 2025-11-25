@@ -21,7 +21,7 @@ permissions:
 jobs:
   check-author:
     if: >
-      startsWith(github.event.pull_request.title, 'Update Helm release')
+      startsWith(github.event.pull_request.title, 'Update Helm release') || startsWith(github.event.pull_request.title, '[helm-diff]')
       || (
         startsWith(github.event.pull_request.title, 'Update')
         && (
