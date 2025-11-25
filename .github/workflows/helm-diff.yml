@@ -207,21 +207,32 @@ jobs:
             echo "No differences detected." > diff.txt
           fi
 
-      - name: Prepare Diff Snippet
+      - name: Prepare Diff Comment
         id: prepare-diff
         run: |
           MAX_CHARS=65300
-          if [ $(wc -c < diff.txt) -gt $MAX_CHARS ]; then
-            head -c $MAX_CHARS diff.txt > diff_snippet.txt
-            printf "\n\n####### TRUNCATED -- see artifact for full diff #######\n" >> diff_snippet.txt
+          if [ ! -s diff.txt ]; then
+            echo "No differences detected." > diff_snippet.txt
           else
-            cp diff.txt diff_snippet.txt
+            # Count characters (not bytes)
+            CHAR_COUNT=$(wc -m < diff.txt)
+
+            if [ "$CHAR_COUNT" -gt "$MAX_CHARS" ]; then
+              # cut -c is multibyte-aware in UTF-8 locales
+              LC_ALL=en_US.UTF-8 cut -c -"${MAX_CHARS}" diff.txt > diff_snippet.txt
+              printf "\n\n####### TRUNCATED -- see artifact for full diff #######\n" >> diff_snippet.txt
+            else
+              cp diff.txt diff_snippet.txt
+            fi
           fi
+
           {
-            echo "DIFF_SNIPPET<<EOF"
+            echo '```diff'
             cat diff_snippet.txt
-            echo "EOF"
-          } >> $GITHUB_ENV
+            echo '```'
+            echo
+            echo "- [Download Artifact](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
+          } > pr-comment.md
 
       - name: Generate Token
         uses: actions/create-github-app-token@v2
@@ -231,17 +242,14 @@ jobs:
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
 
       - name: Add Comment
+        if: steps.read-diff.outputs.HAS_DIFF == 'true'
         continue-on-error: true
         uses: mshick/add-pr-comment@v2
         with:
           repo-token: "${{ steps.app-token.outputs.token }}"
           message-id: "${{ github.event.pull_request.number }}/helm-diff"
           message-failure: Diff was not successful
-          message: |
-            ```diff
-            ${{ env.DIFF_SNIPPET }}
-            ```
-            - [Download Artifact](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          message-path: pr-comment.md
 
       - name: Upload Helm Diff as Artifact
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
