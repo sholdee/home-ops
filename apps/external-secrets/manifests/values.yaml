@@ -5,9 +5,9 @@ topologySpreadConstraints:
     labelSelector:
       matchLabels:
         app.kubernetes.io/name: external-secrets
-replicaCount: 2
-leaderElect: true
+replicaCount: 1
+leaderElect: false
 serviceMonitor:
-  enabled: true
+  enabled: false
 grafanaDashboard:
   enabled: true
