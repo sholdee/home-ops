@@ -6,6 +6,7 @@ namespace: envoy-gateway-system
 components:
   - ../../components/namespace
 resources:
+  - manifests/namespace.yaml
   - manifests/podmonitor.yaml
 helmCharts:
   - name: gateway-helm
