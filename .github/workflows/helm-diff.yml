@@ -75,7 +75,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: v3.18.3
+          version: v3.18.4
 
       - name: Install base CLI deps
         run: |
