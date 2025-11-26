@@ -204,12 +204,14 @@ jobs:
         run: |
           if [ -s diff.txt ]; then
             echo "HAS_DIFF=true" >> $GITHUB_OUTPUT
+            echo "✨ Differences detected."
           else
             echo "HAS_DIFF=false" >> $GITHUB_OUTPUT
-            echo "No differences detected." > diff.txt
+            echo "ℹ️ No differences detected."
           fi
 
       - name: Prepare Diff Comment
+        if: steps.read-diff.outputs.HAS_DIFF == 'true'
         id: prepare-diff
         run: |
           MAX_BYTES=65000
@@ -222,8 +224,6 @@ jobs:
             else
               cp diff.txt diff_snippet.txt
             fi
-          else
-            echo "No differences detected." > diff_snippet.txt
           fi
 
           {
@@ -235,6 +235,7 @@ jobs:
           } > pr-comment.md
 
       - name: Generate Token
+        if: steps.read-diff.outputs.HAS_DIFF == 'true'
         uses: actions/create-github-app-token@v2
         id: app-token
         with:
