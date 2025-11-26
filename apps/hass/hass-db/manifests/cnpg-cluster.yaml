@@ -7,7 +7,11 @@ metadata:
   namespace: hass
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:18.0-202509290807-standard-trixie
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql
+    major: 18
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
   bootstrap:

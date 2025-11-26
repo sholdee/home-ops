@@ -93,7 +93,6 @@
         '/reloader/',
         '/velero/',
         '/postgresql/',
-        '/ingress-nginx/',
         '/code-server/',
         '/csi-provisioner/',
         '/csi-snapshotter/',
@@ -142,20 +141,6 @@
       depNameTemplate: '{{depName}}',
       versioningTemplate: 'docker',
       datasourceTemplate: 'docker',
-    },
-    {
-      customType: 'regex',
-      description: [
-        'Process CloudnativePG Postgresql version',
-      ],
-      managerFilePatterns: [
-        '/apps/hass/hass-db/manifests/cnpg-cluster\\.ya?ml$/',
-      ],
-      matchStrings: [
-        'imageName: (?<depName>[\\w\\-\\./]+):(?<currentValue>\\d+\\.\\d+-\\d{12}-[A-Za-z]+-[A-Za-z]+)',
-      ],
-      datasourceTemplate: 'docker',
-      versioningTemplate: 'docker',
     },
     {
       customType: 'regex',
