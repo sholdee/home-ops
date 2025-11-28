@@ -50,7 +50,7 @@ spec:
           datapathMode: "netkit"
           distributedLRU:
             enabled: true
-            mapDynamicSizeRatio: "0.04"
+          mapDynamicSizeRatio: 0.04
         bpfClockProbe: true
         bandwidthManager:
           enabled: true
