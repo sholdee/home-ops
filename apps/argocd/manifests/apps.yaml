@@ -48,6 +48,13 @@ spec:
         bpf:
           masquerade: false
           datapathMode: "netkit"
+          distributedLRU:
+            enabled: true
+          mapDynamicSizeRatio: 0.04
+        bpfClockProbe: true
+        bandwidthManager:
+          enabled: true
+          bbr: true
         loadBalancer:
           algorithm: "maglev"
           mode: "dsr"
