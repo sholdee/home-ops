@@ -31,7 +31,7 @@
 
 </div>
 
-### Overview 📔
+## Overview 📔
 
 This repository contains the configurations for my home operations k3s cluster.
 
@@ -46,8 +46,6 @@ Container image update pull requests against base manifests in the repository al
 ### ArgoCD Project Structure 🏗️
 
 The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd` application, which is also an app-of-apps holding Helm applications.
-
-<br />
 
 ```mermaid
 erDiagram
@@ -89,46 +87,55 @@ erDiagram
     argocd ||--|| ApplicationSet : "self-manages"
 ```
 
-#### Primary Applications ⭐
-  - Home Assistant and related services
-    - Appdaemon
-      - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
-    - Z-Wave JS UI
-    - VerneMQ Cluster
-    - Codeserver
-    - Venstar MQTT bridge
-  - Unifi
-  - Wireguard
-  - Adguard
-    - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
-  - Gravity cluster
-  - Renovate
-  - Portainer
-    - GitOps for remote Docker hosts
-#### Core Components 🔥
-  - ArgoCD
-  - 1Password Connect
-  - External-Secrets
-  - External-DNS
-  - Envoy Gateway
-  - Cert-Manager
-  - Kube-VIP
-  - VolSync
-  - CloudNativePG
-  - MongoDB Controllers for Kubernetes
-  - Kube Prometheus Stack
-  - Kromgo
-  - System Upgrade Controller
-  - Kubernetes Dashboard
-  - Stakater Reloader
-  - Velero
-#### Network: Cilium 🕸️
-  - Gateway API
-  - Netkit
-  - eBPF host-routing
-  - Native routing
-  - BGP control plane
-  - Hubble observability
-#### Storage: Longhorn 💾
-#### Hardware 🖥️
-  - RPi 5 with 512GB NVMe SSD via PCIe hat
+### Primary Applications ⭐
+
+- Home Assistant and related services
+  - Appdaemon
+    - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
+  - Z-Wave JS UI
+  - VerneMQ Cluster
+  - Codeserver
+  - Venstar MQTT bridge
+- Unifi
+- Adguard
+  - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
+- Gravity DNS cluster
+  - External-DNS webhook
+  - etcd
+- Renovate
+- Portainer
+  - GitOps for remote Docker hosts
+
+### Core Components 🔥
+
+- ArgoCD
+- 1Password Connect
+- External-Secrets
+- External-DNS
+- Envoy Gateway
+- Cert-Manager
+- Kube-VIP
+- VolSync
+- CloudNativePG
+- MongoDB Controllers for Kubernetes
+- Kube Prometheus Stack
+- Kromgo
+- System Upgrade Controller
+- Kubernetes Dashboard
+- Stakater Reloader
+- Velero
+
+### Network: Cilium 🕸️
+
+- Gateway API
+- Netkit
+- eBPF host-routing
+- Native routing
+- BGP control plane
+- Hubble observability
+
+### Storage: Longhorn 💾
+
+### Hardware 🖥️
+
+- RPi 5 with 512GB NVMe SSD via PCIe hat
