@@ -21,7 +21,85 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: longhorn-manager-metrics
+  name: backing-image-data-source
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      longhorn.io/component: backing-image-data-source
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: longhorn-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: instance-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-data-source
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backing-image-manager
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      longhorn.io/component: backing-image-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: longhorn-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: instance-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-data-source
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: instance-manager
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      longhorn.io/component: instance-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app: longhorn-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: instance-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-manager
+        - podSelector:
+            matchLabels:
+              longhorn.io/component: backing-image-data-source
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-manager
   namespace: longhorn-system
 spec:
   podSelector:
@@ -31,9 +109,61 @@ spec:
     - Ingress
   ingress:
     - from:
+        - podSelector:
+            matchLabels:
+              app: longhorn-manager
+        - podSelector:
+            matchLabels:
+              app: longhorn-ui
+        - podSelector:
+            matchLabels:
+              app: longhorn-csi-plugin
+        - podSelector:
+            matchLabels:
+              longhorn.io/managed-by: longhorn-manager
+            matchExpressions:
+              - {key: recurring-job.longhorn.io, operator: Exists}
+        - podSelector:
+            matchExpressions:
+              - {key: longhorn.io/job-task, operator: Exists}
+        - podSelector:
+            matchLabels:
+              app: longhorn-driver-deployer
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: monitoring
-      ports:
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: prometheus
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-recovery-backend
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      longhorn.io/recovery-backend: longhorn-recovery-backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
         - protocol: TCP
-          port: 9500
+          port: 9503
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: longhorn-admission-webhook
+  namespace: longhorn-system
+spec:
+  podSelector:
+    matchLabels:
+      longhorn.io/admission-webhook: longhorn-admission-webhook
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9502
