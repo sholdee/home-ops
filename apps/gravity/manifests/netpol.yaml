@@ -3,6 +3,42 @@
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
+  name: gravity
+  namespace: gravity
+spec:
+  endpointSelector:
+    matchLabels:
+      app: gravity
+  ingress:
+    - fromEntities:
+        - all
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    - fromEntities:
+        - ingress
+      toPorts:
+        - ports:
+            - port: "8008"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: external-dns
+            app.kubernetes.io/name: external-dns
+      toPorts:
+        - ports:
+            - port: "8008"
+              protocol: TCP
+          rules:
+            http: [{}]
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
   name: etcd
   namespace: gravity
 spec:
@@ -20,6 +56,10 @@ spec:
     - fromEndpoints:
         - matchLabels:
             app: etcd
+      toPorts:
+        - ports:
+            - port: "2380"
+              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: monitoring
