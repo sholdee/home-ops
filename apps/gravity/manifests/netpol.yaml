@@ -20,10 +20,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             app: etcd
-      toPorts:
-        - ports:
-            - port: "2380"
-              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: monitoring
