@@ -18,152 +18,147 @@ spec:
         - ports:
             - port: "8000"
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: backing-image-data-source
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       longhorn.io/component: backing-image-data-source
-  policyTypes:
-    - Ingress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: longhorn-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: instance-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-data-source
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: instance-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-data-source
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: backing-image-manager
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       longhorn.io/component: backing-image-manager
-  policyTypes:
-    - Ingress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: longhorn-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: instance-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-data-source
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: instance-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-data-source
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: instance-manager
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       longhorn.io/component: instance-manager
-  policyTypes:
-    - Ingress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: longhorn-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: instance-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-manager
-        - podSelector:
-            matchLabels:
-              longhorn.io/component: backing-image-data-source
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: instance-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-manager
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/component: backing-image-data-source
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: longhorn-manager
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       app: longhorn-manager
-  policyTypes:
-    - Ingress
   ingress:
-    - from:
-        - podSelector:
-            matchLabels:
-              app: longhorn-manager
-        - podSelector:
-            matchLabels:
-              app: longhorn-ui
-        - podSelector:
-            matchLabels:
-              app: longhorn-csi-plugin
-        - podSelector:
-            matchLabels:
-              longhorn.io/managed-by: longhorn-manager
-            matchExpressions:
-              - {key: recurring-job.longhorn.io, operator: Exists}
-        - podSelector:
-            matchExpressions:
-              - {key: longhorn.io/job-task, operator: Exists}
-        - podSelector:
-            matchLabels:
-              app: longhorn-driver-deployer
-        - namespaceSelector:
-            matchLabels:
-              kubernetes.io/metadata.name: monitoring
-          podSelector:
-            matchLabels:
-              app.kubernetes.io/name: prometheus
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-manager
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-ui
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-csi-plugin
+    - fromEndpoints:
+        - matchLabels:
+            longhorn.io/managed-by: longhorn-manager
+          matchExpressions:
+            - key: recurring-job.longhorn.io
+              operator: Exists
+    - fromEndpoints:
+        - matchExpressions:
+            - key: longhorn.io/job-task
+              operator: Exists
+    - fromEndpoints:
+        - matchLabels:
+            app: longhorn-driver-deployer
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: prometheus
+            io.kubernetes.pod.namespace.labels.kubernetes.io/metadata.name: monitoring
+      toPorts:
+        - ports:
+            - port: "9500"
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: longhorn-recovery-backend
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       longhorn.io/recovery-backend: longhorn-recovery-backend
-  policyTypes:
-    - Ingress
   ingress:
-    - ports:
-        - protocol: TCP
-          port: 9503
+    - toPorts:
+        - ports:
+            - port: "9503"
+              protocol: TCP
 ---
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
 metadata:
   name: longhorn-admission-webhook
   namespace: longhorn-system
 spec:
-  podSelector:
+  endpointSelector:
     matchLabels:
       longhorn.io/admission-webhook: longhorn-admission-webhook
-  policyTypes:
-    - Ingress
   ingress:
-    - ports:
-        - protocol: TCP
-          port: 9502
+    - toPorts:
+        - ports:
+            - port: "9502"
+              protocol: TCP
