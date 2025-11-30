@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: etcd
+  namespace: gravity
+spec:
+  endpointSelector:
+    matchLabels:
+      app: etcd
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: gravity
+      toPorts:
+        - ports:
+            - port: "2379"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: etcd
+      toPorts:
+        - ports:
+            - port: "2380"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "2381"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: /metrics

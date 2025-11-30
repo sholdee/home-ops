@@ -14,3 +14,4 @@ resources:
   - manifests/pdb.yaml
   - manifests/podmonitor.yaml
   - manifests/externalsecret.yaml
+  - manifests/netpol.yaml
