@@ -125,8 +125,8 @@ spec:
             app: longhorn-driver-deployer
     - fromEndpoints:
         - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: prometheus
-            io.kubernetes.pod.namespace.labels.kubernetes.io/metadata.name: monitoring
       toPorts:
         - ports:
             - port: "9500"
