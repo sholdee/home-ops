@@ -9,6 +9,7 @@ resources:
   - manifests/httproute.yaml
   - manifests/certificate.yaml
   - manifests/netpol.yaml
+  - manifests/tcproute.yaml
 components:
   - ../../../components/volsync
   - ../../../components/volsync/b2

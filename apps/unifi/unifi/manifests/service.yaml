@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: unifi-lb
+  name: unifi-inform
   namespace: unifi
 spec:
   selector:
@@ -11,9 +11,7 @@ spec:
   - protocol: TCP
     port: 8080
     name: deviceappcomms
-  type: LoadBalancer
-  loadBalancerIP: 192.168.77.21
-  externalTrafficPolicy: Cluster
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service

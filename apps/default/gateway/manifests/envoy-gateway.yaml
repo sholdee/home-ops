@@ -30,6 +30,17 @@ spec:
       mode: Terminate
       certificateRefs:
       - name: mgmt-wildcard
+  - name: unifi-inform
+    protocol: TCP
+    port: 8080
+    allowedRoutes:
+      namespaces:
+        from: Selector
+        selector:
+          matchLabels:
+            app: unifi
+      kinds:
+      - kind: TCPRoute
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1

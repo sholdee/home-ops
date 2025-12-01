@@ -10,12 +10,6 @@ spec:
     matchLabels:
       app: unifi
   ingress:
-    - fromEntities:
-        - all
-      toPorts:
-        - ports:
-            - port: "8080"
-              protocol: TCP
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: envoy-gateway-system
@@ -23,6 +17,8 @@ spec:
       toPorts:
         - ports:
             - port: "8443"
+              protocol: TCP
+            - port: "8080"
               protocol: TCP
     - fromEndpoints:
         - matchLabels:
