@@ -1,0 +1,26 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: unifi-db
+  namespace: unifi
+spec:
+  endpointSelector:
+    matchLabels:
+      app: unifi-db-svc
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: unifi-db-svc
+      toPorts:
+        - ports:
+            - port: "27017"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app: unifi
+      toPorts:
+        - ports:
+            - port: "27017"
+              protocol: TCP

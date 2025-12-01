@@ -6,6 +6,7 @@ resources:
   - manifests/deployment.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
+  - manifests/netpol.yaml
 configMapGenerator:
   - name: unifi-landing
     namespace: unifi

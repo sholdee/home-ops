@@ -5,3 +5,4 @@ kind: Kustomization
 resources:
   - manifests/replicaset.yaml
   - manifests/externalsecret.yaml
+  - manifests/netpol.yaml
