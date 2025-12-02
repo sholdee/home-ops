@@ -3,8 +3,10 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: hass-db2
+  name: &name hass-db2
   namespace: hass
+  annotations:
+    cnpg.io/skipEmptyWalArchiveCheck: enabled
 spec:
   instances: 3
   imageCatalogRef:
@@ -14,14 +16,6 @@ spec:
     major: 18
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
-  bootstrap:
-    initdb:
-      database: hass
-      owner: hass
-      secret:
-        name: hass-db-app-user
-      dataChecksums: true
-      encoding: 'UTF8'
   superuserSecret:
     name: hass-db-superuser
   storage:
@@ -29,11 +23,54 @@ spec:
     size: 7Gi
   monitoring:
     enablePodMonitor: true
+  bootstrap:
+    recovery:
+      source: &src barman-cloud
+      database: hass
+      owner: &user hass
+      secret:
+        name: &secret hass-db-app-user
+#   initdb:
+#     database: hass
+#     owner: hass
+#     secret:
+#       name: hass-db-app-user
+#     dataChecksums: true
+#     encoding: 'UTF8'
   plugins:
-    - name: barman-cloud.cloudnative-pg.io
+    - name: &plugin barman-cloud.cloudnative-pg.io
       isWALArchiver: true
       parameters:
-        barmanObjectName: cnpg-hass-b2
+        barmanObjectName: &store cnpg-hass-b2
+  externalClusters:
+    - name: *src
+      plugin:
+        name: *plugin
+        parameters:
+          barmanObjectName: *store
+          serverName: *name
+  managed:
+    roles:
+      - name: *user
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: *secret
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: hass
+  namespace: hass
+spec:
+  cluster:
+    name: hass-db2
+  name: hass
+  owner: hass
+  ensure: present
+  encoding: 'UTF8'
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/scheduledbackup_v1.json
 apiVersion: postgresql.cnpg.io/v1
