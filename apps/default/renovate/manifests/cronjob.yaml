@@ -41,7 +41,7 @@ spec:
                     - ALL
           containers:
             - name: renovate
-              image: renovate/renovate:42.27.1
+              image: renovate/renovate:42.29.4
               command:
                 - /bin/sh
                 - -c
