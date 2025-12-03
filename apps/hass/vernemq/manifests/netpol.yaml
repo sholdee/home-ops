@@ -36,3 +36,15 @@ spec:
         - ports:
             - port: "1883"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "8888"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: /metrics
