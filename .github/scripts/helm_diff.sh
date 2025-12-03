@@ -27,6 +27,19 @@ EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
 #####################
 ## Setup functions ##
 #####################
+#######################################
+# Description: Determine Kubernetes version for Helm templating
+# Globals:
+#   KUBE_VERSION_DEFAULT - Default fallback version
+#   PLAN_FILE - Path to system-upgrade plan file
+#   KUBE_VERSION - Set by this function
+# Arguments:
+#   $1 - Optional kubeVersion override from Argo spec
+# Outputs:
+#   Version string message to stdout
+# Returns:
+#   0 if successful
+#######################################
 get_kube_version() {
     # Optional override (e.g. from spec.source.helm.kubeVersion)
     local override="${1:-}"
@@ -66,6 +79,18 @@ get_kube_version() {
     echo "📌 Using kubeVersion=${KUBE_VERSION} for Helm templating"
 }
 
+#######################################
+# Description: Process and diff two manifest files
+# Globals:
+#   EXCLUDE_FIELDS - Fields to exclude from diff
+# Arguments:
+#   $1 - Path to old manifest file
+#   $2 - Path to new manifest file
+# Outputs:
+#   Appends diff to diff.txt
+# Returns:
+#   0 if successful
+#######################################
 process_and_diff() {
     local old_file="$1"
     local new_file="$2"
@@ -84,6 +109,28 @@ process_and_diff() {
     rm -rf "$tmpdir"
 }
 
+#######################################
+# Description: Render Helm templates for old and new versions and diff them
+# Globals:
+#   HELM_ARGS_OLD - Helm arguments array for old version (caller-provided)
+#   HELM_ARGS_NEW - Helm arguments array for new version (caller-provided)
+# Arguments:
+#   $1  - Application name
+#   $2  - Repository URL (OCI or HTTP)
+#   $3  - Chart name
+#   $4  - Old chart version
+#   $5  - New chart version
+#   $6  - Old namespace
+#   $7  - New namespace
+#   $8  - Old release name
+#   $9  - New release name
+#   $10 - Old kubeVersion override (optional)
+#   $11 - New kubeVersion override (optional)
+# Outputs:
+#   Status messages and diff via process_and_diff
+# Returns:
+#   0 if successful, 1 on error
+#######################################
 helm_template_and_diff() {
     APP_NAME="$1"
     REPO_URL="$2"
@@ -236,6 +283,23 @@ helm_template_and_diff() {
     rm -rf "$workdir"
 }
 
+#######################################
+# Description: Process a single Argo CD Application source for Helm changes
+# Globals:
+#   BASE_REF - Base branch reference
+#   HELM_ARGS_OLD - Set by this function for old revision
+#   HELM_ARGS_NEW - Set by this function for new revision
+# Arguments:
+#   $1 - File path to Argo Application manifest
+#   $2 - Application name
+#   $3 - Application namespace
+#   $4 - Source expression (e.g., .spec.source or .spec.sources[0])
+#   $5 - Source label for logging (e.g., "source" or "sources[0]")
+# Outputs:
+#   Status messages and calls helm_template_and_diff
+# Returns:
+#   0 if successful or no changes detected
+#######################################
 process_argo_source() {
     local FILE="$1"
     local APP_NAME="$2"
@@ -602,7 +666,7 @@ find_kustomization_for_values() {
             
             if [[ -z "$relative_path" ]]; then
                 # Fallback: manual relative path calculation
-                relative_path="${values_file#$current_dir/}"
+                relative_path="${values_file#"$current_dir"/}"
             fi
             
             # Check if any helmChart entry references this values file
