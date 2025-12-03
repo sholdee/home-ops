@@ -32,3 +32,5 @@ spec:
     type: ConsistentHash
     consistentHash:
       type: Cookie
+      cookie:
+        name: vmq-route
