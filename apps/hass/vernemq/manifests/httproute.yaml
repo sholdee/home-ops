@@ -16,3 +16,19 @@ spec:
     - name: vernemq-headless
       namespace: hass
       port: 8888
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: vernemq-lb-policy
+  namespace: hass
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: vernemq
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
