@@ -11,7 +11,7 @@ on:
     paths:
       - '**/kustomization.yaml'
       - '**/values.yaml'
-      - '**/values-*.yaml'
+      - '**/values*.yaml'
       - 'apps/argocd/manifests/apps.yaml'
       - 'apps/argocd/manifests/cilium-preflight.yaml'
 

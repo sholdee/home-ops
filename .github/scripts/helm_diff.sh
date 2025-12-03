@@ -457,6 +457,169 @@ process_argo_source() {
         "$NEW_HELM_KUBEVERSION"
 }
 
+#######################################
+# Description: Process a kustomization file with Helm charts
+# Globals:
+#   BASE_REF - Base branch reference for comparison
+#   BASE_WORKTREE_DIR - Directory of base worktree
+#   RESPONSE - GitHub API response with changed files
+# Arguments:
+#   $1 - Path to kustomization.yaml file
+# Outputs:
+#   Diff output via process_and_diff
+# Returns:
+#   0 if successful
+#######################################
+process_kustomization() {
+    local kustomization_file="$1"
+    
+    echo "📄 Processing kustomization file: $kustomization_file"
+
+    # Check if this is a Helm kustomization (has helmCharts section)
+    if yq e '.helmCharts' "$kustomization_file" | grep -q "null"; then
+        echo "ℹ️ No Helm charts found in kustomization"
+        return 0
+    fi
+    
+    echo "🔍 Found Helm charts in kustomization"
+
+    # Get directory containing the kustomization file
+    local kustomize_dir
+    kustomize_dir=$(dirname "$kustomization_file")
+
+    local CHANGED=0
+
+    ##########################################
+    # 1) Detect changes to helmCharts entries
+    ##########################################
+
+    # Compare set of chart names first (added/removed charts)
+    local OLD_NAMES NEW_NAMES
+    OLD_NAMES=$(
+        git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
+        | yq e '.helmCharts[]?.name' -r 2>/dev/null \
+        | sort | tr '\n' ','
+    )
+    NEW_NAMES=$(
+        yq e '.helmCharts[]?.name' -r "$kustomization_file" 2>/dev/null \
+        | sort | tr '\n' ','
+    )
+
+    if [[ "$OLD_NAMES" != "$NEW_NAMES" ]]; then
+        echo "⬆️ helmCharts set changed (added/removed charts or renamed) in $kustomization_file"
+        CHANGED=1
+    fi
+
+    # If names are the same, compare full chart entries per name
+    if [[ "$CHANGED" -eq 0 ]]; then
+        while read -r CHART_NAME; do
+            [[ -z "$CHART_NAME" ]] && continue
+
+            local OLD_ENTRY NEW_ENTRY
+            OLD_ENTRY=$(
+                git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
+                | yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" - 2>/dev/null || echo ""
+            )
+            NEW_ENTRY=$(
+                yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" "$kustomization_file" 2>/dev/null || echo ""
+            )
+
+            if [[ -z "$OLD_ENTRY" ]]; then
+                echo "🆕 Chart $CHART_NAME appears new (no old entry found)."
+                CHANGED=1
+                break
+            fi
+
+            if [[ "$OLD_ENTRY" != "$NEW_ENTRY" ]]; then
+                echo "⬆️ helmCharts entry for $CHART_NAME changed."
+                CHANGED=1
+                break
+            fi
+        done < <(yq e '.helmCharts[]?.name' -r "$kustomization_file")
+    fi
+
+    #########################################################
+    # 2) Detect changes to underlying valuesFile(s) on disk #
+    #########################################################
+    # valuesFile is relative to the kustomization directory.
+    # If any such file is in the PR's changed files, we should
+    # run the kustomize diff even if helmCharts YAML is identical.
+    if [[ "$CHANGED" -eq 0 ]]; then
+        while read -r VFILE; do
+            [[ -z "$VFILE" || "$VFILE" == "null" ]] && continue
+            # Resolve to the path as it appears in the PR file list
+            local local_path="${kustomize_dir%/}/$VFILE"
+
+            if echo "$RESPONSE" | jq -e --arg f "$local_path" '.[] | select(.filename == $f)' >/dev/null 2>&1; then
+                echo "📝 values file $local_path changed; forcing kustomize Helm diff."
+                CHANGED=1
+                break
+            fi
+        done < <(yq e '.helmCharts[]? | .valuesFile // ""' -r "$kustomization_file")
+    fi
+
+    if [[ "$CHANGED" -eq 0 ]]; then
+        echo "ℹ️ No helmCharts or valuesFile changes detected in $kustomization_file. Skipping kustomize diff."
+        return 0
+    fi
+
+    local tmpdir
+    tmpdir="$(mktemp -d "kustomize_${kustomize_dir##*/}_XXXX")"
+
+    echo "🎭 Rendering Helm kustomizations"
+    (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
+    (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
+
+    process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml"
+    rm -rf "$tmpdir"
+}
+
+#######################################
+# Description: Find kustomization.yaml that references a values file
+# Globals:
+#   None
+# Arguments:
+#   $1 - Path to values file
+# Outputs:
+#   Path to kustomization.yaml if found, empty otherwise
+# Returns:
+#   0 if found, 1 otherwise
+#######################################
+find_kustomization_for_values() {
+    local values_file="$1"
+    local current_dir
+    current_dir=$(dirname "$values_file")
+    
+    # Walk up directory tree looking for kustomization.yaml
+    while [[ "$current_dir" != "." && "$current_dir" != "/" ]]; do
+        local kustomization_path="$current_dir/kustomization.yaml"
+        
+        if [[ -f "$kustomization_path" ]]; then
+            # Check if this kustomization references our values file
+            local relative_path
+            relative_path=$(realpath --relative-to="$current_dir" "$values_file" 2>/dev/null || \
+                           python3 -c "import os.path; print(os.path.relpath('$values_file', '$current_dir'))" 2>/dev/null)
+            
+            if [[ -z "$relative_path" ]]; then
+                # Fallback: manual relative path calculation
+                relative_path="${values_file#$current_dir/}"
+            fi
+            
+            # Check if any helmChart entry references this values file
+            if yq e ".helmCharts[]? | select(.valuesFile == \"$relative_path\")" \
+                "$kustomization_path" 2>/dev/null | grep -q .; then
+                echo "$kustomization_path"
+                return 0
+            fi
+        fi
+        
+        # Move up one directory
+        current_dir=$(dirname "$current_dir")
+    done
+    
+    return 1
+}
+
 ##########################
 ## Create base worktree ##
 ##########################
@@ -516,100 +679,37 @@ done
 ###################################
 ## Process Kustomize Helm Charts ##
 ###################################
+
+# Track processed kustomization files to avoid duplicates
+declare -A PROCESSED_KUSTOMIZATIONS
+
+# Process kustomization.yaml files directly changed in PR
 echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename' | while read -r kustomization_file; do
     kustomization_file=$(echo "$kustomization_file" | tr -d '"')
-    echo "📄 Processing kustomization file: $kustomization_file"
+    PROCESSED_KUSTOMIZATIONS["$kustomization_file"]=1
+    process_kustomization "$kustomization_file"
+done
 
-    # Check if this is a Helm kustomization (has helmCharts section)
-    if ! yq e '.helmCharts' "$kustomization_file" | grep -q "null"; then
-        echo "🔍 Found Helm charts in kustomization"
-
-        # Get directory containing the kustomization file
-        kustomize_dir=$(dirname "$kustomization_file")
-
-        CHANGED=0
-
-        ##########################################
-        # 1) Detect changes to helmCharts entries
-        ##########################################
-
-        # Compare set of chart names first (added/removed charts)
-        OLD_NAMES=$(
-            git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
-            | yq e '.helmCharts[]?.name' -r 2>/dev/null \
-            | sort | tr '\n' ','
-        )
-        NEW_NAMES=$(
-            yq e '.helmCharts[]?.name' -r "$kustomization_file" 2>/dev/null \
-            | sort | tr '\n' ','
-        )
-
-        if [[ "$OLD_NAMES" != "$NEW_NAMES" ]]; then
-            echo "⬆️ helmCharts set changed (added/removed charts or renamed) in $kustomization_file"
-            CHANGED=1
-        fi
-
-        # If names are the same, compare full chart entries per name
-        if [[ "$CHANGED" -eq 0 ]]; then
-            while read -r CHART_NAME; do
-                [[ -z "$CHART_NAME" ]] && continue
-
-                OLD_ENTRY=$(
-                    git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
-                    | yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" - 2>/dev/null || echo ""
-                )
-                NEW_ENTRY=$(
-                    yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" "$kustomization_file" 2>/dev/null || echo ""
-                )
-
-                if [[ -z "$OLD_ENTRY" ]]; then
-                    echo "🆕 Chart $CHART_NAME appears new (no old entry found)."
-                    CHANGED=1
-                    break
-                fi
-
-                if [[ "$OLD_ENTRY" != "$NEW_ENTRY" ]]; then
-                    echo "⬆️ helmCharts entry for $CHART_NAME changed."
-                    CHANGED=1
-                    break
-                fi
-            done < <(yq e '.helmCharts[]?.name' -r "$kustomization_file")
-        fi
-
-        #########################################################
-        # 2) Detect changes to underlying valuesFile(s) on disk #
-        #########################################################
-        # valuesFile is relative to the kustomization directory.
-        # If any such file is in the PR's changed files, we should
-        # run the kustomize diff even if helmCharts YAML is identical.
-        if [[ "$CHANGED" -eq 0 ]]; then
-            while read -r VFILE; do
-                [[ -z "$VFILE" || "$VFILE" == "null" ]] && continue
-                # Resolve to the path as it appears in the PR file list
-                local_path="${kustomize_dir%/}/$VFILE"
-
-                if echo "$RESPONSE" | jq -e --arg f "$local_path" '.[] | select(.filename == $f)' >/dev/null 2>&1; then
-                    echo "📝 values file $local_path changed; forcing kustomize Helm diff."
-                    CHANGED=1
-                    break
-                fi
-            done < <(yq e '.helmCharts[]? | .valuesFile // ""' -r "$kustomization_file")
-        fi
-
-        if [[ "$CHANGED" -eq 0 ]]; then
-            echo "ℹ️ No helmCharts or valuesFile changes detected in $kustomization_file. Skipping kustomize diff."
+# Process standalone values*.yaml files by finding their kustomization
+echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | .filename' | while read -r values_file; do
+    values_file=$(echo "$values_file" | tr -d '"')
+    
+    echo "🔍 Checking if values file $values_file is referenced by a kustomization..."
+    
+    # Find the kustomization that references this values file
+    kustomization_path=$(find_kustomization_for_values "$values_file")
+    
+    if [[ -n "$kustomization_path" ]]; then
+        # Check if we've already processed this kustomization
+        if [[ -n "${PROCESSED_KUSTOMIZATIONS[$kustomization_path]:-}" ]]; then
+            echo "ℹ️ Kustomization $kustomization_path already processed (referenced by $values_file)"
             continue
         fi
-
-        tmpdir="$(mktemp -d "kustomize_${kustomize_dir##*/}_XXXX")"
-
-        echo "🎭 Rendering Helm kustomizations"
-        (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
-        (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
-
-        process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml"
-        rm -rf "$tmpdir"
+        
+        echo "📝 Found kustomization at $kustomization_path referencing $values_file"
+        PROCESSED_KUSTOMIZATIONS["$kustomization_path"]=1
+        process_kustomization "$kustomization_path"
     else
-        echo "ℹ️ No Helm charts found in kustomization"
+        echo "ℹ️ No kustomization found referencing $values_file"
     fi
 done
