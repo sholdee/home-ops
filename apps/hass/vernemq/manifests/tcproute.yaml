@@ -12,6 +12,6 @@ spec:
     sectionName: mqtt
   rules:
   - backendRefs:
-    - name: vernemq-headless
+    - name: vernemq
       namespace: hass
       port: 1883
