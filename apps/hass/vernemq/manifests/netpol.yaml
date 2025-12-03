@@ -12,6 +12,16 @@ spec:
   ingress:
     - fromEndpoints:
         - matchLabels:
+            app.kubernetes.io/name: *app
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: *ns
+      toPorts:
+        - ports:
+            - port: "1883"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
             io.kubernetes.pod.namespace: envoy-gateway-system
             gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
       toPorts:
@@ -19,22 +29,6 @@ spec:
             - port: "1883"
               protocol: TCP
             - port: "8888"
-              protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            app.kubernetes.io/name: *app
-      toPorts:
-        - ports:
-            - port: "9100"
-              protocol: TCP
-            - port: "44053"
-              protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: *ns
-      toPorts:
-        - ports:
-            - port: "1883"
               protocol: TCP
     - fromEndpoints:
         - matchLabels:
