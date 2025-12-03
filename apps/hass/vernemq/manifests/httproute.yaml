@@ -7,7 +7,7 @@ metadata:
   namespace: hass
 spec:
   parentRefs:
-  - name: mgmt-gateway
+  - name: envoy-gateway
     namespace: default
   hostnames:
   - vmq.mgmt.sholdee.net

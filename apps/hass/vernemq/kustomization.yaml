@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - manifests/externalsecret.yaml
   - manifests/httproute.yaml
+  - manifests/tcproute.yaml
 helmCharts:
   - name: vernemq
     repo: https://vernemq.github.io/docker-vernemq
