@@ -31,6 +31,4 @@ spec:
   loadBalancer:
     type: ConsistentHash
     consistentHash:
-      type: Cookie
-      cookie:
-        name: vmq-route
+      type: SourceIP
