@@ -1,9 +1,10 @@
 replicaCount: 3
 podAntiAffinity: "none"
 serviceMonitor:
-  create: true
+  create: false
 service:
-  type: ClusterIP
+  type: LoadBalancer
+  loadBalancerIP: 1.2.3.4
 envFrom:
   - secretRef:
       name: vernemq-env
