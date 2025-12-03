@@ -21,13 +21,30 @@ spec:
   provider:
     type: Kubernetes
     kubernetes:
+      envoyHpa:
+        minReplicas: 2
+        maxReplicas: 5
+        metrics:
+          - resource:
+              name: cpu
+              target:
+                averageUtilization: 60
+                type: Utilization
+            type: Resource
+          - resource:
+              name: memory
+              target:
+                averageUtilization: 80
+                type: Utilization
+            type: Resource
+      envoyPDB:
+        minAvailable: 1
       envoyService:
         externalTrafficPolicy: Cluster # Cilium DSR preserves source IP
         type: LoadBalancer
         labels:
           bgp.cilium.io/no-lb-adv: "true"
       envoyDeployment:
-        replicas: 2
         pod:
           topologySpreadConstraints:
           - maxSkew: 1
@@ -41,8 +58,8 @@ spec:
         container:
           resources:
             requests:
-              cpu: "25m"
-              memory: "200Mi"
+              cpu: 100m
+              memory: 250Mi
             limits:
-              cpu: "250m"
-              memory: "200Mi"
+              cpu: "1"
+              memory: 250Mi
