@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: &app vernemq
+  namespace: &ns hass
+spec:
+  endpointSelector:
+    matchLabels:
+      app.kubernetes.io/name: *app
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+            gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
+      toPorts:
+        - ports:
+            - port: "1883"
+              protocol: TCP
+            - port: "8888"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            app.kubernetes.io/name: *app
+      toPorts:
+        - ports:
+            - port: "9100"
+              protocol: TCP
+            - port: "44053"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: *ns
+      toPorts:
+        - ports:
+            - port: "1883"
+              protocol: TCP

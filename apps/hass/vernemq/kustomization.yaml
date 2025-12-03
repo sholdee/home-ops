@@ -6,6 +6,7 @@ resources:
   - manifests/externalsecret.yaml
   - manifests/httproute.yaml
   - manifests/tcproute.yaml
+  - manifests/netpol.yaml
 helmCharts:
   - name: vernemq
     repo: https://vernemq.github.io/docker-vernemq
