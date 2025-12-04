@@ -7,7 +7,7 @@ resources:
   - manifests/deployment.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
-  - manifests/certificate.yaml
+  - manifests/externalsecret.yaml
   - manifests/netpol.yaml
   - manifests/tcproute.yaml
 components:
