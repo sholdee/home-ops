@@ -2,11 +2,9 @@ global:
   domain: argocd.sholdee.net
 server:
   certificate:
-    enabled: true
-    issuer:
-      group: "cert-manager.io"
-      kind: "ClusterIssuer"
-      name: "cloudflare"
+    enabled: false
+  certificateSecret:
+    enabled: false
 controller:
   affinity:
     nodeAffinity:
