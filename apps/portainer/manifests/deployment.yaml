@@ -28,16 +28,18 @@ spec:
         image: portainer/portainer-ee:2.33.5
         args:
           - --no-csp
+          - --tlscert /certs/tls.crt
+          - --tlskey /certs/tls.key
         ports:
         - containerPort: 9443
           name: https
           protocol: TCP
-        - containerPort: 9000
-          name: http
-          protocol: TCP
         volumeMounts:
         - name: portainer-data
           mountPath: /data
+        - name: external-wildcard
+          mountPath: /certs
+          readOnly: true
         resources:
           requests:
             memory: 100Mi
@@ -60,3 +62,7 @@ spec:
       - name: portainer-data
         persistentVolumeClaim:
           claimName: portainer-pvc
+      - name: external-wildcard
+        secret:
+          secretName: external-wildcard
+          defaultMode: 0400

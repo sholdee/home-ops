@@ -9,6 +9,7 @@ resources:
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
+  - manifests/externalsecret.yaml
 components:
   - ../../components/volsync
   - ../../components/volsync/b2

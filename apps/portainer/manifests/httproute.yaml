@@ -15,7 +15,7 @@ spec:
   - backendRefs:
     - name: portainer
       namespace: portainer
-      port: 9000
+      port: 9443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -37,7 +37,21 @@ spec:
     backendRefs:
       - name: portainer
         namespace: portainer
-        port: 9000
+        port: 9443
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: BackendTLSPolicy
+metadata:
+  name: portainer
+spec:
+  targetRefs:
+    - kind: Service
+      name: portainer
+      group: ""
+  validation:
+    wellKnownCACertificates: System
+    hostname: portainer.sholdee.net
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
