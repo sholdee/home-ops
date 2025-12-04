@@ -748,14 +748,14 @@ done
 declare -A PROCESSED_KUSTOMIZATIONS
 
 # Process kustomization.yaml files directly changed in PR
-echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename' | while read -r kustomization_file; do
+while read -r kustomization_file; do
     kustomization_file=$(echo "$kustomization_file" | tr -d '"')
     PROCESSED_KUSTOMIZATIONS["$kustomization_file"]=1
     process_kustomization "$kustomization_file"
-done
+done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename')
 
 # Process standalone values*.yaml files by finding their kustomization
-echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | .filename' | while read -r values_file; do
+while read -r values_file; do
     values_file=$(echo "$values_file" | tr -d '"')
     
     echo "🔍 Checking if values file $values_file is referenced by a kustomization..."
@@ -776,4 +776,4 @@ echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | .
     else
         echo "ℹ️ No kustomization found referencing $values_file"
     fi
-done
+done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | .filename')
