@@ -28,8 +28,8 @@ spec:
         image: portainer/portainer-ee:2.33.5
         args:
           - --no-csp
-          - --tlscert /certs/tls.crt
-          - --tlskey /certs/tls.key
+          - --tlscert=/certs/tls.crt
+          - --tlskey=/certs/tls.key
         ports:
         - containerPort: 9443
           name: https
