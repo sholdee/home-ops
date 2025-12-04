@@ -16,4 +16,4 @@ spec:
             gateway.envoyproxy.io/owning-gateway-name: external-gateway
       toPorts:
         - ports:
-            - port: "9000"
+            - port: "9443"
