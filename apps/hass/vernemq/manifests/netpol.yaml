@@ -26,7 +26,7 @@ spec:
             gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
       toPorts:
         - ports:
-            - port: "1884"
+            - port: "8883"
               protocol: TCP
             - port: "8888"
               protocol: TCP
