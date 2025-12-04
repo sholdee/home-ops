@@ -12,6 +12,20 @@ spec:
   hostnames:
   - vmq.mgmt.sholdee.net
   rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /
+    filters:
+    - type: URLRewrite
+      urlRewrite:
+        path:
+          type: ReplaceFullPath
+          replaceFullPath: /status
+    backendRefs:
+    - name: vernemq-headless
+      namespace: hass
+      port: 8888
   - backendRefs:
     - name: vernemq-headless
       namespace: hass
