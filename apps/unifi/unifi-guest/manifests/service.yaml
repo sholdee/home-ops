@@ -12,7 +12,6 @@ spec:
     protocol: TCP
     name: guestportaltls
   type: ClusterIP
-  clusterIP: None
 ---
 apiVersion: v1
 kind: Service
@@ -27,4 +26,3 @@ spec:
     port: 80
     name: http
   type: ClusterIP
-  clusterIP: None

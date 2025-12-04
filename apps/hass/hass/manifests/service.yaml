@@ -14,4 +14,3 @@ spec:
     targetPort: 8123
     name: http
   type: ClusterIP
-  clusterIP: None

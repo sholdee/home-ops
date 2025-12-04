@@ -14,4 +14,3 @@ spec:
     targetPort: 9443
     name: https
   type: ClusterIP
-  clusterIP: None

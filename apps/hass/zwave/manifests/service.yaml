@@ -18,4 +18,3 @@ spec:
     targetPort: 3000
     name: websocket
   type: ClusterIP
-  clusterIP: None
