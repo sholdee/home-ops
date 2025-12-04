@@ -8,7 +8,7 @@ metadata:
 spec:
   parentRefs:
   - name: external-gateway
-    namespace: default
+    namespace: gateway
   hostnames:
   - argocd.sholdee.net
   rules:
@@ -26,7 +26,7 @@ metadata:
 spec:
   parentRefs:
   - name: external-gateway
-    namespace: default
+    namespace: gateway
   hostnames:
   - argocd.sholdee.net
   rules:
