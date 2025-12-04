@@ -5,8 +5,10 @@ serviceMonitor:
 service:
   type: ClusterIP
 envFrom:
+  - configMapRef:
+      name: vernemq-config
   - secretRef:
-      name: vernemq-env
+      name: vernemq-secret
 statefulset:
   annotations:
     reloader.stakater.com/auto: "true"
