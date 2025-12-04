@@ -46,6 +46,6 @@ patches:
         path: /spec/ports/-
         value:
           name: mqtt-proxy
-          port: 1884
+          port: 8883
           protocol: TCP
-          targetPort: 1884
+          targetPort: 8883
