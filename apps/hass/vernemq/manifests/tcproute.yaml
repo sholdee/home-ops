@@ -27,6 +27,8 @@ spec:
     - group: gateway.networking.k8s.io
       kind: TCPRoute
       name: mqtt
+  proxyProtocol:
+    version: V2
   loadBalancer:
     type: ConsistentHash
     consistentHash:
