@@ -7,4 +7,3 @@ components:
   - ../../components/namespace
 resources:
   - gateway
-  - renovate
