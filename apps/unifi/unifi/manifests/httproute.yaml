@@ -8,7 +8,7 @@ metadata:
 spec:
   parentRefs:
   - name: envoy-gateway
-    namespace: default
+    namespace: gateway
   hostnames:
   - unifi.mgmt.sholdee.net
   rules:

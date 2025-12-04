@@ -8,7 +8,7 @@ metadata:
 spec:
   parentRefs:
   - name: envoy-gateway
-    namespace: default
+    namespace: gateway
     sectionName: unifi-inform
   rules:
   - backendRefs:
