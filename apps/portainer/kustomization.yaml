@@ -2,14 +2,17 @@
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1 
 kind: Kustomization
+namespace: portainer
 resources:
+  - manifests/namespace.yaml
   - manifests/deployment.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
 components:
-  - ../../../components/volsync
-  - ../../../components/volsync/b2
+  - ../../components/volsync
+  - ../../components/volsync/b2
+  - ../../components/namespace
 patches:
   - target:
       kind: ReplicationSource

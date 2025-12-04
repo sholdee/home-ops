@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: portainer
-  namespace: hass
+  namespace: portainer
 spec:
   replicas: 1
   strategy:
@@ -41,9 +41,10 @@ spec:
         resources:
           requests:
             memory: 100Mi
-            cpu: "5m"
+            cpu: 5m
           limits:
             memory: 200Mi
+            cpu: 500m
         livenessProbe: &probe
           httpGet:
             path: /api/settings/public

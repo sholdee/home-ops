@@ -11,6 +11,5 @@ resources:
   - hass
   - hass-db
   - mqtt-venstar-bridge
-  - portainer
   - vernemq
   - zwave
