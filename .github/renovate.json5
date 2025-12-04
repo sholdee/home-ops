@@ -173,7 +173,7 @@
     {
       customType: 'regex',
       managerFilePatterns: [
-        '/^apps/default/gateway/kustomization\\.ya?ml$/',
+        '/^apps/gateway/kustomization\\.ya?ml$/',
       ],
       matchStrings: [
         'https://github\\.com/kubernetes-sigs/gateway-api/releases/download/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
