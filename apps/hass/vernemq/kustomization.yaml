@@ -20,4 +20,25 @@ patches:
       version: v1
       kind: StatefulSet
       name: vernemq
-    path: manifests/patch.yaml
+    patch: |-
+      - op: add
+        path: /spec/template/spec/topologySpreadConstraints
+        value:
+          - maxSkew: 1
+            topologyKey: kubernetes.io/hostname
+            whenUnsatisfiable: DoNotSchedule
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: vernemq
+  - target:
+      version: v1
+      kind: Service
+      name: vernemq
+    patch: |-
+      - op: add
+        path: /spec/ports/-
+        value:
+          name: mqtt-proxy
+          port: 1884
+          protocol: TCP
+          targetPort: 1884

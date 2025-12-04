@@ -82,3 +82,16 @@ spec:
     - group: gateway.networking.k8s.io
       kind: Gateway
       name: envoy-gateway
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/clienttrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: envoy-mqtt-proxy
+spec:
+  enableProxyProtocol: true
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: envoy-gateway
+      sectionName: mqtt

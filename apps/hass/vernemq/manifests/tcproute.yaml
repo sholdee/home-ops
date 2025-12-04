@@ -14,7 +14,7 @@ spec:
   - backendRefs:
     - name: vernemq
       namespace: hass
-      port: 1883
+      port: 1884
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
