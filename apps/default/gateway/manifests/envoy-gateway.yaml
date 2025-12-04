@@ -41,8 +41,9 @@ spec:
             kubernetes.io/metadata.name: unifi
       kinds:
       - kind: TCPRoute
-  - name: mqtt
-    protocol: TCP
+  - name: mqtt-proxy
+    hostname: "*.mgmt.sholdee.net"
+    protocol: TLS
     port: 1883
     allowedRoutes:
       namespaces:
@@ -52,6 +53,10 @@ spec:
             kubernetes.io/metadata.name: hass
       kinds:
       - kind: TCPRoute
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: mgmt-wildcard
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
