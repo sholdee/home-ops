@@ -7,6 +7,13 @@ resources:
   - manifests/httproute.yaml
   - manifests/tcproute.yaml
   - manifests/netpol.yaml
+configMapGenerator:
+  - name: vernemq-config
+    namespace: hass
+    envs:
+      - manifests/vernemq.env
+    options:
+      disableNameSuffixHash: true
 helmCharts:
   - name: vernemq
     repo: https://vernemq.github.io/docker-vernemq
