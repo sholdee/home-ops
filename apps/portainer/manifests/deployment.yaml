@@ -28,6 +28,7 @@ spec:
         image: portainer/portainer-ee:2.33.5
         args:
           - --no-csp
+          - --http-disabled
           - --tlscert=/certs/tls.crt
           - --tlskey=/certs/tls.key
         ports:
