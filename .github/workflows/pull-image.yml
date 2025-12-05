@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   check-author:
-    if: startsWith(github.event.pull_request.title, 'Update') && (contains(github.event.pull_request.title, 'Docker tag') || contains(github.event.pull_request.title, 'Docker digest'))
+    if: github.event.pull_request.title != '' && startsWith(github.event.pull_request.title, 'chore(deps)') && (contains(github.event.pull_request.title, 'docker tag') || contains(github.event.pull_request.title, 'docker digest'))
     runs-on: ARM64
     outputs:
       matched: ${{ steps.check_author.outputs.matched }}

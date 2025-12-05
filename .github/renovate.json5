@@ -3,7 +3,7 @@
   extends: [
     'config:recommended',
     'docker:enableMajor',
-    ':semanticCommitsDisabled',
+    ':semanticCommits',
   ],
   dependencyDashboardTitle: 'Dependency Dashboard :robot:',
   kubernetes: {
