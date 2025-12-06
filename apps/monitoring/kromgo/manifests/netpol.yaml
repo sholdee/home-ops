@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: kromgo
+  namespace: monitoring
+spec:
+  endpointSelector:
+    matchLabels:
+      app: kromgo
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+            gateway.envoyproxy.io/owning-gateway-name: external-gateway
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: /kubernetes_version$
+              - method: GET
+                path: /cluster_node_count$
+              - method: GET
+                path: /cluster_pod_count$
+              - method: GET
+                path: /cluster_cpu_usage$
+              - method: GET
+                path: /cluster_memory_usage$
+              - method: GET
+                path: /cluster_age_days$
+              - method: GET
+                path: /cluster_uptime_days$

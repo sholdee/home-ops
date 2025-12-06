@@ -6,6 +6,7 @@ resources:
   - manifests/httproute.yaml
   - manifests/deployment.yaml
   - manifests/service.yaml
+  - manifests/netpol.yaml
 configMapGenerator:
   - name: kromgo-configmap
     files:
