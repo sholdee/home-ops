@@ -68,6 +68,15 @@
       matchDatasources: [
         'docker',
       ],
+      allowedVersions: '<19',
+      matchPackageNames: [
+        '/postgresql/',
+      ],
+    },
+    {
+      matchDatasources: [
+        'docker',
+      ],
       schedule: [
         'before 6am',
       ],
