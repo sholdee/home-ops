@@ -54,10 +54,10 @@ acl:
     topic read /status/mqtt_venstar_bridge
     topic write /status/mqtt_venstar_bridge
     user raspi
-    topic read home/nodes/command/#
-    topic write home/nodes/command/#
-    topic read home/nodes/sensor/#
-    topic write home/nodes/sensor/#
+    topic read home/nodes/#
+    topic write home/nodes/#
+    topic read homeassistant/#
+    topic write homeassistant/#
     user sei12
     topic read linux/sei12/#
     topic write linux/sei12/#
