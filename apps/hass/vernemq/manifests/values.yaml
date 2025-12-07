@@ -60,5 +60,5 @@ acl:
     topic write linux/sei12/#
     topic read homeassistant/sensor/linux/#
     topic write homeassistant/sensor/linux/#
-    user readonly
+    user read
     topic read #
