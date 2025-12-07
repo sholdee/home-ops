@@ -60,5 +60,10 @@ acl:
     topic write linux/sei12/#
     topic read homeassistant/sensor/linux/#
     topic write homeassistant/sensor/linux/#
+    user nas
+    topic read linux/nas/#
+    topic write linux/nas/#
+    topic read homeassistant/sensor/linux/#
+    topic write homeassistant/sensor/linux/#
     user read
     topic read #
