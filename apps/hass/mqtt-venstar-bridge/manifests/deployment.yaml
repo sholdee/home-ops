@@ -37,12 +37,12 @@ spec:
           - name: MQTT_HOST
             value: mqtt://vernemq
           - name: MQTT_USER
-            value: admin
+            value: venstar
           - name: MQTT_PASS
             valueFrom:
               secretKeyRef:
-                name: vernemq-env
-                key: DOCKER_VERNEMQ_USER_ADMIN
+                name: vernemq-secret
+                key: DOCKER_VERNEMQ_USER_VENSTAR
         resources:
           requests:
             cpu: "5m"
