@@ -38,18 +38,28 @@ acl:
   enabled: true
   content: |-
     user admin
-    topic readwrite #
+    topic read #
+    topic write #
     user hass
-    topic readwrite #
+    topic read #
+    topic write #
     user zwave
-    topic readwrite home/nodes/zwave/#
-    topic readwrite homeassistant/#
+    topic read home/nodes/zwave/#
+    topic write home/nodes/zwave/#
+    topic read homeassistant/#
+    topic write homeassistant/#
     user venstar
-    topic readwrite home/nodes/venstar/#
-    topic readwrite /status/mqtt_venstar_bridge
+    topic read home/nodes/venstar/#
+    topic write home/nodes/venstar/#
+    topic read /status/mqtt_venstar_bridge
+    topic write /status/mqtt_venstar_bridge
     user raspi
-    topic readwrite home/nodes/command/#
-    topic readwrite home/nodes/sensor/#
+    topic read home/nodes/command/#
+    topic write home/nodes/command/#
+    topic read home/nodes/sensor/#
+    topic write home/nodes/sensor/#
     user sei12
-    topic readwrite linux/sei12/#
-    topic readwrite homeassistant/sensor/linux/#
+    topic read linux/sei12/#
+    topic write linux/sei12/#
+    topic read homeassistant/sensor/linux/#
+    topic write homeassistant/sensor/linux/#
