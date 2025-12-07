@@ -43,5 +43,5 @@ acl:
     user sei12
     topic read linux/sei12/#
     topic write linux/sei12/#
-    topic read homeassistant/sensor/linux/sei12_#
-    topic write homeassistant/sensor/linux/sei12_#
+    topic read homeassistant/sensor/linux/#
+    topic write homeassistant/sensor/linux/#
