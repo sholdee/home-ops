@@ -10,7 +10,7 @@ metadata:
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
   postCompleteDelay: "1m30s"
-  version: v1.33.6+k3s1
+  version: v1.34.2+k3s1
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
@@ -35,7 +35,7 @@ metadata:
 spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
   postCompleteDelay: "1m30s"
-  version: v1.33.6+k3s1
+  version: v1.34.2+k3s1
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
