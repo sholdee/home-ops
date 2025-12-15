@@ -1,3 +1,5 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/hivemq.com/hivemqplatform_v1.json
 apiVersion: hivemq.com/v1
 kind: HiveMQPlatform
 metadata:
@@ -26,9 +28,19 @@ spec:
             - name: hivemq
               env:
                 - name: JAVA_OPTS
-                  value: "-XX:+UnlockExperimentalVMOptions -XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=30"
+                  value: >-
+                    -XX:+UnlockExperimentalVMOptions
+                    -Xms128m
+                    -Xmx256m
+                    -XX:MaxDirectMemorySize=128m
+                    -XX:MaxMetaspaceSize=128m
+                    -XX:+ExitOnOutOfMemoryError
               image: "docker.io/hivemq/hivemq4:4.47.1"
               imagePullPolicy: IfNotPresent
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 768Mi
               ports:
                 - name: mqtt-1883
                   containerPort: 1883

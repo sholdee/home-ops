@@ -1,3 +1,5 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: hivemq
@@ -18,3 +20,14 @@ helmCharts:
     version: 0.2.20
     releaseName: hivemq-operator
     namespace: hivemq
+    valuesInline:
+      javaOpts: >-
+        -XX:+UnlockExperimentalVMOptions
+        -Xms128m
+        -Xmx256m
+        -XX:MaxDirectMemorySize=128m
+        -XX:MaxMetaspaceSize=128m
+        -XX:+ExitOnOutOfMemoryError
+      resources:
+        cpu: 100m
+        memory: 768Mi
