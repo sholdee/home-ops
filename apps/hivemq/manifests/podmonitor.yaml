@@ -1,0 +1,17 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/podmonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: hivemq-platform
+  namespace: hivemq
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: hivemq-platform
+  namespaceSelector:
+    matchNames:
+      - hivemq
+  podMetricsEndpoints:
+    - port: metrics-9399
+      path: /metrics

@@ -9,7 +9,7 @@ spec:
   operatorRestApiPort: 7979
   healthApiPort: 8889
   metricsPort: 9399
-  metricsPath: /
+  metricsPath: /metrics
   statefulSet:
     spec:
       replicas: 3
