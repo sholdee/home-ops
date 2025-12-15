@@ -10,53 +10,53 @@ metadata:
 spec:
   gatewayClassName: envoy
   addresses:
-  - type: IPAddress
-    value: 192.168.77.32
+    - type: IPAddress
+      value: 192.168.77.32
   listeners:
-  - name: http
-    protocol: HTTP
-    port: 80
-    allowedRoutes:
-      namespaces:
-        from: Same
-  - name: https
-    hostname: "*.mgmt.sholdee.net"
-    protocol: HTTPS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: mgmt-wildcard
-  - name: unifi-inform
-    protocol: TCP
-    port: 8080
-    allowedRoutes:
-      namespaces:
-        from: Selector
-        selector:
-          matchLabels:
-            kubernetes.io/metadata.name: unifi
-      kinds:
-      - kind: TCPRoute
-  - name: mqtt-proxy
-    hostname: "*.mgmt.sholdee.net"
-    protocol: TLS
-    port: 8883
-    allowedRoutes:
-      namespaces:
-        from: Selector
-        selector:
-          matchLabels:
-            kubernetes.io/metadata.name: hass
-      kinds:
-      - kind: TCPRoute
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: mgmt-wildcard
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: https
+      hostname: "*.mgmt.sholdee.net"
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: mgmt-wildcard
+    - name: unifi-inform
+      protocol: TCP
+      port: 8080
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: unifi
+        kinds:
+          - kind: TCPRoute
+    - name: mqtt-proxy
+      hostname: "*.mgmt.sholdee.net"
+      protocol: TLS
+      port: 8883
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              kubernetes.io/metadata.name: hivemq
+        kinds:
+          - kind: TCPRoute
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: mgmt-wildcard
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -66,9 +66,9 @@ metadata:
   namespace: gateway
 spec:
   parentRefs:
-  - name: envoy-gateway
-    namespace: gateway
-    sectionName: http
+    - name: envoy-gateway
+      namespace: gateway
+      sectionName: http
   rules:
     - filters:
         - type: RequestRedirect
