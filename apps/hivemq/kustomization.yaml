@@ -31,3 +31,13 @@ helmCharts:
       resources:
         cpu: 100m
         memory: 768Mi
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: hivemq-hivemq-operator
+      namespace: hivemq
+    patch: |-
+      - op: remove
+        path: /spec/template/spec/containers/0/resources/limits
