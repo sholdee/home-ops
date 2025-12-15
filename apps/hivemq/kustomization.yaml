@@ -28,16 +28,24 @@ helmCharts:
         -XX:MaxDirectMemorySize=128m
         -XX:MaxMetaspaceSize=128m
         -XX:+ExitOnOutOfMemoryError
-      resources:
-        cpu: 100m
-        memory: 768Mi
 patches:
   - target:
       group: apps
       version: v1
       kind: Deployment
       name: hivemq-hivemq-operator
-      namespace: hivemq
     patch: |-
-      - op: remove
-        path: /spec/template/spec/containers/0/resources/limits
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: hivemq-hivemq-operator
+      spec:
+        template:
+          spec:
+            containers:
+              - name: hivemq-platform-operator
+                resources:
+                  limits: null
+                  requests:
+                    cpu: 100m
+                    memory: 768Mi
