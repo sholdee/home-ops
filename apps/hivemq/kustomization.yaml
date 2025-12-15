@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: hivemq
+components:
+  - ../../components/namespace
+resources:
+  - manifests/platform.yaml
+  - manifests/configmap.yaml
+  - manifests/file-rbac-configmap.yaml
+  - manifests/externalsecret.yaml
+  - manifests/httproute.yaml
+  - manifests/tcproute.yaml
+helmCharts:
+  - name: hivemq-platform-operator
+    repo: https://hivemq.github.io/helm-charts
+    version: 0.2.20
+    releaseName: hivemq-platform-operator
+    namespace: hivemq

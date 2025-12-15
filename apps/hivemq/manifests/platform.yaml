@@ -1,0 +1,86 @@
+apiVersion: hivemq.com/v1
+kind: HiveMQPlatform
+metadata:
+  name: hivemq-cluster
+  namespace: hivemq
+spec:
+  configMapName: hivemq-configuration-hivemq-platform
+  logLevel: INFO
+  operatorRestApiPort: 7979
+  healthApiPort: 8889
+  metricsPort: 9399
+  metricsPath: /
+  statefulSet:
+    spec:
+      replicas: 3
+      template:
+        spec:
+          volumes:
+            - name: file-rbac-config
+              configMap:
+                name: hivemq-file-rbac-extension-config
+            - name: file-rbac-credentials
+              secret:
+                secretName: hivemq-file-rbac-credentials
+          containers:
+            - name: hivemq
+              env:
+                - name: JAVA_OPTS
+                  value: "-XX:+UnlockExperimentalVMOptions -XX:InitialRAMPercentage=50 -XX:MaxRAMPercentage=50"
+              image: "docker.io/hivemq/hivemq4:4.47.1"
+              imagePullPolicy: IfNotPresent
+              ports:
+                - name: mqtt-1883
+                  containerPort: 1883
+                - name: mqtt-8883
+                  containerPort: 8883
+                - name: cc-8080
+                  containerPort: 8080
+                - name: metrics-9399
+                  containerPort: 9399
+              volumeMounts:
+                - name: file-rbac-config
+                  mountPath: /opt/hivemq/extensions/hivemq-file-rbac-extension/conf/config.xml
+                  subPath: extension-config.xml
+                - name: file-rbac-credentials
+                  mountPath: /opt/hivemq/extensions/hivemq-file-rbac-extension/conf/credentials.xml
+                  subPath: credentials.xml
+  services:
+    - metadata:
+        name: hivemq-hivemq-platform-mqtt-1883
+      spec:
+        ports:
+          - name: mqtt-1883
+            targetPort: mqtt-1883
+            port: 1883
+    - metadata:
+        name: hivemq-hivemq-platform-mqtt-8883
+      spec:
+        ports:
+          - name: mqtt-8883
+            targetPort: mqtt-8883
+            port: 8883
+    - metadata:
+        name: hivemq-hivemq-platform-cc-8080
+      spec:
+        sessionAffinity: ClientIP
+        ports:
+          - name: cc-8080
+            targetPort: cc-8080
+            port: 8080
+    - metadata:
+        name: hivemq-hivemq-platform-metrics-9399
+      spec:
+        ports:
+          - name: metrics-9399
+            targetPort: metrics-9399
+            port: 9399
+  extensions:
+    - id: hivemq-allow-all-extension
+      enabled: false
+      supportsHotReload: false
+      extensionUri: "preinstalled"
+    - id: hivemq-file-rbac-extension
+      enabled: true
+      supportsHotReload: true
+      extensionUri: "https://www.hivemq.com/releases/extensions/hivemq-file-rbac-extension-4.6.9.zip"

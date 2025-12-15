@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hivemq-file-rbac-extension-config
+  namespace: hivemq
+data:
+  extension-config.xml: |-
+    <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    <extension-configuration>
+      <credentials-reload-interval>60</credentials-reload-interval>
+      <password-type>PLAIN</password-type>
+    </extension-configuration>

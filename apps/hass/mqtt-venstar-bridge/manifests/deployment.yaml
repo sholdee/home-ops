@@ -21,43 +21,43 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: mqtt-venstar-bridge
-        image: ghcr.io/terafin/mqtt-venstar-bridge:latest@sha256:04cec258c3046c49fbd47cc415385574de17adcd14403a074ca9378a4a75951d
-        env:
-          - name: TZ
-            value: America/Chicago
-          - name: LOGGING_NAME
-            value: mqtt-venstar-bridge
-          - name: TOPIC_PREFIX
-            value: home/nodes/venstar
-          - name: VENSTAR_HOST
-            value: "192.168.99.251"
-          - name: VENSTAR_QUERY_INTERVAL
-            value: "7"
-          - name: MQTT_HOST
-            value: mqtt://vernemq
-          - name: MQTT_USER
-            value: venstar
-          - name: MQTT_PASS
-            valueFrom:
-              secretKeyRef:
-                name: vernemq-secret
-                key: DOCKER_VERNEMQ_USER_VENSTAR
-        resources:
-          requests:
-            cpu: "5m"
-            memory: 200Mi
-          limits:
-            cpu: "200m"
-            memory: 200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
-        volumeMounts:
-        - mountPath: /.npm
-          name: npm-cache
+        - name: mqtt-venstar-bridge
+          image: ghcr.io/terafin/mqtt-venstar-bridge:latest@sha256:04cec258c3046c49fbd47cc415385574de17adcd14403a074ca9378a4a75951d
+          env:
+            - name: TZ
+              value: America/Chicago
+            - name: LOGGING_NAME
+              value: mqtt-venstar-bridge
+            - name: TOPIC_PREFIX
+              value: home/nodes/venstar
+            - name: VENSTAR_HOST
+              value: "192.168.99.251"
+            - name: VENSTAR_QUERY_INTERVAL
+              value: "7"
+            - name: MQTT_HOST
+              value: mqtt://hivemq-hivemq-platform-mqtt-1883.hivemq
+            - name: MQTT_USER
+              value: venstar
+            - name: MQTT_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: vernemq-secret
+                  key: DOCKER_VERNEMQ_USER_VENSTAR
+          resources:
+            requests:
+              cpu: "5m"
+              memory: 200Mi
+            limits:
+              cpu: "200m"
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - mountPath: /.npm
+              name: npm-cache
       volumes:
-      - emptyDir: {}
-        name: npm-cache
+        - emptyDir: {}
+          name: npm-cache

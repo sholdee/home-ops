@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/tcproute_v1alpha2.json
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: mqtt-proxy
+  namespace: hivemq
+spec:
+  parentRefs:
+    - name: envoy-gateway
+      namespace: gateway
+      sectionName: mqtt-proxy
+  rules:
+    - backendRefs:
+        - name: hivemq-hivemq-platform-mqtt-8883
+          namespace: hivemq
+          port: 8883
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: mqtt-lb-policy
+  namespace: hivemq
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TCPRoute
+      name: mqtt-proxy
+  proxyProtocol:
+    version: V2
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: SourceIP
