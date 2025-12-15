@@ -7,7 +7,6 @@ components:
   - ../../components/namespace
 resources:
   - manifests/platform.yaml
-  - manifests/configmap.yaml
   - manifests/file-rbac-configmap.yaml
   - manifests/externalsecret.yaml
   - manifests/netpol.yaml
