@@ -10,14 +10,14 @@ spec:
   selector:
     app: gravity
   ports:
-  - protocol: UDP
-    port: 53
-    targetPort: 53
-    name: dns
-  - protocol: TCP
-    port: 53
-    targetPort: 53
-    name: dns-tcp
+    - protocol: UDP
+      port: 53
+      targetPort: 53
+      name: dns
+    - protocol: TCP
+      port: 53
+      targetPort: 53
+      name: dns-tcp
   type: LoadBalancer
   loadBalancerIP: 192.168.77.53
   externalTrafficPolicy: Cluster
@@ -34,14 +34,14 @@ spec:
   selector:
     app: gravity
   ports:
-  - protocol: TCP
-    port: 8008
-    targetPort: 8008
-    name: http
-  - protocol: TCP
-    port: 8009
-    targetPort: 8009
-    name: http-metrics
+    - protocol: TCP
+      port: 8008
+      targetPort: 8008
+      name: http
+    - protocol: TCP
+      port: 8009
+      targetPort: 8009
+      name: http-metrics
   type: ClusterIP
 ---
 apiVersion: v1
@@ -54,18 +54,37 @@ metadata:
 spec:
   selector:
     app: etcd
+  publishNotReadyAddresses: true
   ports:
-  - protocol: TCP
-    port: 2379
-    targetPort: 2379
-    name: client
-  - protocol: TCP
-    port: 2380
-    targetPort: 2380
-    name: peer
-  - protocol: TCP
-    port: 2381
-    targetPort: 2381
-    name: metrics
+    - protocol: TCP
+      port: 2379
+      targetPort: 2379
+      name: client
+    - protocol: TCP
+      port: 2380
+      targetPort: 2380
+      name: peer
+    - protocol: TCP
+      port: 2381
+      targetPort: 2381
+      name: metrics
   type: ClusterIP
   clusterIP: None
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: etcd-client
+  namespace: gravity
+  labels:
+    app: etcd
+spec:
+  selector:
+    app: etcd
+  ports:
+    - protocol: TCP
+      port: 2379
+      targetPort: 2379
+      name: client
+  type: ClusterIP

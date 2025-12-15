@@ -9,6 +9,7 @@ spec:
   selector:
     matchLabels:
       app: etcd
+  podManagementPolicy: Parallel
   updateStrategy:
     type: RollingUpdate
   replicas: 3
@@ -17,6 +18,7 @@ spec:
       labels:
         app: etcd
     spec:
+      terminationGracePeriodSeconds: 120
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -26,76 +28,100 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: etcd
-        image: quay.io/coreos/etcd:v3.6.6
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-        args:
-        - --name=$(POD_NAME)
-        - --listen-metrics-urls=http://0.0.0.0:2381
-        - --listen-peer-urls=http://0.0.0.0:2380
-        - --listen-client-urls=http://0.0.0.0:2379
-        - --initial-advertise-peer-urls=http://$(POD_NAME).etcd-headless.$(POD_NAMESPACE).svc:2380
-        - --advertise-client-urls=http://$(POD_NAME).etcd-headless.$(POD_NAMESPACE).svc:2379
-        - --data-dir=/var/run/etcd/default.etcd
-        - --initial-cluster=etcd-0=http://etcd-0.etcd-headless:2380,etcd-1=http://etcd-1.etcd-headless:2380,etcd-2=http://etcd-2.etcd-headless:2380
-        - --initial-cluster-state=existing
-        - --initial-cluster-token=etcd-cluster
-        - --auto-compaction-retention=5m
-        - --snapshot-count=10000
-        - --quota-backend-bytes=5100273664
-        command:
-        - etcd
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              apiVersion: v1
-              fieldPath: metadata.namespace
-        resources:
-          requests:
-            cpu: 50m
-            memory: 300Mi
-          limits:
-            cpu: 1000m
-            memory: 300Mi
-        ports:
-        - containerPort: 2379
-          name: client
-        - containerPort: 2380
-          name: peer
-        - containerPort: 2381
-          name: metrics
-        volumeMounts:
-        - name: data
-          mountPath: /var/run/etcd/
-      - name: etcdctl
-        image: sholdee/etcdctl:3.6.6
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - ALL
-          readOnlyRootFilesystem: true
-        resources:
-          requests:
-            cpu: 10m
-            memory: 50Mi
-          limits:
-            cpu: 200m
-            memory: 200Mi
-        volumeMounts:
-          - name: data
-            mountPath: /var/run/etcd
+        - name: etcd
+          image: quay.io/coreos/etcd:v3.6.6
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          args:
+            - --name=$(POD_NAME)
+            - --listen-metrics-urls=http://0.0.0.0:2381
+            - --listen-peer-urls=http://0.0.0.0:2380
+            - --listen-client-urls=http://0.0.0.0:2379
+            - --initial-advertise-peer-urls=http://$(POD_NAME).etcd-headless.$(POD_NAMESPACE).svc:2380
+            - --advertise-client-urls=http://$(POD_NAME).etcd-headless.$(POD_NAMESPACE).svc:2379
+            - --data-dir=/var/run/etcd/default.etcd
+            - --initial-cluster=etcd-0=http://etcd-0.etcd-headless:2380,etcd-1=http://etcd-1.etcd-headless:2380,etcd-2=http://etcd-2.etcd-headless:2380
+            - --initial-cluster-state=existing
+            - --initial-cluster-token=etcd-cluster
+            - --auto-compaction-retention=5m
+            - --snapshot-count=10000
+            - --quota-backend-bytes=5100273664
+          command:
+            - etcd
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+          startupProbe:
+            httpGet:
+              path: /readyz
+              port: client
+              scheme: HTTP
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: client
+              scheme: HTTP
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: client
+              scheme: HTTP
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            requests:
+              cpu: 50m
+              memory: 300Mi
+            limits:
+              cpu: 1000m
+              memory: 300Mi
+          ports:
+            - containerPort: 2379
+              name: client
+            - containerPort: 2380
+              name: peer
+            - containerPort: 2381
+              name: metrics
+          volumeMounts:
+            - name: data
+              mountPath: /var/run/etcd/
+        - name: etcdctl
+          image: sholdee/etcdctl:3.6.6
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 50Mi
+            limits:
+              cpu: 200m
+              memory: 200Mi
+          volumeMounts:
+            - name: data
+              mountPath: /var/run/etcd
       topologySpreadConstraints:
         - maxSkew: 1
           topologyKey: kubernetes.io/hostname
@@ -104,11 +130,11 @@ spec:
             matchLabels:
               app: etcd
   volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: [ "ReadWriteOnce" ]
-      resources:
-        requests:
-          storage: 5Gi
-      storageClassName: "local-path"
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: "local-path"

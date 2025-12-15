@@ -14,6 +14,7 @@ spec:
       labels:
         app: gravity
     spec:
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
@@ -28,61 +29,61 @@ spec:
             matchLabels:
               app: gravity
       containers:
-      - name: gravity
-        image: ghcr.io/beryju/gravity:v0.28.7
-        env:
-          - name: BOOTSTRAP_ROLES
-            value: dns;dhcp;api;backup;discovery;monitoring;debug;tsdb
-          - name: ETCD_ENDPOINT
-            value: etcd-headless.gravity:2379
-        envFrom:
-          - secretRef:
-              name: gravity
-        ports:
-        - containerPort: 53
-          name: dns
-          protocol: UDP
-        - containerPort: 53
-          name: dnstcp
-          protocol: TCP
-        - containerPort: 8008
-          name: http
-          protocol: TCP
-        - containerPort: 8009
-          name: http-metrics
-          protocol: TCP
-        - containerPort: 67
-          name: dhcp
-          protocol: TCP
-        - containerPort: 68
-          name: dhcp-alt
-          protocol: TCP
-        livenessProbe:
-          httpGet:
-            path: /healthz/live
-            port: http-metrics
-        readinessProbe:
-          httpGet:
-            path: /healthz/ready
-            port: http-metrics
-        resources:
-          requests:
-            memory: 200Mi
-            cpu: "5m"
-          limits:
-            memory: 200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
-        volumeMounts:
-          - mountPath: /data
-            name: tmp
-            subPath: data
-          - mountPath: /var/run
-            name: tmp
-            subPath: run
+        - name: gravity
+          image: ghcr.io/beryju/gravity:v0.28.7
+          env:
+            - name: BOOTSTRAP_ROLES
+              value: dns;dhcp;api;backup;discovery;monitoring;debug;tsdb
+            - name: ETCD_ENDPOINT
+              value: etcd-client.gravity:2379
+          envFrom:
+            - secretRef:
+                name: gravity
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dnstcp
+              protocol: TCP
+            - containerPort: 8008
+              name: http
+              protocol: TCP
+            - containerPort: 8009
+              name: http-metrics
+              protocol: TCP
+            - containerPort: 67
+              name: dhcp
+              protocol: TCP
+            - containerPort: 68
+              name: dhcp-alt
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz/live
+              port: http-metrics
+          readinessProbe:
+            httpGet:
+              path: /healthz/ready
+              port: http-metrics
+          resources:
+            requests:
+              memory: 200Mi
+              cpu: "5m"
+            limits:
+              memory: 200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - mountPath: /data
+              name: tmp
+              subPath: data
+            - mountPath: /var/run
+              name: tmp
+              subPath: run
       volumes:
-      - emptyDir: {}
-        name: tmp
+        - emptyDir: {}
+          name: tmp
