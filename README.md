@@ -91,9 +91,9 @@ erDiagram
 
 - Home Assistant and related services
   - Appdaemon
-    - Custom [automations](https://github.com/sholdee/sholdee-hass-apps) 
+    - Custom [automations](https://github.com/sholdee/sholdee-hass-apps)
   - Z-Wave JS UI
-  - VerneMQ Cluster
+  - HiveMQ
   - Codeserver
   - Venstar MQTT bridge
 - Unifi

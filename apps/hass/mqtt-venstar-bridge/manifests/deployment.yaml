@@ -41,8 +41,8 @@ spec:
             - name: MQTT_PASS
               valueFrom:
                 secretKeyRef:
-                  name: vernemq-secret
-                  key: DOCKER_VERNEMQ_USER_VENSTAR
+                  name: hivemq-secret
+                  key: venstar
           resources:
             requests:
               cpu: "5m"

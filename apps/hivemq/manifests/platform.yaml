@@ -29,12 +29,6 @@ spec:
                   value: "-XX:+UnlockExperimentalVMOptions -XX:InitialRAMPercentage=20 -XX:MaxRAMPercentage=30"
               image: "docker.io/hivemq/hivemq4:4.47.1"
               imagePullPolicy: IfNotPresent
-              resources:
-                requests:
-                  cpu: 100m
-                  memory: 512Mi
-                limits:
-                  memory: 768Mi
               ports:
                 - name: mqtt-1883
                   containerPort: 1883
