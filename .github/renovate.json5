@@ -227,6 +227,18 @@
       packageNameTemplate: 'rancher/system-upgrade-controller',
       versioningTemplate: 'semver',
     },
+    {
+      customType: 'regex',
+      managerFilePatterns: [
+        '/^apps/hivemq/manifests/platform\\.ya?ml$/',
+      ],
+      matchStrings: [
+        'hivemq-file-rbac-extension-(?<currentValue>\\d+\\.\\d+\\.\\d+)\\.zip',
+      ],
+      datasourceTemplate: 'github-releases',
+      packageNameTemplate: 'hivemq/hivemq-file-rbac-extension',
+      versioningTemplate: 'semver',
+    },
   ],
   customDatasources: {
     k3s: {
