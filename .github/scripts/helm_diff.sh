@@ -15,6 +15,8 @@ set -euo pipefail
 KUBE_VERSION_DEFAULT="1.33.0"
 PLAN_FILE="apps/system-upgrade/manifests/plan.yaml"
 BASE_WORKTREE_DIR="../base-worktree"
+ARGO_APPLICATION_KIND="Application"
+ARGO_APPLICATION_API_VERSIONS=("argoproj.io/v1alpha1")
 
 EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
 EXCLUDE_FIELDS+=',.metadata.labels.chart'
@@ -27,6 +29,38 @@ EXCLUDE_FIELDS+=',.spec.template.metadata.annotations."checksum/*"'
 #####################
 ## Setup functions ##
 #####################
+#######################################
+# Description: Build a yq expression that matches any provided apiVersion.
+# Arguments:
+#   $@ - One or more apiVersion strings
+# Outputs:
+#   Prints a yq expression like: (.apiVersion == "v1" or .apiVersion == "v2")
+#######################################
+build_yq_apiversion_expr() {
+    local expr=""
+    local version
+
+    for version in "$@"; do
+        [[ -z "$version" ]] && continue
+        if [[ -n "$expr" ]]; then
+            expr+=" or "
+        fi
+        expr+=".apiVersion == \"${version}\""
+    done
+
+    # If no versions provided, default to an always-false match.
+    if [[ -z "$expr" ]]; then
+        printf '%s' '(.apiVersion == "")'
+        return
+    fi
+
+    printf '(%s)' "$expr"
+}
+
+# Precomputed Argo Application selectors for yq.
+ARGO_APP_API_VERSION_MATCH="$(build_yq_apiversion_expr "${ARGO_APPLICATION_API_VERSIONS[@]}")"
+ARGO_APP_BASE_SELECTOR="select(${ARGO_APP_API_VERSION_MATCH} and .kind == \"${ARGO_APPLICATION_KIND}\")"
+
 #######################################
 # Description: Determine Kubernetes version for Helm templating
 # Globals:
@@ -284,9 +318,15 @@ helm_template_and_diff() {
 }
 
 #######################################
-# Description: Process a single Argo CD Application source for Helm changes
+# Description: Process a single Argo CD Application source for Helm changes.
+#
+# Notes:
+# - Compares the PR working tree to a checked-out base worktree (`$BASE_WORKTREE_DIR`).
+# - If the base branch does not contain the Application manifest file (e.g., app added in PR),
+#   old-side Helm inputs are treated as empty/defaults so the diff shows a net-new install.
 # Globals:
 #   BASE_REF - Base branch reference
+#   BASE_WORKTREE_DIR - Base worktree checkout root
 #   HELM_ARGS_OLD - Set by this function for old revision
 #   HELM_ARGS_NEW - Set by this function for new revision
 # Arguments:
@@ -296,9 +336,9 @@ helm_template_and_diff() {
 #   $4 - Source expression (e.g., .spec.source or .spec.sources[0])
 #   $5 - Source label for logging (e.g., "source" or "sources[0]")
 # Outputs:
-#   Status messages and calls helm_template_and_diff
+#   Status messages; may call helm_template_and_diff
 # Returns:
-#   0 if successful or no changes detected
+#   0 if successful or no changes detected (or not a Helm source)
 #######################################
 process_argo_source() {
     local FILE="$1"
@@ -307,29 +347,52 @@ process_argo_source() {
     local SRC_EXPR="$4"   # e.g. .spec.source or .spec.sources[0]
     local SRC_LABEL="$5"  # for logging, e.g. "source" or "sources[0]"
 
+    local APP_SELECTOR
+    APP_SELECTOR="select(${ARGO_APP_API_VERSION_MATCH} and .kind == \"${ARGO_APPLICATION_KIND}\" and .metadata.name == \"${APP_NAME}\" and (.metadata.namespace == \"${NAMESPACE}\" or .metadata.namespace == null))"
+
+    local BASE_FILE="${BASE_WORKTREE_DIR}/${FILE}"
+    local HAS_BASE_FILE=0
+    if [[ -f "$BASE_FILE" ]]; then
+        HAS_BASE_FILE=1
+    else
+        echo "🆕 No base counterpart for $FILE on origin/${BASE_REF}; treating old side as empty for $APP_NAME ${SRC_LABEL}."
+    fi
+
     # OLD (base) fields
     local OLD_VERSION OLD_VALUES_OBJECT OLD_VALUES_STRING OLD_PARAMETERS
     local OLD_FILE_PARAMETERS OLD_RELEASE_NAME OLD_HELM_NAMESPACE
     local OLD_HELM_KUBEVERSION OLD_DEST_NAMESPACE
 
-    OLD_VERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.targetRevision" -)
-    OLD_VALUES_OBJECT=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.valuesObject" -)
-    OLD_VALUES_STRING=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.values" -)
-    OLD_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" - 2>/dev/null || echo "")
-    OLD_FILE_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" - 2>/dev/null || echo "")
-    OLD_RELEASE_NAME=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.releaseName" -)
-    OLD_HELM_NAMESPACE=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.namespace" -)
-    OLD_HELM_KUBEVERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.kubeVersion" -)
-    OLD_DEST_NAMESPACE=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" - 2>/dev/null || echo "default")
+    if (( HAS_BASE_FILE == 1 )); then
+        OLD_VERSION=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.targetRevision" "$BASE_FILE")
+        OLD_VALUES_OBJECT=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.valuesObject" "$BASE_FILE")
+        OLD_VALUES_STRING=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.values" "$BASE_FILE")
+        OLD_PARAMETERS=$(yq e -o=json -r \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" "$BASE_FILE" 2>/dev/null || echo "")
+        OLD_FILE_PARAMETERS=$(yq e -o=json -r \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" "$BASE_FILE" 2>/dev/null || echo "")
+        OLD_RELEASE_NAME=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.releaseName" "$BASE_FILE")
+        OLD_HELM_NAMESPACE=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.namespace" "$BASE_FILE")
+        OLD_HELM_KUBEVERSION=$(yq e \
+            "${APP_SELECTOR} | ${SRC_EXPR}.helm.kubeVersion" "$BASE_FILE")
+        OLD_DEST_NAMESPACE=$(yq e \
+            "${APP_SELECTOR} | .spec.destination.namespace" "$BASE_FILE" 2>/dev/null || echo "default")
+    else
+        OLD_VERSION=""
+        OLD_VALUES_OBJECT=""
+        OLD_VALUES_STRING=""
+        OLD_PARAMETERS=""
+        OLD_FILE_PARAMETERS=""
+        OLD_RELEASE_NAME=""
+        OLD_HELM_NAMESPACE=""
+        OLD_HELM_KUBEVERSION=""
+        OLD_DEST_NAMESPACE="default"
+    fi
 
     # NEW (PR) fields
     local NEW_VERSION NEW_VALUES_OBJECT NEW_VALUES_STRING NEW_PARAMETERS
@@ -337,30 +400,30 @@ process_argo_source() {
     local NEW_HELM_KUBEVERSION NEW_DEST_NAMESPACE
 
     NEW_VERSION=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.targetRevision" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.targetRevision" "$FILE")
     NEW_VALUES_OBJECT=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.valuesObject" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.valuesObject" "$FILE")
     NEW_VALUES_STRING=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.values" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.values" "$FILE")
     NEW_PARAMETERS=$(yq e -o=json -r \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE" 2>/dev/null || echo "")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.parameters | select(.) | select(length > 0) | tojson" "$FILE" 2>/dev/null || echo "")
     NEW_FILE_PARAMETERS=$(yq e -o=json -r \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" "$FILE" 2>/dev/null || echo "")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.fileParameters | select(.) | tojson" "$FILE" 2>/dev/null || echo "")
     NEW_RELEASE_NAME=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.releaseName" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.releaseName" "$FILE")
     NEW_HELM_NAMESPACE=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.namespace" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.namespace" "$FILE")
     NEW_HELM_KUBEVERSION=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.helm.kubeVersion" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.helm.kubeVersion" "$FILE")
     NEW_DEST_NAMESPACE=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.destination.namespace" "$FILE" 2>/dev/null || echo "default")
+        "${APP_SELECTOR} | .spec.destination.namespace" "$FILE" 2>/dev/null || echo "default")
 
     # Chart/repoURL (from PR – needed for fallback mapping)
     local CHART_NAME REPO_URL
     CHART_NAME=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.chart" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.chart" "$FILE")
     REPO_URL=$(yq e \
-        "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | ${SRC_EXPR}.repoURL" "$FILE")
+        "${APP_SELECTOR} | ${SRC_EXPR}.repoURL" "$FILE")
 
     # If this is a .spec.sources[i] entry with no old config, try to
     # map it back to the old .spec.source in the base ref if it has
@@ -368,30 +431,35 @@ process_argo_source() {
     # migration without showing a net-add diff.
     if [[ "$SRC_EXPR" == .spec.sources* ]] && [[ -z "$OLD_VERSION" || "$OLD_VERSION" == "null" ]]; then
         local F_OLD_CHART F_OLD_REPO
-        F_OLD_CHART=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-            "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.chart" -)
-        F_OLD_REPO=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-            "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.repoURL" -)
+        if (( HAS_BASE_FILE == 1 )); then
+            F_OLD_CHART=$(yq e \
+                "${APP_SELECTOR} | .spec.source.chart" "$BASE_FILE")
+            F_OLD_REPO=$(yq e \
+                "${APP_SELECTOR} | .spec.source.repoURL" "$BASE_FILE")
+        else
+            F_OLD_CHART=""
+            F_OLD_REPO=""
+        fi
 
         if [[ -n "$F_OLD_CHART" && "$F_OLD_CHART" != "null" && -n "$F_OLD_REPO" && "$F_OLD_REPO" != "null" ]]; then
             if [[ "$F_OLD_CHART" == "$CHART_NAME" && "$F_OLD_REPO" == "$REPO_URL" ]]; then
                 # Rehydrate OLD_* from .spec.source in base
-                OLD_VERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.targetRevision" -)
-                OLD_VALUES_OBJECT=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.valuesObject" -)
-                OLD_VALUES_STRING=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.values" -)
-                OLD_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" - 2>/dev/null || echo "")
-                OLD_FILE_PARAMETERS=$(git show origin/"${BASE_REF}":"$FILE" | yq e -o=json -r \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.fileParameters | select(.) | tojson" - 2>/dev/null || echo "")
-                OLD_RELEASE_NAME=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.releaseName" -)
-                OLD_HELM_NAMESPACE=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.namespace" -)
-                OLD_HELM_KUBEVERSION=$(git show origin/"${BASE_REF}":"$FILE" | yq e \
-                    "select(.apiVersion == \"argoproj.io/v1alpha1\" and .kind == \"Application\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) | .spec.source.helm.kubeVersion" -)
+                OLD_VERSION=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.targetRevision" "$BASE_FILE")
+                OLD_VALUES_OBJECT=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.helm.valuesObject" "$BASE_FILE")
+                OLD_VALUES_STRING=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.helm.values" "$BASE_FILE")
+                OLD_PARAMETERS=$(yq e -o=json -r \
+                    "${APP_SELECTOR} | .spec.source.helm.parameters | select(.) | select(length > 0) | tojson" "$BASE_FILE" 2>/dev/null || echo "")
+                OLD_FILE_PARAMETERS=$(yq e -o=json -r \
+                    "${APP_SELECTOR} | .spec.source.helm.fileParameters | select(.) | tojson" "$BASE_FILE" 2>/dev/null || echo "")
+                OLD_RELEASE_NAME=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.helm.releaseName" "$BASE_FILE")
+                OLD_HELM_NAMESPACE=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.helm.namespace" "$BASE_FILE")
+                OLD_HELM_KUBEVERSION=$(yq e \
+                    "${APP_SELECTOR} | .spec.source.helm.kubeVersion" "$BASE_FILE")
             fi
         fi
     fi
@@ -522,7 +590,12 @@ process_argo_source() {
 }
 
 #######################################
-# Description: Process a kustomization file with Helm charts
+# Description: Process a kustomization file with Helm charts.
+#
+# Notes:
+# - Compares the PR working tree to a checked-out base worktree (`$BASE_WORKTREE_DIR`).
+# - If the base branch does not contain the kustomization file/directory (e.g., app added in PR),
+#   old manifests are treated as empty so the diff shows net-new resources.
 # Globals:
 #   BASE_REF - Base branch reference for comparison
 #   BASE_WORKTREE_DIR - Directory of base worktree
@@ -532,7 +605,7 @@ process_argo_source() {
 # Outputs:
 #   Diff output via process_and_diff
 # Returns:
-#   0 if successful
+#   0 if successful (or skipped)
 #######################################
 process_kustomization() {
     local kustomization_file="$1"
@@ -547,11 +620,23 @@ process_kustomization() {
     
     echo "🔍 Found Helm charts in kustomization"
 
+    local HELMCHART_NAMES_QUERY
+    HELMCHART_NAMES_QUERY='.helmCharts[]?.name'
+
     # Get directory containing the kustomization file
     local kustomize_dir
     kustomize_dir=$(dirname "$kustomization_file")
 
     local CHANGED=0
+
+    local base_kustomization_file="${BASE_WORKTREE_DIR}/${kustomization_file}"
+    local HAS_BASE_KUSTOMIZATION=0
+    if [[ -f "$base_kustomization_file" ]]; then
+        HAS_BASE_KUSTOMIZATION=1
+    else
+        echo "🆕 No base counterpart for $kustomization_file on origin/${BASE_REF}; treating old manifests as empty."
+        CHANGED=1
+    fi
 
     ##########################################
     # 1) Detect changes to helmCharts entries
@@ -559,13 +644,16 @@ process_kustomization() {
 
     # Compare set of chart names first (added/removed charts)
     local OLD_NAMES NEW_NAMES
-    OLD_NAMES=$(
-        git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
-        | yq e '.helmCharts[]?.name' -r 2>/dev/null \
-        | sort | tr '\n' ','
-    )
+    if (( HAS_BASE_KUSTOMIZATION == 1 )); then
+        OLD_NAMES=$(
+            yq e "$HELMCHART_NAMES_QUERY" -r "$base_kustomization_file" 2>/dev/null \
+            | sort | tr '\n' ','
+        )
+    else
+        OLD_NAMES=""
+    fi
     NEW_NAMES=$(
-        yq e '.helmCharts[]?.name' -r "$kustomization_file" 2>/dev/null \
+        yq e "$HELMCHART_NAMES_QUERY" -r "$kustomization_file" 2>/dev/null \
         | sort | tr '\n' ','
     )
 
@@ -580,10 +668,13 @@ process_kustomization() {
             [[ -z "$CHART_NAME" ]] && continue
 
             local OLD_ENTRY NEW_ENTRY
-            OLD_ENTRY=$(
-                git show origin/"${BASE_REF}":"$kustomization_file" 2>/dev/null \
-                | yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" - 2>/dev/null || echo ""
-            )
+            if (( HAS_BASE_KUSTOMIZATION == 1 )); then
+                OLD_ENTRY=$(
+                    yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" "$base_kustomization_file" 2>/dev/null || echo ""
+                )
+            else
+                OLD_ENTRY=""
+            fi
             NEW_ENTRY=$(
                 yq e -o=json ".helmCharts[] | select(.name == \"$CHART_NAME\")" "$kustomization_file" 2>/dev/null || echo ""
             )
@@ -599,7 +690,7 @@ process_kustomization() {
                 CHANGED=1
                 break
             fi
-        done < <(yq e '.helmCharts[]?.name' -r "$kustomization_file")
+        done < <(yq e "$HELMCHART_NAMES_QUERY" -r "$kustomization_file")
     fi
 
     #########################################################
@@ -632,7 +723,12 @@ process_kustomization() {
 
     echo "🎭 Rendering Helm kustomizations"
     (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
-    (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
+
+    if (( HAS_BASE_KUSTOMIZATION == 1 )) && [[ -d "$BASE_WORKTREE_DIR/$kustomize_dir" ]]; then
+        (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
+    else
+        echo "" > "${tmpdir}/old.yaml"
+    fi
 
     process_and_diff "${tmpdir}/old.yaml" "${tmpdir}/new.yaml"
     rm -rf "$tmpdir"
@@ -705,7 +801,7 @@ echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read
     FILE=$(echo "$json" | jq -r '.file')
 
     # All Application objects in this file (namespace may be empty in raw YAML)
-    APP_ENTRIES=$(yq e '. | select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application") | .metadata.name + "|" + (.metadata.namespace // "")' "$FILE" -r)
+    APP_ENTRIES=$(yq e ". | ${ARGO_APP_BASE_SELECTOR} | .metadata.name + \"|\" + (.metadata.namespace // \"\")" "$FILE" -r)
 
     if [[ -z "$APP_ENTRIES" ]]; then
         continue
@@ -722,13 +818,11 @@ echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read
         process_argo_source "$FILE" "$APP_NAME" "$NAMESPACE" ".spec.source" "source"
 
         # 2) Multi-source .spec.sources[]
+        APP_INSTANCE_SELECTOR="select(${ARGO_APP_API_VERSION_MATCH} and .kind == \"${ARGO_APPLICATION_KIND}\" and .metadata.name == \"$APP_NAME\" and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null))"
+
         SRC_INDEXES=$(
-          yq e "select(.apiVersion == \"argoproj.io/v1alpha1\" \
-                and .kind == \"Application\" \
-                and .metadata.name == \"$APP_NAME\" \
-                and (.metadata.namespace == \"$NAMESPACE\" or .metadata.namespace == null)) \
-             | (.spec.sources // []) | to_entries | .[].key" \
-             "$FILE" -r 2>/dev/null || true
+            yq e "${APP_INSTANCE_SELECTOR} | (.spec.sources // []) | to_entries | .[].key" \
+                "$FILE" -r 2>/dev/null || true
         )
 
         if [[ -n "$SRC_INDEXES" ]]; then
