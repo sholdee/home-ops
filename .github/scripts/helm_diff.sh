@@ -797,7 +797,7 @@ RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: applica
 #################################
 ## Process ArgoCD Applications ##
 #################################
-echo "$RESPONSE" | jq -c '.[] | select(.patch) | {file: .filename}' | while read -r json; do
+echo "$RESPONSE" | jq -c '.[] | select(.patch) | select(.status != "removed") | {file: .filename}' | while read -r json; do
     FILE=$(echo "$json" | jq -r '.file')
 
     # All Application objects in this file (namespace may be empty in raw YAML)
@@ -846,7 +846,7 @@ while read -r kustomization_file; do
     kustomization_file=$(echo "$kustomization_file" | tr -d '"')
     PROCESSED_KUSTOMIZATIONS["$kustomization_file"]=1
     process_kustomization "$kustomization_file"
-done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | .filename')
+done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomization.yaml")) | select(.status != "removed") | .filename')
 
 # Process standalone values*.yaml files by finding their kustomization
 while read -r values_file; do
@@ -870,4 +870,4 @@ while read -r values_file; do
     else
         echo "ℹ️ No kustomization found referencing $values_file"
     fi
-done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | .filename')
+done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | test("values.*\\.yaml$")) | select(.status != "removed") | .filename')
