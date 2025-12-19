@@ -73,8 +73,8 @@ erDiagram
     }
     "Helm Applications"
     Cilium
-    ArgoCD
-    Cert-Manager
+    Longhorn
+    VolSync
 
     ApplicationSet ||--|| "Git Generator" : "uses"
     "Git Generator" ||--|{ Directory : "scans each"
@@ -82,8 +82,8 @@ erDiagram
     argocd ||..|| Application : "is a type of"
     argocd ||--|{ "Helm Applications" : "app-of-apps aggregates"
     "Helm Applications" ||--|| Cilium : "example"
-    "Helm Applications" ||--|| ArgoCD : "example"
-    "Helm Applications" ||--|| Cert-Manager : "example"
+    "Helm Applications" ||--|| Longhorn : "example"
+    "Helm Applications" ||--|| VolSync : "example"
     argocd ||--|| ApplicationSet : "self-manages"
 ```
 
@@ -117,6 +117,7 @@ erDiagram
 - Kube-VIP
 - VolSync
 - CloudNativePG
+- HiveMQ Platform Operator
 - MongoDB Controllers for Kubernetes
 - Kube Prometheus Stack
 - Kromgo
