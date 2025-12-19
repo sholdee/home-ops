@@ -96,16 +96,18 @@ spec:
       name: gateway/external-gateway/https
       operation: &zstd-compressor
         op: add
-        jsonPath: ..filters[*].typed_config.http_filters[?(@.name=="envoy.filters.http.compressor.zstd")].typed_config
+        path: "/filter_chains/0/filters/0/typed_config/http_filters/0"
         value:
-          "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
-          choose_first: true
-          compressor_library:
-            name: envoy.compression.zstd.compressor
-            typed_config:
-              "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
-          response_direction_config:
-            remove_accept_encoding_header: true
+          name: envoy.filters.http.compressor
+          typed_config:
+            "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
+            choose_first: true
+            compressor_library:
+              name: envoy.compression.zstd.compressor
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
+            response_direction_config:
+              remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https-quic
       operation: *zstd-compressor
