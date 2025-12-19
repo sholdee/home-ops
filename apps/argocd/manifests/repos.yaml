@@ -1,3 +1,4 @@
+---
 apiVersion: v1
 stringData:
   name: k3s
@@ -8,46 +9,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-home-ops
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: argocd
-  project: k3s
-  type: helm
-  url: https://argoproj.github.io/argo-helm
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-argocd
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: cert-manager
-  project: k3s
-  type: helm
-  url: https://charts.jetstack.io
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-cert-manager
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: ingress-nginx
-  project: k3s
-  type: helm
-  url: https://kubernetes.github.io/ingress-nginx
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-ingress-nginx
+  name: home-ops
 type: Opaque
 ---
 apiVersion: v1
@@ -60,33 +22,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-longhorn
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: kubernetes-dashboard
-  project: k3s
-  type: helm
-  url: https://kubernetes.github.io/dashboard
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-kubernetes-dashboard
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: vmware-tanzu
-  project: k3s
-  type: helm
-  url: https://vmware-tanzu.github.io/helm-charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-velero
+  name: longhorn
 type: Opaque
 ---
 apiVersion: v1
@@ -99,20 +35,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-cilium
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: prometheus-community
-  project: k3s
-  type: helm
-  url: https://prometheus-community.github.io/helm-charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-prometheus-community
+  name: cilium
 type: Opaque
 ---
 apiVersion: v1
@@ -125,98 +48,7 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-stakater-reloader
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: kubereboot
-  project: k3s
-  type: helm
-  url: https://kubereboot.github.io/charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-kubereboot
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: cnpg
-  project: k3s
-  type: helm
-  url: https://cloudnative-pg.github.io/charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-cnpg
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: mongodb
-  project: k3s
-  type: helm
-  url: https://mongodb.github.io/helm-charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-mongodb
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: 1password
-  project: k3s
-  type: helm
-  url: https://1password.github.io/connect-helm-charts
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-1password
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: external-secrets
-  project: k3s
-  type: helm
-  url: https://charts.external-secrets.io
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-external-secrets
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: confluent
-  project: k3s
-  type: helm
-  url: https://packages.confluent.io/helm
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-confluent
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: vernemq
-  project: k3s
-  type: helm
-  url: https://vernemq.github.io/docker-vernemq
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-vernemq
+  name: reloader
 type: Opaque
 ---
 apiVersion: v1
@@ -229,32 +61,5 @@ kind: Secret
 metadata:
   labels:
     argocd.argoproj.io/secret-type: repository
-  name: repo-backube
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: external-dns
-  project: k3s
-  type: helm
-  url: https://kubernetes-sigs.github.io/external-dns/
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-external-dns
-type: Opaque
----
-apiVersion: v1
-stringData:
-  name: envoy-gateway
-  project: k3s
-  type: helm
-  url: docker.io/envoyproxy
-  enableOCI: "true"
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: repo-envoy-gateway
+  name: volsync
 type: Opaque
