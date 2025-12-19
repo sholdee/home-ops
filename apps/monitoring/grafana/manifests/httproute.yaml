@@ -7,12 +7,12 @@ metadata:
   namespace: monitoring
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - grafana.mgmt.sholdee.net
+    - grafana.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: kube-prometheus-stack-grafana
-      namespace: monitoring
-      port: 80
+    - backendRefs:
+        - name: kube-prometheus-stack-grafana
+          namespace: monitoring
+          port: 80

@@ -18,8 +18,10 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
-    - fromEntities:
-        - ingress
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+            gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
       toPorts:
         - ports:
             - port: "8008"

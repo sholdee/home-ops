@@ -7,12 +7,12 @@ metadata:
   namespace: hass
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - codeserver.mgmt.sholdee.net
+    - codeserver.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: codeserver
-      namespace: hass
-      port: 8080
+    - backendRefs:
+        - name: codeserver
+          namespace: hass
+          port: 8080

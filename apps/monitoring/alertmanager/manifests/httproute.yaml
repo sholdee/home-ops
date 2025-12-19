@@ -7,12 +7,12 @@ metadata:
   namespace: monitoring
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - alertmgr.mgmt.sholdee.net
+    - alertmgr.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: kube-prometheus-stack-alertmanager
-      namespace: monitoring
-      port: 9093
+    - backendRefs:
+        - name: kube-prometheus-stack-alertmanager
+          namespace: monitoring
+          port: 9093

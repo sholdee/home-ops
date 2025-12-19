@@ -7,12 +7,12 @@ metadata:
   namespace: hass
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - appdaemon.mgmt.sholdee.net
+    - appdaemon.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: appdaemon
-      namespace: hass
-      port: 5050
+    - backendRefs:
+        - name: appdaemon
+          namespace: hass
+          port: 5050
