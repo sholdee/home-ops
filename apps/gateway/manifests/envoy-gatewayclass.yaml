@@ -47,15 +47,16 @@ spec:
       envoyDeployment:
         pod:
           topologySpreadConstraints:
-          - maxSkew: 1
-            topologyKey: kubernetes.io/hostname
-            whenUnsatisfiable: DoNotSchedule
-            labelSelector:
-              matchLabels:
-                app.kubernetes.io/component: proxy
-            matchLabelKeys:
-            - gateway.envoyproxy.io/owning-gateway-name
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/component: proxy
+              matchLabelKeys:
+                - gateway.envoyproxy.io/owning-gateway-name
         container:
+          imageRepository: mirror.gcr.io/envoyproxy/envoy
           resources:
             requests:
               cpu: 100m
@@ -63,3 +64,10 @@ spec:
             limits:
               cpu: "1"
               memory: 250Mi
+  shutdown:
+    drainTimeout: 180s
+  telemetry:
+    metrics:
+      prometheus:
+        compression:
+          type: Gzip
