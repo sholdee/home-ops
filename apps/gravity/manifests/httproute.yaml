@@ -7,12 +7,12 @@ metadata:
   namespace: gravity
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - gravity.mgmt.sholdee.net
+    - gravity.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: gravity-http
-      namespace: gravity
-      port: 8008
+    - backendRefs:
+        - name: gravity-http
+          namespace: gravity
+          port: 8008

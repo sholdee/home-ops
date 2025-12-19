@@ -7,52 +7,52 @@ metadata:
   namespace: kubernetes-dashboard
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - kdash.mgmt.sholdee.net
+    - kdash.mgmt.sholdee.net
   rules:
-  - matches:
-    - path:
-        type: Exact
-        value: /api/v1/login
-    backendRefs:
-    - name: kubernetes-dashboard-auth
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: Exact
-        value: /api/v1/csrftoken/login
-    backendRefs:
-    - name: kubernetes-dashboard-auth
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: Exact
-        value: /api/v1/me
-    backendRefs:
-    - name: kubernetes-dashboard-auth
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /api
-    backendRefs:
-    - name: kubernetes-dashboard-api
-      namespace: kubernetes-dashboard
-      port: 8000
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /metrics
-    backendRefs:
-    - name: kubernetes-dashboard-metrics-scraper
-      namespace: kubernetes-dashboard
-      port: 8000
-  - backendRefs:
-    - name: kubernetes-dashboard-web
-      namespace: kubernetes-dashboard
-      port: 8000
+    - matches:
+        - path:
+            type: Exact
+            value: /api/v1/login
+      backendRefs:
+        - name: kubernetes-dashboard-auth
+          namespace: kubernetes-dashboard
+          port: 8000
+    - matches:
+        - path:
+            type: Exact
+            value: /api/v1/csrftoken/login
+      backendRefs:
+        - name: kubernetes-dashboard-auth
+          namespace: kubernetes-dashboard
+          port: 8000
+    - matches:
+        - path:
+            type: Exact
+            value: /api/v1/me
+      backendRefs:
+        - name: kubernetes-dashboard-auth
+          namespace: kubernetes-dashboard
+          port: 8000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api
+      backendRefs:
+        - name: kubernetes-dashboard-api
+          namespace: kubernetes-dashboard
+          port: 8000
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /metrics
+      backendRefs:
+        - name: kubernetes-dashboard-metrics-scraper
+          namespace: kubernetes-dashboard
+          port: 8000
+    - backendRefs:
+        - name: kubernetes-dashboard-web
+          namespace: kubernetes-dashboard
+          port: 8000

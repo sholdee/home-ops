@@ -7,12 +7,12 @@ metadata:
   namespace: hass
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - zwave.mgmt.sholdee.net
+    - zwave.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: zwave
-      namespace: hass
-      port: 8091
+    - backendRefs:
+        - name: zwave
+          namespace: hass
+          port: 8091

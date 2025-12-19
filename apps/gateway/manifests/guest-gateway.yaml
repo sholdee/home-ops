@@ -10,26 +10,26 @@ metadata:
 spec:
   gatewayClassName: cilium
   addresses:
-  - type: IPAddress
-    value: 192.168.77.33
+    - type: IPAddress
+      value: 192.168.77.33
   listeners:
-  - name: http
-    protocol: HTTP
-    port: 80
-    allowedRoutes:
-      namespaces:
-        from: Same
-  - name: unifi-guest
-    hostname: unifi.guest.sholdee.net
-    protocol: HTTPS
-    port: 443
-    allowedRoutes:
-      namespaces:
-        from: All
-    tls:
-      mode: Terminate
-      certificateRefs:
-      - name: unifi-guest
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+    - name: unifi-guest
+      hostname: "*.guest.sholdee.net"
+      protocol: HTTPS
+      port: 443
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: guest-wildcard
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -39,9 +39,9 @@ metadata:
   namespace: gateway
 spec:
   parentRefs:
-  - name: guest-gateway
-    namespace: gateway
-    sectionName: http
+    - name: guest-gateway
+      namespace: gateway
+      sectionName: http
   rules:
     - filters:
         - type: RequestRedirect

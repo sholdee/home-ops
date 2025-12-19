@@ -7,12 +7,12 @@ metadata:
   namespace: hass
 spec:
   parentRefs:
-  - name: mgmt-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - hass.mgmt.sholdee.net
+    - hass.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: hass
-      namespace: hass
-      port: 8123
+    - backendRefs:
+        - name: hass
+          namespace: hass
+          port: 8123
