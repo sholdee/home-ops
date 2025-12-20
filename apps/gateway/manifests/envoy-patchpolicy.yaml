@@ -3,7 +3,7 @@
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyPatchPolicy
 metadata:
-  name: envoy-gateway-compression-prefer-zstd
+  name: envoy-gateway-zstd
   namespace: gateway
 spec:
   targetRef:
@@ -14,20 +14,21 @@ spec:
   jsonPatches:
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https
-      operation: &insert_zstd
+      operation: &zstd_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[0]
         value:
           name: envoy.filters.http.compressor
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
+            choose_first: true
             compressor_library:
               name: envoy.compression.zstd.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https
-      operation: &insert_brotli
+      operation: &brotli_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[1]
         value:
@@ -40,7 +41,7 @@ spec:
                 "@type": type.googleapis.com/envoy.extensions.compression.brotli.compressor.v3.Brotli
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https
-      operation: &insert_gzip
+      operation: &gzip_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[2]
         value:
@@ -55,19 +56,19 @@ spec:
               remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https-quic
-      operation: *insert_zstd
+      operation: *zstd_compressor
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https-quic
-      operation: *insert_brotli
+      operation: *brotli_compressor
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https-quic
-      operation: *insert_gzip
+      operation: *gzip_compressor
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/envoypatchpolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyPatchPolicy
 metadata:
-  name: external-gateway-compression-prefer-zstd
+  name: external-gateway-zstd
   namespace: gateway
 spec:
   targetRef:
@@ -78,20 +79,21 @@ spec:
   jsonPatches:
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https
-      operation: &ext_insert_zstd
+      operation: &zstd_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[0]
         value:
           name: envoy.filters.http.compressor
           typed_config:
             "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
+            choose_first: true
             compressor_library:
               name: envoy.compression.zstd.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https
-      operation: &ext_insert_brotli
+      operation: &brotli_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[1]
         value:
@@ -104,7 +106,7 @@ spec:
                 "@type": type.googleapis.com/envoy.extensions.compression.brotli.compressor.v3.Brotli
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https
-      operation: &ext_insert_gzip
+      operation: &gzip_compressor
         op: add
         jsonPath: ..filters[?(@.name=="envoy.filters.network.http_connection_manager")].typed_config.http_filters[2]
         value:
@@ -119,10 +121,10 @@ spec:
               remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https-quic
-      operation: *ext_insert_zstd
+      operation: *zstd_compressor
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https-quic
-      operation: *ext_insert_brotli
+      operation: *brotli_compressor
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https-quic
-      operation: *ext_insert_gzip
+      operation: *gzip_compressor
