@@ -79,39 +79,6 @@ spec:
       - h2
       - http/1.1
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/envoypatchpolicy_v1alpha1.json
-apiVersion: gateway.envoyproxy.io/v1alpha1
-kind: EnvoyPatchPolicy
-metadata:
-  name: external-gateway-zstd
-  namespace: gateway
-spec:
-  targetRef:
-    group: gateway.networking.k8s.io
-    kind: Gateway
-    name: external-gateway
-  type: JSONPatch
-  jsonPatches:
-    - type: type.googleapis.com/envoy.config.listener.v3.Listener
-      name: gateway/external-gateway/https
-      operation: &zstd-compressor
-        op: add
-        path: "/filter_chains/0/filters/0/typed_config/http_filters/0"
-        value:
-          name: envoy.filters.http.compressor
-          typed_config:
-            "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
-            choose_first: true
-            compressor_library:
-              name: envoy.compression.zstd.compressor
-              typed_config:
-                "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
-            response_direction_config:
-              remove_accept_encoding_header: true
-    - type: type.googleapis.com/envoy.config.listener.v3.Listener
-      name: gateway/external-gateway/https-quic
-      operation: *zstd-compressor
----
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
