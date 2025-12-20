@@ -120,10 +120,3 @@ spec:
     idleTime: 60s
     interval: 10s
     probes: 3
-  compressor:
-    - type: Zstd
-      zstd: {}
-    - type: Brotli
-      brotli: {}
-    - type: Gzip
-      gzip: {}
