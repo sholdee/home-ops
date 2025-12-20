@@ -7,15 +7,15 @@ metadata:
   namespace: portainer
 spec:
   parentRefs:
-  - name: external-gateway
-    namespace: gateway
+    - name: external-gateway
+      namespace: gateway
   hostnames:
-  - portainer.sholdee.net
+    - portainer.sholdee.net
   rules:
-  - backendRefs:
-    - name: portainer
-      namespace: portainer
-      port: 9443
+    - backendRefs:
+        - name: portainer
+          namespace: portainer
+          port: 9443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -25,19 +25,19 @@ metadata:
   namespace: portainer
 spec:
   parentRefs:
-  - name: external-gateway
-    namespace: gateway
+    - name: external-gateway
+      namespace: gateway
   hostnames:
-  - portainer.sholdee.net
+    - portainer.sholdee.net
   rules:
-  - matches:
-     - path:
-         type: PathPrefix
-         value: /api/stacks/webhooks
-    backendRefs:
-      - name: portainer
-        namespace: portainer
-        port: 9443
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /api/stacks/webhooks
+      backendRefs:
+        - name: portainer
+          namespace: portainer
+          port: 9443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -53,7 +53,7 @@ spec:
     wellKnownCACertificates: System
     hostname: portainer.sholdee.net
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -101,7 +101,7 @@ spec:
                 values:
                   - d83e440f6003179ee0afb4385254921b7af3b89e43ad6302478efb681c427e12
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:

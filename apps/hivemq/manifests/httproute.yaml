@@ -17,7 +17,7 @@ spec:
           namespace: hivemq
           port: 8080
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
@@ -32,3 +32,14 @@ spec:
     type: ConsistentHash
     consistentHash:
       type: SourceIP
+  tcpKeepalive:
+    idleTime: 60s
+    interval: 10s
+    probes: 3
+  compressor:
+    - type: Zstd
+      zstd: {}
+    - type: Brotli
+      brotli: {}
+    - type: Gzip
+      gzip: {}

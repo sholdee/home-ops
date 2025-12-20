@@ -7,15 +7,15 @@ metadata:
   namespace: argocd
 spec:
   parentRefs:
-  - name: external-gateway
-    namespace: gateway
+    - name: external-gateway
+      namespace: gateway
   hostnames:
-  - argocd.sholdee.net
+    - argocd.sholdee.net
   rules:
-  - backendRefs:
-    - name: argocd-server
-      namespace: argocd
-      port: 443
+    - backendRefs:
+        - name: argocd-server
+          namespace: argocd
+          port: 443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -25,19 +25,19 @@ metadata:
   namespace: argocd
 spec:
   parentRefs:
-  - name: external-gateway
-    namespace: gateway
+    - name: external-gateway
+      namespace: gateway
   hostnames:
-  - argocd.sholdee.net
+    - argocd.sholdee.net
   rules:
-  - matches:
-     - path:
-         type: Exact
-         value: /api/webhook
-    backendRefs:
-      - name: argocd-server
-        namespace: argocd
-        port: 443
+    - matches:
+        - path:
+            type: Exact
+            value: /api/webhook
+      backendRefs:
+        - name: argocd-server
+          namespace: argocd
+          port: 443
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
 apiVersion: gateway.networking.k8s.io/v1
@@ -53,7 +53,7 @@ spec:
     wellKnownCACertificates: System
     hostname: argocd.sholdee.net
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
@@ -101,7 +101,7 @@ spec:
                 values:
                   - 7914bc589a9544a8f8a7425c3edaf6dff734a9c83762d54e5f760251f2fa0bd0
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
 apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: SecurityPolicy
 metadata:
