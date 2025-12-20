@@ -25,8 +25,6 @@ spec:
               name: envoy.compression.zstd.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
-            response_direction_config:
-              remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https
       operation: &insert_brotli
@@ -40,8 +38,6 @@ spec:
               name: envoy.compression.brotli.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.brotli.compressor.v3.Brotli
-            response_direction_config:
-              remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/envoy-gateway/https
       operation: &insert_gzip
@@ -93,8 +89,6 @@ spec:
               name: envoy.compression.zstd.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.zstd.compressor.v3.Zstd
-            response_direction_config:
-              remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https
       operation: &ext_insert_brotli
@@ -108,8 +102,6 @@ spec:
               name: envoy.compression.brotli.compressor
               typed_config:
                 "@type": type.googleapis.com/envoy.extensions.compression.brotli.compressor.v3.Brotli
-            response_direction_config:
-              remove_accept_encoding_header: true
     - type: type.googleapis.com/envoy.config.listener.v3.Listener
       name: gateway/external-gateway/https
       operation: &ext_insert_gzip
