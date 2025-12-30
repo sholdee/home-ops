@@ -6,7 +6,7 @@ namespace: cnpg-system
 components:
   - ../../components/namespace
 resources:
-  - https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.9.0/manifest.yaml
+  - https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/v0.10.0/manifest.yaml
   - namespace.yaml
   - clusterimagecatalog.yaml
 helmCharts:
