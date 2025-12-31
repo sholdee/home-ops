@@ -1,4 +1,4 @@
-upgradeCRDs: true
+upgradeCRDs: false
 snapshotsEnabled: false
 credentials:
   existingSecret: cloud-credentials
