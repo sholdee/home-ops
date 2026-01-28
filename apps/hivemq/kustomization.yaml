@@ -16,7 +16,7 @@ resources:
 helmCharts:
   - name: hivemq-platform-operator
     repo: https://hivemq.github.io/helm-charts
-    version: 0.2.20
+    version: 0.2.21
     releaseName: hivemq-operator
     namespace: hivemq
     valuesInline:
