@@ -117,7 +117,7 @@ spec:
         spec:
           containers:
             - name: renovate-trim
-              image: ghcr.io/openebs/linux-utils:4.3.0
+              image: ghcr.io/openebs/linux-utils:4.4.0
               command:
                 - /bin/sh
                 - -c
