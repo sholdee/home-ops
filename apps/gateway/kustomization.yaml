@@ -10,4 +10,3 @@ resources:
   - manifests/guest-gateway.yaml
   - manifests/envoy-gateway.yaml
   - manifests/envoy-gatewayclass.yaml
-  - manifests/envoy-patchpolicy.yaml
