@@ -12,19 +12,19 @@ spec:
     namespace: kube-system
   ignoreDifferences:
     - jsonPointers:
-      - /data
+        - /data
       kind: Secret
       name: cilium-ca
     - jsonPointers:
-      - /data
+        - /data
       kind: Secret
       name: hubble-ca-cert
     - jsonPointers:
-      - /data
+        - /data
       kind: Secret
       name: hubble-relay-client-certs
     - jsonPointers:
-      - /data
+        - /data
       kind: Secret
       name: hubble-server-certs
   project: k3s
@@ -92,8 +92,8 @@ spec:
     automated:
       prune: true
     syncOptions:
-    - ServerSideApply=true
-    - RespectIgnoreDifferences=true
+      - ServerSideApply=true
+      - RespectIgnoreDifferences=true
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
@@ -105,10 +105,10 @@ spec:
     name: in-cluster
     namespace: longhorn-system
   ignoreDifferences:
-  - group: '*'
-    kind: CustomResourceDefinition
-    jsonPointers:
-    - /spec/preserveUnknownFields
+    - group: "*"
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/preserveUnknownFields
   project: k3s
   source:
     chart: longhorn
@@ -140,9 +140,9 @@ spec:
     automated:
       prune: true
     syncOptions:
-    - ApplyOutOfSyncOnly=true
-    - CreateNamespace=true
-    - RespectIgnoreDifferences=true
+      - ApplyOutOfSyncOnly=true
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
@@ -169,7 +169,7 @@ spec:
     automated:
       prune: true
     syncOptions:
-    - ApplyOutOfSyncOnly=true
+      - ApplyOutOfSyncOnly=true
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
@@ -195,5 +195,5 @@ spec:
     automated:
       prune: true
     syncOptions:
-    - ApplyOutOfSyncOnly=true
-    - CreateNamespace=true
+      - ApplyOutOfSyncOnly=true
+      - CreateNamespace=true
