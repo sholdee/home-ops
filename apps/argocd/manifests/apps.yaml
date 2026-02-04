@@ -130,6 +130,10 @@ spec:
         networkPolicies:
           enabled: false
           type: "k3s"
+        image:
+          longhorn:
+            instanceManager:
+              tag: v1.11.0-hotfix-1
     repoURL: https://charts.longhorn.io
     targetRevision: 1.11.0
   syncPolicy:
