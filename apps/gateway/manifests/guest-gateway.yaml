@@ -48,3 +48,55 @@ spec:
           requestRedirect:
             scheme: https
             statusCode: 301
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/clienttrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: ClientTrafficPolicy
+metadata:
+  name: guest-gateway
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: guest-gateway
+  connection:
+    bufferLimit: 1Mi
+  http2:
+    initialStreamWindowSize: 1Mi
+    initialConnectionWindowSize: 16Mi
+    onInvalidMessage: TerminateStream
+  http3: {}
+  tcpKeepalive:
+    idleTime: 60s
+    interval: 10s
+    probes: 3
+  tls:
+    minVersion: "1.2"
+    alpnProtocols:
+      - h2
+      - http/1.1
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: guest-gateway
+  namespace: gateway
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: guest-gateway
+  connection:
+    bufferLimit: 128Ki
+  tcpKeepalive:
+    idleTime: 60s
+    interval: 10s
+    probes: 3
+  compressor:
+    - type: Zstd
+      zstd: {}
+    - type: Brotli
+      brotli: {}
+    - type: Gzip
+      gzip: {}
