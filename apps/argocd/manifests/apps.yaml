@@ -99,37 +99,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: headlamp
-spec:
-  destination:
-    name: in-cluster
-    namespace: headlamp
-  project: k3s
-  source:
-    chart: headlamp
-    helm:
-      valuesObject:
-        httpRoute:
-          enabled: true
-          parentRefs:
-            - name: envoy-gateway
-              namespace: gateway
-          hostnames:
-            - headlamp.mgmt.sholdee.net
-    repoURL: https://kubernetes-sigs.github.io/headlamp/
-    targetRevision: 0.39.0
-  syncPolicy:
-    automated:
-      prune: true
-    syncOptions:
-      - ApplyOutOfSyncOnly=true
-      - CreateNamespace=true
-      - RespectIgnoreDifferences=true
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: longhorn
 spec:
   destination:

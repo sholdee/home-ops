@@ -63,16 +63,3 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: volsync
 type: Opaque
----
-apiVersion: v1
-stringData:
-  name: headlamp
-  project: k3s
-  type: helm
-  url: https://kubernetes-sigs.github.io/headlamp/
-kind: Secret
-metadata:
-  labels:
-    argocd.argoproj.io/secret-type: repository
-  name: headlamp
-type: Opaque
