@@ -8,7 +8,7 @@ components:
 resources:
   - manifests/httproute.yaml
   - manifests/namespace.yaml
-  - manifests/serviceaccount.yaml
+  - manifests/secret.yaml
 helmCharts:
   - name: headlamp
     repo: https://kubernetes-sigs.github.io/headlamp/
