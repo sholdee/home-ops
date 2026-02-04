@@ -1,8 +1,0 @@
-kong:
-  enabled: false
-api:
-  annotations:
-    hack: fix-argo-diff
-auth:
-  annotations:
-    hack: fix-argo-diff
