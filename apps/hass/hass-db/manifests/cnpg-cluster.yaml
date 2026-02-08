@@ -20,7 +20,7 @@ spec:
     name: hass-db-superuser
   storage:
     storageClass: longhorn-noreplicas
-    size: 7Gi
+    size: 14Gi
   monitoring:
     enablePodMonitor: true
   bootstrap:
