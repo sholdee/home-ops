@@ -9,7 +9,7 @@ resources:
 helmCharts:
   - name: mongodb-kubernetes
     repo: https://mongodb.github.io/helm-charts
-    version: 1.6.1
+    version: 1.7.0
     releaseName: mongodb-kubernetes-operator
     namespace: mongodb-operator
     valuesInline:
