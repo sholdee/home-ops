@@ -35,7 +35,7 @@ spec:
                     operator: DoesNotExist
       containers:
       - name: unifi
-        image: ghcr.io/goofball222/unifi:10.0@sha256:58775fc1ba3553fae222ed4f311dda1481916e7b87658aace8ef27e3b31d9d02
+        image: ghcr.io/goofball222/unifi:10.1@sha256:d2cc9d77c4bdfc130b88bfd17c0819b4f186db5ce4d71c2aff2e30b9c0652a9b
         command:
           - /bin/sh
           - -c
