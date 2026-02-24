@@ -1,18 +1,17 @@
 :80 {
-    log {
-        output stdout
-        format json
-    }
-    @landing path /landing*
-    handle @landing {
-        root * /var/www
-        file_server
-        try_files /index.html
-    }
-
-    reverse_proxy https://unifi-guest:8843 {
-        transport http {
-            tls_insecure_skip_verify
-        }
-    }
+		log {
+				output stdout
+				format json
+		}
+		@landing path /landing*
+		handle @landing {
+				root * /var/www
+				file_server
+				try_files /index.html
+		}
+		reverse_proxy https://unifi-guest:8843 {
+				transport http {
+						tls_server_name unifi.mgmt.sholdee.net
+				}
+		}
 }
