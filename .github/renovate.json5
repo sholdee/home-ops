@@ -59,7 +59,7 @@
       matchDatasources: [
         'docker',
       ],
-      allowedVersions: '<2.34',
+      allowedVersions: '<2.40',
       matchPackageNames: [
         '/portainer-ee/',
       ],
