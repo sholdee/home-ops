@@ -33,6 +33,8 @@ spec:
               value: America/Chicago
             - name: ALLOW_SIGNUP
               value: "false"
+            - name: BASE_URL
+              value: https://mealie.mgmt.sholdee.net
             - name: LOG_LEVEL
               value: "debug"
             - name: DB_ENGINE
