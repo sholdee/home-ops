@@ -27,8 +27,12 @@ spec:
         - name: mealie
           image: ghcr.io/mealie-recipes/mealie:v3.11.0
           env:
+            - name: TZ
+              value: America/Chicago
             - name: ALLOW_SIGNUP
               value: "false"
+            - name: LOG_LEVEL
+              value: "debug"
             - name: DB_ENGINE
               value: postgres
             - name: POSTGRES_USER
@@ -53,11 +57,11 @@ spec:
               mountPath: /app/data
           resources:
             requests:
-              memory: 100Mi
-              cpu: 5m
-            limits:
-              memory: 200Mi
+              memory: 500Mi
               cpu: 200m
+            limits:
+              memory: 500Mi
+              cpu: 500m
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
