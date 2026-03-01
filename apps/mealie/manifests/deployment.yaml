@@ -48,6 +48,9 @@ spec:
               value: "5432"
             - name: POSTGRES_DB
               value: mealie
+          envFrom:
+            - secretRef:
+                name: mealie
           ports:
             - containerPort: 9000
               name: http
