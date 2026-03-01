@@ -30,13 +30,13 @@ spec:
       owner: &user hass
       secret:
         name: &secret hass-db-app-user
-#   initdb:
-#     database: hass
-#     owner: hass
-#     secret:
-#       name: hass-db-app-user
-#     dataChecksums: true
-#     encoding: 'UTF8'
+  #   initdb:
+  #     database: hass
+  #     owner: hass
+  #     secret:
+  #       name: hass-db-app-user
+  #     dataChecksums: true
+  #     encoding: 'UTF8'
   plugins:
     - name: &plugin barman-cloud.cloudnative-pg.io
       isWALArchiver: true
@@ -57,6 +57,12 @@ spec:
         superuser: false
         passwordSecret:
           name: *secret
+      - name: mealie
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: mealie-app-user
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/database_v1.json
 apiVersion: postgresql.cnpg.io/v1
@@ -70,13 +76,27 @@ spec:
   name: hass
   owner: hass
   ensure: present
-  encoding: 'UTF8'
+  encoding: "UTF8"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: mealie
+  namespace: hass
+spec:
+  cluster:
+    name: hass-db2
+  name: mealie
+  owner: mealie
+  ensure: present
+  encoding: "UTF8"
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/scheduledbackup_v1.json
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
-  name:  hass-db2-backup-schedule
+  name: hass-db2-backup-schedule
   namespace: hass
 spec:
   cluster:
@@ -114,10 +134,10 @@ spec:
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - labelSelector:
-              matchExpressions:
-              - key: app
-                operator: In
-                values:
-                - pooler
-            topologyKey: "kubernetes.io/hostname"
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - pooler
+              topologyKey: "kubernetes.io/hostname"
