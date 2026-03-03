@@ -67,7 +67,7 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v4
         with:
-          version: v3.18.4
+          version: v3.19.4
 
       - name: Install base CLI deps
         run: |
@@ -90,7 +90,7 @@ jobs:
 
       - name: Install kustomize
         run: |
-          VERSION="5.7.0"
+          VERSION="5.8.1"
           ARCH="$(uname -m)"
           case "$ARCH" in
             x86_64)
