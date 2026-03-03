@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
-apiVersion: kustomize.config.k8s.io/v1beta1 
+apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - manifests/deployment.yaml
@@ -24,9 +24,6 @@ patches:
       - op: replace
         path: /spec/restic/repository
         value: zwave-volsync-b2
-      - op: replace
-        path: /spec/restic/accessModes/0
-        value: ReadWriteMany
   - target:
       kind: ReplicationDestination
       name: app-bootstrap
@@ -37,9 +34,6 @@ patches:
       - op: replace
         path: /spec/restic/repository
         value: zwave-volsync-b2
-      - op: replace
-        path: /spec/restic/accessModes/0
-        value: ReadWriteMany
   - target:
       kind: ExternalSecret
       name: app-volsync-b2
