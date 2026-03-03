@@ -28,6 +28,9 @@ patches:
       - op: replace
         path: /spec/restic/repository
         value: mealie-volsync-b2
+      - op: replace
+        path: /spec/restic/accessModes/0
+        value: ReadWriteMany
   - target:
       kind: ReplicationDestination
       name: app-bootstrap
@@ -38,6 +41,9 @@ patches:
       - op: replace
         path: /spec/restic/repository
         value: mealie-volsync-b2
+      - op: replace
+        path: /spec/restic/accessModes/0
+        value: ReadWriteMany
   - target:
       kind: ExternalSecret
       name: app-volsync-b2
@@ -61,3 +67,6 @@ patches:
       - op: replace
         path: /spec/dataSourceRef/name
         value: mealie-bootstrap
+      - op: replace
+        path: /spec/accessModes/0
+        value: ReadWriteMany
