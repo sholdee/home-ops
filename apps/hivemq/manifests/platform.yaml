@@ -95,4 +95,4 @@ spec:
     - id: hivemq-file-rbac-extension
       enabled: true
       supportsHotReload: true
-      extensionUri: "https://www.hivemq.com/releases/extensions/hivemq-file-rbac-extension-4.6.10.zip"
+      extensionUri: "https://www.hivemq.com/releases/extensions/hivemq-file-rbac-extension-4.6.11.zip"
