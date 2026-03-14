@@ -228,7 +228,7 @@ jobs:
 
       - name: Generate Token
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
@@ -355,7 +355,7 @@ jobs:
 
       - name: Generate Token
         if: always() && env.IMAGE_PULL_COMMENT != ''
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
