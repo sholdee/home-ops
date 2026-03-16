@@ -135,7 +135,7 @@ spec:
             instanceManager:
               tag: v1.11.0-hotfix-1
     repoURL: https://charts.longhorn.io
-    targetRevision: 1.11.0
+    targetRevision: 1.11.1
   syncPolicy:
     automated:
       prune: true
