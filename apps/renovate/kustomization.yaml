@@ -1,18 +1,18 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/kustomization
-apiVersion: kustomize.config.k8s.io/v1beta1 
+apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: renovate
 resources:
-  - manifests/cronjob.yaml
   - manifests/externalsecret.yaml
-  - manifests/pvc.yaml
+  - manifests/renovatejob.yaml
+  - manifests/httproute.yaml
 components:
   - ../../components/namespace
-configMapGenerator:
-  - name: renovate-config
-    files:
-      - config.js=manifests/config.js
+helmCharts:
+  - name: renovate-operator
+    repo: oci://ghcr.io/mogenius/helm-charts
+    version: 3.8.3
+    releaseName: renovate-operator
     namespace: renovate
-generatorOptions:
-  disableNameSuffixHash: true
+    valuesFile: manifests/values.yaml
