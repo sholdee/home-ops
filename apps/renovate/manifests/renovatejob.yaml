@@ -5,7 +5,7 @@ kind: RenovateJob
 metadata:
   name: renovate
 spec:
-  discoveryFilter: "/sholdee/docker-compose|sholdee/caddy-proxy-cloudflare|sholdee/adguard-exporter/"
+  discoveryFilter: "/sholdee/docker-compose|sholdee/caddy-proxy-cloudflare|sholdee/adguard-exporter|sholdee/home-ops/"
   extraEnv:
     - name: LOG_LEVEL
       value: debug
