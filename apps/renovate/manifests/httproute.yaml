@@ -1,0 +1,126 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: renovate
+spec:
+  parentRefs:
+    - name: external-gateway
+      namespace: gateway
+  hostnames:
+    - renovate.sholdee.net
+  rules:
+    - backendRefs:
+        - name: renovate-operator
+          port: 8081
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: renovate-webhooks
+spec:
+  parentRefs:
+    - name: external-gateway
+      namespace: gateway
+  hostnames:
+    - renovate.sholdee.net
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /webhook
+      backendRefs:
+        - name: renovate-operator
+          port: 8082
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: renovate-cloudflare-access
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: renovate
+  jwt:
+    optional: true
+    providers:
+      - name: cloudflare-access
+        issuer: https://sholdee.cloudflareaccess.com
+        audiences:
+          - 6030aac8ce902dbedefe64c1df612086586ff9763502f0aa2c9b3776a1186161
+        remoteJWKS:
+          uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
+        extractFrom:
+          headers:
+            - name: Cf-Access-Jwt-Assertion
+          cookies:
+            - CF_Authorization
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: allow-private-cidrs
+        action: Allow
+        principal:
+          clientCIDRs:
+            - 10.6.0.0/24
+            - 192.168.99.0/24
+      - name: allow-ui
+        action: Allow
+        principal:
+          jwt:
+            provider: cloudflare-access
+            claims:
+              - name: iss
+                values:
+                  - https://sholdee.cloudflareaccess.com
+              - name: aud
+                valueType: StringArray
+                values:
+                  - 6030aac8ce902dbedefe64c1df612086586ff9763502f0aa2c9b3776a1186161
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.envoyproxy.io/securitypolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: SecurityPolicy
+metadata:
+  name: renovate-cloudflare-access-webhooks
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: renovate-webhooks
+  jwt:
+    optional: false
+    providers:
+      - name: cloudflare-access
+        issuer: https://sholdee.cloudflareaccess.com
+        audiences:
+          - 233d254bcac40d73bdb59535c6eafbe015c7b25b2ba5fb3838e1db87f54f9ea8
+        remoteJWKS:
+          uri: https://sholdee.cloudflareaccess.com/cdn-cgi/access/certs
+        extractFrom:
+          headers:
+            - name: Cf-Access-Jwt-Assertion
+          cookies:
+            - CF_Authorization
+  authorization:
+    defaultAction: Deny
+    rules:
+      - name: allow-webhook
+        action: Allow
+        operation:
+          methods: ["POST"]
+        principal:
+          jwt:
+            provider: cloudflare-access
+            claims:
+              - name: iss
+                values:
+                  - https://sholdee.cloudflareaccess.com
+              - name: aud
+                valueType: String
+                values:
+                  - 233d254bcac40d73bdb59535c6eafbe015c7b25b2ba5fb3838e1db87f54f9ea8

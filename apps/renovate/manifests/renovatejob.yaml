@@ -1,0 +1,35 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.pages.dev/renovate-operator.mogenius.com/renovatejob_v1alpha1.json
+apiVersion: renovate-operator.mogenius.com/v1alpha1
+kind: RenovateJob
+metadata:
+  name: renovate
+spec:
+  discoveryFilter: "sholdee/*"
+  extraEnv:
+    - name: LOG_LEVEL
+      value: debug
+    - name: RENOVATE_PLATFORM_COMMIT
+      value: "true"
+    - name: RENOVATE_AUTODISCOVER_FILTER_NOT
+      value: "sholdee/home-ops"
+  provider:
+    name: github
+  image: renovate/renovate:43.78.0
+  parallelism: 1
+  schedule: "0 * * * *"
+  secretRef: renovate-secret
+  resources:
+    requests:
+      cpu: 400m
+      memory: 600Mi
+    limits:
+      cpu: 400m
+      memory: 600Mi
+  webhook:
+    enabled: true
+    authentication:
+      enabled: true
+      secretRef:
+        name: renovate-webhook-token
+        key: token
