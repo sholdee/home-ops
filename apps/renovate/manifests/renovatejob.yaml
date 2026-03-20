@@ -14,7 +14,7 @@ spec:
   provider:
     name: github
   image: renovate/renovate:43.78.0
-  parallelism: 1
+  parallelism: 3
   schedule: "0 * * * *"
   secretRef: renovate-secret
   resources:
