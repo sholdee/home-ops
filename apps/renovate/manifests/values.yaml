@@ -2,8 +2,7 @@ fullnameOverride: renovate-operator
 webhook:
   enabled: true
 config:
-  deleteSuccessfulJobs: true
-  jobTTLSecondsAfterFinished: 3600
+  jobTTLSecondsAfterFinished: 10800
 metrics:
   enabled: true
   serviceMonitor:
