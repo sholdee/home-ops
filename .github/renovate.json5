@@ -5,6 +5,7 @@
     'docker:enableMajor',
     ':semanticCommits',
   ],
+  platformAutomerge: true,
   dependencyDashboardTitle: 'Dependency Dashboard :robot:',
   kubernetes: {
     managerFilePatterns: [
