@@ -58,8 +58,6 @@ docs/              # Operational documentation
 .github/           # Renovate config, CI workflows, helper scripts
 ```
 
-For a comprehensive reference covering all app patterns, conventions, and how-to guides, see [`docs/REPOSITORY_REFERENCE.md`](docs/REPOSITORY_REFERENCE.md).
-
 ### ArgoCD Project Structure 🏗️
 
 The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd` application, which is also an app-of-apps holding Helm applications.
