@@ -29,12 +29,6 @@ spec:
         - ports:
             - port: "8081"
               protocol: TCP
-    - fromEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: envoy-gateway-system
-            gateway.envoyproxy.io/owning-gateway-name: external-gateway
-      toPorts:
-        - ports:
             - port: "8082"
               protocol: TCP
 ---
@@ -51,7 +45,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: renovate
-            renovate-operator.mogenius.com/job-type: executor
       toPorts:
         - ports:
             - port: "6379"
