@@ -915,7 +915,7 @@ GitHub push events trigger a webhook to ArgoCD at `argocd.sholdee.net/api/webhoo
 
 **Automerge (minor/patch/digest):**
 
-- renovate, cert-manager, kube-prometheus-stack, kubernetes-dashboard, reloader, velero, postgresql, code-server, CSI components, kromgo, kubectl, portainer, caddy, adguard-exporter, system-upgrade-controller, k8s-sidecar
+- renovate, cert-manager, kube-prometheus-stack, kubernetes-dashboard, reloader, velero, postgresql, code-server, CSI components, kromgo, kubectl, portainer, caddy, adguard-exporter, system-upgrade-controller, k8s-sidecar, mealie, headlamp, external-secrets, busybox, velero-plugin-for-aws
 - GitHub Actions: minor/patch/digest
 
 ### Custom Managers (Regex)
