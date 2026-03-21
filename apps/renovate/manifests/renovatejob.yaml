@@ -15,7 +15,7 @@ spec:
       value: "--max-old-space-size=1024"
   provider:
     name: github
-  image: renovate/renovate:43.84.0
+  image: renovate/renovate:43.84.1
   parallelism: 3
   schedule: "0 * * * *"
   secretRef: renovate-secret
