@@ -12,7 +12,6 @@ spec:
     - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: renovate
-            renovate-operator.mogenius.com/job-type: executor
       toPorts:
         - ports:
             - port: "6379"
