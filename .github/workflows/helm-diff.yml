@@ -206,7 +206,7 @@ jobs:
         if: steps.read-diff.outputs.HAS_DIFF == 'true'
         id: prepare-diff
         run: |
-          MAX_BYTES=65000
+          MAX_BYTES=61000
 
           if [ -s diff.txt ]; then
             if [ "$(wc -c < diff.txt)" -gt "$MAX_BYTES" ]; then
