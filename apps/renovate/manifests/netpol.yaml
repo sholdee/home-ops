@@ -1,0 +1,18 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: renovate-redis
+spec:
+  endpointSelector:
+    matchLabels:
+      app: renovate-redis
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: renovate
+            renovate-operator.mogenius.com/job-type: executor
+      toPorts:
+        - ports:
+            - port: "6379"
