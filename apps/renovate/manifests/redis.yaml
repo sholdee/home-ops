@@ -53,7 +53,7 @@ metadata:
   name: renovate-redis
 spec:
   selector:
-    app.kubernetes.io/name: renovate-redis
+    app: renovate-redis
   ports:
     - port: 6379
       targetPort: 6379
