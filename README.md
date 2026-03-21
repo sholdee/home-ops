@@ -39,9 +39,26 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
 
 Renovate continuously scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-Pull requests for Helm application updates trigger a workflow to calculate and post the diff between the old and new versions' inflated manifests, as well as detect and pull all new container images to the cluster for verification.
+Pull requests for Helm application updates trigger a workflow to calculate and post the diff between the old and new versions' inflated manifests, as well as detect and pull all new container images to the cluster for ARM64 platform verification.
 
-Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
+Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image and verify ARM64 compatibility. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
+
+### Repository Structure 📂
+
+```
+apps/              # Application definitions -- one ArgoCD Application per directory
+├── argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
+├── hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
+├── unifi/         # Grouped: UniFi controller, MongoDB ReplicaSet, guest portal proxy
+├── monitoring/    # Grouped: kube-prometheus-stack, Grafana, Prometheus, Alertmanager, Kromgo
+├── kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
+└── .../           # Each remaining directory is a standalone app (Helm or plain manifests)
+components/        # Reusable Kustomize Components (namespace pull secrets, VolSync backup templates)
+docs/              # Operational documentation
+.github/           # Renovate config, CI workflows, helper scripts
+```
+
+For a comprehensive reference covering all app patterns, conventions, and how-to guides, see [`docs/REPOSITORY_REFERENCE.md`](docs/REPOSITORY_REFERENCE.md).
 
 ### ArgoCD Project Structure 🏗️
 
@@ -93,9 +110,10 @@ erDiagram
   - Appdaemon
     - Custom [automations](https://github.com/sholdee/sholdee-hass-apps)
   - Z-Wave JS UI
-  - HiveMQ
   - Codeserver
   - Venstar MQTT bridge
+- HiveMQ
+- Mealie
 - Unifi
 - Adguard
   - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
@@ -122,7 +140,7 @@ erDiagram
 - Kube Prometheus Stack
 - Kromgo
 - System Upgrade Controller
-- Kubernetes Dashboard
+- Headlamp
 - Stakater Reloader
 - Velero
 
@@ -137,6 +155,19 @@ erDiagram
 
 ### Storage: Longhorn 💾
 
+- VolSync with Restic to Backblaze B2
+- CloudNativePG barman-cloud to Backblaze B2
+- Longhorn recurring backups to NAS (NFS)
+- Velero cluster-wide backup
+
 ### Hardware 🖥️
 
-- RPi 5 with 512GB NVMe SSD via PCIe hat
+| Node | Role | RAM | Storage |
+|---|---|---|---|
+| k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD |
+| k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD |
+| k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD |
+| k3s-worker-0 | Worker | 8GB | 512GB NVMe SSD |
+| k3s-worker-1 | Worker | 8GB | 512GB NVMe SSD |
+
+All nodes are Raspberry Pi 5 with NVMe SSD via PCIe hat.

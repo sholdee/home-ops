@@ -37,24 +37,6 @@ spec:
         - RespectIgnoreDifferences=true
         - ServerSideApply=true
   templatePatch: |
-    {{- if eq .path.basename "kubernetes-dashboard" }}
-    spec:
-      ignoreDifferences:
-      - group: ''
-        kind: ConfigMap
-        name: kubernetes-dashboard-web-settings
-        jsonPointers:
-        - /data
-      - group: ''
-        kind: Secret
-        name: kubernetes-dashboard-csrf
-        jsonPointers:
-        - /data/private.key
-      - group: apps
-        kind: Deployment
-        jsonPointers:
-        - /spec/template/metadata/annotations/checksum~1config
-    {{- end }}
     {{- if eq .path.basename "monitoring" }}
     spec:
       ignoreDifferences:
