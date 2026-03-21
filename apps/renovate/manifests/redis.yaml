@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: renovate-redis
+  labels:
+    app: renovate-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: renovate-redis
+  template:
+    metadata:
+      labels:
+        app: renovate-redis
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: redis
+          image: redis:8.6.1-alpine
+          args: ["--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+          ports:
+            - containerPort: 6379
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              cpu: 100m
+              memory: 192Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: renovate-redis
+spec:
+  selector:
+    app.kubernetes.io/name: renovate-redis
+  ports:
+    - port: 6379
+      targetPort: 6379

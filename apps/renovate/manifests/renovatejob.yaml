@@ -13,6 +13,8 @@ spec:
       value: "true"
     - name: NODE_OPTIONS
       value: "--max-old-space-size=1024"
+    - name: RENOVATE_REDIS_URL
+      value: "redis://renovate-redis.renovate.svc.cluster.local:6379"
   provider:
     name: github
   image: renovate/renovate:43.84.2
