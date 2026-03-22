@@ -15,6 +15,16 @@ spec:
       value: "--max-old-space-size=1024"
     - name: RENOVATE_REDIS_URL
       value: "redis://renovate-redis.renovate.svc.cluster.local:6379"
+    - name: RENOVATE_REPOSITORY_CACHE
+      value: enabled
+    - name: RENOVATE_REPOSITORY_CACHE_TYPE
+      value: "s3://renovate-cache"
+    - name: AWS_REGION
+      value: garage
+    - name: AWS_ENDPOINT_URL
+      value: "http://10.2.0.110:3900"
+    - name: S3_FORCE_PATH_STYLE
+      value: "true"
   provider:
     name: github
   image: renovate/renovate:43.84.2
