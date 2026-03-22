@@ -8,13 +8,17 @@ spec:
   discoveryFilter: "/sholdee/(docker-compose|caddy-proxy-cloudflare|adguard-exporter|home-ops)/"
   extraEnv:
     - name: LOG_LEVEL
-      value: debug
+      value: info
     - name: RENOVATE_PLATFORM_COMMIT
       value: "true"
     - name: NODE_OPTIONS
       value: "--max-old-space-size=1024"
     - name: RENOVATE_REDIS_URL
       value: "redis://renovate-redis.renovate.svc.cluster.local:6379"
+    - name: RENOVATE_REPOSITORY_CACHE
+      value: enabled
+    - name: RENOVATE_REPOSITORY_CACHE_TYPE
+      value: redis
   provider:
     name: github
   image: renovate/renovate:43.84.2
@@ -23,10 +27,10 @@ spec:
   secretRef: renovate-secret
   resources:
     requests:
-      cpu: 400m
+      cpu: 500m
       memory: 1280Mi
     limits:
-      cpu: 400m
+      cpu: 500m
       memory: 1280Mi
   webhook:
     enabled: true
