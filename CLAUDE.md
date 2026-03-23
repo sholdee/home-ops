@@ -76,7 +76,7 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 
 - Include `components: [../../components/namespace]` (provides Docker Hub pull secret)
 - Have an explicit `manifests/namespace.yaml` resource (or parent group provides it)
-- Use `# yaml-language-server: $schema=...` comments on all YAML files
+- Use `# yaml-language-server: $schema=...` comments only on CRD YAML files (ExternalSecret, HTTPRoute, CiliumNetworkPolicy, CNPG resources, etc.). Do NOT add schema comments to built-in Kubernetes APIs (Deployment, Service, ConfigMap, Namespace, etc.) — the IDE already provides schema awareness for these
 
 ### Every deployment MUST have
 

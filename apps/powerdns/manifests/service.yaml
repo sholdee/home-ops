@@ -1,0 +1,78 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns
+  namespace: powerdns
+  labels:
+    app: dnsdist
+spec:
+  selector:
+    app: dnsdist
+  ports:
+    - protocol: UDP
+      port: 53
+      targetPort: 53
+      name: dns
+    - protocol: TCP
+      port: 53
+      targetPort: 53
+      name: dns-tcp
+  type: LoadBalancer
+  loadBalancerIP: 192.168.77.53
+  externalTrafficPolicy: Cluster
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns-auth
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  selector:
+    app: powerdns
+  ports:
+    - protocol: UDP
+      port: 53
+      targetPort: 53
+      name: dns
+    - protocol: TCP
+      port: 53
+      targetPort: 53
+      name: dns-tcp
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns-api
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  selector:
+    app: powerdns
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+      name: api
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns-admin
+  namespace: powerdns
+  labels:
+    app: powerdns-admin
+spec:
+  selector:
+    app: powerdns-admin
+  ports:
+    - protocol: TCP
+      port: 9191
+      targetPort: 9191
+      name: http
+  type: ClusterIP

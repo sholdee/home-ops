@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: powerdns-config
+  namespace: powerdns
+data:
+  pdns.conf: |
+    launch=gpgsql
+    gpgsql-host=powerdns-db-rw
+    gpgsql-port=5432
+    gpgsql-dbname=powerdns
+    gpgsql-user=powerdns
+    gpgsql-dnssec=yes
+    local-address=0.0.0.0
+    local-port=53
+    api=yes
+    webserver=yes
+    webserver-address=0.0.0.0
+    webserver-port=8081
+    webserver-allow-from=0.0.0.0/0,::/0
+    daemon=no
+    guardian=no
+    write-pid=no
+    disable-syslog=yes
+    loglevel=4
+    default-soa-content=ns1.@ hostmaster.@ 0 10800 3600 604800 3600
+    dnsupdate=no
+    expand-alias=yes
+    resolver=192.168.77.54

@@ -1,0 +1,134 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: &name powerdns-db
+  namespace: powerdns
+  annotations:
+    cnpg.io/skipEmptyWalArchiveCheck: enabled
+spec:
+  instances: 3
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql
+    major: 18
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
+  superuserSecret:
+    name: powerdns-db-superuser
+  storage:
+    storageClass: longhorn-noreplicas
+    size: 2Gi
+  monitoring:
+    enablePodMonitor: true
+  bootstrap:
+    initdb:
+      database: powerdns
+      owner: &pdns-user powerdns
+      secret:
+        name: &pdns-secret powerdns-db-app-user
+      dataChecksums: true
+      encoding: 'UTF8'
+      postInitApplicationSQL:
+        - CREATE TABLE IF NOT EXISTS domains (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, master VARCHAR(128) DEFAULT NULL, last_check INT DEFAULT NULL, type TEXT NOT NULL, notified_serial BIGINT DEFAULT NULL, account VARCHAR(40) DEFAULT NULL, options TEXT DEFAULT NULL, catalog TEXT DEFAULT NULL, CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
+        - CREATE UNIQUE INDEX IF NOT EXISTS name_index ON domains(name)
+        - CREATE INDEX IF NOT EXISTS catalog_idx ON domains(catalog)
+        - CREATE TABLE IF NOT EXISTS records (id BIGSERIAL PRIMARY KEY, domain_id INT DEFAULT NULL, name VARCHAR(255) DEFAULT NULL, type VARCHAR(10) DEFAULT NULL, content VARCHAR(65535) DEFAULT NULL, ttl INT DEFAULT NULL, prio INT DEFAULT NULL, disabled BOOL DEFAULT 'f', ordername VARCHAR(255), auth BOOL DEFAULT 't', CONSTRAINT domain_exists FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE, CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
+        - CREATE INDEX IF NOT EXISTS rec_name_index ON records(name)
+        - CREATE INDEX IF NOT EXISTS nametype_index ON records(name,type)
+        - CREATE INDEX IF NOT EXISTS domain_id ON records(domain_id)
+        - CREATE INDEX IF NOT EXISTS recordorder ON records (domain_id, ordername text_pattern_ops)
+        - CREATE TABLE IF NOT EXISTS supermasters (ip INET NOT NULL, nameserver VARCHAR(255) NOT NULL, account VARCHAR(40) NOT NULL, PRIMARY KEY(ip, nameserver))
+        - CREATE TABLE IF NOT EXISTS comments (id SERIAL PRIMARY KEY, domain_id INT NOT NULL, name VARCHAR(255) NOT NULL, type VARCHAR(10) NOT NULL, modified_at INT NOT NULL, account VARCHAR(40) DEFAULT NULL, comment VARCHAR(65535) NOT NULL, CONSTRAINT domain_exists FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE, CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
+        - CREATE INDEX IF NOT EXISTS comments_domain_id_idx ON comments (domain_id)
+        - CREATE INDEX IF NOT EXISTS comments_name_type_idx ON comments (name, type)
+        - CREATE INDEX IF NOT EXISTS comments_order_idx ON comments (domain_id, modified_at)
+        - CREATE TABLE IF NOT EXISTS domainmetadata (id SERIAL PRIMARY KEY, domain_id INT REFERENCES domains(id) ON DELETE CASCADE, kind VARCHAR(32), content TEXT)
+        - CREATE INDEX IF NOT EXISTS domainidmetaindex ON domainmetadata(domain_id)
+        - CREATE TABLE IF NOT EXISTS cryptokeys (id SERIAL PRIMARY KEY, domain_id INT REFERENCES domains(id) ON DELETE CASCADE, flags INT NOT NULL, active BOOL, published BOOL DEFAULT TRUE, content TEXT)
+        - CREATE INDEX IF NOT EXISTS domainidindex ON cryptokeys(domain_id)
+        - CREATE TABLE IF NOT EXISTS tsigkeys (id SERIAL PRIMARY KEY, name VARCHAR(255), algorithm VARCHAR(50), secret VARCHAR(255), CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
+        - CREATE UNIQUE INDEX IF NOT EXISTS namealgoindex ON tsigkeys(name, algorithm)
+        - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO powerdns
+        - GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO powerdns
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO powerdns
+        - ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO powerdns
+  # To restore from backup, comment out initdb above and uncomment:
+  # bootstrap:
+  #   recovery:
+  #     source: &src barman-cloud
+  #     database: powerdns
+  #     owner: powerdns
+  #     secret:
+  #       name: powerdns-db-app-user
+  plugins:
+    - name: &plugin barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: &store cnpg-powerdns-b2
+  externalClusters:
+    - name: barman-cloud
+      plugin:
+        name: *plugin
+        parameters:
+          barmanObjectName: *store
+          serverName: *name
+  managed:
+    roles:
+      - name: *pdns-user
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: *pdns-secret
+      - name: powerdnsadmin
+        ensure: present
+        login: true
+        superuser: false
+        passwordSecret:
+          name: powerdns-db-admin-user
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: powerdns
+  namespace: powerdns
+spec:
+  cluster:
+    name: powerdns-db
+  name: powerdns
+  owner: powerdns
+  ensure: present
+  encoding: "UTF8"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: powerdnsadmin
+  namespace: powerdns
+spec:
+  cluster:
+    name: powerdns-db
+  name: powerdnsadmin
+  owner: powerdnsadmin
+  ensure: present
+  encoding: "UTF8"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/scheduledbackup_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: powerdns-db-backup-schedule
+  namespace: powerdns
+spec:
+  cluster:
+    name: powerdns-db
+  schedule: "0 0 0 * * *"
+  backupOwnerReference: self
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

@@ -1,0 +1,28 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dnsdist-config
+  namespace: powerdns
+data:
+  dnsdist.conf: |
+    setLocal("0.0.0.0:53", {doTCP=true, reusePort=true})
+    setACL({"0.0.0.0/0", "::/0"})
+
+    -- Authoritative backend (PowerDNS Auth)
+    newServer({address="powerdns-auth:53", pool="auth", checkName="sholdee.net.", checkType="SOA"})
+
+    -- Forwarding backend (AdGuard Home)
+    newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
+
+    -- Authoritative zones: add all zones managed by PowerDNS here
+    local authZones = newSuffixMatchNode()
+    authZones:add(newDNSName("sholdee.net."))
+    authZones:add(newDNSName("mgmt.sholdee.net."))
+    authZones:add(newDNSName("guest.sholdee.net."))
+
+    -- Route authoritative queries to PowerDNS Auth
+    addAction(SuffixMatchNodeRule(authZones), PoolAction("auth"))
+
+    -- Forward everything else to AdGuard
+    addAction(AllRule(), PoolAction("forward"))

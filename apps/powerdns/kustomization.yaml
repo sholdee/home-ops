@@ -1,0 +1,21 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/kustomization
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: powerdns
+components:
+  - ../../components/namespace
+resources:
+  - manifests/namespace.yaml
+  - manifests/configmap.yaml
+  - manifests/configmap-dnsdist.yaml
+  - manifests/externalsecret.yaml
+  - manifests/cnpg-cluster.yaml
+  - manifests/cnpg-objectstore.yaml
+  - manifests/cnpg-rbac.yaml
+  - manifests/deployment.yaml
+  - manifests/deployment-admin.yaml
+  - manifests/deployment-dnsdist.yaml
+  - manifests/service.yaml
+  - manifests/httproute.yaml
+  - manifests/netpol.yaml

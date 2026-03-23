@@ -1,0 +1,127 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: powerdns
+  namespace: powerdns
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: powerdns
+  template:
+    metadata:
+      labels:
+        app: powerdns
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: powerdns
+      initContainers:
+        - name: render-config
+          image: busybox:1.37.0
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cp /config-template/pdns.conf /config/pdns.conf
+              echo "gpgsql-password=$GPGSQL_PASSWORD" >> /config/pdns.conf
+              echo "api-key=$API_KEY" >> /config/pdns.conf
+          env:
+            - name: GPGSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns-db-app-user
+                  key: password
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns
+                  key: API_KEY
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 5m
+            limits:
+              memory: 16Mi
+          volumeMounts:
+            - name: config-template
+              mountPath: /config-template
+            - name: config
+              mountPath: /config
+      containers:
+        - name: pdns
+          image: powerdns/pdns-auth-50:latest
+          command: ["pdns_server"]
+          args: ["--config-dir=/config"]
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dns-tcp
+              protocol: TCP
+            - containerPort: 8081
+              name: api
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: dns-tcp
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: 128Mi
+              cpu: 5m
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run/pdns
+      volumes:
+        - name: config-template
+          configMap:
+            name: powerdns-config
+            items:
+              - key: pdns.conf
+                path: pdns.conf
+        - name: config
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}

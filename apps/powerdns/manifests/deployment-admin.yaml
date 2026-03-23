@@ -1,0 +1,122 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: powerdns-admin
+  namespace: powerdns
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: powerdns-admin
+  template:
+    metadata:
+      labels:
+        app: powerdns-admin
+    spec:
+      enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: powerdns-admin
+          image: powerdnsadmin/pda-legacy:v0.4.2
+          env:
+            - name: SQLA_DB_DRIVER
+              value: postgresql
+            - name: SQLA_DB_HOST
+              value: powerdns-db-rw
+            - name: SQLA_DB_PORT
+              value: "5432"
+            - name: SQLA_DB_NAME
+              value: powerdnsadmin
+            - name: SQLA_DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns-db-admin-user
+                  key: username
+            - name: SQLA_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns-db-admin-user
+                  key: password
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns
+                  key: API_KEY
+            - name: BIND_ADDRESS
+              value: "0.0.0.0:9191"
+          ports:
+            - containerPort: 9191
+              name: http
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: 512Mi
+              cpu: 5m
+            limits:
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: run
+              mountPath: /var/run
+            - name: pda-data
+              mountPath: /data
+            - name: pda-app
+              mountPath: /app/configs
+            - name: pda-home
+              mountPath: /home/pda
+      initContainers:
+        - name: copy-configs
+          image: powerdnsadmin/pda-legacy:v0.4.2
+          command: ["/bin/sh", "-c"]
+          args:
+            - cp -r /app/configs/* /writable-configs/
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              memory: 16Mi
+              cpu: 5m
+            limits:
+              memory: 16Mi
+          volumeMounts:
+            - name: pda-app
+              mountPath: /writable-configs
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: pda-data
+          emptyDir: {}
+        - name: pda-app
+          emptyDir: {}
+        - name: pda-home
+          emptyDir: {}
