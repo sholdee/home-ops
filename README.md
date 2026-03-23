@@ -115,9 +115,10 @@ erDiagram
 - Unifi
 - Adguard
   - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
-- Gravity DNS cluster
-  - External-DNS webhook
-  - etcd
+- PowerDNS Authoritative DNS
+  - dnsdist (DNS load balancer/router)
+  - Poweradmin (web UI)
+  - CNPG PostgreSQL with pgbouncer
 - Renovate
 - Portainer
   - GitOps for remote Docker hosts
