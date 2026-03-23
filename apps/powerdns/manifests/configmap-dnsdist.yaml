@@ -10,7 +10,7 @@ data:
     setACL({"0.0.0.0/0", "::/0"})
 
     -- Authoritative backend (PowerDNS Auth)
-    newServer({address="10.43.231.221", pool="auth", checkName="sholdee.net.", checkType="SOA"})
+    newServer({address="10.43.231.221", pool="auth", checkName="sholdee.net.", checkType="SOA", tcpOnly=true})
 
     -- Forwarding backend (AdGuard Home)
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
