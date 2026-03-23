@@ -28,7 +28,7 @@ spec:
             - name: DB_TYPE
               value: pgsql
             - name: DB_HOST
-              value: powerdns-db-rw
+              value: powerdns-db-pooler-rw
             - name: DB_PORT
               value: "5432"
             - name: DB_NAME
