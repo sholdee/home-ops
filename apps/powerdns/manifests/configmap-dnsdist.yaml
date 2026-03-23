@@ -13,7 +13,7 @@ data:
     newServer({address="10.43.231.221", pool="auth", checkName="sholdee.net.", checkType="SOA", tcpOnly=true})
 
     -- Forwarding backend (AdGuard Home)
-    newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
+    newServer({address="192.168.77.54:53", pool="forward", checkName="google.com.", tcpOnly=true})
 
     -- Fallback public resolvers (used when AdGuard is down)
     newServer({address="1.1.1.1:53", pool="fallback", checkName="google.com."})
