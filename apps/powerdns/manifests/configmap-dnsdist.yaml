@@ -15,6 +15,10 @@ data:
     -- Forwarding backend (AdGuard Home)
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
 
+    -- Fallback public resolvers (used when AdGuard is down)
+    newServer({address="1.1.1.1:53", pool="fallback", checkName="google.com."})
+    newServer({address="9.9.9.9:53", pool="fallback", checkName="google.com."})
+
     -- Authoritative zones (SuffixMatchNodeRule matches all subdomains)
     local authZones = newSuffixMatchNode()
     authZones:add(newDNSName("sholdee.net."))
@@ -22,5 +26,12 @@ data:
     -- Route authoritative queries to PowerDNS Auth, fall back to forward if auth is down
     addAction(AndRule({SuffixMatchNodeRule(authZones), PoolAvailableRule("auth")}), PoolAction("auth"))
 
-    -- Forward everything else (including auth zones when auth pool is unavailable) to AdGuard
-    addAction(AllRule(), PoolAction("forward"))
+    -- Forward to AdGuard when available, otherwise fall back to public resolvers
+    addAction(PoolAvailableRule("forward"), PoolAction("forward"))
+    addAction(AllRule(), PoolAction("fallback"))
+
+    -- Packet cache (10k entries, TTL clamped 60s-3600s, serve stale for 60s)
+    pc = newPacketCache(10000, {maxTTL=3600, minTTL=60, staleTTL=60})
+    getPool("auth"):setCache(pc)
+    getPool("forward"):setCache(pc)
+    getPool("fallback"):setCache(pc)
