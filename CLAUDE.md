@@ -2,7 +2,7 @@
 
 ## What This Is
 
-ARM64 K3s GitOps cluster. ArgoCD syncs from `master` branch. Renovate manages dependency updates. GitHub Actions verify Helm diffs and container images on PRs.
+ARM64 (Raspberry Pi 5) K3s GitOps cluster. **All container images must support `linux/arm64`.** ArgoCD syncs from `master` branch. Renovate manages dependency updates. GitHub Actions verify Helm diffs and container images on PRs.
 
 ## Repository Layout
 
@@ -13,14 +13,54 @@ docs/           Operational docs and full reference
 .github/        Renovate config, CI workflows, scripts
 ```
 
-## How ArgoCD Works
+### Key Files
 
-- **ApplicationSet** (`apps/argocd/manifests/app-set.yaml`): Git directory generator scans `apps/*`, creates one Application per directory. Name = directory basename, namespace = basename with `-conf` suffix stripped.
-- **App-of-apps** (`apps/argocd/manifests/apps.yaml`): Contains ArgoCD Application CRs for Cilium, Longhorn, Reloader, VolSync. Legacy/simple pattern for Helm charts that don't need extra customization beyond values.
-- **Cilium preflight** (`apps/argocd/manifests/cilium-preflight.yaml`): Separate file so Renovate creates an independent PR. When updating Cilium version in `apps.yaml`, also update `cilium-preflight.yaml` to match.
-- ArgoCD config enables `kustomize.buildOptions: --enable-helm` so kustomize can render Helm charts.
-- All apps auto-sync with prune, ServerSideApply, and CreateNamespace.
-- Adding a new `apps/<name>/` directory automatically creates an ArgoCD Application.
+| File | Purpose |
+|------|---------|
+| `apps/argocd/manifests/app-set.yaml` | ApplicationSet — Git directory generator scans `apps/*`, creates one Application per dir. Name = basename, namespace = basename with `-conf` stripped. Adding a new `apps/<name>/` dir auto-creates an app. |
+| `apps/argocd/manifests/apps.yaml` | App-of-apps — Cilium, Longhorn, Reloader, VolSync Helm releases |
+| `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
+| `apps/system-upgrade/manifests/plan.yaml` | K3s version (Renovate custom manager tracks this) |
+| `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases), package rules, automerge settings |
+| `.github/workflows/helm-diff.yml` | PR CI — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
+| `.github/workflows/pull-image.yml` | PR CI — triggered on Renovate container image PRs, verifies `linux/arm64` platform |
+| `docs/howto-templates.md` | Templates for new apps, Helm apps, VolSync, ExternalSecret, HTTPRoute, CiliumNetworkPolicy |
+
+### ArgoCD Behavior
+
+- Config enables `kustomize.buildOptions: --enable-helm` so kustomize can render Helm charts
+- All apps auto-sync with prune, ServerSideApply, and CreateNamespace
+
+## Common Commands
+
+```bash
+# Validate kustomize build for an app
+kustomize build --enable-helm apps/<name>/
+
+# Preview what ArgoCD will apply (requires cluster access)
+argocd app diff <name>
+
+# Force sync an app
+argocd app sync <name>
+
+# Check ArgoCD app status
+argocd app get <name>
+
+# Run Helm diff locally (same as CI)
+.github/scripts/helm_diff.sh
+
+# Render a Helm chart's templates locally
+helm template <release> <chart> -f apps/<name>/manifests/values.yaml
+```
+
+## Branch & PR Workflow
+
+- **Default branch:** `master` (ArgoCD syncs from here)
+- **Renovate branches:** `renovate/<package-name>-<major>.x`
+- **Manual branches:** descriptive names (e.g., `headlamp-token-login`)
+- **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/) — `feat(scope):`, `fix(scope):`, `chore(deps):`, `docs:`
+- **Automerge:** Renovate minor/patch/digest updates for approved packages merge automatically
+- **CI checks:** Helm diff + ARM64 image pull verification must pass before merge
 
 ## Five App Patterns
 
@@ -68,12 +108,24 @@ docs/           Operational docs and full reference
 
 ## VolSync Backup Pattern
 
-Apps needing persistent data backup include `../../components/volsync` (PVC template) and `../../components/volsync/b2` (B2 backup) components, then patch all four resources (`ReplicationSource`, `ReplicationDestination`, `ExternalSecret`, `PVC`) to replace generic `app` names. Some apps override `accessModes` to `ReadWriteMany`. See `docs/howto-templates.md` for the full patch template.
+Apps needing persistent data backup include two components and patch four resources to replace generic `app` names. Canonical example: `apps/portainer/kustomization.yaml`.
 
-## CI/CD Awareness
+```yaml
+components:
+  - ../../components/volsync       # PVC template
+  - ../../components/volsync/b2    # B2 backup ReplicationSource/Destination + ExternalSecret
+patches:
+  - target: { kind: ReplicationSource, name: app }
+    patch: |-  # rename to <app>, update sourcePVC and repository
+  - target: { kind: ReplicationDestination, name: app-bootstrap }
+    patch: |-  # rename to <app>-bootstrap, update repository
+  - target: { kind: ExternalSecret, name: app-volsync-b2 }
+    patch: |-  # rename, set B2 bucket path: s3:s3.us-west-002.backblazeb2.com/sholdee-volsync/<app>
+  - target: { kind: PersistentVolumeClaim, name: app-pvc }
+    patch: |-  # rename to <app>-pvc, update dataSourceRef
+```
 
-- GitHub Actions run Helm diffs and verify container images can be pulled on ARM64 -- all images must support `linux/arm64`
-- Renovate auto-manages dependency PRs; check `.github/renovate.json5` for custom managers and version constraints
+Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessModes` to `ReadWriteMany`. See `docs/howto-templates.md` for the full patch template.
 
 ## Common Mistakes to Avoid
 
@@ -83,18 +135,14 @@ Apps needing persistent data backup include `../../components/volsync` (PVC temp
 - Missing security context (pods will be rejected or run with excessive privileges)
 - Omitting `kustomization.yaml` in an app directory (ArgoCD will still apply raw manifests, but kustomize wrapping is used for consistency and flexibility)
 - Hardcoding secrets in manifests instead of using ExternalSecret
-- Using images without ARM64 support (will fail on the RPi5 cluster)
+- Using images without ARM64 support (CI will reject and pods won't schedule)
 - Forgetting `readOnlyRootFilesystem: true` without providing writable mounts for app needs
+- Using non-conventional commit messages (Renovate and CI rely on semantic prefixes)
 
-## How-To Templates
+## Cluster Access & Debugging
 
-For templates covering new apps, Helm apps, VolSync setup, ExternalSecret, HTTPRoute, and CiliumNetworkPolicy, see `docs/howto-templates.md`.
-
-## Documentation Maintenance
-
-When making changes to the repository, update the relevant documentation as part of the same change:
-
-- **`README.md`** -- Update when adding/removing applications, changing core components, modifying hardware, or altering the high-level architecture
-- **`CLAUDE.md`** (this file) -- Update when conventions, patterns, or architectural rules change
-
-Documentation should stay in sync with the actual state of the cluster.
+- **ArgoCD UI:** https://argocd.sholdee.net (external gateway)
+- **kubectl:** requires kubeconfig for the K3s cluster
+- **Useful docs:** `docs/etcd-restore.md` (backup/restore), `docs/cilium-setup-commands.md` (networking/BGP), `docs/helm-commands.md` (Helm utilities)
+- **Logs:** `kubectl logs -n <namespace> deploy/<name>` or check ArgoCD UI for sync errors
+- **Storage issues:** check Longhorn UI or `kubectl get volumes.longhorn.io -A`
