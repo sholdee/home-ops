@@ -102,7 +102,6 @@
         '/kubernetes-dashboard/',
         '/reloader/',
         '/velero/',
-        '/postgresql/',
         '/code-server/',
         '/csi-provisioner/',
         '/csi-snapshotter/',

@@ -21,8 +21,8 @@ data:
     authZones:add(newDNSName("mgmt.sholdee.net."))
     authZones:add(newDNSName("guest.sholdee.net."))
 
-    -- Route authoritative queries to PowerDNS Auth
-    addAction(SuffixMatchNodeRule(authZones), PoolAction("auth"))
+    -- Route authoritative queries to PowerDNS Auth, fall back to forward if auth is down
+    addAction(AndRule({SuffixMatchNodeRule(authZones), PoolAvailableRule("auth")}), PoolAction("auth"))
 
-    -- Forward everything else to AdGuard
+    -- Forward everything else (including auth zones when auth pool is unavailable) to AdGuard
     addAction(AllRule(), PoolAction("forward"))

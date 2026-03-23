@@ -83,14 +83,14 @@ spec:
               name: api
               protocol: TCP
           livenessProbe:
-            tcpSocket:
-              port: dns-tcp
+            exec:
+              command: ["pdns_control", "rping"]
             initialDelaySeconds: 10
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
-            tcpSocket:
-              port: dns-tcp
+            exec:
+              command: ["pdns_control", "rping"]
             initialDelaySeconds: 5
             periodSeconds: 5
           resources:
