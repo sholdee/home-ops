@@ -141,7 +141,8 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 
 ## Cluster Access & Debugging
 
-- **ArgoCD UI:** https://argocd.sholdee.net (external gateway)
+- **ArgoCD UI:** https://argocd.sholdee.net (external gateway, behind Cloudflare Zero Trust)
+- **ArgoCD CLI:** requires `kubectl port-forward svc/argocd-server -n argocd 8443:443`, then `argocd login localhost:8443 --insecure`
 - **kubectl:** requires kubeconfig for the K3s cluster
 - **Useful docs:** `docs/etcd-restore.md` (backup/restore), `docs/cilium-setup-commands.md` (networking/BGP), `docs/helm-commands.md` (Helm utilities)
 - **Logs:** `kubectl logs -n <namespace> deploy/<name>` or check ArgoCD UI for sync errors
