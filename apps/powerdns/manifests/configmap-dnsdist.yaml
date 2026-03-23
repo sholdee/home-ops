@@ -15,11 +15,9 @@ data:
     -- Forwarding backend (AdGuard Home)
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
 
-    -- Authoritative zones: add all zones managed by PowerDNS here
+    -- Authoritative zones (SuffixMatchNodeRule matches all subdomains)
     local authZones = newSuffixMatchNode()
     authZones:add(newDNSName("sholdee.net."))
-    authZones:add(newDNSName("mgmt.sholdee.net."))
-    authZones:add(newDNSName("guest.sholdee.net."))
 
     -- Route authoritative queries to PowerDNS Auth, fall back to forward if auth is down
     addAction(AndRule({SuffixMatchNodeRule(authZones), PoolAvailableRule("auth")}), PoolAction("auth"))
