@@ -6,11 +6,11 @@ metadata:
   namespace: powerdns
 data:
   dnsdist.conf: |
-    setLocal("0.0.0.0:53", {doTCP=true, reusePort=true})
+    setLocal("0.0.0.0:53", {reusePort=true})
     setACL({"0.0.0.0/0", "::/0"})
 
     -- Authoritative backend (PowerDNS Auth)
-    newServer({address="powerdns-auth:53", pool="auth", checkName="sholdee.net.", checkType="SOA"})
+    newServer({address="10.43.231.221", pool="auth", checkName="sholdee.net.", checkType="SOA"})
 
     -- Forwarding backend (AdGuard Home)
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com."})
