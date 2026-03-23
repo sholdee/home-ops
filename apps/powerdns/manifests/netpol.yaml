@@ -51,15 +51,6 @@ spec:
             http: [{}]
     - fromEndpoints:
         - matchLabels:
-            app: powerdns-admin
-      toPorts:
-        - ports:
-            - port: "8081"
-              protocol: TCP
-          rules:
-            http: [{}]
-    - fromEndpoints:
-        - matchLabels:
             io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: prometheus
       toPorts:
@@ -75,12 +66,12 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: powerdns-admin
+  name: poweradmin
   namespace: powerdns
 spec:
   endpointSelector:
     matchLabels:
-      app: powerdns-admin
+      app: poweradmin
   ingress:
     - fromEndpoints:
         - matchLabels:
@@ -88,5 +79,5 @@ spec:
             gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
       toPorts:
         - ports:
-            - port: "9191"
+            - port: "80"
               protocol: TCP

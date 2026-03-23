@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: powerdns-admin
+  name: poweradmin
   namespace: powerdns
   annotations:
     reloader.stakater.com/auto: "true"
@@ -10,113 +10,87 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: powerdns-admin
+      app: poweradmin
   template:
     metadata:
       labels:
-        app: powerdns-admin
+        app: poweradmin
     spec:
       enableServiceLinks: false
       securityContext:
-        runAsNonRoot: true
-        runAsUser: 100
-        runAsGroup: 101
-        fsGroup: 101
+        fsGroup: 82
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: powerdns-admin
-          image: powerdnsadmin/pda-legacy:v0.4.2
+        - name: poweradmin
+          image: poweradmin/poweradmin:4.2.0
           env:
-            - name: SQLA_DB_DRIVER
-              value: postgresql
-            - name: SQLA_DB_HOST
+            - name: DB_TYPE
+              value: pgsql
+            - name: DB_HOST
               value: powerdns-db-rw
-            - name: SQLA_DB_PORT
+            - name: DB_PORT
               value: "5432"
-            - name: SQLA_DB_NAME
-              value: powerdnsadmin
-            - name: SQLA_DB_USER
+            - name: DB_NAME
+              value: powerdns
+            - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: powerdns-db-admin-user
+                  name: powerdns-db-app-user
                   key: username
-            - name: SQLA_DB_PASSWORD
+            - name: DB_PASS
               valueFrom:
                 secretKeyRef:
-                  name: powerdns-db-admin-user
+                  name: powerdns-db-app-user
                   key: password
-            - name: SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: powerdns
-                  key: API_KEY
-            - name: BIND_ADDRESS
-              value: "0.0.0.0:9191"
+            - name: DNS_NS1
+              value: ns1.sholdee.net
+            - name: DNS_NS2
+              value: ns2.sholdee.net
+            - name: DNS_HOSTMASTER
+              value: hostmaster@sholdee.net
+            - name: PA_CREATE_ADMIN
+              value: "1"
           ports:
-            - containerPort: 9191
+            - containerPort: 80
               name: http
               protocol: TCP
           livenessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 30
+            initialDelaySeconds: 15
             periodSeconds: 10
           readinessProbe:
             httpGet:
               path: /
               port: http
-            initialDelaySeconds: 15
+            initialDelaySeconds: 5
             periodSeconds: 5
           resources:
             requests:
-              memory: 512Mi
+              memory: 128Mi
               cpu: 5m
             limits:
-              memory: 512Mi
+              memory: 128Mi
           securityContext:
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
           volumeMounts:
+            - name: config
+              mountPath: /app/config
+            - name: caddy
+              mountPath: /var/caddy
+            - name: db
+              mountPath: /db
             - name: tmp
               mountPath: /tmp
-            - name: run
-              mountPath: /var/run
-            - name: pda-data
-              mountPath: /data
-            - name: pda-app
-              mountPath: /app/configs
-            - name: pda-home
-              mountPath: /home/pda
-      initContainers:
-        - name: copy-configs
-          image: powerdnsadmin/pda-legacy:v0.4.2
-          command: ["/bin/sh", "-c"]
-          args:
-            - cp -r /app/configs/* /writable-configs/
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          resources:
-            requests:
-              memory: 16Mi
-              cpu: 5m
-            limits:
-              memory: 16Mi
-          volumeMounts:
-            - name: pda-app
-              mountPath: /writable-configs
       volumes:
+        - name: config
+          emptyDir: {}
+        - name: caddy
+          emptyDir: {}
+        - name: db
+          emptyDir: {}
         - name: tmp
-          emptyDir: {}
-        - name: run
-          emptyDir: {}
-        - name: pda-data
-          emptyDir: {}
-        - name: pda-app
-          emptyDir: {}
-        - name: pda-home
           emptyDir: {}

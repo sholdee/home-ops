@@ -3,7 +3,7 @@
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: powerdns-admin
+  name: poweradmin
   namespace: powerdns
 spec:
   parentRefs:
@@ -13,6 +13,6 @@ spec:
     - powerdns.mgmt.sholdee.net
   rules:
     - backendRefs:
-        - name: powerdns-admin
+        - name: poweradmin
           namespace: powerdns
-          port: 9191
+          port: 80

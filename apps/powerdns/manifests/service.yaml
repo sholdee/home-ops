@@ -64,16 +64,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: powerdns-admin
+  name: poweradmin
   namespace: powerdns
   labels:
-    app: powerdns-admin
+    app: poweradmin
 spec:
   selector:
-    app: powerdns-admin
+    app: poweradmin
   ports:
     - protocol: TCP
-      port: 9191
-      targetPort: 9191
+      port: 80
+      targetPort: 80
       name: http
   type: ClusterIP
