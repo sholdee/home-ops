@@ -3,47 +3,11 @@
 name: Verify Docker image
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-    paths-ignore:
-      - '**/kustomization.yaml'
-      - 'apps/argocd/manifests/apps.yaml'
-      - 'apps/argocd/manifests/cilium-preflight.yaml'
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+  workflow_call:
 
 jobs:
-  check-author:
-    if: github.event.pull_request.title != '' && startsWith(github.event.pull_request.title, 'chore(deps)') && (contains(github.event.pull_request.title, 'docker tag') || contains(github.event.pull_request.title, 'docker digest'))
-    runs-on: ARM64
-    outputs:
-      matched: ${{ steps.check_author.outputs.matched }}
-    steps:
-      - name: Check PR Author
-        id: check_author
-        run: |
-          AUTHORIZED_USERS=("sholdee" "pull-bunyan[bot]")
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          
-          if [[ " ${AUTHORIZED_USERS[@]} " =~ " $PR_AUTHOR " ]]; then
-            echo "matched=true" >> $GITHUB_OUTPUT
-            echo "✅ Authorized user: $PR_AUTHOR"
-          else
-            echo "matched=false" >> $GITHUB_OUTPUT
-            echo "❌ Unauthorized user: $PR_AUTHOR"
-          fi
-
   verify-image-pull:
-    needs: check-author
-    if: needs.check-author.outputs.matched == 'true'
     runs-on: ARM64
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -62,14 +26,14 @@ jobs:
         run: |
           : > pull_results.txt
           PULL_FAILED=0
-  
+
           IMAGE_FULL="${IMAGE}:${TAG}"
           [ -n "${DIGEST:-}" ] && IMAGE_FULL="${IMAGE}@${DIGEST}"
-  
+
           echo "Pulling image for linux/arm64: $IMAGE_FULL"
           PULL_STATUS="❌"
           PLATFORM_STATUS="—"
-  
+
           if sudo crictl --debug pull "$IMAGE_FULL"; then
             PULL_STATUS="✅"
             # Inspect the pulled image to verify OS/arch
@@ -77,7 +41,7 @@ jobs:
             if [ -n "$INSPECT_JSON" ]; then
               ARCH="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.architecture // .imageSpec.architecture // empty')"
               OS="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.os           // .imageSpec.os           // empty')"
-  
+
               if [ "$ARCH" = "arm64" ] && [ "$OS" = "linux" ]; then
                 PLATFORM_STATUS="✅"
               else
@@ -94,14 +58,14 @@ jobs:
             echo "Failed to pull $IMAGE_FULL"
             PULL_FAILED=1
           fi
-  
+
           # Write a TSV line: Pulled <tab> Platform <tab> Image
           printf "%s\t%s\t%s\n" "$PULL_STATUS" "$PLATFORM_STATUS" "$IMAGE_FULL" >> pull_results.txt
-  
+
           if [ "$PULL_FAILED" -ne 0 ]; then
             exit 1
           fi
-  
+
       - name: Format Image Pull Status
         id: format_image_pull_status
         if: always()

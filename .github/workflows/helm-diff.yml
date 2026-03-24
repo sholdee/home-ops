@@ -3,46 +3,10 @@
 name: Helm App Diff
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
-    paths:
-      - '**/kustomization.yaml'
-      - '**/values.yaml'
-      - '**/values*.yaml'
-      - 'apps/argocd/manifests/apps.yaml'
-      - 'apps/argocd/manifests/cilium-preflight.yaml'
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+  workflow_call:
 
 jobs:
-  check-author:
-    runs-on: ubuntu-latest
-    outputs:
-      matched: ${{ steps.check_author.outputs.matched }}
-    steps:
-      - name: Check PR Author
-        id: check_author
-        run: |
-          AUTHORIZED_USERS=("sholdee" "pull-bunyan[bot]")
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
-          
-          if [[ " ${AUTHORIZED_USERS[@]} " =~ " $PR_AUTHOR " ]]; then
-            echo "matched=true" >> $GITHUB_OUTPUT
-            echo "✅ Authorized user: $PR_AUTHOR"
-          else
-            echo "matched=false" >> $GITHUB_OUTPUT
-            echo "❌ Unauthorized user: $PR_AUTHOR"
-          fi
-
   helm-diff:
-    needs: check-author
-    if: needs.check-author.outputs.matched == 'true'
     runs-on: ubuntu-latest
     outputs:
       HAS_DIFF: ${{ steps.read-diff.outputs.HAS_DIFF }}
@@ -176,7 +140,7 @@ jobs:
         run: |
           BASE_WORKTREE_DIR="../base-worktree"
           echo "BASE_WORKTREE_DIR=$BASE_WORKTREE_DIR" >> "$GITHUB_ENV"
-      
+
           if [ ! -d "$BASE_WORKTREE_DIR" ]; then
             echo "📂 Creating base worktree at $BASE_WORKTREE_DIR from origin/${{ github.event.pull_request.base.ref }}..."
             git worktree add "$BASE_WORKTREE_DIR" "origin/${{ github.event.pull_request.base.ref }}"
@@ -280,35 +244,35 @@ jobs:
         run: |
           : > pull_results.txt
           PULL_FAILED=0
-          
+
           if [ -z "${IMAGE_COUNT:-}" ] || [ "${IMAGE_COUNT:-0}" -eq 0 ]; then
             echo "No images detected for pulling."
             exit 0
           fi
-          
+
           for i in $(seq 0 $((IMAGE_COUNT - 1))); do
             IMAGE_VAR="IMAGE_$i"
             TAG_VAR="TAG_$i"
             DIGEST_VAR="DIGEST_$i"
-            
+
             declare -n IMG="$IMAGE_VAR" TAG="$TAG_VAR" DIG="$DIGEST_VAR"
             IMAGE_FULL="${IMG:-}:${TAG:-}"
             [ -n "${DIG-}" ] && IMAGE_FULL="${IMG}@${DIG}"
-            
+
             echo "Pulling image: $IMAGE_FULL"
-            
+
             PULL_STATUS="❌"
             PLATFORM_STATUS="—"
-            
+
             if sudo crictl --debug pull "$IMAGE_FULL"; then
               PULL_STATUS="✅"
-              
+
               # Inspect pulled image -> verify linux/arm64
               INSPECT_JSON="$(sudo crictl inspecti -o json "$IMAGE_FULL" || true)"
               if [ -n "$INSPECT_JSON" ]; then
                 ARCH="$(printf '%s' "$INSPECT_JSON" | jq -r '.info.imageSpec.architecture // .imageSpec.architecture // empty')"
                 OS="$(printf '%s' "$INSPECT_JSON"   | jq -r '.info.imageSpec.os           // .imageSpec.os           // empty')"
-                
+
                 if [ "$ARCH" = "arm64" ] && [ "$OS" = "linux" ]; then
                   PLATFORM_STATUS="✅"
                 else
@@ -325,11 +289,11 @@ jobs:
               echo "Failed to pull $IMAGE_FULL"
               PULL_FAILED=1
             fi
-            
+
             # TSV: Pulled <tab> Platform <tab> Image
             printf "%s\t%s\t%s\n" "$PULL_STATUS" "$PLATFORM_STATUS" "$IMAGE_FULL" >> pull_results.txt
           done
-          
+
           if [ "$PULL_FAILED" -ne 0 ]; then
             exit 1
           fi
@@ -342,7 +306,7 @@ jobs:
             echo "No new images were found. Skipping PR comment."
             exit 0
           fi
-          
+
           {
             echo "IMAGE_PULL_COMMENT<<EOF"
             echo "| Pulled | Platform | Image |"

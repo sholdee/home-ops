@@ -1,0 +1,101 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      run-helm: ${{ steps.eval.outputs.run-helm }}
+      run-docker: ${{ steps.eval.outputs.run-docker }}
+    steps:
+      - name: Check PR author
+        id: author
+        run: |
+          AUTHORIZED_USERS=("sholdee" "pull-bunyan[bot]")
+          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+
+          if [[ " ${AUTHORIZED_USERS[@]} " =~ " $PR_AUTHOR " ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Detect changed paths
+        id: paths
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            helm:
+              - '**/kustomization.yaml'
+              - '**/values.yaml'
+              - '**/values*.yaml'
+              - 'apps/argocd/manifests/apps.yaml'
+              - 'apps/argocd/manifests/cilium-preflight.yaml'
+
+      - name: Evaluate which checks to run
+        id: eval
+        run: |
+          AUTHORIZED="${{ steps.author.outputs.authorized }}"
+          HELM="${{ steps.paths.outputs.helm }}"
+          TITLE="${{ github.event.pull_request.title }}"
+
+          RUN_HELM=false
+          RUN_DOCKER=false
+
+          if [[ "$AUTHORIZED" == "true" && "$HELM" == "true" ]]; then
+            RUN_HELM=true
+          fi
+
+          if [[ "$AUTHORIZED" == "true" && "$HELM" != "true" ]]; then
+            if [[ "$TITLE" == chore\(deps\)* ]] && { [[ "$TITLE" == *"docker tag"* ]] || [[ "$TITLE" == *"docker digest"* ]]; }; then
+              RUN_DOCKER=true
+            fi
+          fi
+
+          echo "run-helm=$RUN_HELM" >> $GITHUB_OUTPUT
+          echo "run-docker=$RUN_DOCKER" >> $GITHUB_OUTPUT
+
+  helm-diff:
+    needs: detect
+    if: needs.detect.outputs.run-helm == 'true'
+    uses: ./.github/workflows/helm-diff.yml
+    secrets: inherit
+
+  docker-verify:
+    needs: detect
+    if: needs.detect.outputs.run-docker == 'true'
+    uses: ./.github/workflows/pull-image.yml
+    secrets: inherit
+
+  gate:
+    runs-on: ubuntu-latest
+    if: always()
+    needs: [detect, helm-diff, docker-verify]
+    steps:
+      - name: Evaluate results
+        run: |
+          DETECT="${{ needs.detect.result }}"
+          HELM="${{ needs.helm-diff.result }}"
+          DOCKER="${{ needs.docker-verify.result }}"
+
+          echo "detect=$DETECT helm-diff=$HELM docker-verify=$DOCKER"
+
+          if [[ "$DETECT" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
+            echo "CI failed"
+            exit 1
+          fi
+
+          echo "CI passed"
