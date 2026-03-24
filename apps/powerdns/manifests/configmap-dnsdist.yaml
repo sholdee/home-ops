@@ -15,9 +15,9 @@ data:
     -- Forwarding backend (AdGuard Home)
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com.", tcpOnly=true})
 
-    -- Fallback public resolvers (used when AdGuard is down)
-    newServer({address="1.1.1.1:53", pool="fallback", checkName="google.com.", rise=3, maxCheckFailures=3, checkInterval=3})
-    newServer({address="9.9.9.9:53", pool="fallback", checkName="google.com.", rise=3, maxCheckFailures=3, checkInterval=3})
+    -- Fallback: Cloudflare DNS for Families (malware + adult blocking) over DoT
+    newServer({address="1.1.1.3:853", tls="openssl", subjectName="cloudflare-dns.com", validateCertificates=true, pool="fallback", checkName="google.com.", rise=3, maxCheckFailures=3, checkInterval=3})
+    newServer({address="1.0.0.3:853", tls="openssl", subjectName="cloudflare-dns.com", validateCertificates=true, pool="fallback", checkName="google.com.", rise=3, maxCheckFailures=3, checkInterval=3})
 
     -- Authoritative zones (SuffixMatchNodeRule matches all subdomains)
     local authZones = newSuffixMatchNode()
