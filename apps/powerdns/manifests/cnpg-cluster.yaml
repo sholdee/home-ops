@@ -148,6 +148,18 @@ spec:
         - CREATE INDEX IF NOT EXISTS idx_zones_groups_group ON zones_groups (group_id)
         - CREATE TABLE IF NOT EXISTS record_comment_links (record_id integer NOT NULL PRIMARY KEY, comment_id integer NOT NULL UNIQUE)
         - CREATE INDEX IF NOT EXISTS idx_record_comment_links_comment ON record_comment_links (comment_id)
+        # -- Forward zones (SOA + NS) --
+        - INSERT INTO domains (name, type) VALUES ('sholdee.net', 'NATIVE'), ('mgmt.sholdee.net', 'NATIVE'), ('guest.sholdee.net', 'NATIVE'), ('dmz.sholdee.net', 'NATIVE'), ('lan.sholdee.net', 'NATIVE') ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'SOA', 'ns1.sholdee.net hostmaster.sholdee.net 1 10800 3600 604800 3600', 3600 FROM domains WHERE name IN ('sholdee.net', 'mgmt.sholdee.net', 'guest.sholdee.net', 'dmz.sholdee.net', 'lan.sholdee.net') ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.sholdee.net', 3600 FROM domains WHERE name = 'sholdee.net' ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.dmz.sholdee.net', 3600 FROM domains WHERE name = 'dmz.sholdee.net' ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.lan.sholdee.net', 3600 FROM domains WHERE name = 'lan.sholdee.net' ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.mgmt.sholdee.net', 3600 FROM domains WHERE name = 'mgmt.sholdee.net' ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.guest.sholdee.net', 3600 FROM domains WHERE name = 'guest.sholdee.net' ON CONFLICT DO NOTHING
+        # -- Reverse lookup zones --
+        - INSERT INTO domains (name, type) VALUES ('77.168.192.in-addr.arpa', 'NATIVE'), ('99.168.192.in-addr.arpa', 'NATIVE'), ('10.168.192.in-addr.arpa', 'NATIVE'), ('20.168.192.in-addr.arpa', 'NATIVE'), ('0.2.10.in-addr.arpa', 'NATIVE') ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'SOA', 'ns1.sholdee.net hostmaster.sholdee.net 1 10800 3600 604800 3600', 3600 FROM domains WHERE name IN ('77.168.192.in-addr.arpa', '99.168.192.in-addr.arpa', '10.168.192.in-addr.arpa', '20.168.192.in-addr.arpa', '0.2.10.in-addr.arpa') ON CONFLICT DO NOTHING
+        - INSERT INTO records (domain_id, name, type, content, ttl) SELECT id, name, 'NS', 'ns1.sholdee.net', 3600 FROM domains WHERE name IN ('77.168.192.in-addr.arpa', '99.168.192.in-addr.arpa', '10.168.192.in-addr.arpa', '20.168.192.in-addr.arpa', '0.2.10.in-addr.arpa') ON CONFLICT DO NOTHING
         # -- Grants (must be last to cover all tables) --
         - GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO powerdns
         - GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO powerdns

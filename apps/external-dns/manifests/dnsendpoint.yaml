@@ -3,11 +3,44 @@
 apiVersion: externaldns.k8s.io/v1alpha1
 kind: DNSEndpoint
 metadata:
+  name: nameservers
+spec:
+  endpoints:
+    - dnsName: ns1.sholdee.net
+      recordTTL: 3600
+      recordType: A
+      targets:
+        - 192.168.77.53
+    - dnsName: ns1.mgmt.sholdee.net
+      recordTTL: 3600
+      recordType: A
+      targets:
+        - 192.168.77.53
+    - dnsName: ns1.guest.sholdee.net
+      recordTTL: 3600
+      recordType: A
+      targets:
+        - 192.168.77.53
+    - dnsName: ns1.dmz.sholdee.net
+      recordTTL: 3600
+      recordType: A
+      targets:
+        - 192.168.77.53
+    - dnsName: ns1.lan.sholdee.net
+      recordTTL: 3600
+      recordType: A
+      targets:
+        - 192.168.77.53
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/externaldns.k8s.io/dnsendpoint_v1alpha1.json
+apiVersion: externaldns.k8s.io/v1alpha1
+kind: DNSEndpoint
+metadata:
   name: caddy
 spec:
   endpoints:
-  - dnsName: caddy.sholdee.net
-    recordTTL: 60
-    recordType: A
-    targets:
-    - 10.2.0.120
+    - dnsName: caddy.sholdee.net
+      recordTTL: 60
+      recordType: A
+      targets:
+        - 10.2.0.120

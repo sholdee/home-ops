@@ -22,6 +22,11 @@ data:
     -- Authoritative zones (SuffixMatchNodeRule matches all subdomains)
     local authZones = newSuffixMatchNode()
     authZones:add(newDNSName("sholdee.net."))
+    authZones:add(newDNSName("77.168.192.in-addr.arpa."))
+    authZones:add(newDNSName("99.168.192.in-addr.arpa."))
+    authZones:add(newDNSName("10.168.192.in-addr.arpa."))
+    authZones:add(newDNSName("20.168.192.in-addr.arpa."))
+    authZones:add(newDNSName("0.2.10.in-addr.arpa."))
 
     -- Route authoritative queries to PowerDNS Auth, fall back to forward if auth is down
     addAction(AndRule({SuffixMatchNodeRule(authZones), PoolAvailableRule("auth")}), PoolAction("auth"))
