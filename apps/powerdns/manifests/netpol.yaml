@@ -43,13 +43,6 @@ spec:
         - matchLabels:
             io.kubernetes.pod.namespace: external-dns
             app.kubernetes.io/name: external-dns
-      toPorts:
-        - ports:
-            - port: "8081"
-              protocol: TCP
-          rules:
-            http: [{}]
-    - fromEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: prometheus
@@ -57,10 +50,6 @@ spec:
         - ports:
             - port: "8081"
               protocol: TCP
-          rules:
-            http:
-              - method: GET
-                path: ^/metrics$
 ---
 # yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
 apiVersion: cilium.io/v2
