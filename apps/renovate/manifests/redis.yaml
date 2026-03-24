@@ -24,7 +24,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: redis
-          image: redis:8.6.1-alpine
+          image: redis:8.6.2-alpine
           args: ["--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
           ports:
             - containerPort: 6379
