@@ -81,3 +81,75 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: powerdns-db-pooler
+  namespace: powerdns
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/podRole: pooler
+      cnpg.io/poolerName: powerdns-db-pooler-rw
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: powerdns
+        - matchLabels:
+            app: poweradmin
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9127"
+              protocol: TCP
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: powerdns-db
+  namespace: powerdns
+spec:
+  endpointSelector:
+    matchLabels:
+      cnpg.io/podRole: instance
+      cnpg.io/cluster: powerdns-db
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            cnpg.io/podRole: pooler
+            cnpg.io/poolerName: powerdns-db-pooler-rw
+        - matchLabels:
+            cnpg.io/podRole: instance
+            cnpg.io/cluster: powerdns-db
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: cnpg-system
+            app.kubernetes.io/name: cloudnative-pg
+      toPorts:
+        - ports:
+            - port: "5432"
+              protocol: TCP
+            - port: "8000"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9187"
+              protocol: TCP

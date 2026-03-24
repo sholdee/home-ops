@@ -26,5 +26,3 @@ data:
     loglevel=4
     default-soa-content=ns1.@ hostmaster.@ 0 10800 3600 604800 3600
     dnsupdate=no
-    expand-alias=yes
-    resolver=192.168.77.54
