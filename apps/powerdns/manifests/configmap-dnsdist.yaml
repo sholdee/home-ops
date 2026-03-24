@@ -16,8 +16,8 @@ data:
     newServer({address="192.168.77.54:53", pool="forward", checkName="google.com.", tcpOnly=true})
 
     -- Fallback public resolvers (used when AdGuard is down)
-    newServer({address="1.1.1.1:53", pool="fallback", checkName="google.com."})
-    newServer({address="9.9.9.9:53", pool="fallback", checkName="google.com."})
+    newServer({address="1.1.1.1:53", pool="fallback", checkName="google.com.", rise=3, fall=3, checkInterval=3})
+    newServer({address="9.9.9.9:53", pool="fallback", checkName="google.com.", rise=3, fall=3, checkInterval=3})
 
     -- Authoritative zones (SuffixMatchNodeRule matches all subdomains)
     local authZones = newSuffixMatchNode()
