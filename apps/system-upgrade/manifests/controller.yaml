@@ -109,40 +109,40 @@ kind: ClusterRole
 metadata:
   name: system-upgrade-controller-drainer
 rules:
-  # Needed to evict pods
-  - apiGroups:
-      - ""
-    resources:
-      - "pods/eviction"
-    verbs:
-      - "create"
-  # Needed to list/delete pods by Node
-  - apiGroups:
-      - ""
-    resources:
-      - "pods"
-    verbs:
-      - "get"
-      - "list"
-      - "delete"
-  # Needed to cordon Nodes
-  - apiGroups:
-      - ""
-    resources:
-      - "nodes"
-    verbs:
-      - "get"
-      - "patch"
-  # Needed to determine Pod owners
-  - apiGroups:
-      - "apps"
-    resources:
-      - "statefulsets"
-      - "daemonsets"
-      - "replicasets"
-    verbs:
-      - "get"
-      - "list"
+# Needed to evict pods
+- apiGroups:
+  - ""
+  resources:
+  - "pods/eviction"
+  verbs:
+  - "create"
+# Needed to list/delete pods by Node
+- apiGroups:
+  - ""
+  resources:
+  - "pods"
+  verbs:
+  - "get"
+  - "list"
+  - "delete"
+# Needed to cordon Nodes
+- apiGroups:
+  - ""
+  resources:
+  - "nodes"
+  verbs:
+  - "get"
+  - "patch"
+# Needed to determine Pod owners
+- apiGroups:
+  - "apps"
+  resources:
+  - "statefulsets"
+  - "daemonsets"
+  - "replicasets"
+  verbs:
+  - "get"
+  - "list"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -233,92 +233,92 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                  - key: "node-role.kubernetes.io/control-plane"
-                    operator: "Exists"
-                  - key: "kubernetes.io/os"
-                    operator: "In"
-                    values:
-                      - "linux"
+            - matchExpressions:
+              - key: "node-role.kubernetes.io/control-plane"
+                operator: "Exists"
+              - key: "kubernetes.io/os"
+                operator: "In"
+                values:
+                - "linux"
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-            - topologyKey: "kubernetes.io/hostname"
-              labelSelector:
-                matchExpressions:
-                  - key: "app.kubernetes.io/name"
-                    operator: "In"
-                    values:
-                      - "system-upgrade-controller"
+          - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: "In"
+                values:
+                - "system-upgrade-controller"
       serviceAccountName: system-upgrade
       tolerations:
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
-        - key: "node-role.kubernetes.io/master"
-          operator: "Exists"
-          effect: "NoSchedule"
-        - key: "node-role.kubernetes.io/controlplane"
-          operator: "Exists"
-          effect: "NoSchedule"
-        - key: "node-role.kubernetes.io/control-plane"
-          operator: "Exists"
-          effect: "NoSchedule"
-        - key: "node-role.kubernetes.io/etcd"
-          operator: "Exists"
-          effect: "NoExecute"
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/controlplane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/etcd"
+        operator: "Exists"
+        effect: "NoExecute"
       containers:
-        - name: system-upgrade-controller
-          image: rancher/system-upgrade-controller:v0.19.0
-          imagePullPolicy: IfNotPresent
-          securityContext:
-            runAsNonRoot: true
-            runAsUser: 65534
-            runAsGroup: 65534
-            allowPrivilegeEscalation: false
-            seccompProfile:
-              type: RuntimeDefault
-            capabilities:
-              drop:
-                - ALL
-          envFrom:
-            - configMapRef:
-                name: default-controller-env
-          env:
-            - name: SYSTEM_UPGRADE_CONTROLLER_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.labels['upgrade.cattle.io/controller']
-            - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-            - name: SYSTEM_UPGRADE_CONTROLLER_NODE_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: spec.nodeName
-          volumeMounts:
-            - name: etc-ssl
-              mountPath: /etc/ssl
-              readOnly: true
-            - name: etc-pki
-              mountPath: /etc/pki
-              readOnly: true
-            - name: etc-ca-certificates
-              mountPath: /etc/ca-certificates
-              readOnly: true
-            - name: tmp
-              mountPath: /tmp
-      volumes:
+      - name: system-upgrade-controller
+        image: rancher/system-upgrade-controller:v0.19.0
+        imagePullPolicy: IfNotPresent
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          allowPrivilegeEscalation: false
+          seccompProfile:
+            type: RuntimeDefault
+          capabilities:
+            drop:
+            - ALL
+        envFrom:
+        - configMapRef:
+            name: default-controller-env
+        env:
+        - name: SYSTEM_UPGRADE_CONTROLLER_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['upgrade.cattle.io/controller']
+        - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: SYSTEM_UPGRADE_CONTROLLER_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
         - name: etc-ssl
-          hostPath:
-            path: /etc/ssl
-            type: DirectoryOrCreate
+          mountPath: /etc/ssl
+          readOnly: true
         - name: etc-pki
-          hostPath:
-            path: /etc/pki
-            type: DirectoryOrCreate
+          mountPath: /etc/pki
+          readOnly: true
         - name: etc-ca-certificates
-          hostPath:
-            path: /etc/ca-certificates
-            type: DirectoryOrCreate
+          mountPath: /etc/ca-certificates
+          readOnly: true
         - name: tmp
-          emptyDir: {}
+          mountPath: /tmp
+      volumes:
+      - name: etc-ssl
+        hostPath:
+          path: /etc/ssl
+          type: DirectoryOrCreate
+      - name: etc-pki
+        hostPath:
+          path: /etc/pki
+          type: DirectoryOrCreate
+      - name: etc-ca-certificates
+        hostPath:
+          path: /etc/ca-certificates
+          type: DirectoryOrCreate
+      - name: tmp
+        emptyDir: {}
