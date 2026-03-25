@@ -79,8 +79,9 @@
         'docker',
       ],
       schedule: [
-        'before 6am',
+        'before 2am',
       ],
+      minimumReleaseAge: '1 day',
       matchPackageNames: [
         '/renovate/',
       ],
@@ -121,6 +122,7 @@
         '/external-secrets/',
         '/busybox/',
         '/velero-plugin-for-aws/',
+        '/redis/',
       ],
       automerge: true,
     },
