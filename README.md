@@ -117,7 +117,7 @@ erDiagram
   - dnsdist (DNS load balancer/router)
   - Poweradmin (web UI)
   - CNPG PostgreSQL with pgbouncer
-- Renovate
+- Renovate Operator
 - Portainer
   - GitOps for remote Docker hosts
 
