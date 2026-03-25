@@ -21,10 +21,11 @@ docs/           Operational docs and full reference
 | `apps/argocd/manifests/apps.yaml` | App-of-apps — Cilium, Longhorn, Reloader, VolSync Helm releases |
 | `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
 | `apps/system-upgrade/manifests/plan.yaml` | K3s version (Renovate custom manager tracks this) |
-| `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases), package rules, automerge settings |
+| `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases, CLI tools), package rules, automerge settings |
+| `.github/actions/setup-tools/action.yml` | Composite action — installs kubeconform, actionlint, kustomize, Helm with `# renovate:` annotations for auto-update |
 | `.github/workflows/ci.yaml` | CI orchestrator — detects change type, conditionally calls helm-diff/pull-image, provides single `CI / gate` required status check |
 | `.github/workflows/helm-diff.yml` | Reusable workflow — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
-| `.github/workflows/pre-commit.yml` | Reusable workflow — installs kubeconform + actionlint, runs all pre-commit hooks |
+| `.github/workflows/pre-commit.yml` | Reusable workflow — uses setup-tools composite action, runs all pre-commit hooks |
 | `.github/workflows/pull-image.yml` | Reusable workflow — triggered for Renovate container image PRs, verifies `linux/arm64` platform |
 | `docs/howto-templates.md` | Templates for new apps, Helm apps, VolSync, ExternalSecret, HTTPRoute, CiliumNetworkPolicy |
 
@@ -96,7 +97,7 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 - **Renovate branches:** `renovate/<package-name>-<major>.x`
 - **Manual branches:** descriptive names (e.g., `headlamp-token-login`)
 - **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/) — `feat(scope):`, `fix(scope):`, `chore(deps):`, `docs:`
-- **Automerge:** Renovate minor/patch/digest updates for approved packages merge automatically
+- **Automerge:** Renovate minor/patch/digest for all docker/helm/github-releases/github-actions/pre-commit/CLI tools. Excluded from automerge: `home-assistant`, `appdaemon`, `unifi` (Recreate + no probes). Cilium main and K3s always require manual review.
 - **CI gate:** Single required status check `CI / gate` — conditionally runs helm-diff and/or docker-verify; passes automatically when neither applies
 - **Branch protection:** Direct pushes to `master` are blocked — all changes require a PR with passing gate
 
