@@ -10,7 +10,7 @@ jobs:
     runs-on: ARM64
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
@@ -81,7 +81,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Generate Token
-        uses: actions/create-github-app-token@v3
+        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
         id: app-token
         if: always() && env.IMAGE_PULL_COMMENT != ''
         with:
@@ -91,7 +91,7 @@ jobs:
       - name: Add Comment
         if: always() && env.IMAGE_PULL_COMMENT != ''
         continue-on-error: true
-        uses: mshick/add-pr-comment@v3
+        uses: mshick/add-pr-comment@ffd016c7e151d97d69d21a843022fd4cd5b96fe5 # v3.9.0
         with:
           repo-token: "${{ steps.app-token.outputs.token }}"
           message-id: "${{ github.event.pull_request.number }}/docker-verify"
