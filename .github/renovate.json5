@@ -49,6 +49,7 @@
       ],
       additionalBranchPrefix: 'cilium-preflight-',
       commitMessageSuffix: ' [cilium-preflight]',
+      automerge: true,
     },
     {
       matchDatasources: [
