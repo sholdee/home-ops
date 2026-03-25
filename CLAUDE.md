@@ -6,7 +6,7 @@ ARM64 (Raspberry Pi 5) K3s GitOps cluster. **All container images must support `
 
 ## Repository Layout
 
-```
+```text
 apps/           ArgoCD watches apps/* (one Application per top-level directory)
 components/     Reusable Kustomize Components (namespace, volsync)
 docs/           Operational docs and full reference
@@ -65,6 +65,7 @@ pre-commit run kubeconform    # single hook, staged files only
 | kustomize build | Runs `kustomize build --enable-helm` on affected app directories |
 | shellcheck | Bash script linting |
 | actionlint | Deep GitHub Actions linting (expressions, script injection, shellcheck) |
+| markdownlint-cli2 | Markdown linting (config: `.markdownlint-cli2.yaml`) |
 
 ## Common Commands
 

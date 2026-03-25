@@ -65,9 +65,9 @@ go install github.com/brancz/gojsontoyaml@latest
 # Apply and wait for resources
 kubectl apply --server-side -f manifests/setup
 kubectl wait \
-	--for condition=Established \
-	--all CustomResourceDefinition \
-	--namespace=monitoring
+  --for condition=Established \
+  --all CustomResourceDefinition \
+  --namespace=monitoring
 kubectl apply -f manifests/
 
 # If updating existing install, run this instead

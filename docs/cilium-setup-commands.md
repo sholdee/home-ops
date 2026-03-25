@@ -1,4 +1,5 @@
-### Cilium [install commands](https://github.com/cilium/cilium-cli/blob/master/install/install.go) for:
+### Cilium [install commands](https://github.com/cilium/cilium-cli/blob/master/install/install.go)
+
 * [BGP control plane](https://docs.cilium.io/en/stable/network/bgp-control-plane/)
 * [LB IPAM](https://docs.cilium.io/en/stable/network/lb-ipam/)
 * [Native routing](https://docs.cilium.io/en/stable/network/concepts/routing/#native-routing) mode with auto direct routes

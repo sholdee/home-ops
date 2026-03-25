@@ -5,11 +5,11 @@ Thanks for your interest! This is a personal homelab GitOps repository, but pull
 ## Setup
 
 ```bash
-brew install pre-commit kubeconform shellcheck actionlint
+brew install pre-commit kubeconform shellcheck actionlint kustomize helm
 pre-commit install
 ```
 
-Pre-commit hooks run automatically on `git commit` and validate YAML syntax, Kubernetes schemas, shell scripts, and GitHub Actions workflows.
+Pre-commit hooks run automatically on `git commit` and validate YAML syntax, Kubernetes schemas, kustomize builds, shell scripts, GitHub Actions workflows, and markdown.
 
 ## Guidelines
 

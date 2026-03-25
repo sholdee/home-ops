@@ -43,7 +43,7 @@ A unified CI pipeline runs on all pull requests, conditionally triggering the ap
 
 ### Repository Structure 📂
 
-```
+```text
 apps/              # Application definitions -- one ArgoCD Application per directory
 ├── argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
 ├── hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
