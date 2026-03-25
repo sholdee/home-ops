@@ -43,7 +43,7 @@ A unified CI pipeline runs on all pull requests, conditionally triggering the ap
 
 ### Repository Structure 📂
 
-```
+```text
 apps/              # Application definitions -- one ArgoCD Application per directory
 ├── argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
 ├── hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
@@ -160,7 +160,7 @@ erDiagram
 ### Hardware 🖥️
 
 | Node | Role | RAM | Storage |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD |
