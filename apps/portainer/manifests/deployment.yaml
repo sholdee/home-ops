@@ -25,7 +25,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: portainer
-        image: portainer/portainer-ee:2.39.1
+        image: portainer/portainer-ee:2.39.1@sha256:63fb7e29eb4d8f0c05a8e10c8986873920f6e85b6c3feba24daa30c416768e0b
         args:
         - --no-csp
         - --http-disabled

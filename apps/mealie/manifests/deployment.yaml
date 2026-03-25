@@ -27,7 +27,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: mealie
-          image: ghcr.io/mealie-recipes/mealie:v3.13.1
+          image: ghcr.io/mealie-recipes/mealie:v3.13.1@sha256:4ee2b9e807627fac79eb7509bbf6577271747346e3d16208a0de939276ccaac2
           env:
             - name: TZ
               value: America/Chicago

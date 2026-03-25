@@ -33,7 +33,7 @@ spec:
               app: powerdns
       initContainers:
         - name: render-config
-          image: busybox:1.37.0
+          image: busybox:1.37.0@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
           command: ["/bin/sh", "-c"]
           args:
             - |
@@ -69,7 +69,7 @@ spec:
               mountPath: /config
       containers:
         - name: pdns
-          image: powerdns/pdns-auth-50:5.0.3
+          image: powerdns/pdns-auth-50:5.0.3@sha256:1f136c4fa4f995279b43c6a8413dde05147cc9b74a437e188f92b0088c523a8d
           command: ["pdns_server"]
           args: ["--config-dir=/config"]
           ports:

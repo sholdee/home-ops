@@ -59,7 +59,7 @@ spec:
       serviceAccountName: csi-snapshotter
       containers:
         - name: csi-provisioner
-          image: registry.k8s.io/sig-storage/csi-provisioner:v6.2.0
+          image: registry.k8s.io/sig-storage/csi-provisioner:v6.2.0@sha256:6be9f63ca4caa6c46aae55aa372500949d8a21473d72f819da1f746076b32d4e
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
@@ -71,7 +71,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: csi-snapshotter
-          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0
+          image: registry.k8s.io/sig-storage/csi-snapshotter:v8.5.0@sha256:da081c27e8a6d91f36042c1942362d0515ced8d06e18c11b8f893e58c4d6d797
           args:
             - "--v=5"
             - "--csi-address=$(ADDRESS)"
@@ -84,7 +84,7 @@ spec:
             - name: socket-dir
               mountPath: /csi
         - name: hostpath
-          image: registry.k8s.io/sig-storage/hostpathplugin:v1.17.1
+          image: registry.k8s.io/sig-storage/hostpathplugin:v1.17.1@sha256:ec6ded2430d4c5c6251e8d3a6ca55c675d6bd1b1ee8c012eab13aaa81be9c967
           args:
             - "--v=5"
             - "--endpoint=$(CSI_ENDPOINT)"
