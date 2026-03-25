@@ -797,7 +797,7 @@ RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: applica
 #################################
 ## Process ArgoCD Applications ##
 #################################
-echo "$RESPONSE" | jq -c '.[] | select(.patch) | select(.status != "removed") | {file: .filename}' | while read -r json; do
+echo "$RESPONSE" | jq -c '.[] | select(.patch) | select(.status != "removed") | select(.filename | test("\\.(yaml|yml)$")) | {file: .filename}' | while read -r json; do
     FILE=$(echo "$json" | jq -r '.file')
 
     # All Application objects in this file (namespace may be empty in raw YAML)
