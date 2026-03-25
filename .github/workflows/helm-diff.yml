@@ -153,7 +153,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_WORKTREE_DIR: ${{ env.BASE_WORKTREE_DIR }}
-        run: bash "$BASE_WORKTREE_DIR/.github/scripts/helm_diff.sh"
+        run: bash .github/scripts/helm_diff.sh
 
       - name: Read Helm Diff Output
         id: read-diff
