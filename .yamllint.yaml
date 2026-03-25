@@ -1,0 +1,22 @@
+---
+extends: default
+
+rules:
+  line-length: disable
+  comments:
+    min-spaces-from-content: 1
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
+  document-start: disable
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+ignore:
+  - '.github/'
+  - 'apps/system-upgrade/manifests/controller.yaml'
+  - 'apps/monitoring/kromgo/manifests/config.yaml'

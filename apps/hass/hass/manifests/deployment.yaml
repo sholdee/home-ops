@@ -32,27 +32,27 @@ spec:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
       containers:
-      - name: hass
-        image: ghcr.io/home-operations/home-assistant:2026.3.4@sha256:45d37a8be32fc1b2ebc64acc9ab219ca6226dcf04b4de0046d6c4e650b7a3022
-        ports:
-        - containerPort: 8123
-          name: http
-          protocol: TCP
-        volumeMounts:
-        - name: hass-data
-          mountPath: /config
-        resources:
-          requests:
-            memory: 420Mi
-            cpu: "15m"
-          limits:
-            memory: 700Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
+        - name: hass
+          image: ghcr.io/home-operations/home-assistant:2026.3.4@sha256:45d37a8be32fc1b2ebc64acc9ab219ca6226dcf04b4de0046d6c4e650b7a3022
+          ports:
+            - containerPort: 8123
+              name: http
+              protocol: TCP
+          volumeMounts:
+            - name: hass-data
+              mountPath: /config
+          resources:
+            requests:
+              memory: 420Mi
+              cpu: "15m"
+            limits:
+              memory: 700Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
-      - name: hass-data
-        persistentVolumeClaim:
-          claimName: hass-pvc
+        - name: hass-data
+          persistentVolumeClaim:
+            claimName: hass-pvc

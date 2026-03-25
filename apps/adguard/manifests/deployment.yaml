@@ -47,10 +47,10 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["sh", "-c", "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 644 /config/AdGuardHome.yaml"]
         volumeMounts:
-          - mountPath: /home
-            name: adguard-secret
-          - mountPath: /config
-            name: adguard-conf
+        - mountPath: /home
+          name: adguard-secret
+        - mountPath: /config
+          name: adguard-conf
       containers:
       - name: adguard-home
         image: adguard/adguardhome:v0.107.73

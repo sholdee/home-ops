@@ -24,9 +24,9 @@ metadata:
   name: unifi-upstream
 spec:
   targetRefs:
-    - kind: Service
-      name: unifi-ui
-      group: ""
+  - kind: Service
+    name: unifi-ui
+    group: ""
   validation:
     wellKnownCACertificates: System
     hostname: unifi.mgmt.sholdee.net

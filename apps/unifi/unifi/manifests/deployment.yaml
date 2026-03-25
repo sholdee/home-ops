@@ -34,139 +34,139 @@ spec:
                   - key: node-role.kubernetes.io/control-plane
                     operator: DoesNotExist
       containers:
-      - name: unifi
-        image: ghcr.io/goofball222/unifi:10.1@sha256:cafc0ca78770d08375643acea8390a74a86a00e77765b7b5048c9e3e37eb6b72
-        command:
-          - /bin/sh
-          - -c
-          - |
-            cp /usr/lib/jvm/java-17-openjdk-arm64/lib/security/cacerts /trust/cacerts
-            keytool -importcert -noprompt \
-              -alias mongo-ca \
-              -file /ca/tls.crt \
-              -keystore /trust/cacerts \
-              -storepass changeit
-            docker-entrypoint.sh unifi
-        env:
-          - name: JVM_EXTRA_OPTS
-            value: >-
-              -Djavax.net.ssl.trustStore=/trust/cacerts
-              -Djavax.net.ssl.trustStorePassword=changeit
-          - name: DB_MONGO_LOCAL
-            value: "false"
-          - name: MONGO_PASS
-            valueFrom:
-              secretKeyRef:
-                name: unifi-db-password
-                key: password
-          - name: MONGO_USER
-            value: unifi
-          - name: UNIFI_DB_NAME
-            value: unifi
-          - name: TZ
-            value: America/Chicago
-          - name: RUN_CHOWN
-            value: "false"
-          - name: DB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=true"
-          - name: STATDB_MONGO_URI
-            value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=true"
-        ports:
-        - containerPort: 8080
-          protocol: TCP
-        - containerPort: 8443
-          protocol: TCP
-        - containerPort: 8880
-          protocol: TCP
-        - containerPort: 8843
-        volumeMounts:
-          - name: localtime
-            mountPath: /etc/localtime
-            readOnly: true
-          - name: unifi-data
-            mountPath: /usr/lib/unifi/cert
-            subPath: cert
-          - name: unifi-data
-            mountPath: /usr/lib/unifi/data
-            subPath: data
-          - name: unifi-data
-            mountPath: /usr/lib/unifi/logs
-            subPath: logs
-          - name: certs
-            mountPath: /usr/lib/unifi/cert/cert.pem
-            subPath: tls.crt
-          - name: certs
-            mountPath: /usr/lib/unifi/cert/privkey.pem
-            subPath: tls.key
-          - name: mongo-ca
-            mountPath: /ca
-            readOnly: true
-          - name: tmp
-            mountPath: /tmp
-            subPath: tmp
-          - name: tmp
-            mountPath: /usr/lib/unifi/run
-            subPath: run
-          - name: tmp
-            mountPath: /trust
-            subPath: trust
-        resources:
-          requests:
-            memory: 1200Mi
-            cpu: 20m
-          limits:
-            cpu: 700m
-            memory: 1200Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
-      - name: backup-cleaner
-        image: ghcr.io/home-operations/k8s-sidecar:2.5.0@sha256:ae958215a6124c6d09dbf6cf568dc72176791bfba8630f4300d4eaaf1caa5b10
-        command: ["/usr/local/bin/cleanup.sh"]
-        volumeMounts:
-          - name: unifi-data
-            mountPath: /usr/lib/unifi/data
-            subPath: data
-          - name: cleanup-script
-            mountPath: /usr/local/bin/cleanup.sh
-            subPath: cleanup.sh
-            readOnly: true
-          - name: tmp
-            mountPath: /tmp
-            subPath: tmp
-        resources:
-          requests:
-            memory: 50Mi
-            cpu: "20m"
-          limits:
-            cpu: "200m"
-            memory: 50Mi
-        securityContext:
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 65534
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
+        - name: unifi
+          image: ghcr.io/goofball222/unifi:10.1@sha256:cafc0ca78770d08375643acea8390a74a86a00e77765b7b5048c9e3e37eb6b72
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cp /usr/lib/jvm/java-17-openjdk-arm64/lib/security/cacerts /trust/cacerts
+              keytool -importcert -noprompt \
+                -alias mongo-ca \
+                -file /ca/tls.crt \
+                -keystore /trust/cacerts \
+                -storepass changeit
+              docker-entrypoint.sh unifi
+          env:
+            - name: JVM_EXTRA_OPTS
+              value: >-
+                -Djavax.net.ssl.trustStore=/trust/cacerts
+                -Djavax.net.ssl.trustStorePassword=changeit
+            - name: DB_MONGO_LOCAL
+              value: "false"
+            - name: MONGO_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: unifi-db-password
+                  key: password
+            - name: MONGO_USER
+              value: unifi
+            - name: UNIFI_DB_NAME
+              value: unifi
+            - name: TZ
+              value: America/Chicago
+            - name: RUN_CHOWN
+              value: "false"
+            - name: DB_MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi?replicaSet=unifi-db&ssl=true"
+            - name: STATDB_MONGO_URI
+              value: "mongodb://$(MONGO_USER):$(MONGO_PASS)@unifi-db-0.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-1.unifi-db-svc.unifi.svc.cluster.local:27017,unifi-db-2.unifi-db-svc.unifi.svc.cluster.local:27017/unifi_stat?replicaSet=unifi-db&ssl=true"
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+            - containerPort: 8443
+              protocol: TCP
+            - containerPort: 8880
+              protocol: TCP
+            - containerPort: 8843
+          volumeMounts:
+            - name: localtime
+              mountPath: /etc/localtime
+              readOnly: true
+            - name: unifi-data
+              mountPath: /usr/lib/unifi/cert
+              subPath: cert
+            - name: unifi-data
+              mountPath: /usr/lib/unifi/data
+              subPath: data
+            - name: unifi-data
+              mountPath: /usr/lib/unifi/logs
+              subPath: logs
+            - name: certs
+              mountPath: /usr/lib/unifi/cert/cert.pem
+              subPath: tls.crt
+            - name: certs
+              mountPath: /usr/lib/unifi/cert/privkey.pem
+              subPath: tls.key
+            - name: mongo-ca
+              mountPath: /ca
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+              subPath: tmp
+            - name: tmp
+              mountPath: /usr/lib/unifi/run
+              subPath: run
+            - name: tmp
+              mountPath: /trust
+              subPath: trust
+          resources:
+            requests:
+              memory: 1200Mi
+              cpu: 20m
+            limits:
+              cpu: 700m
+              memory: 1200Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+        - name: backup-cleaner
+          image: ghcr.io/home-operations/k8s-sidecar:2.5.0@sha256:ae958215a6124c6d09dbf6cf568dc72176791bfba8630f4300d4eaaf1caa5b10
+          command: ["/usr/local/bin/cleanup.sh"]
+          volumeMounts:
+            - name: unifi-data
+              mountPath: /usr/lib/unifi/data
+              subPath: data
+            - name: cleanup-script
+              mountPath: /usr/local/bin/cleanup.sh
+              subPath: cleanup.sh
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+              subPath: tmp
+          resources:
+            requests:
+              memory: 50Mi
+              cpu: "20m"
+            limits:
+              cpu: "200m"
+              memory: 50Mi
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65534
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
       volumes:
-      - name: unifi-data
-        persistentVolumeClaim:
-          claimName: unifi-pvc
-      - name: localtime
-        hostPath:
-          path: /etc/localtime
-          type: File
-      - name: certs
-        secret:
-          secretName: unifi-cert
-      - name: tmp
-        emptyDir: {}
-      - name: cleanup-script
-        configMap:
-          name: cleanup-script
-          defaultMode: 0755
-      - name: mongo-ca
-        secret:
-          secretName: tls-ca-key-pair
+        - name: unifi-data
+          persistentVolumeClaim:
+            claimName: unifi-pvc
+        - name: localtime
+          hostPath:
+            path: /etc/localtime
+            type: File
+        - name: certs
+          secret:
+            secretName: unifi-cert
+        - name: tmp
+          emptyDir: {}
+        - name: cleanup-script
+          configMap:
+            name: cleanup-script
+            defaultMode: 0755
+        - name: mongo-ca
+          secret:
+            secretName: tls-ca-key-pair

@@ -27,36 +27,36 @@ helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manag
 
 ```bash
 # Ensure GIT is installed
-apt -y install git  
+apt -y install git
 
 # Fix kubeconfig file to prevent Helm errors
-export KUBECONFIG=~/.kube/config  
-mkdir ~/.kube 2> /dev/null  
-sudo k3s kubectl config view --raw > "$KUBECONFIG"  
-chmod 600 "$KUBECONFIG"  
-echo "KUBECONFIG=$KUBECONFIG" >> /etc/environment  
+export KUBECONFIG=~/.kube/config
+mkdir ~/.kube 2> /dev/null
+sudo k3s kubectl config view --raw > "$KUBECONFIG"
+chmod 600 "$KUBECONFIG"
+echo "KUBECONFIG=$KUBECONFIG" >> /etc/environment
 
 # Switch to home directory
 cd
 
 # Create a directory for Helm and navigate into it
-mkdir helm  
-cd helm  
+mkdir helm
+cd helm
 
 # Download Helm installer
-curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3  
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 
 # Modify permissions for execution
-chmod 700 get_helm.sh  
+chmod 700 get_helm.sh
 
 # Install Helm
-./get_helm.sh  
+./get_helm.sh
 
 # Verify Helm installation
 helm version
 
 # Install Arkade
-curl -sLS https://get.arkade.dev | sudo sh 
+curl -sLS https://get.arkade.dev | sudo sh
 
 # Verify Arkade installation
 arkade version

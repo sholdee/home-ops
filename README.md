@@ -39,9 +39,7 @@ My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github 
 
 Renovate continuously scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-Pull requests for Helm application updates trigger a workflow to calculate and post the diff between the old and new versions' inflated manifests, as well as detect and pull all new container images to the cluster for ARM64 platform verification.
-
-Container image update pull requests against base manifests in the repository also trigger a workflow to pull the new image and verify ARM64 compatibility. This has the added benefit of caching all images in the local embedded registry mirror, Spegel, prior to merging.
+A unified CI pipeline runs on all pull requests, conditionally triggering the appropriate checks. Helm application updates calculate and post the diff between old and new versions' inflated manifests, and detect and pull all new container images to the cluster for ARM64 platform verification. Container image updates against base manifests pull the new image and verify ARM64 compatibility. Pre-commit hooks validate YAML syntax, Kubernetes schemas, and code quality. All checks feed into a single required status gate for branch protection and automerge.
 
 ### Repository Structure 📂
 
