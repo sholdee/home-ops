@@ -16,7 +16,7 @@ docs/           Operational docs and full reference
 ### Key Files
 
 | File | Purpose |
-|------|---------|
+| ------ | --------- |
 | `apps/argocd/manifests/app-set.yaml` | ApplicationSet — Git directory generator scans `apps/*`, creates one Application per dir. Name = basename, namespace = basename with `-conf` stripped. Adding a new `apps/<name>/` dir auto-creates an app. |
 | `apps/argocd/manifests/apps.yaml` | App-of-apps — Cilium, Longhorn, Reloader, VolSync Helm releases |
 | `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
@@ -50,7 +50,7 @@ pre-commit run kubeconform    # single hook, staged files only
 ```
 
 | Hook | Purpose |
-|------|---------|
+| ------ | --------- |
 | trailing-whitespace | Auto-fix trailing whitespace |
 | end-of-file-fixer | Ensure files end with newline |
 | check-merge-conflict | Catch merge conflict markers |

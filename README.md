@@ -160,7 +160,7 @@ erDiagram
 ### Hardware 🖥️
 
 | Node | Role | RAM | Storage |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD |
