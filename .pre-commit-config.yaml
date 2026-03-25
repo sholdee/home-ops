@@ -1,7 +1,7 @@
 ---
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
@@ -12,20 +12,24 @@ repos:
       - id: check-ast
 
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.37.1
+    rev: v1.38.0
     hooks:
       - id: yamllint
         args: ["-c", ".yamllint.yaml"]
         types: [yaml]
 
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.33.0
+    rev: 0.37.0
     hooks:
       - id: check-jsonschema
         name: validate kustomization
         files: 'kustomization\.yaml$'
         args: ["--schemafile", ".schemas/kustomization.json"]
       - id: check-github-workflows
+      - id: check-jsonschema
+        name: validate github actions
+        files: '\.github/actions/.*action\.(yml|yaml)$'
+        args: ["--schemafile", "https://json.schemastore.org/github-action.json"]
       - id: check-renovate
         additional_dependencies: ["pyjson5"]
 
@@ -58,7 +62,7 @@ repos:
         pass_filenames: true
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
         args: ["-x"]

@@ -1,0 +1,60 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+name: Setup CLI Tools
+description: Install kubeconform, actionlint, kustomize, and Helm for CI workflows
+
+inputs:
+  kubeconform-version:
+    description: kubeconform version
+    # renovate: datasource=github-releases depName=yannh/kubeconform
+    default: '0.7.0'
+  actionlint-version:
+    description: actionlint version
+    # renovate: datasource=github-releases depName=rhysd/actionlint
+    default: '1.7.11'
+  kustomize-version:
+    description: kustomize version
+    # renovate: datasource=github-releases depName=kubernetes-sigs/kustomize versioning=regex:^kustomize/v(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$ extractVersion=^kustomize/v(?<version>.+)$
+    default: '5.8.1'
+  helm-version:
+    description: Helm version
+    # renovate: datasource=github-releases depName=helm/helm
+    default: '3.19.4'
+
+runs:
+  using: composite
+  steps:
+    - name: Install kubeconform
+      shell: bash
+      run: |
+        VERSION="${{ inputs.kubeconform-version }}"
+        curl -sSLo kubeconform.tar.gz \
+          "https://github.com/yannh/kubeconform/releases/download/v${VERSION}/kubeconform-linux-amd64.tar.gz"
+        tar -xzf kubeconform.tar.gz
+        sudo mv kubeconform /usr/local/bin/kubeconform
+        rm kubeconform.tar.gz
+
+    - name: Install actionlint
+      shell: bash
+      run: |
+        VERSION="${{ inputs.actionlint-version }}"
+        curl -sSLo actionlint.tar.gz \
+          "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
+        tar -xzf actionlint.tar.gz actionlint
+        sudo mv actionlint /usr/local/bin/actionlint
+        rm actionlint.tar.gz
+
+    - name: Install kustomize
+      shell: bash
+      run: |
+        VERSION="${{ inputs.kustomize-version }}"
+        curl -sSLo kustomize.tar.gz \
+          "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${VERSION}/kustomize_v${VERSION}_linux_amd64.tar.gz"
+        tar -xzf kustomize.tar.gz
+        sudo mv kustomize /usr/local/bin/kustomize
+        rm kustomize.tar.gz
+
+    - name: Install Helm
+      uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
+      with:
+        version: v${{ inputs.helm-version }}
