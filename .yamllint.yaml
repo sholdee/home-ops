@@ -15,8 +15,3 @@ rules:
   braces:
     min-spaces-inside: 0
     max-spaces-inside: 1
-
-ignore:
-  - '.github/'
-  - 'apps/system-upgrade/manifests/controller.yaml'
-  - 'apps/monitoring/kromgo/manifests/config.yaml'
