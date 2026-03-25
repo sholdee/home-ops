@@ -43,6 +43,18 @@ spec:
                 secretKeyRef:
                   name: hivemq-secret
                   key: venstar
+          livenessProbe:
+            exec:
+              command: ["pgrep", "-f", "index.js"]
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+          startupProbe:
+            exec:
+              command: ["pgrep", "-f", "index.js"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
           resources:
             requests:
               cpu: "5m"
