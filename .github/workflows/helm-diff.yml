@@ -28,60 +28,8 @@ jobs:
       - name: Fetch base branch for comparison
         run: git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
 
-      - name: Install Helm
-        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
-        with:
-          version: v3.19.4
-
-      - name: Install base CLI deps
-        run: |
-          MISSING=()
-          TOOLS=(curl jq)
-
-          for tool in "${TOOLS[@]}"; do
-            if ! command -v "$tool" >/dev/null 2>&1; then
-              MISSING+=("$tool")
-            fi
-          done
-
-          if [ ${#MISSING[@]} -ne 0 ]; then
-            echo "Installing missing packages: ${MISSING[*]}"
-            sudo apt-get update
-            sudo apt-get install -y "${MISSING[@]}"
-          else
-            echo "All required CLI tools already installed: ${TOOLS[*]}"
-          fi
-
-      - name: Install kustomize
-        run: |
-          VERSION="5.8.1"
-          ARCH="$(uname -m)"
-          case "$ARCH" in
-            x86_64)
-              PLATFORM="amd64"
-              ;;
-            aarch64 | arm64)
-              PLATFORM="arm64"
-              ;;
-            *)
-              PLATFORM="386"
-              echo "⚠️ Unrecognized architecture '$ARCH', defaulting to linux_${PLATFORM}"
-              ;;
-          esac
-
-          echo "PLATFORM=$PLATFORM" >> "$GITHUB_ENV"
-
-          echo "Installing kustomize v${VERSION} for linux_${PLATFORM} (uname -m=${ARCH})..."
-
-          curl -sSLo kustomize.tar.gz \
-            "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${VERSION}/kustomize_v${VERSION}_linux_${PLATFORM}.tar.gz"
-
-          tar -xzf kustomize.tar.gz
-          sudo mv kustomize /usr/local/bin/kustomize
-          rm kustomize.tar.gz
-
-          echo "kustomize version:"
-          kustomize version
+      - name: Install CLI tools
+        uses: ./.github/actions/setup-tools
 
       - name: Check yq presence/version
         id: check-yq
@@ -128,7 +76,7 @@ jobs:
           YQ_VERSION: ${{ steps.yq-version.outputs.version }}
         run: |
           echo "Installing yq ${YQ_VERSION}..."
-          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${PLATFORM}" \
+          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
             -o yq
           sudo mv yq /usr/local/bin/yq
           sudo chmod +x /usr/local/bin/yq

@@ -60,6 +60,7 @@ pre-commit run kubeconform    # single hook, staged files only
 | yamllint | YAML style/indentation (config: `.yamllint.yaml`) |
 | validate kustomization | JSON Schema validation of `kustomization.yaml` files |
 | check-github-workflows | JSON Schema validation of GitHub Actions workflows |
+| validate github actions | JSON Schema validation of composite action files |
 | check-renovate | JSON Schema validation of Renovate config |
 | kubeconform | K8s schema validation — builtin APIs + CRDs via `datreeio/CRDs-catalog` |
 | kustomize build | Runs `kustomize build --enable-helm` on affected app directories |
