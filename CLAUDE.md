@@ -24,6 +24,7 @@ docs/           Operational docs and full reference
 | `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases), package rules, automerge settings |
 | `.github/workflows/ci.yaml` | CI orchestrator — detects change type, conditionally calls helm-diff/pull-image, provides single `CI / gate` required status check |
 | `.github/workflows/helm-diff.yml` | Reusable workflow — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
+| `.github/workflows/pre-commit.yml` | Reusable workflow — installs kubeconform + actionlint, runs all pre-commit hooks |
 | `.github/workflows/pull-image.yml` | Reusable workflow — triggered for Renovate container image PRs, verifies `linux/arm64` platform |
 | `docs/howto-templates.md` | Templates for new apps, Helm apps, VolSync, ExternalSecret, HTTPRoute, CiliumNetworkPolicy |
 
@@ -53,10 +54,16 @@ pre-commit run kubeconform    # single hook, staged files only
 | trailing-whitespace | Auto-fix trailing whitespace |
 | end-of-file-fixer | Ensure files end with newline |
 | check-merge-conflict | Catch merge conflict markers |
+| check-added-large-files | Prevent accidental large file commits |
 | check-yaml | YAML syntax validation |
+| check-ast | Python syntax validation |
 | yamllint | YAML style/indentation (config: `.yamllint.yaml`) |
+| validate kustomization | JSON Schema validation of `kustomization.yaml` files |
+| check-github-workflows | JSON Schema validation of GitHub Actions workflows |
+| check-renovate | JSON Schema validation of Renovate config |
 | kubeconform | K8s schema validation — builtin APIs + CRDs via `datreeio/CRDs-catalog` |
 | shellcheck | Bash script linting |
+| actionlint | Deep GitHub Actions linting (expressions, script injection, shellcheck) |
 
 ## Common Commands
 
@@ -105,6 +112,11 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 - Include `components: [../../components/namespace]` (provides Docker Hub pull secret)
 - Have an explicit `manifests/namespace.yaml` resource (or parent group provides it)
 - Use `# yaml-language-server: $schema=...` comments only on CRD YAML files (ExternalSecret, HTTPRoute, CiliumNetworkPolicy, CNPG resources, etc.). Do NOT add schema comments to built-in Kubernetes APIs (Deployment, Service, ConfigMap, Namespace, etc.) — the IDE already provides schema awareness for these
+
+### Dependency pinning
+
+- **Container images:** Pin to tag + manifest index digest (e.g., `image: busybox:1.37.0@sha256:...`). Renovate updates both tag and digest together.
+- **GitHub Actions:** Pin to commit SHA with semver comment (e.g., `uses: actions/checkout@sha256hash # v6.0.2`). Renovate updates both SHA and comment together.
 
 ### Every deployment MUST have
 
@@ -164,6 +176,8 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - Omitting `kustomization.yaml` in an app directory (ArgoCD will still apply raw manifests, but kustomize wrapping is used for consistency and flexibility)
 - Hardcoding secrets in manifests instead of using ExternalSecret
 - Using images without ARM64 support (CI will reject and pods won't schedule)
+- Adding container images without a digest — always include `@sha256:...` (use `docker buildx imagetools inspect <image>` to get the manifest index digest)
+- Pinning GitHub Actions to tag only (`@v6`) instead of SHA + comment (`@sha256hash # v6.0.2`)
 - Forgetting `readOnlyRootFilesystem: true` without providing writable mounts for app needs
 - Using non-conventional commit messages (Renovate and CI rely on semantic prefixes)
 - Pushing directly to `master` — branch protection requires a PR with passing `CI / gate` check
