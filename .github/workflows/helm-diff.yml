@@ -16,8 +16,8 @@ jobs:
         id: set-artifact-name
         run: |
           ARTIFACT_NAME="helm-diff-$(date +%s)"
-          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_ENV
-          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> $GITHUB_OUTPUT
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -153,16 +153,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_WORKTREE_DIR: ${{ env.BASE_WORKTREE_DIR }}
-        run: bash "$BASE_WORKTREE_DIR/.github/scripts/helm_diff.sh"
+        run: bash .github/scripts/helm_diff.sh
 
       - name: Read Helm Diff Output
         id: read-diff
         run: |
           if [ -s diff.txt ]; then
-            echo "HAS_DIFF=true" >> $GITHUB_OUTPUT
+            echo "HAS_DIFF=true" >> "$GITHUB_OUTPUT"
             echo "✨ Differences detected."
           else
-            echo "HAS_DIFF=false" >> $GITHUB_OUTPUT
+            echo "HAS_DIFF=false" >> "$GITHUB_OUTPUT"
             echo "ℹ️ No differences detected."
           fi
 

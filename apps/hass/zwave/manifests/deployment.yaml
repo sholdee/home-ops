@@ -41,17 +41,17 @@ spec:
           initialDelaySeconds: 10
         readinessProbe: *probe
         env:
-          - name: SESSION_SECRET
-            valueFrom:
-              secretKeyRef:
-                name: zwave
-                key: pass
-          - name: ZWAVEJS_EXTERNAL_CONFIG
-            value: /usr/src/app/store/.config-db
-          - name: TRUST_PROXY
-            value: "10.52.0.0/16"
-          - name: TZ
-            value: America/Chicago
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: zwave
+              key: pass
+        - name: ZWAVEJS_EXTERNAL_CONFIG
+          value: /usr/src/app/store/.config-db
+        - name: TRUST_PROXY
+          value: "10.52.0.0/16"
+        - name: TZ
+          value: America/Chicago
         ports:
         - containerPort: 8091
           name: http

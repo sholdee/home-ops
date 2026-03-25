@@ -18,20 +18,26 @@ jobs:
   detect:
     runs-on: ubuntu-latest
     outputs:
-      run-helm: ${{ steps.eval.outputs.run-helm }}
-      run-docker: ${{ steps.eval.outputs.run-docker }}
+      authorized: ${{ steps.author.outputs.authorized }}
+      helm: ${{ steps.paths.outputs.helm }}
+      docker-only: ${{ steps.eval.outputs.docker-only }}
     steps:
       - name: Check PR author
         id: author
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
           AUTHORIZED_USERS=("sholdee" "pull-bunyan[bot]")
-          PR_AUTHOR="${{ github.event.pull_request.user.login }}"
+          AUTHORIZED=false
 
-          if [[ " ${AUTHORIZED_USERS[@]} " =~ " $PR_AUTHOR " ]]; then
-            echo "authorized=true" >> $GITHUB_OUTPUT
-          else
-            echo "authorized=false" >> $GITHUB_OUTPUT
-          fi
+          for user in "${AUTHORIZED_USERS[@]}"; do
+            if [[ "${user}" == "${PR_AUTHOR}" ]]; then
+              AUTHORIZED=true
+              break
+            fi
+          done
+
+          echo "authorized=${AUTHORIZED}" >> "$GITHUB_OUTPUT"
 
       - name: Detect changed paths
         id: paths
@@ -45,55 +51,51 @@ jobs:
               - 'apps/argocd/manifests/apps.yaml'
               - 'apps/argocd/manifests/cilium-preflight.yaml'
 
-      - name: Evaluate which checks to run
+      - name: Evaluate docker-only
         id: eval
+        env:
+          HELM: ${{ steps.paths.outputs.helm }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          AUTHORIZED="${{ steps.author.outputs.authorized }}"
-          HELM="${{ steps.paths.outputs.helm }}"
-          TITLE="${{ github.event.pull_request.title }}"
-
-          RUN_HELM=false
-          RUN_DOCKER=false
-
-          if [[ "$AUTHORIZED" == "true" && "$HELM" == "true" ]]; then
-            RUN_HELM=true
-          fi
-
-          if [[ "$AUTHORIZED" == "true" && "$HELM" != "true" ]]; then
-            if [[ "$TITLE" == chore\(deps\)* ]] && { [[ "$TITLE" == *"docker tag"* ]] || [[ "$TITLE" == *"docker digest"* ]]; }; then
-              RUN_DOCKER=true
+          DOCKER_ONLY=false
+          if [[ "${HELM}" != "true" ]]; then
+            if [[ "${PR_TITLE}" == chore\(deps\)* ]] && { [[ "${PR_TITLE}" == *"docker tag"* ]] || [[ "${PR_TITLE}" == *"docker digest"* ]]; }; then
+              DOCKER_ONLY=true
             fi
           fi
 
-          echo "run-helm=$RUN_HELM" >> $GITHUB_OUTPUT
-          echo "run-docker=$RUN_DOCKER" >> $GITHUB_OUTPUT
+          echo "docker-only=${DOCKER_ONLY}" >> "$GITHUB_OUTPUT"
+
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
 
   helm-diff:
     needs: detect
-    if: needs.detect.outputs.run-helm == 'true'
+    if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.helm == 'true'
     uses: ./.github/workflows/helm-diff.yml
     secrets: inherit
 
   docker-verify:
     needs: detect
-    if: needs.detect.outputs.run-docker == 'true'
+    if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.docker-only == 'true'
     uses: ./.github/workflows/pull-image.yml
     secrets: inherit
 
   gate:
     runs-on: ubuntu-latest
     if: always()
-    needs: [detect, helm-diff, docker-verify]
+    needs: [detect, pre-commit, helm-diff, docker-verify]
     steps:
       - name: Evaluate results
         run: |
           DETECT="${{ needs.detect.result }}"
+          PRECOMMIT="${{ needs.pre-commit.result }}"
           HELM="${{ needs.helm-diff.result }}"
           DOCKER="${{ needs.docker-verify.result }}"
 
-          echo "detect=$DETECT helm-diff=$HELM docker-verify=$DOCKER"
+          echo "detect=$DETECT pre-commit=$PRECOMMIT helm-diff=$HELM docker-verify=$DOCKER"
 
-          if [[ "$DETECT" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
+          if [[ "$DETECT" == "failure" || "$PRECOMMIT" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
             echo "CI failed"
             exit 1
           fi

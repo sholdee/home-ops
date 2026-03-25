@@ -29,16 +29,16 @@ spec:
           protocol: TCP
           name: http
         volumeMounts:
-          - mountPath: /etc/caddy
-            name: unifi-landing
-          - mountPath: /var/www
-            name: unifi-landing-static
-          - mountPath: /config/caddy
-            name: tmp
-            subPath: conf
-          - mountPath: /data/caddy
-            name: tmp
-            subPath: data
+        - mountPath: /etc/caddy
+          name: unifi-landing
+        - mountPath: /var/www
+          name: unifi-landing-static
+        - mountPath: /config/caddy
+          name: tmp
+          subPath: conf
+        - mountPath: /data/caddy
+          name: tmp
+          subPath: data
         resources:
           requests:
             memory: 10Mi

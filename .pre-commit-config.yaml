@@ -1,0 +1,63 @@
+---
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-merge-conflict
+      - id: check-added-large-files
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-ast
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: ['-c', '.yamllint.yaml']
+        types: [yaml]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.33.0
+    hooks:
+      - id: check-jsonschema
+        name: validate kustomization
+        files: 'kustomization\.yaml$'
+        args: ['--schemafile', '.schemas/kustomization.json']
+      - id: check-github-workflows
+      - id: check-renovate
+        additional_dependencies: ['pyjson5']
+
+  - repo: local
+    hooks:
+      - id: kubeconform
+        name: kubeconform
+        language: system
+        entry: kubeconform
+        args:
+          - '-strict'
+          - '-ignore-missing-schemas'
+          - '-schema-location'
+          - 'default'
+          - '-schema-location'
+          - 'https://kubernetes-schemas.pages.dev/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+          - '-schema-location'
+          - 'https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json'
+        types: [yaml]
+        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|renovatejob\.yaml|system-upgrade/manifests/plan\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml)'
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['-x']
+
+  - repo: local
+    hooks:
+      - id: actionlint
+        name: actionlint
+        language: system
+        entry: actionlint
+        files: '^\.github/workflows/'
+        types: [yaml]

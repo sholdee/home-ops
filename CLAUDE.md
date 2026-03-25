@@ -22,14 +22,41 @@ docs/           Operational docs and full reference
 | `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
 | `apps/system-upgrade/manifests/plan.yaml` | K3s version (Renovate custom manager tracks this) |
 | `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases), package rules, automerge settings |
-| `.github/workflows/helm-diff.yml` | PR CI — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
-| `.github/workflows/pull-image.yml` | PR CI — triggered on Renovate container image PRs, verifies `linux/arm64` platform |
+| `.github/workflows/ci.yaml` | CI orchestrator — detects change type, conditionally calls helm-diff/pull-image, provides single `CI / gate` required status check |
+| `.github/workflows/helm-diff.yml` | Reusable workflow — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
+| `.github/workflows/pull-image.yml` | Reusable workflow — triggered for Renovate container image PRs, verifies `linux/arm64` platform |
 | `docs/howto-templates.md` | Templates for new apps, Helm apps, VolSync, ExternalSecret, HTTPRoute, CiliumNetworkPolicy |
 
 ### ArgoCD Behavior
 
 - Config enables `kustomize.buildOptions: --enable-helm` so kustomize can render Helm charts
 - All apps auto-sync with prune, ServerSideApply, and CreateNamespace
+
+## Pre-commit Hooks
+
+Install and activate:
+
+```bash
+brew install pre-commit kubeconform shellcheck
+pre-commit install
+```
+
+Hooks run automatically on `git commit`. To run manually:
+
+```bash
+pre-commit run --all-files    # all hooks, all files
+pre-commit run kubeconform    # single hook, staged files only
+```
+
+| Hook | Purpose |
+|------|---------|
+| trailing-whitespace | Auto-fix trailing whitespace |
+| end-of-file-fixer | Ensure files end with newline |
+| check-merge-conflict | Catch merge conflict markers |
+| check-yaml | YAML syntax validation |
+| yamllint | YAML style/indentation (config: `.yamllint.yaml`) |
+| kubeconform | K8s schema validation — builtin APIs + CRDs via `datreeio/CRDs-catalog` |
+| shellcheck | Bash script linting |
 
 ## Common Commands
 
@@ -60,7 +87,8 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 - **Manual branches:** descriptive names (e.g., `headlamp-token-login`)
 - **Commit style:** [Conventional Commits](https://www.conventionalcommits.org/) — `feat(scope):`, `fix(scope):`, `chore(deps):`, `docs:`
 - **Automerge:** Renovate minor/patch/digest updates for approved packages merge automatically
-- **CI checks:** Helm diff + ARM64 image pull verification must pass before merge
+- **CI gate:** Single required status check `CI / gate` — conditionally runs helm-diff and/or docker-verify; passes automatically when neither applies
+- **Branch protection:** Direct pushes to `master` are blocked — all changes require a PR with passing gate
 
 ## Five App Patterns
 
@@ -138,6 +166,8 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - Using images without ARM64 support (CI will reject and pods won't schedule)
 - Forgetting `readOnlyRootFilesystem: true` without providing writable mounts for app needs
 - Using non-conventional commit messages (Renovate and CI rely on semantic prefixes)
+- Pushing directly to `master` — branch protection requires a PR with passing `CI / gate` check
+- Skipping pre-commit hooks with `--no-verify` — fix the underlying issue instead
 
 ## Cluster Access & Debugging
 

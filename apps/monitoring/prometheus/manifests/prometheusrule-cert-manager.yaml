@@ -21,7 +21,7 @@ spec:
       annotations:
         description: The certificate {{$labels.exported_namespace}}/{{$labels.name}} will expire in less than 2 weeks.
         summary: Certificate will expire soon
-  
+
     - alert: CertmanagerCertificateExpired
       expr: |
         max by (name, exported_namespace) (certmanager_certificate_expiration_timestamp_seconds{job="cert-manager"} - time() < 0)

@@ -44,7 +44,7 @@ def extract_images_from_pr_diff():
 
     print(f"📡 Fetching PR diff from: {diff_url}")
     response = requests.get(diff_url, headers=headers)
-    
+
     if response.status_code != 200:
         print(f"❌ Failed to fetch PR diff: {response.status_code} - {response.text}")
         return []

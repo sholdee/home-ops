@@ -32,10 +32,10 @@ spec:
         automated:
           prune: true
         syncOptions:
-        - CreateNamespace=true
-        - ApplyOutOfSyncOnly=true
-        - RespectIgnoreDifferences=true
-        - ServerSideApply=true
+          - CreateNamespace=true
+          - ApplyOutOfSyncOnly=true
+          - RespectIgnoreDifferences=true
+          - ServerSideApply=true
   templatePatch: |
     {{- if eq .path.basename "monitoring" }}
     spec:

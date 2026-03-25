@@ -27,10 +27,10 @@ spec:
       - name: portainer
         image: portainer/portainer-ee:2.39.1
         args:
-          - --no-csp
-          - --http-disabled
-          - --tlscert=/certs/tls.crt
-          - --tlskey=/certs/tls.key
+        - --no-csp
+        - --http-disabled
+        - --tlscert=/certs/tls.crt
+        - --tlskey=/certs/tls.key
         ports:
         - containerPort: 9443
           name: https

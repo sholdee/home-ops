@@ -29,19 +29,19 @@ spec:
       - name: codeserver
         image: ghcr.io/coder/code-server:4.112.0@sha256:ddd9b0b854fec5a3c65ec0095b5c59fb8505ad44d8a18d00d6fcf6a3179692dd
         env:
-          - name: TZ
-            value: America/Chicago
-          - name: HOME
-            value: /home/coder
-          - name: DEFAULT_WORKSPACE
-            value: /home
-          - name: SHELL
-            value: "/bin/bash"
-          - name: PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: zwave
-                key: pass
+        - name: TZ
+          value: America/Chicago
+        - name: HOME
+          value: /home/coder
+        - name: DEFAULT_WORKSPACE
+          value: /home
+        - name: SHELL
+          value: "/bin/bash"
+        - name: PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: zwave
+              key: pass
         ports:
         - containerPort: 8080
           name: http

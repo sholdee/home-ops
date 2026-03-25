@@ -609,7 +609,7 @@ process_argo_source() {
 #######################################
 process_kustomization() {
     local kustomization_file="$1"
-    
+
     echo "📄 Processing kustomization file: $kustomization_file"
 
     # Check if this is a Helm kustomization (has helmCharts section)
@@ -617,7 +617,7 @@ process_kustomization() {
         echo "ℹ️ No Helm charts found in kustomization"
         return 0
     fi
-    
+
     echo "🔍 Found Helm charts in kustomization"
 
     local HELMCHART_NAMES_QUERY
@@ -749,22 +749,22 @@ find_kustomization_for_values() {
     local values_file="$1"
     local current_dir
     current_dir=$(dirname "$values_file")
-    
+
     # Walk up directory tree looking for kustomization.yaml
     while [[ "$current_dir" != "." && "$current_dir" != "/" ]]; do
         local kustomization_path="$current_dir/kustomization.yaml"
-        
+
         if [[ -f "$kustomization_path" ]]; then
             # Check if this kustomization references our values file
             local relative_path
             relative_path=$(realpath --relative-to="$current_dir" "$values_file" 2>/dev/null || \
                            python3 -c "import os.path; print(os.path.relpath('$values_file', '$current_dir'))" 2>/dev/null)
-            
+
             if [[ -z "$relative_path" ]]; then
                 # Fallback: manual relative path calculation
                 relative_path="${values_file#"$current_dir"/}"
             fi
-            
+
             # Check if any helmChart entry references this values file
             if yq e ".helmCharts[]? | select(.valuesFile == \"$relative_path\")" \
                 "$kustomization_path" 2>/dev/null | grep -q .; then
@@ -772,11 +772,11 @@ find_kustomization_for_values() {
                 return 0
             fi
         fi
-        
+
         # Move up one directory
         current_dir=$(dirname "$current_dir")
     done
-    
+
     return 1
 }
 
@@ -797,7 +797,7 @@ RESPONSE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: applica
 #################################
 ## Process ArgoCD Applications ##
 #################################
-echo "$RESPONSE" | jq -c '.[] | select(.patch) | select(.status != "removed") | {file: .filename}' | while read -r json; do
+echo "$RESPONSE" | jq -c '.[] | select(.patch) | select(.status != "removed") | select(.filename | test("\\.(yaml|yml)$")) | {file: .filename}' | while read -r json; do
     FILE=$(echo "$json" | jq -r '.file')
 
     # All Application objects in this file (namespace may be empty in raw YAML)
@@ -851,19 +851,19 @@ done < <(echo "$RESPONSE" | jq -c '.[] | select(.filename | endswith("kustomizat
 # Process standalone values*.yaml files by finding their kustomization
 while read -r values_file; do
     values_file=$(echo "$values_file" | tr -d '"')
-    
+
     echo "🔍 Checking if values file $values_file is referenced by a kustomization..."
-    
+
     # Find the kustomization that references this values file
     kustomization_path=$(find_kustomization_for_values "$values_file")
-    
+
     if [[ -n "$kustomization_path" ]]; then
         # Check if we've already processed this kustomization
         if [[ -n "${PROCESSED_KUSTOMIZATIONS[$kustomization_path]:-}" ]]; then
             echo "ℹ️ Kustomization $kustomization_path already processed (referenced by $values_file)"
             continue
         fi
-        
+
         echo "📝 Found kustomization at $kustomization_path referencing $values_file"
         PROCESSED_KUSTOMIZATIONS["$kustomization_path"]=1
         process_kustomization "$kustomization_path"
