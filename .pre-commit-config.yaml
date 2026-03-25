@@ -47,6 +47,16 @@ repos:
         types: [yaml]
         exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|renovatejob\.yaml|system-upgrade/manifests/plan\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml)'
 
+  - repo: local
+    hooks:
+      - id: kustomize-build
+        name: kustomize build
+        language: system
+        entry: .github/scripts/kustomize_build_check.sh
+        files: '^apps/'
+        require_serial: true
+        pass_filenames: true
+
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.10.0.1
     hooks:

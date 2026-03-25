@@ -38,7 +38,7 @@ docs/           Operational docs and full reference
 Install and activate:
 
 ```bash
-brew install pre-commit kubeconform shellcheck actionlint
+brew install pre-commit kubeconform shellcheck actionlint kustomize helm
 pre-commit install
 ```
 
@@ -62,6 +62,7 @@ pre-commit run kubeconform    # single hook, staged files only
 | check-github-workflows | JSON Schema validation of GitHub Actions workflows |
 | check-renovate | JSON Schema validation of Renovate config |
 | kubeconform | K8s schema validation — builtin APIs + CRDs via `datreeio/CRDs-catalog` |
+| kustomize build | Runs `kustomize build --enable-helm` on affected app directories |
 | shellcheck | Bash script linting |
 | actionlint | Deep GitHub Actions linting (expressions, script injection, shellcheck) |
 

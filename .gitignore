@@ -1,2 +1,4 @@
 .claude.local.md
 .DS_Store
+# Helm charts extracted by kustomize build --enable-helm
+apps/**/charts/
