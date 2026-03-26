@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-action.json
+name: Run pre-commit
+description: Install pre-commit, cache hook environments, and run all hooks
+
+inputs:
+  extra_args:
+    description: Options to pass to pre-commit run
+    required: false
+    default: '--all-files'
+
+runs:
+  using: composite
+  steps:
+    - run: python -m pip install pre-commit
+      shell: bash
+    - run: python -m pip freeze --local
+      shell: bash
+    - uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: ~/.cache/pre-commit
+        key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}
+    - run: pre-commit run --show-diff-on-failure --color=always ${{ inputs.extra_args }}
+      shell: bash

@@ -1,0 +1,36 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Warm CI Caches
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/actions/setup-tools/action.yml'
+      - '.pre-commit-config.yaml'
+  workflow_dispatch:
+
+jobs:
+  warm-caches:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup CLI tools (warms cache)
+        uses: ./.github/actions/setup-tools
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.14'
+
+      - name: Warm pre-commit environment cache
+        shell: bash
+        run: |
+          pip install pre-commit
+          pre-commit install-hooks
+      - uses: actions/cache/save@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-3|${{ env.pythonLocation }}|${{ hashFiles('.pre-commit-config.yaml') }}

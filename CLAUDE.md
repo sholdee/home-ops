@@ -22,11 +22,13 @@ docs/           Operational docs and full reference
 | `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
 | `apps/system-upgrade/manifests/plan.yaml` | K3s version (Renovate custom manager tracks this) |
 | `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases, CLI tools), package rules, automerge settings |
-| `.github/actions/setup-tools/action.yml` | Composite action — installs kubeconform, actionlint, kustomize, Helm with `# renovate:` annotations for auto-update |
+| `.github/actions/setup-tools/action.yml` | Composite action — installs and caches kubeconform, actionlint, kustomize, Helm with `# renovate:` annotations for auto-update |
+| `.github/actions/run-pre-commit/action.yml` | Composite action — installs pre-commit, caches hook environments, runs hooks (replaces upstream `pre-commit/action`) |
 | `.github/workflows/ci.yaml` | CI orchestrator — detects change type, conditionally calls helm-diff/pull-image, provides single `CI / gate` required status check |
 | `.github/workflows/helm-diff.yml` | Reusable workflow — renders old vs new Helm templates, diffs them, verifies ARM64 image support via `crictl pull` |
-| `.github/workflows/pre-commit.yml` | Reusable workflow — uses setup-tools composite action, runs all pre-commit hooks |
+| `.github/workflows/pre-commit.yml` | Reusable workflow — uses setup-tools and run-pre-commit composite actions |
 | `.github/workflows/pull-image.yml` | Reusable workflow — triggered for Renovate container image PRs, verifies `linux/arm64` platform |
+| `.github/workflows/cache-warm.yml` | Warms CLI tool and pre-commit caches on push to master (only when tool versions or pre-commit config change) |
 | `docs/howto-templates.md` | Templates for new apps, Helm apps, VolSync, ExternalSecret, HTTPRoute, CiliumNetworkPolicy |
 
 ### ArgoCD Behavior
