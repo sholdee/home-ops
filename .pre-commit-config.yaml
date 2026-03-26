@@ -25,11 +25,28 @@ repos:
         name: validate kustomization
         files: 'kustomization\.yaml$'
         args: ["--schemafile", ".schemas/kustomization.json"]
+      - id: check-jsonschema
+        name: validate kromgo config
+        files: 'kromgo/manifests/config\.yaml$'
+        args:
+          [
+            "--schemafile",
+            "https://raw.githubusercontent.com/kashalls/kromgo/main/config.schema.json",
+          ]
+      - id: check-jsonschema
+        name: validate external-dns values
+        files: 'external-dns/manifests/values\.yaml$'
+        args:
+          [
+            "--schemafile",
+            "https://raw.githubusercontent.com/kubernetes-sigs/external-dns/refs/heads/master/charts/external-dns/values.schema.json",
+          ]
       - id: check-github-workflows
       - id: check-jsonschema
         name: validate github actions
         files: '\.github/actions/.*action\.(yml|yaml)$'
-        args: ["--schemafile", "https://json.schemastore.org/github-action.json"]
+        args:
+          ["--schemafile", "https://json.schemastore.org/github-action.json"]
       - id: check-renovate
         additional_dependencies: ["pyjson5"]
 
@@ -45,11 +62,13 @@ repos:
           - "-schema-location"
           - "default"
           - "-schema-location"
+          - "https://kube-schemas.pages.dev/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          - "-schema-location"
           - "https://kubernetes-schemas.pages.dev/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
           - "-schema-location"
           - "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
         types: [yaml]
-        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|renovatejob\.yaml|system-upgrade/manifests/plan\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
+        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
 
   - repo: local
     hooks:
