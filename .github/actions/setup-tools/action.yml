@@ -24,35 +24,50 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Cache CLI tools
+      id: cli-cache
+      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      with:
+        path: /usr/local/bin/setup-tools
+        key: setup-tools-${{ inputs.kubeconform-version }}-${{ inputs.actionlint-version }}-${{ inputs.kustomize-version }}
+
     - name: Install kubeconform
+      if: steps.cli-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         VERSION="${{ inputs.kubeconform-version }}"
         curl -sSLo kubeconform.tar.gz \
           "https://github.com/yannh/kubeconform/releases/download/v${VERSION}/kubeconform-linux-amd64.tar.gz"
         tar -xzf kubeconform.tar.gz
-        sudo mv kubeconform /usr/local/bin/kubeconform
+        mkdir -p /usr/local/bin/setup-tools
+        mv kubeconform /usr/local/bin/setup-tools/kubeconform
         rm kubeconform.tar.gz
 
     - name: Install actionlint
+      if: steps.cli-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         VERSION="${{ inputs.actionlint-version }}"
         curl -sSLo actionlint.tar.gz \
           "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz"
         tar -xzf actionlint.tar.gz actionlint
-        sudo mv actionlint /usr/local/bin/actionlint
+        mv actionlint /usr/local/bin/setup-tools/actionlint
         rm actionlint.tar.gz
 
     - name: Install kustomize
+      if: steps.cli-cache.outputs.cache-hit != 'true'
       shell: bash
       run: |
         VERSION="${{ inputs.kustomize-version }}"
         curl -sSLo kustomize.tar.gz \
           "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2Fv${VERSION}/kustomize_v${VERSION}_linux_amd64.tar.gz"
         tar -xzf kustomize.tar.gz
-        sudo mv kustomize /usr/local/bin/kustomize
+        mv kustomize /usr/local/bin/setup-tools/kustomize
         rm kustomize.tar.gz
+
+    - name: Add tools to PATH
+      shell: bash
+      run: echo "/usr/local/bin/setup-tools" >> "$GITHUB_PATH"
 
     - name: Install Helm
       uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5.0.0
