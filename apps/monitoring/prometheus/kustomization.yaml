@@ -7,4 +7,5 @@ resources:
   - manifests/prometheusrule-cert-manager.yaml
   - manifests/prometheusrule-cilium.yaml
   - manifests/prometheusrule-longhorn.yaml
+  - manifests/prometheusrule-argocd.yaml
   - manifests/prometheusrule-misc.yaml

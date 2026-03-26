@@ -5,6 +5,10 @@ server:
     enabled: false
   certificateSecret:
     enabled: false
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 controller:
   affinity:
     nodeAffinity:
@@ -14,6 +18,15 @@ controller:
             matchExpressions:
               - key: node-role.kubernetes.io/control-plane
                 operator: DoesNotExist
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
+repoServer:
+  metrics:
+    enabled: true
+    serviceMonitor:
+      enabled: true
 configs:
   cm:
     kustomize.buildOptions: --enable-helm

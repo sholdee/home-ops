@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argocd-rules
+spec:
+  groups:
+    - name: argocd
+      rules:
+        - alert: ArgoCDAppDegraded
+          annotations:
+            summary: ArgoCD app {{ $labels.name }} is degraded.
+          expr: argocd_app_info{health_status="Degraded"} == 1
+          for: 5m
+          labels:
+            severity: warning
+        - alert: ArgoCDAppSyncFailed
+          annotations:
+            summary: ArgoCD app {{ $labels.name }} sync status is {{ $labels.sync_status }}.
+          expr: argocd_app_info{sync_status="Unknown"} == 1
+          for: 5m
+          labels:
+            severity: critical
+        - alert: ArgoCDAppSyncOutOfSync
+          annotations:
+            summary: ArgoCD app {{ $labels.name }} is out of sync.
+          expr: argocd_app_info{sync_status="OutOfSync", autosync_enabled="true"} == 1
+          for: 15m
+          labels:
+            severity: warning
