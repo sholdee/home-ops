@@ -143,6 +143,8 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 - **External services:** HTTPRoute -> `external-gateway` (gateway namespace) -> `*.sholdee.net`
 - **Guest portal:** HTTPRoute -> `guest-gateway` (gateway namespace) -> `*.guest.sholdee.net`
 - Use `CiliumNetworkPolicy` (not NetworkPolicy) for pod-level restrictions
+- **CiliumNetworkPolicy enforcement:** Creating a policy on a pod enables enforcement for ALL inbound traffic to that pod — the policy must allow every source, not just the new traffic being added. Forgetting existing flows will break them.
+- **Prometheus scraping:** Allow with `fromEndpoints: [{matchLabels: {io.kubernetes.pod.namespace: monitoring, app.kubernetes.io/name: prometheus}}]` on the metrics port
 - Backend TLS: use `BackendTLSPolicy` when upstream serves HTTPS
 
 ### Storage
@@ -178,6 +180,7 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - Forgetting the namespace component (unauthenticated Docker Hub pulls, pods may fail ImagePullBackOff on rate limit)
 - Using `Ingress` instead of `HTTPRoute` (this cluster uses Gateway API exclusively)
 - Using `NetworkPolicy` instead of `CiliumNetworkPolicy`
+- Adding a CiliumNetworkPolicy to a pod without accounting for all existing inbound traffic (enforcement blocks everything not explicitly allowed)
 - Missing security context (pods will be rejected or run with excessive privileges)
 - Omitting `kustomization.yaml` in an app directory (ArgoCD will still apply raw manifests, but kustomize wrapping is used for consistency and flexibility)
 - Hardcoding secrets in manifests instead of using ExternalSecret
