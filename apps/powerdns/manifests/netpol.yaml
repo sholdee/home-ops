@@ -44,6 +44,9 @@ spec:
             io.kubernetes.pod.namespace: external-dns
             app.kubernetes.io/name: external-dns
         - matchLabels:
+            io.kubernetes.pod.namespace: envoy-gateway-system
+            gateway.envoyproxy.io/owning-gateway-name: envoy-gateway
+        - matchLabels:
             io.kubernetes.pod.namespace: monitoring
             app.kubernetes.io/name: prometheus
       toPorts:
