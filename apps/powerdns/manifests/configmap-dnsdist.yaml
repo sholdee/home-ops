@@ -28,6 +28,9 @@ data:
     authZones:add(newDNSName("20.168.192.in-addr.arpa."))
     authZones:add(newDNSName("0.2.10.in-addr.arpa."))
 
+    -- UniFi AP L3 discovery: CNAME "unifi." to the controller
+    addAction("unifi.", SpoofCNAMEAction("unifi.mgmt.sholdee.net."))
+
     -- Route authoritative queries to PowerDNS Auth, fall back to forward if auth is down
     addAction(AndRule({SuffixMatchNodeRule(authZones), PoolAvailableRule("auth")}), PoolAction("auth"))
 
