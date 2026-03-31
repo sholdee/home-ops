@@ -14,7 +14,7 @@ components:
 helmCharts:
   - name: renovate-operator
     repo: oci://ghcr.io/mogenius/helm-charts
-    version: 3.10.0
+    version: 3.10.1
     releaseName: renovate-operator
     namespace: renovate
     valuesFile: manifests/values.yaml
