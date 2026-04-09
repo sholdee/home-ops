@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/tcproute_v1alpha2.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/gateway.networking.k8s.io/tcproute_v1alpha2.json
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: TCPRoute
 metadata:
@@ -7,11 +7,11 @@ metadata:
   namespace: unifi
 spec:
   parentRefs:
-  - name: envoy-gateway
-    namespace: gateway
-    sectionName: unifi-inform
+    - name: envoy-gateway
+      namespace: gateway
+      sectionName: unifi-inform
   rules:
-  - backendRefs:
-    - name: unifi-inform
-      namespace: unifi
-      port: 8080
+    - backendRefs:
+        - name: unifi-inform
+          namespace: unifi
+          port: 8080

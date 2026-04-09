@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/httproute_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/gateway.networking.k8s.io/httproute_v1.json
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -7,26 +7,26 @@ metadata:
   namespace: unifi
 spec:
   parentRefs:
-  - name: envoy-gateway
-    namespace: gateway
+    - name: envoy-gateway
+      namespace: gateway
   hostnames:
-  - unifi.mgmt.sholdee.net
+    - unifi.mgmt.sholdee.net
   rules:
-  - backendRefs:
-    - name: unifi-ui
-      namespace: unifi
-      port: 8443
+    - backendRefs:
+        - name: unifi-ui
+          namespace: unifi
+          port: 8443
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/gateway.networking.k8s.io/backendtlspolicy_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/gateway.networking.k8s.io/backendtlspolicy_v1.json
 apiVersion: gateway.networking.k8s.io/v1
 kind: BackendTLSPolicy
 metadata:
   name: unifi-upstream
 spec:
   targetRefs:
-  - kind: Service
-    name: unifi-ui
-    group: ""
+    - kind: Service
+      name: unifi-ui
+      group: ""
   validation:
     wellKnownCACertificates: System
     hostname: unifi.mgmt.sholdee.net

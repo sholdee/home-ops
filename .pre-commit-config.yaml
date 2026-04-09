@@ -62,13 +62,9 @@ repos:
           - "-schema-location"
           - "default"
           - "-schema-location"
-          - "https://kube-schemas.pages.dev/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
-          - "-schema-location"
-          - "https://kubernetes-schemas.pages.dev/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
-          - "-schema-location"
-          - "https://raw.githubusercontent.com/datreeio/CRDs-catalog/main/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+          - "https://kube-schemas.shold.io/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
         types: [yaml]
-        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml|^renovatejob\.yaml)'
+        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
 
   - repo: local
     hooks:

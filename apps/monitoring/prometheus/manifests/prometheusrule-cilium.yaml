@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/monitoring.coreos.com/prometheusrule_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/monitoring.coreos.com/prometheusrule_v1.json
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
 metadata:
@@ -10,52 +10,52 @@ metadata:
   namespace: monitoring
 spec:
   groups:
-  - name: cni-cilium
-    rules:
-    - alert: CiliumAgentUnreachableHealthEndpoints
-      expr: max by (namespace, pod) (cilium_unreachable_health_endpoints) > 0
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: Unreachable Cilium Health Endpoints
-        description: "{{ $value }} node health endpoints are not reachable by agent {{ $labels.namespace }}/{{ $labels.pod }}."
+    - name: cni-cilium
+      rules:
+        - alert: CiliumAgentUnreachableHealthEndpoints
+          expr: max by (namespace, pod) (cilium_unreachable_health_endpoints) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Unreachable Cilium Health Endpoints
+            description: "{{ $value }} node health endpoints are not reachable by agent {{ $labels.namespace }}/{{ $labels.pod }}."
 
-    - alert: CiliumAgentUnreachableNodes
-      expr: max by (namespace, pod) (cilium_unreachable_nodes) > 0
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: Unreachable Cilium Nodes
-        description: "{{ $value }} nodes are not reachable by agent {{ $labels.namespace }}/{{ $labels.pod }}."
+        - alert: CiliumAgentUnreachableNodes
+          expr: max by (namespace, pod) (cilium_unreachable_nodes) > 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Unreachable Cilium Nodes
+            description: "{{ $value }} nodes are not reachable by agent {{ $labels.namespace }}/{{ $labels.pod }}."
 
-    - alert: CiliumAgentEndpointsNotReady
-      expr: sum by (namespace, pod) (cilium_endpoint_state{endpoint_state="ready"} / cilium_endpoint_state) < 0.5
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: Cilium Endpoints Not Ready
-        description: "More than half of all known endpoints are not ready in agent {{ $labels.namespace }}/{{ $labels.pod }}."
+        - alert: CiliumAgentEndpointsNotReady
+          expr: sum by (namespace, pod) (cilium_endpoint_state{endpoint_state="ready"} / cilium_endpoint_state) < 0.5
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: Cilium Endpoints Not Ready
+            description: "More than half of all known endpoints are not ready in agent {{ $labels.namespace }}/{{ $labels.pod }}."
 
-    - alert: CiliumAgentMapPressureCritical
-      expr: sum by (namespace, pod, map_name) (cilium_bpf_map_pressure > 0.9)
-      for: 5m
-      labels:
-        severity: critical
-      annotations:
-        summary: eBPF Map Pressure Critical
-        description: "eBPF map {{ $labels.map_name }} is more than 90% full in agent {{ $labels.namespace }}/{{ $labels.pod }}."
+        - alert: CiliumAgentMapPressureCritical
+          expr: sum by (namespace, pod, map_name) (cilium_bpf_map_pressure > 0.9)
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: eBPF Map Pressure Critical
+            description: "eBPF map {{ $labels.map_name }} is more than 90% full in agent {{ $labels.namespace }}/{{ $labels.pod }}."
 
-    - alert: CiliumAgentErrors
-      expr: |
-        sum by (namespace, pod, subsystem) (
-          increase(cilium_errors_warnings_total{level="error"}[5m])
-        ) > 0
-      for: 5m
-      labels:
-        severity: warning
-      annotations:
-        summary: Cilium Agent Errors
-        description: "Agent {{ $labels.namespace }}/{{ $labels.pod }} in subsystem {{ $labels.subsystem }} logged {{ $value }} new error(s)."
+        - alert: CiliumAgentErrors
+          expr: |
+            sum by (namespace, pod, subsystem) (
+              increase(cilium_errors_warnings_total{level="error"}[5m])
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Cilium Agent Errors
+            description: "Agent {{ $labels.namespace }}/{{ $labels.pod }} in subsystem {{ $labels.subsystem }} logged {{ $value }} new error(s)."

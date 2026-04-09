@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -95,7 +95,7 @@ spec:
       - ServerSideApply=true
       - RespectIgnoreDifferences=true
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -140,7 +140,7 @@ spec:
       - CreateNamespace=true
       - RespectIgnoreDifferences=true
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -167,7 +167,7 @@ spec:
     syncOptions:
       - ApplyOutOfSyncOnly=true
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/application_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
