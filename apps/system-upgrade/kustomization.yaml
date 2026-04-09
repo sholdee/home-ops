@@ -6,6 +6,6 @@ namespace: system-upgrade
 components:
   - ../../components/namespace
 resources:
-  - https://raw.githubusercontent.com/rancher/system-upgrade-controller/refs/tags/v0.19.1/pkg/crds/yaml/generated/upgrade.cattle.io_plans.yaml
+  - https://raw.githubusercontent.com/rancher/system-upgrade-controller/refs/tags/v0.19.2/pkg/crds/yaml/generated/upgrade.cattle.io_plans.yaml
   - manifests/controller.yaml
   - manifests/plan.yaml
