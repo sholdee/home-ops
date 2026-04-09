@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpclusterconfig_v2alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpclusterconfig_v2alpha1.json
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPClusterConfig
 metadata:
@@ -7,18 +7,18 @@ metadata:
 spec:
   nodeSelector:
     matchExpressions:
-      - {key: somekey, operator: NotIn, values: ['never-used-value']}
+      - { key: somekey, operator: NotIn, values: ["never-used-value"] }
   bgpInstances:
     - name: "instance-64770"
       localASN: 64770
       peers:
         - name: "peer-64777"
           peerASN: 64777
-          peerAddress: '192.168.99.1'
+          peerAddress: "192.168.99.1"
           peerConfigRef:
             name: "cilium-peer"
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgppeerconfig_v2alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgppeerconfig_v2alpha1.json
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPPeerConfig
 metadata:
@@ -35,7 +35,7 @@ spec:
     holdTimeSeconds: 9
     keepAliveTimeSeconds: 3
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumbgpadvertisement_v2alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpadvertisement_v2alpha1.json
 apiVersion: cilium.io/v2alpha1
 kind: CiliumBGPAdvertisement
 metadata:
@@ -51,16 +51,16 @@ spec:
           - LoadBalancerIP
       selector:
         matchExpressions:
-          - {key: bgp.cilium.io/no-lb-adv, operator: NotIn, values: ['true']}
+          - { key: bgp.cilium.io/no-lb-adv, operator: NotIn, values: ["true"] }
     - advertisementType: "Service"
       service:
         addresses:
           - ExternalIP
       selector:
         matchExpressions:
-          - {key: somekey, operator: NotIn, values: ['never-used-value']}
+          - { key: somekey, operator: NotIn, values: ["never-used-value"] }
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/cilium.io/ciliumloadbalancerippool_v2alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumloadbalancerippool_v2alpha1.json
 apiVersion: "cilium.io/v2alpha1"
 kind: CiliumLoadBalancerIPPool
 metadata:

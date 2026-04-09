@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/upgrade.cattle.io/plan_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/upgrade.cattle.io/plan_v1.json
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
 metadata:
@@ -13,10 +13,10 @@ spec:
   version: v1.34.6+k3s1
   nodeSelector:
     matchExpressions:
-    - key: node-role.kubernetes.io/control-plane
-      operator: In
-      values:
-      - "true"
+      - key: node-role.kubernetes.io/control-plane
+        operator: In
+        values:
+          - "true"
   serviceAccountName: system-upgrade
   drain:
     force: true
@@ -24,7 +24,7 @@ spec:
   upgrade:
     image: rancher/k3s-upgrade
 ---
-# yaml-language-server: $schema=https://kubernetes-schemas.pages.dev/upgrade.cattle.io/plan_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/upgrade.cattle.io/plan_v1.json
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
 metadata:
@@ -38,8 +38,8 @@ spec:
   version: v1.34.6+k3s1
   nodeSelector:
     matchExpressions:
-    - key: node-role.kubernetes.io/control-plane
-      operator: DoesNotExist
+      - key: node-role.kubernetes.io/control-plane
+        operator: DoesNotExist
   serviceAccountName: system-upgrade
   prepare:
     # Defaults to the same "resolved" tag that is used for the `upgrade` container, NOT `latest`

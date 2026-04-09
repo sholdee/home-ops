@@ -1,0 +1,62 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: kubernetes-schemas
+  namespace: kubernetes-schemas
+  annotations:
+    reloader.stakater.com/auto: "true"
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: kubernetes-schemas
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: crd-schema-publisher
+              image: ghcr.io/sholdee/crd-schema-publisher@sha256:e96e74559702077f08c08e38222b4ff02ae61aa97e7b27492322d6bd4dff535f
+              env:
+                - name: CLOUDFLARE_API_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudflare-credentials
+                      key: CLOUDFLARE_API_TOKEN
+                - name: CLOUDFLARE_ACCOUNT_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: cloudflare-credentials
+                      key: CLOUDFLARE_ACCOUNT_ID
+                - name: CF_PAGES_PROJECT
+                  value: kubernetes-schemas
+                - name: OUTPUT_DIR
+                  value: /output
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 1Gi
+                limits:
+                  cpu: 500m
+                  memory: 1Gi
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop:
+                    - ALL
+              volumeMounts:
+                - name: output
+                  mountPath: /output
+          volumes:
+            - name: output
+              emptyDir: {}

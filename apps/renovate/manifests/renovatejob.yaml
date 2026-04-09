@@ -1,11 +1,14 @@
 ---
-# yaml-language-server: $schema=https://kube-schemas.pages.dev/renovate-operator.mogenius.com/renovatejob_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/renovate-operator.mogenius.com/renovatejob_v1alpha1.json
 apiVersion: renovate-operator.mogenius.com/v1alpha1
 kind: RenovateJob
 metadata:
   name: renovate
 spec:
-  discoveryFilters: ["/sholdee/(docker-compose|caddy-proxy-cloudflare|adguard-exporter|home-ops)/"]
+  discoveryFilters:
+    [
+      "/sholdee/(docker-compose|caddy-proxy-cloudflare|adguard-exporter|home-ops)/",
+    ]
   extraEnv:
     - name: LOG_LEVEL
       value: info

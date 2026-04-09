@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/argoproj.io/applicationset_v1alpha1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/applicationset_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -12,10 +12,10 @@ spec:
         repoURL: https://github.com/sholdee/home-ops
         revision: master
         directories:
-          - path: 'apps/*'
+          - path: "apps/*"
   template:
     metadata:
-      name: '{{.path.basename}}'
+      name: "{{.path.basename}}"
       annotations:
         argocd.argoproj.io/compare-options: ServerSideDiff=true
         argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
@@ -24,7 +24,7 @@ spec:
       source:
         repoURL: https://github.com/sholdee/home-ops
         targetRevision: master
-        path: '{{.path.path}}'
+        path: "{{.path.path}}"
       destination:
         name: in-cluster
         namespace: '{{ regexReplaceAll "-conf$" .path.basename "" }}'

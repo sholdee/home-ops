@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/datreeio/CRDs-catalog/refs/heads/main/postgresql.cnpg.io/clusterimagecatalog_v1.json
+# yaml-language-server: $schema=https://kube-schemas.shold.io/postgresql.cnpg.io/clusterimagecatalog_v1.json
 apiVersion: postgresql.cnpg.io/v1
 kind: ClusterImageCatalog
 metadata:
