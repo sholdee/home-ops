@@ -12,6 +12,7 @@ spec:
   failedJobsHistoryLimit: 3
   jobTemplate:
     spec:
+      activeDeadlineSeconds: 1800
       template:
         spec:
           serviceAccountName: kubernetes-schemas
@@ -25,7 +26,7 @@ spec:
               type: RuntimeDefault
           containers:
             - name: crd-schema-publisher
-              image: ghcr.io/sholdee/crd-schema-publisher@sha256:e96e74559702077f08c08e38222b4ff02ae61aa97e7b27492322d6bd4dff535f
+              image: ghcr.io/sholdee/crd-schema-publisher:v2026.0409.054605@sha256:f634cea33a48e32aa04eb66338a63f3bc58e6fc52ced31d3f247824a5ad4e3fa
               env:
                 - name: CLOUDFLARE_API_TOKEN
                   valueFrom:
