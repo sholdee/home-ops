@@ -19,7 +19,7 @@ inputs:
   helm-version:
     description: Helm version
     # renovate: datasource=github-releases depName=helm/helm
-    default: '3.20.1'
+    default: '3.20.2'
 
 runs:
   using: composite
