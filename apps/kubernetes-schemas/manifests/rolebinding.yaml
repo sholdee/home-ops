@@ -1,0 +1,14 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: crd-schema-publisher-leader-election
+  namespace: kubernetes-schemas
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: crd-schema-publisher-leader-election
+subjects:
+  - kind: ServiceAccount
+    name: kubernetes-schemas
+    namespace: kubernetes-schemas
