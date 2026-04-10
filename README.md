@@ -35,30 +35,36 @@
 
 This repository contains the configurations for my home operations k3s cluster.
 
-My applications are managed in GitOps fashion with ArgoCD, Renovate, and Github webhooks. Repository push events trigger a webhook to ArgoCD, causing it to immediately sync the cluster state with this repository.
+My applications are managed in GitOps fashion with ArgoCD, Renovate, and GitHub webhooks. Repository push events trigger a webhook to ArgoCD, causing it to immediately sync the cluster state with this repository.
 
 Renovate continuously scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
 
-A unified CI pipeline runs on all pull requests, conditionally triggering the appropriate checks. Helm application updates calculate and post the diff between old and new versions' inflated manifests, and detect and pull all new container images to the cluster for ARM64 platform verification. Container image updates against base manifests pull the new image and verify ARM64 compatibility. Pre-commit hooks validate YAML syntax, Kubernetes schemas, and code quality. All checks feed into a single required status gate for branch protection and automerge.
+A unified CI pipeline runs on all pull requests, conditionally triggering the appropriate checks:
+
+- **Helm updates** — diffs inflated manifests between old and new versions, pulls new container images to verify ARM64 compatibility
+- **Image updates** — pulls the new image and verifies ARM64 platform support
+- **Pre-commit** — validates YAML syntax, Kubernetes schemas, and code quality
+
+All checks feed into a single required status gate for branch protection and automerge.
 
 ### Repository Structure 📂
 
 ```text
-apps/              # Application definitions -- one ArgoCD Application per directory
-├── argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
-├── hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
-├── unifi/         # Grouped: UniFi controller, MongoDB ReplicaSet, guest portal proxy
-├── monitoring/    # Grouped: kube-prometheus-stack, Grafana, Prometheus, Alertmanager, Kromgo
-├── kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
-└── .../           # Each remaining directory is a standalone app (Helm or plain manifests)
-components/        # Reusable Kustomize Components (namespace pull secrets, VolSync backup templates)
-docs/              # Operational documentation
-.github/           # Renovate config, CI workflows, helper scripts
+📁 apps/              # Application definitions -- one ArgoCD Application per directory
+├── 📁 argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
+├── 📁 hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
+├── 📁 unifi/         # Grouped: UniFi controller, MongoDB ReplicaSet, guest portal proxy
+├── 📁 monitoring/    # Grouped: kube-prometheus-stack, Grafana, Prometheus, Alertmanager, Kromgo
+├── 📁 kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
+└── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
+📁 components/        # Reusable Kustomize Components (namespace pull secrets, VolSync backup templates)
+📁 docs/              # Operational documentation
+📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
 ```
 
 ### ArgoCD Project Structure 🏗️
 
-The project utilizes ArgoCD's `ApplicationSet` custom resource with a Git directory generator, watching `apps/*`, to dynamically create all ArgoCD `Application` instances. It is self-managing and contained within the special `argocd` application, which is also an app-of-apps holding Helm applications.
+An `ApplicationSet` with a Git directory generator watches `apps/*` and dynamically creates an ArgoCD `Application` for each directory. The `argocd` application is special — it manages itself and also serves as an app-of-apps that aggregates Helm-based applications (Cilium, Longhorn, etc.).
 
 ```mermaid
 erDiagram
@@ -102,60 +108,62 @@ erDiagram
 
 ### Primary Applications ⭐
 
-- Home Assistant and related services
-  - Appdaemon
-    - Custom [automations](https://github.com/sholdee/sholdee-hass-apps)
-  - Z-Wave JS UI
-  - Codeserver
-  - Venstar MQTT bridge
-- HiveMQ
-- Mealie
-- Unifi
-- Adguard
-  - Custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
-- PowerDNS Authoritative DNS
-  - dnsdist (DNS load balancer/router)
-  - Poweradmin (web UI)
-  - CNPG PostgreSQL with pgbouncer
-- Renovate Operator
-- Portainer
-  - GitOps for remote Docker hosts
+- **Home Assistant** — home automation platform
+  - **Appdaemon** — custom python [automations](https://github.com/sholdee/sholdee-hass-apps)
+  - **Z-Wave JS UI** — Z-Wave Control Panel and MQTT Gateway
+  - **Codeserver** — VS Code in the browser
+  - **Venstar MQTT bridge** — thermostat integration
+- **HiveMQ** — MQTT broker
+- **Mealie** — recipe manager
+- **Unifi** — wireless network controller
+- **Adguard** — DNS-based ad blocking with custom [exporter sidecar](https://github.com/sholdee/adguard-exporter)
+- **PowerDNS** — authoritative DNS server
+  - **dnsdist** — DNS load balancer and router
+  - **Poweradmin** — web management UI
+  - Backed by CNPG PostgreSQL with pgbouncer
+- **Renovate Operator** — automated dependency update PRs
+- **Portainer** — GitOps for remote Docker hosts
 
 ### Core Components 🔥
 
-- ArgoCD
-- 1Password Connect
-- External-Secrets
-- External-DNS
-- Envoy Gateway
-- Cert-Manager
-- Kube-VIP
-- VolSync
-- CloudNativePG
-- HiveMQ Platform Operator
-- MongoDB Controllers for Kubernetes
-- Kube Prometheus Stack
-- Kromgo
-- System Upgrade Controller
-- Headlamp
-- Stakater Reloader
-- Velero
+#### GitOps & Configuration
 
-### Network: Cilium 🕸️
+- **ArgoCD** — GitOps continuous delivery
+- **Stakater Reloader** — rolling restarts on Secret/ConfigMap changes
+- **System Upgrade Controller** — automated K3s version upgrades
+- **[CRD Schema Publisher](https://github.com/sholdee/crd-schema-publisher)** — watches for CRD changes and publishes JSON schemas to Cloudflare Pages
 
-- Gateway API
-- Netkit
-- eBPF host-routing
-- Native routing
-- BGP control plane
-- Hubble observability
+#### Secrets & Certificates
 
-### Storage: Longhorn 💾
+- **1Password Connect** — secrets backend for External-Secrets
+- **External-Secrets** — syncs secrets from 1Password into Kubernetes
+- **Cert-Manager** — automated TLS certificate management
 
-- VolSync with Restic to Backblaze B2
-- CloudNativePG barman-cloud to Backblaze B2
-- Longhorn recurring backups to NAS (NFS)
-- Velero cluster-wide backup
+#### Networking
+
+- **Cilium** — CNI with Gateway API, Netkit, eBPF host-routing, BGP control plane, and Hubble observability
+- **Envoy Gateway** — Gateway API implementation for ingress routing
+- **External-DNS** — automated DNS record management
+- **Kube-VIP** — virtual IP for the Kubernetes control plane
+
+#### Storage & Backup
+
+- **Longhorn** — distributed block storage with recurring backups to NAS
+- **Barman-cloud** — PostgreSQL backups and WAL streaming to Backblaze B2
+- **VolSync** — PVC replication with Restic to Backblaze B2
+- **Velero** — cluster-wide backup and disaster recovery
+
+#### Monitoring & Observability
+
+- **Kube Prometheus Stack** — Prometheus, Alertmanager, and Grafana
+- **Kromgo** — exposes cluster metrics as badge endpoints
+- **Headlamp** — Kubernetes web dashboard
+
+#### Operators
+
+- **CloudNativePG** — PostgreSQL operator with automated failover and backups
+- **HiveMQ Platform Operator** — manages HiveMQ MQTT broker
+- **MongoDB Controllers for Kubernetes** — manages MongoDB ReplicaSets
 
 ### Hardware 🖥️
 
@@ -167,4 +175,4 @@ erDiagram
 | k3s-worker-0 | Worker | 8GB | 512GB NVMe SSD |
 | k3s-worker-1 | Worker | 8GB | 512GB NVMe SSD |
 
-All nodes are Raspberry Pi 5 with NVMe SSD via PCIe hat.
+All nodes are Raspberry Pi 5 boards with NVMe SSDs attached via PCIe HAT.
