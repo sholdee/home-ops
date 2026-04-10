@@ -10,5 +10,7 @@ resources:
   - manifests/serviceaccount.yaml
   - manifests/clusterrole.yaml
   - manifests/clusterrolebinding.yaml
+  - manifests/role.yaml
+  - manifests/rolebinding.yaml
   - manifests/externalsecret.yaml
-  - manifests/cronjob.yaml
+  - manifests/deployment.yaml
