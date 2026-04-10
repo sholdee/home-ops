@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: crd-schema-publisher
-          image: ghcr.io/sholdee/crd-schema-publisher:v2026.0409.062423@sha256:ca6e046c7887c046962cc483c3a6a6211b3d97c04fe47c38bd3afbe7a2483c2b
+          image: ghcr.io/sholdee/crd-schema-publisher:pr-1
           args:
             - watch
           env:
@@ -47,7 +47,7 @@ spec:
             - name: OUTPUT_DIR
               value: /output
             - name: DEBOUNCE_SECONDS
-              value: "30"
+              value: "15"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
