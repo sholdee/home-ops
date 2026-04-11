@@ -28,7 +28,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: crd-schema-publisher
-          image: ghcr.io/sholdee/crd-schema-publisher:v2026.0410.205405@sha256:e8b7c718adb0ceccd0ac1ce9dbe38d85c8c7df4cc772b48c41865a859fbf8855
+          image: ghcr.io/sholdee/crd-schema-publisher:v2026.0411.051355@sha256:0b7335987a3ee09c668fa84e1432213f91b4afd106133d655773d1b9da8b11c8
           args:
             - watch
           env:
