@@ -15,7 +15,7 @@ spec:
     - name: RENOVATE_PLATFORM_COMMIT
       value: "true"
     - name: NODE_OPTIONS
-      value: "--max-old-space-size=1024"
+      value: "--max-old-space-size=1536"
     - name: RENOVATE_REDIS_URL
       value: "redis://renovate-redis.renovate.svc.cluster.local:6379"
     - name: RENOVATE_REPOSITORY_CACHE
@@ -37,10 +37,10 @@ spec:
   resources:
     requests:
       cpu: 500m
-      memory: 1280Mi
+      memory: 2048Mi
     limits:
       cpu: 500m
-      memory: 1280Mi
+      memory: 2048Mi
   webhook:
     enabled: true
     authentication:
