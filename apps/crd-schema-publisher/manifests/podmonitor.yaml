@@ -3,14 +3,14 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: kubernetes-schemas
-  namespace: kubernetes-schemas
+  name: crd-schema-publisher
+  namespace: crd-schema-publisher
   labels:
-    app: kubernetes-schemas
+    app: crd-schema-publisher
 spec:
   selector:
     matchLabels:
-      app: kubernetes-schemas
+      app: crd-schema-publisher
   podMetricsEndpoints:
     - port: health
       path: /metrics
