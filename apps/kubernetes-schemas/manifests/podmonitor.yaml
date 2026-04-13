@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/monitoring.coreos.com/podmonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: kubernetes-schemas
+  namespace: kubernetes-schemas
+  labels:
+    app: kubernetes-schemas
+spec:
+  selector:
+    matchLabels:
+      app: kubernetes-schemas
+  podMetricsEndpoints:
+    - port: health
+      path: /metrics
