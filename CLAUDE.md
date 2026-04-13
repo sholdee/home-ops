@@ -107,7 +107,7 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 
 1. **Plain kustomize** (e.g., `adguard`, `powerdns`): `kustomization.yaml` + `manifests/` with raw YAML
 2. **Kustomize + Helm** (e.g., `cert-manager`, `external-dns`, `velero`): `helmCharts:` section in kustomization.yaml, values in `manifests/values.yaml` or `valuesInline:`
-3. **ArgoCD Application CRs** (Cilium, Longhorn, Reloader, VolSync): Defined in `apps/argocd/manifests/apps.yaml` with `spec.source.helm.valuesObject`
+3. **ArgoCD Application CRs** (Cilium, Longhorn, Reloader, VolSync, crd-schema-publisher): Defined in `apps/argocd/manifests/apps.yaml` with `spec.source.helm.valuesObject`. Every Helm repo used by an Application CR must have a corresponding repo secret in `apps/argocd/manifests/repos.yaml` (OCI repos additionally need `enableOCI: "true"`).
 4. **Grouped apps** (e.g., `hass/`, `unifi/`, `monitoring/`, `kube-system/`): Parent kustomization references sub-directories as resources
 5. **Kustomize + VolSync** (e.g., `portainer`, `mealie`, `hass/hass`): Includes volsync components with patches to customize names/paths
 
@@ -191,6 +191,7 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - Using non-conventional commit messages (Renovate and CI rely on semantic prefixes)
 - Pushing directly to `master` — branch protection requires a PR with passing `CI / gate` check
 - Skipping pre-commit hooks with `--no-verify` — fix the underlying issue instead
+- Adding an ArgoCD Application CR without registering the Helm repo in `apps/argocd/manifests/repos.yaml` — ArgoCD cannot pull charts from unregistered repos (OCI repos additionally need `enableOCI: "true"`)
 
 ## Cluster Access & Debugging
 
