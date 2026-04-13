@@ -17,10 +17,6 @@ spec:
     metadata:
       labels:
         app: kubernetes-schemas
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "8080"
-        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: kubernetes-schemas
       securityContext:
