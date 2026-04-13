@@ -3,7 +3,7 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: crd-schema-publisher-leader-election
-  namespace: kubernetes-schemas
+  namespace: crd-schema-publisher
 rules:
   - apiGroups:
       - coordination.k8s.io

@@ -2,8 +2,8 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: kubernetes-schemas
-  namespace: kubernetes-schemas
+  name: crd-schema-publisher
+  namespace: crd-schema-publisher
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
@@ -12,13 +12,13 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: kubernetes-schemas
+      app: crd-schema-publisher
   template:
     metadata:
       labels:
-        app: kubernetes-schemas
+        app: crd-schema-publisher
     spec:
-      serviceAccountName: kubernetes-schemas
+      serviceAccountName: crd-schema-publisher
       securityContext:
         runAsNonRoot: true
         runAsUser: 65534
