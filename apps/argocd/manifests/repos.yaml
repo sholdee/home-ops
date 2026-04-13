@@ -63,3 +63,17 @@ metadata:
     argocd.argoproj.io/secret-type: repository
   name: volsync
 type: Opaque
+---
+apiVersion: v1
+stringData:
+  name: sholdee-charts
+  project: k3s
+  type: helm
+  url: ghcr.io/sholdee/charts
+  enableOCI: "true"
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: sholdee-charts
+type: Opaque

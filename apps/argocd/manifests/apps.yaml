@@ -99,6 +99,54 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: crd-schema-publisher
+spec:
+  destination:
+    name: in-cluster
+    namespace: crd-schema-publisher
+  project: k3s
+  source:
+    chart: crd-schema-publisher
+    helm:
+      releaseName: crd-schema-publisher
+      valuesObject:
+        annotations:
+          reloader.stakater.com/auto: "true"
+        externalSecret:
+          enabled: true
+          secretStoreRef:
+            name: onepassword-connect
+            kind: ClusterSecretStore
+          data:
+            - secretKey: CLOUDFLARE_API_TOKEN
+              remoteRef:
+                key: crd-schema-publisher
+                property: CLOUDFLARE_API_TOKEN
+            - secretKey: CLOUDFLARE_ACCOUNT_ID
+              remoteRef:
+                key: crd-schema-publisher
+                property: CLOUDFLARE_ACCOUNT_ID
+        metrics:
+          podMonitor:
+            enabled: true
+          prometheusRule:
+            enabled: true
+        grafana:
+          dashboard:
+            enabled: true
+    repoURL: ghcr.io/sholdee/charts
+    targetRevision: 2026.413.191615
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - CreateNamespace=true
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: longhorn
 spec:
   destination:
