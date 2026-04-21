@@ -35,6 +35,7 @@
       ],
       additionalBranchPrefix: 'cilium-',
       commitMessageSuffix: ' [cilium]',
+      automerge: false,
     },
     {
       description: 'Separate PRs for cilium-preflight',
