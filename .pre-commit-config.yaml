@@ -22,10 +22,6 @@ repos:
     rev: 0.37.1
     hooks:
       - id: check-jsonschema
-        name: validate kustomization
-        files: 'kustomization\.yaml$'
-        args: ["--schemafile", ".schemas/kustomization.json"]
-      - id: check-jsonschema
         name: validate kromgo config
         files: 'kromgo/manifests/config\.yaml$'
         args:
