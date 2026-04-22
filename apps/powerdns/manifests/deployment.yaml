@@ -69,7 +69,7 @@ spec:
               mountPath: /config
       containers:
         - name: pdns
-          image: powerdns/pdns-auth-50:5.0.3@sha256:1f136c4fa4f995279b43c6a8413dde05147cc9b74a437e188f92b0088c523a8d
+          image: powerdns/pdns-auth-50:5.0.4@sha256:fde7df53dfd1eeeda5c3605465628b27ca08b986d7d4d0f55b70d57213bbad08
           command: ["pdns_server"]
           args: ["--config-dir=/config"]
           ports:
