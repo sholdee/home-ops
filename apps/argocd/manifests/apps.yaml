@@ -117,15 +117,6 @@ spec:
           secretStoreRef:
             name: onepassword-connect
             kind: ClusterSecretStore
-          data:
-            - secretKey: CLOUDFLARE_API_TOKEN
-              remoteRef:
-                key: crd-schema-publisher
-                property: CLOUDFLARE_API_TOKEN
-            - secretKey: CLOUDFLARE_ACCOUNT_ID
-              remoteRef:
-                key: crd-schema-publisher
-                property: CLOUDFLARE_ACCOUNT_ID
         metrics:
           podMonitor:
             enabled: true
