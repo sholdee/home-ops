@@ -41,8 +41,7 @@ repos:
       - id: check-jsonschema
         name: validate github actions
         files: '\.github/actions/.*action\.(yml|yaml)$'
-        args:
-          ["--schemafile", "https://json.schemastore.org/github-action.json"]
+        args: ["--schemafile", ".github/schemas/github-action.json"]
       - id: check-renovate
         additional_dependencies: ["pyjson5"]
 
