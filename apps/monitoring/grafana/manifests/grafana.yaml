@@ -32,6 +32,7 @@ spec:
       domain: grafana.mgmt.sholdee.net
       enable_gzip: "true"
       root_url: https://grafana.mgmt.sholdee.net
+  disableDefaultAdminSecret: true
   deployment:
     metadata:
       annotations:
@@ -59,6 +60,17 @@ spec:
               type: RuntimeDefault
           containers:
             - name: grafana
+              env:
+                - name: GF_SECURITY_ADMIN_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-secret
+                      key: GF_SECURITY_ADMIN_USER
+                - name: GF_SECURITY_ADMIN_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-secret
+                      key: GF_SECURITY_ADMIN_PASSWORD
               resources:
                 requests:
                   cpu: 50m

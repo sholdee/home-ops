@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - manifests/dashboards.yaml
   - manifests/datasources.yaml
+  - manifests/externalsecret.yaml
   - manifests/grafana.yaml
   - manifests/httproute.yaml
 components:
@@ -19,7 +20,7 @@ patches:
         value: grafana
       - op: replace
         path: /spec/sourcePVC
-        value: storage-kube-prometheus-stack-grafana-0
+        value: grafana-pvc
       - op: replace
         path: /spec/restic/repository
         value: grafana-volsync-b2
