@@ -1,0 +1,54 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: external-secrets-dashboard
+  namespace: external-secrets
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasources:
+    - inputName: datasource
+      datasourceName: Prometheus
+  configMapRef:
+    name: external-secrets-dashboard
+    key: external-secrets.json
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: cilium-dashboard
+  namespace: kube-system
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: Prometheus
+  configMapRef:
+    name: cilium-dashboard
+    key: cilium-dashboard.json
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: cilium-operator-dashboard
+  namespace: kube-system
+spec:
+  allowCrossNamespaceImport: true
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasources:
+    - inputName: DS_PROMETHEUS
+      datasourceName: Prometheus
+  configMapRef:
+    name: cilium-operator-dashboard
+    key: cilium-operator-dashboard.json

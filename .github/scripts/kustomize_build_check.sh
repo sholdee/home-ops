@@ -5,6 +5,10 @@ set -euo pipefail
 # Pre-commit passes changed file paths as arguments.
 
 declare -A KUSTOMIZE_DIRS
+KUSTOMIZE_BUILD_ARGS=(
+  --enable-helm
+  --helm-api-versions grafana.integreatly.org/v1beta1/GrafanaDashboard
+)
 
 for file in "$@"; do
   # Only process files under apps/
@@ -33,8 +37,8 @@ for dir in "${!KUSTOMIZE_DIRS[@]}"; do
   fi
 
   echo "Building $dir ..."
-  output=$(kustomize build --enable-helm "$dir" 2>&1 > /dev/null) || {
-    echo "FAIL: kustomize build --enable-helm $dir"
+  output=$(kustomize build "${KUSTOMIZE_BUILD_ARGS[@]}" "$dir" 2>&1 > /dev/null) || {
+    echo "FAIL: kustomize build ${KUSTOMIZE_BUILD_ARGS[*]} $dir"
     echo "$output"
     FAILED=1
   }

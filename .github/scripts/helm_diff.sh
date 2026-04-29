@@ -17,6 +17,14 @@ PLAN_FILE="apps/system-upgrade/manifests/plan.yaml"
 BASE_WORKTREE_DIR="../base-worktree"
 ARGO_APPLICATION_KIND="Application"
 ARGO_APPLICATION_API_VERSIONS=("argoproj.io/v1alpha1")
+HELM_API_VERSIONS=("grafana.integreatly.org/v1beta1/GrafanaDashboard")
+HELM_API_VERSION_ARGS=()
+KUSTOMIZE_HELM_API_VERSION_ARGS=()
+
+for API_VERSION in "${HELM_API_VERSIONS[@]}"; do
+    HELM_API_VERSION_ARGS+=("--api-versions" "$API_VERSION")
+    KUSTOMIZE_HELM_API_VERSION_ARGS+=("--helm-api-versions" "$API_VERSION")
+done
 
 EXCLUDE_FIELDS='.metadata.labels."helm.sh/chart"'
 EXCLUDE_FIELDS+=',.metadata.labels.chart'
@@ -290,6 +298,7 @@ helm_template_and_diff() {
             --version "$OLD_VERSION" \
             --namespace "$OLD_NAMESPACE" \
             --kube-version "$KUBE_VERSION" \
+            "${HELM_API_VERSION_ARGS[@]}" \
             "${HELM_ARGS_OLD[@]}" > "${workdir}/old.yaml"; then
             echo "❌ Helm template failed for old version"
             rm -rf "$workdir"
@@ -307,6 +316,7 @@ helm_template_and_diff() {
         --version "$NEW_VERSION" \
         --namespace "$NEW_NAMESPACE" \
         --kube-version "$KUBE_VERSION" \
+        "${HELM_API_VERSION_ARGS[@]}" \
         "${HELM_ARGS_NEW[@]}" > "${workdir}/new.yaml"; then
         echo "❌ Helm template failed for new version"
         rm -rf "$workdir"
@@ -722,10 +732,10 @@ process_kustomization() {
     tmpdir="$(mktemp -d "kustomize_${kustomize_dir##*/}_XXXX")"
 
     echo "🎭 Rendering Helm kustomizations"
-    (cd "$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/new.yaml"
+    (cd "$kustomize_dir" && kustomize build . --enable-helm "${KUSTOMIZE_HELM_API_VERSION_ARGS[@]}") > "${tmpdir}/new.yaml"
 
     if (( HAS_BASE_KUSTOMIZATION == 1 )) && [[ -d "$BASE_WORKTREE_DIR/$kustomize_dir" ]]; then
-        (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm) > "${tmpdir}/old.yaml"
+        (cd "$BASE_WORKTREE_DIR/$kustomize_dir" && kustomize build . --enable-helm "${KUSTOMIZE_HELM_API_VERSION_ARGS[@]}") > "${tmpdir}/old.yaml"
     else
         echo "" > "${tmpdir}/old.yaml"
     fi
