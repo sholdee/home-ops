@@ -138,6 +138,50 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: grafana-operator
+spec:
+  destination:
+    name: in-cluster
+    namespace: monitoring
+  project: k3s
+  source:
+    chart: grafana-operator
+    repoURL: ghcr.io/grafana/helm-charts
+    targetRevision: 5.22.2
+    helm:
+      releaseName: grafana-operator
+      valuesObject:
+        crds:
+          immutable: false
+        dashboard:
+          enabled: true
+        serviceMonitor:
+          enabled: true
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            memory: 256Mi
+        podSecurityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          runAsGroup: 65534
+          fsGroup: 65534
+          seccompProfile:
+            type: RuntimeDefault
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: longhorn
 spec:
   destination:
