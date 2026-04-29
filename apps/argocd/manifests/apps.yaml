@@ -126,7 +126,7 @@ spec:
           dashboard:
             enabled: true
     repoURL: ghcr.io/sholdee/charts
-    targetRevision: 2026.427.230454
+    targetRevision: 2026.429.41231
   syncPolicy:
     automated:
       prune: true
