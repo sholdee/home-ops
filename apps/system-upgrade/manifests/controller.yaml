@@ -234,15 +234,26 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: "node-role.kubernetes.io/control-plane"
-                operator: "Exists"
               - key: "kubernetes.io/os"
                 operator: "In"
                 values:
                 - "linux"
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: "node-role.kubernetes.io/control-plane"
+                operator: "Exists"
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - topologyKey: "kubernetes.io/hostname"
+            labelSelector:
+              matchExpressions:
+              - key: "app.kubernetes.io/name"
+                operator: "In"
+                values:
+                - "system-upgrade-controller"
+          - topologyKey: "node-role.kubernetes.io/control-plane"
             labelSelector:
               matchExpressions:
               - key: "app.kubernetes.io/name"
@@ -269,6 +280,13 @@ spec:
       - name: system-upgrade-controller
         image: rancher/system-upgrade-controller:v0.19.2@sha256:34fa058fe453da2e1d6cf9052d2961976d5c7294921f8a6a6fb75098a27b0e89
         imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
         securityContext:
           runAsNonRoot: true
           runAsUser: 65534
