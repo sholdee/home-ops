@@ -18,3 +18,16 @@ helmCharts:
     releaseName: renovate-operator
     namespace: renovate
     valuesFile: manifests/values.yaml
+patches:
+  - target:
+      kind: GrafanaDashboard
+      name: renovate-operator-dashboard
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: renovate-operator-dashboard-grafana
+      - op: replace
+        path: /spec/instanceSelector
+        value:
+          matchLabels:
+            dashboards: grafana

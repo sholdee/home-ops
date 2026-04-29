@@ -1,0 +1,42 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadatasource_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasource:
+    name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://kube-prometheus-stack-prometheus.monitoring:9090/
+    isDefault: true
+    jsonData:
+      httpMethod: POST
+      timeInterval: 30s
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadatasource_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDatasource
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  datasource:
+    name: Alertmanager
+    uid: alertmanager
+    type: alertmanager
+    access: proxy
+    url: http://kube-prometheus-stack-alertmanager.monitoring:9093/
+    isDefault: false
+    jsonData:
+      handleGrafanaManagedAlerts: false
+      implementation: prometheus

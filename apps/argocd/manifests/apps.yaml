@@ -124,7 +124,13 @@ spec:
             enabled: true
         grafana:
           dashboard:
-            enabled: true
+            enabled: false
+            operator:
+              enabled: true
+              allowCrossNamespaceImport: true
+              datasources:
+                - inputName: DS_PROMETHEUS
+                  datasourceName: Prometheus
     repoURL: ghcr.io/sholdee/charts
     targetRevision: 2026.429.153650
   syncPolicy:

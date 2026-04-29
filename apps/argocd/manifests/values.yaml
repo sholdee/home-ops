@@ -29,7 +29,7 @@ repoServer:
       enabled: true
 configs:
   cm:
-    kustomize.buildOptions: --enable-helm
+    kustomize.buildOptions: --enable-helm --helm-api-versions grafana.integreatly.org/v1beta1/GrafanaDashboard
     resource.exclusions: |
      - apiGroups:
          - cilium.io
