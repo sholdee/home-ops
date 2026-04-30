@@ -9,14 +9,6 @@ metadata:
     dashboards: grafana
 spec:
   version: docker.io/grafana/grafana:13.0.1@sha256:0f86bada30d65ef9d0183b90c1e2682ac92d53d95da8bed322b984ea78a4a73a
-  persistentVolumeClaim:
-    spec:
-      storageClassName: longhorn
-      accessModes:
-        - ReadWriteOnce
-      resources:
-        requests:
-          storage: 20Gi
   config:
     analytics:
       check_for_plugin_updates: "false"
@@ -38,9 +30,12 @@ spec:
       annotations:
         reloader.stakater.com/auto: "true"
     spec:
-      replicas: 1
+      replicas: 2
       strategy:
-        type: Recreate
+        type: RollingUpdate
+        rollingUpdate:
+          maxUnavailable: 1
+          maxSurge: 1
       template:
         spec:
           affinity:
@@ -51,6 +46,13 @@ spec:
                     matchExpressions:
                       - key: node-role.kubernetes.io/control-plane
                         operator: DoesNotExist
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: ScheduleAnyway
+              labelSelector:
+                matchLabels:
+                  app: grafana
           securityContext:
             runAsNonRoot: true
             runAsUser: 472
@@ -71,6 +73,29 @@ spec:
                     secretKeyRef:
                       name: grafana-admin-secret
                       key: GF_SECURITY_ADMIN_PASSWORD
+                - name: GF_SECURITY_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-admin-secret
+                      key: GF_SECURITY_SECRET_KEY
+                - name: GF_DATABASE_TYPE
+                  value: postgres
+                - name: GF_DATABASE_HOST
+                  value: grafana-db-pooler-rw.monitoring.svc.cluster.local:5432
+                - name: GF_DATABASE_NAME
+                  value: grafana
+                - name: GF_DATABASE_SSL_MODE
+                  value: disable
+                - name: GF_DATABASE_USER
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-db-app
+                      key: username
+                - name: GF_DATABASE_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-db-app
+                      key: password
               resources:
                 requests:
                   cpu: 50m
@@ -88,7 +113,6 @@ spec:
                   mountPath: /tmp
           volumes:
             - name: grafana-data
-              persistentVolumeClaim:
-                claimName: grafana-pvc
+              emptyDir: {}
             - name: grafana-tmp
               emptyDir: {}

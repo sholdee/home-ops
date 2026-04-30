@@ -12,6 +12,7 @@ metrics:
     grafanaDashboard:
       allowCrossNamespaceImport: true
       folder: General
+      resyncPeriod: 10m
       instanceSelector:
         matchLabels:
           dashboards: grafana
