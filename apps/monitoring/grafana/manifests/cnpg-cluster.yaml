@@ -1,0 +1,108 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/postgresql.cnpg.io/cluster_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: grafana-db
+  namespace: monitoring
+  annotations:
+    cnpg.io/skipEmptyWalArchiveCheck: enabled
+spec:
+  instances: 3
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql
+    major: 18
+  primaryUpdateMethod: switchover
+  primaryUpdateStrategy: unsupervised
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
+  storage:
+    storageClass: local-path
+    size: 2Gi
+  bootstrap:
+    initdb:
+      database: grafana
+      owner: grafana
+      dataChecksums: true
+      encoding: "UTF8"
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/postgresql.cnpg.io/database_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  cluster:
+    name: grafana-db
+  name: grafana
+  owner: grafana
+  ensure: present
+  encoding: "UTF8"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: grafana-db
+  namespace: monitoring
+  labels:
+    cnpg.io/cluster: grafana-db
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: grafana-db
+      cnpg.io/podRole: instance
+  podMetricsEndpoints:
+    - port: metrics
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/postgresql.cnpg.io/pooler_v1.json
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: grafana-db-pooler-rw
+  namespace: monitoring
+spec:
+  cluster:
+    name: grafana-db
+  instances: 3
+  type: rw
+  pgbouncer:
+    poolMode: session
+    parameters:
+      max_client_conn: "100"
+      default_pool_size: "5"
+  template:
+    metadata:
+      labels:
+        app: grafana-db-pooler
+    spec:
+      containers: []
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - grafana-db-pooler
+              topologyKey: "kubernetes.io/hostname"
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: grafana-db-pooler-rw
+  namespace: monitoring
+  labels:
+    cnpg.io/poolerName: grafana-db-pooler-rw
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/podRole: pooler
+      cnpg.io/poolerName: grafana-db-pooler-rw
+  podMetricsEndpoints:
+    - port: metrics

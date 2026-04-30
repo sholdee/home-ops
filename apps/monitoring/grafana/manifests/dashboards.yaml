@@ -8,6 +8,7 @@ metadata:
 spec:
   allowCrossNamespaceImport: true
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -27,6 +28,7 @@ metadata:
 spec:
   allowCrossNamespaceImport: true
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -46,6 +48,7 @@ metadata:
 spec:
   allowCrossNamespaceImport: true
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -65,6 +68,7 @@ metadata:
 spec:
   uid: adguard-dns-metrics
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -84,6 +88,7 @@ metadata:
 spec:
   uid: cert-manager
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -103,6 +108,7 @@ metadata:
 spec:
   uid: cloudnative-pg
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -124,6 +130,7 @@ metadata:
 spec:
   uid: eea5u_I7z
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -140,6 +147,7 @@ metadata:
 spec:
   uid: etcd_cluster
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -159,6 +167,7 @@ metadata:
 spec:
   uid: qPkgGHg7k
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -178,6 +187,7 @@ metadata:
 spec:
   uid: EbXSjT24k
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -197,6 +207,7 @@ metadata:
 spec:
   uid: ozk-lh-mon
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -216,6 +227,7 @@ metadata:
 spec:
   uid: cdp5agkgn4yrkc
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -237,6 +249,7 @@ metadata:
 spec:
   uid: 1iY4QMJVk-psee
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -256,6 +269,7 @@ metadata:
 spec:
   uid: d4471aa7-d362-4715-a583-c0cd0ae6a11d
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -270,6 +284,7 @@ metadata:
 spec:
   uid: envoy-overview-skj2
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -286,6 +301,7 @@ metadata:
 spec:
   uid: 8WkEOMnANKE6PW5hhpVv
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -300,6 +316,7 @@ metadata:
 spec:
   uid: heHhNSFf6Na8vIZWRs8H
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -314,6 +331,7 @@ metadata:
 spec:
   uid: bdn8lriao7myoa
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -328,6 +346,7 @@ metadata:
 spec:
   uid: f7aeb41676b7865cf31ae49691325f91
   folder: General
+  resyncPeriod: 10m
   instanceSelector:
     matchLabels:
       dashboards: grafana
