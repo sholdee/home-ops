@@ -112,9 +112,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  grafanaCom:
-    id: 20417
-    revision: 4
+  url: https://raw.githubusercontent.com/cloudnative-pg/grafana-dashboards/19f534b2b3d2d34e871d656351599eb8b170ad86/charts/cluster/grafana-dashboard.json
   datasources:
     - inputName: DS_PROMETHEUS
       datasourceName: Prometheus
