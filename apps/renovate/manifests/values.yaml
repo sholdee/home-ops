@@ -11,6 +11,7 @@ metrics:
     enabled: true
     grafanaDashboard:
       allowCrossNamespaceImport: true
+      folder: General
       instanceSelector:
         matchLabels:
           dashboards: grafana
