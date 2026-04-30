@@ -20,6 +20,7 @@ docs/           Operational docs and full reference
 | `apps/argocd/manifests/app-set.yaml` | ApplicationSet — Git directory generator scans `apps/*`, creates one Application per dir. Name = basename, namespace = basename with `-conf` stripped. Adding a new `apps/<name>/` dir auto-creates an app. |
 | `apps/argocd/manifests/apps.yaml` | App-of-apps — Cilium, Longhorn, Reloader, VolSync Helm releases |
 | `apps/argocd/manifests/cilium-preflight.yaml` | Cilium preflight — keep version in sync with `apps.yaml` (separate file so Renovate creates independent PRs) |
+| `apps/monitoring/grafana/` | Grafana Operator-managed Grafana instance, datasources, HTTPRoute, ExternalSecret, and GrafanaDashboard CRs |
 | `apps/system-upgrade/manifests/plan.yaml` | K3s version (Renovate custom manager tracks this) |
 | `.github/renovate.json5` | Renovate config — custom managers (K3s, MongoDB, GitHub releases, CLI tools), package rules, automerge settings |
 | `.github/actions/setup-tools/action.yml` | Composite action — installs and caches kubeconform, actionlint, kustomize, Helm with `# renovate:` annotations for auto-update |
@@ -34,7 +35,9 @@ docs/           Operational docs and full reference
 ### ArgoCD Behavior
 
 - Config enables `kustomize.buildOptions: --enable-helm` so kustomize can render Helm charts
-- All apps auto-sync with prune, ServerSideApply, and CreateNamespace
+- ApplicationSet-generated apps auto-sync with prune and default to `ServerSideDiff=true`, `ServerSideApply=true`, `SkipDryRunOnMissingResource=true`, `ApplyOutOfSyncOnly=true`, `CreateNamespace=true`, and `RespectIgnoreDifferences=true`
+- App-of-apps entries in `apps/argocd/manifests/apps.yaml` define sync options individually; keep them explicit and scoped to each app's needs
+- Avoid disabling server-side diff or adding broad `ignoreDifferences`/`templatePatch` workarounds until the actual drift source is proven with ArgoCD and `kubectl` output
 
 ## Pre-commit Hooks
 
@@ -153,6 +156,15 @@ helm template <release> <chart> -f apps/<name>/manifests/values.yaml
 - MongoDB class: `longhorn-mongo`
 - Retain class (VolSync restore): `longhorn-retain`
 
+### Grafana and dashboards
+
+- Grafana is managed by Grafana Operator in `apps/monitoring/grafana`; kube-prometheus-stack's built-in Grafana instance is disabled
+- kube-prometheus-stack still emits dashboard ConfigMaps with `grafana.forceDeployDashboards=true`; import those through `GrafanaDashboard` CRs instead of deploying stack Grafana
+- Store dashboard CRs in `apps/monitoring/grafana/manifests/dashboards.yaml`
+- Use `instanceSelector.matchLabels.dashboards: grafana` for dashboards targeting the cluster Grafana instance
+- Use `folder: General` for dashboards that should appear in the root/general dashboard view
+- Prefer `grafanaCom` with explicit dashboard `id` and `revision` for community dashboards; use `configMapRef` for chart-generated dashboards
+
 ## VolSync Backup Pattern
 
 Apps needing persistent data backup include two components and patch four resources to replace generic `app` names. Canonical example: `apps/portainer/kustomization.yaml`.
@@ -191,6 +203,7 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - Pushing directly to `master` — branch protection requires a PR with passing `CI / gate` check
 - Skipping pre-commit hooks with `--no-verify` — fix the underlying issue instead
 - Adding an ArgoCD Application CR without registering the Helm repo in `apps/argocd/manifests/repos.yaml` — ArgoCD cannot pull charts from unregistered repos (OCI repos additionally need `enableOCI: "true"`)
+- Treating kube-prometheus-stack Grafana as enabled — the active Grafana is the Grafana Operator instance in `apps/monitoring/grafana`; kube-prometheus-stack only emits dashboard ConfigMaps via `grafana.forceDeployDashboards=true`
 
 ## Cluster Access & Debugging
 
@@ -200,3 +213,6 @@ Other VolSync apps: `mealie`, `unifi/unifi`, `hass/hass`. Some override `accessM
 - **Useful docs:** `docs/cilium-setup-commands.md` (networking/BGP), `docs/helm-commands.md` (Helm utilities)
 - **Logs:** `kubectl logs -n <namespace> deploy/<name>` or check ArgoCD UI for sync errors
 - **Storage issues:** check Longhorn UI or `kubectl get volumes.longhorn.io -A`
+- **ArgoCD server-side diff debugging:** use `argocd app diff <app> --port-forward --port-forward-namespace argocd --server-side-diff --refresh` and compare with `kubectl diff --server-side --field-manager=argocd-controller -f <manifest>`
+- **ManagedFields drift:** if server-side diff reports impossible changes to `Application.status` or ArgoCD tracking annotations, inspect live objects with `kubectl get <resource> -o json --show-managed-fields`; stale field ownership should be fixed on the live object, not hidden with Git-side ignore rules
+- **Repo-server Helm cache:** if hard refresh fails with `failed to untar ... charts/<chart-version>/<chart> already exists`, first verify `kustomize build --enable-helm apps/<app>` locally. If local render is clean, recycle the `argocd-repo-server` pod to clear its temp repo cache
