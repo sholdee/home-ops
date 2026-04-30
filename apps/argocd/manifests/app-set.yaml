@@ -37,6 +37,11 @@ spec:
           - RespectIgnoreDifferences=true
           - ServerSideApply=true
   templatePatch: |
+    {{- if eq .path.basename "argocd" }}
+    metadata:
+      annotations:
+        argocd.argoproj.io/compare-options: ServerSideDiff=false
+    {{- end }}
     {{- if eq .path.basename "monitoring" }}
     spec:
       ignoreDifferences:
