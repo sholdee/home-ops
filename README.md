@@ -54,7 +54,7 @@ All checks feed into a single required status gate for branch protection and aut
 ├── 📁 argocd/        # Self-managing ArgoCD + ApplicationSet + app-of-apps Helm charts
 ├── 📁 hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
 ├── 📁 unifi/         # Grouped: UniFi controller, MongoDB ReplicaSet, guest portal proxy
-├── 📁 monitoring/    # Grouped: kube-prometheus-stack, Grafana, Prometheus, Alertmanager, Kromgo
+├── 📁 monitoring/    # Grouped: kube-prometheus-stack, Grafana Operator, Prometheus, Alertmanager, Kromgo
 ├── 📁 kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
 └── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
 📁 components/        # Reusable Kustomize Components (namespace pull secrets, VolSync backup templates)
@@ -64,7 +64,7 @@ All checks feed into a single required status gate for branch protection and aut
 
 ### ArgoCD Project Structure 🏗️
 
-An `ApplicationSet` with a Git directory generator watches `apps/*` and dynamically creates an ArgoCD `Application` for each directory. The `argocd` application is special — it manages itself and also serves as an app-of-apps that aggregates Helm-based applications (Cilium, Longhorn, etc.).
+An `ApplicationSet` with a Git directory generator watches `apps/*` and dynamically creates an ArgoCD `Application` for each directory. Generated applications auto-sync with pruning and use server-side apply/diff by default. The `argocd` application is special — it manages itself and also serves as an app-of-apps that aggregates Helm-based applications (Cilium, Longhorn, etc.).
 
 ```mermaid
 erDiagram
@@ -155,13 +155,15 @@ erDiagram
 
 #### Monitoring & Observability
 
-- **Kube Prometheus Stack** — Prometheus, Alertmanager, and Grafana
+- **Kube Prometheus Stack** — Prometheus, Alertmanager, rules, ServiceMonitors, and dashboard ConfigMaps
+- **Grafana** — operator-managed dashboard UI using GrafanaDashboard CRs
 - **Kromgo** — exposes cluster metrics as badge endpoints
 - **Headlamp** — Kubernetes web dashboard
 
 #### Operators
 
 - **CloudNativePG** — PostgreSQL operator with automated failover and backups
+- **Grafana Operator** — manages Grafana instances, datasources, and dashboard imports
 - **HiveMQ Platform Operator** — manages HiveMQ MQTT broker
 - **MongoDB Controllers for Kubernetes** — manages MongoDB ReplicaSets
 
