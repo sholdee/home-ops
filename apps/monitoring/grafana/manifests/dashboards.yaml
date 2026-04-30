@@ -7,6 +7,7 @@ metadata:
   namespace: external-secrets
 spec:
   allowCrossNamespaceImport: true
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -25,6 +26,7 @@ metadata:
   namespace: kube-system
 spec:
   allowCrossNamespaceImport: true
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -43,6 +45,7 @@ metadata:
   namespace: kube-system
 spec:
   allowCrossNamespaceImport: true
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -61,6 +64,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: adguard-dns-metrics
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -79,6 +83,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: cert-manager
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -97,6 +102,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: cloudnative-pg
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -117,6 +123,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: eea5u_I7z
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -132,6 +139,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: etcd_cluster
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -146,10 +154,30 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
+  name: argocd-dashboard
+  namespace: monitoring
+spec:
+  uid: qPkgGHg7k
+  folder: General
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  grafanaCom:
+    id: 14584
+    revision: 1
+  datasources:
+    - inputName: datasource
+      datasourceName: Prometheus
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
   name: velero-dashboard
   namespace: monitoring
 spec:
   uid: EbXSjT24k
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -168,6 +196,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: ozk-lh-mon
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -186,6 +215,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: cdp5agkgn4yrkc
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -206,6 +236,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: 1iY4QMJVk-psee
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -224,6 +255,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: d4471aa7-d362-4715-a583-c0cd0ae6a11d
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -237,6 +269,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: envoy-overview-skj2
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -252,6 +285,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: 8WkEOMnANKE6PW5hhpVv
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -265,6 +299,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: heHhNSFf6Na8vIZWRs8H
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -278,6 +313,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: bdn8lriao7myoa
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
@@ -291,6 +327,7 @@ metadata:
   namespace: monitoring
 spec:
   uid: f7aeb41676b7865cf31ae49691325f91
+  folder: General
   instanceSelector:
     matchLabels:
       dashboards: grafana
