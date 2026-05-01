@@ -251,9 +251,7 @@ spec:
   instanceSelector:
     matchLabels:
       dashboards: grafana
-  grafanaCom:
-    id: 18089
-    revision: 1
+  url: https://raw.githubusercontent.com/spegel-org/spegel/ab5eadd1b0d201829f0783c0d16d1682314535bc/charts/spegel/monitoring/grafana-dashboard.json
   datasources:
     - inputName: DS_PROMETHEUS
       datasourceName: Prometheus
