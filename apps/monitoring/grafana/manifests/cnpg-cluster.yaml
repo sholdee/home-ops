@@ -73,8 +73,8 @@ spec:
   pgbouncer:
     poolMode: session
     parameters:
-      max_client_conn: "100"
-      default_pool_size: "5"
+      max_client_conn: "200"
+      default_pool_size: "20"
   template:
     metadata:
       labels:

@@ -86,6 +86,10 @@ spec:
                   value: grafana
                 - name: GF_DATABASE_SSL_MODE
                   value: disable
+                - name: GF_DATABASE_MAX_OPEN_CONN
+                  value: "10"
+                - name: GF_DATABASE_MAX_IDLE_CONN
+                  value: "5"
                 - name: GF_DATABASE_USER
                   valueFrom:
                     secretKeyRef:
