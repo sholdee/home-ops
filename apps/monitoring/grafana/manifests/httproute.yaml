@@ -16,3 +16,6 @@ spec:
         - name: grafana-service
           namespace: monitoring
           port: 3000
+      sessionPersistence:
+        sessionName: route
+        type: Cookie
