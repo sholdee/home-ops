@@ -63,26 +63,6 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
-  name: adguard-dns-metrics-dashboard
-  namespace: monitoring
-spec:
-  uid: adguard-dns-metrics
-  folder: General
-  resyncPeriod: 10m
-  instanceSelector:
-    matchLabels:
-      dashboards: grafana
-  grafanaCom:
-    id: 21403
-    revision: 3
-  datasources:
-    - inputName: DS_PROMETHEUS
-      datasourceName: Prometheus
----
-# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
-apiVersion: grafana.integreatly.org/v1beta1
-kind: GrafanaDashboard
-metadata:
   name: cert-manager-dashboard
   namespace: monitoring
 spec:
