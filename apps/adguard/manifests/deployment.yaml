@@ -26,117 +26,123 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       topologySpreadConstraints:
-      - maxSkew: 1
-        topologyKey: kubernetes.io/hostname
-        whenUnsatisfiable: DoNotSchedule
-        labelSelector:
-          matchLabels:
-            app: *app
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: *app
       initContainers:
-      - name: adguard-init
-        image: busybox:1.37.0@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
-        securityContext:
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 65532
-          runAsGroup: 65532
-          allowPrivilegeEscalation: false
-        imagePullPolicy: IfNotPresent
-        command: ["sh", "-c", "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 644 /config/AdGuardHome.yaml"]
-        volumeMounts:
-        - mountPath: /home
-          name: adguard-secret
-        - mountPath: /config
-          name: adguard-conf
+        - name: adguard-init
+          image: busybox:1.37.0@sha256:1487d0af5f52b4ba31c7e465126ee2123fe3f2305d638e7827681e7cf6c83d5e
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          command:
+            [
+              "sh",
+              "-c",
+              "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 644
+                /config/AdGuardHome.yaml",
+            ]
+          volumeMounts:
+            - mountPath: /home
+              name: adguard-secret
+            - mountPath: /config
+              name: adguard-conf
       containers:
-      - name: adguard-home
-        image: adguard/adguardhome:v0.107.74@sha256:f29c58a91f79387cbbbb042e140814f58e830d457d44af03d662c8df43db9dea
-        securityContext:
-          capabilities:
-            drop:
-            - ALL
-            add:
-            - NET_BIND_SERVICE
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 65532
-          runAsGroup: 65532
-          allowPrivilegeEscalation: false
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 53
-          name: dns
-          protocol: UDP
-        - containerPort: 53
-          name: dnstcp
-          protocol: TCP
-        - containerPort: 3000
-          name: http-initial
-          protocol: TCP
-        - containerPort: 80
-          name: http
-          protocol: TCP
-        volumeMounts:
-        - name: adguard-data
-          mountPath: /opt/adguardhome/work
-        - name: adguard-conf
-          mountPath: /opt/adguardhome/conf
-        resources:
-          requests:
-            memory: 300Mi
-            cpu: "15m"
-          limits:
-            cpu: 500m
-            memory: 1Gi
-        livenessProbe: &probe
-          exec:
-            command:
-            - /bin/sh
-            - -c
-            - nslookup localhost 127.0.0.1
-        readinessProbe: *probe
-      - name: adguard-exporter
-        image: ghcr.io/sholdee/adguard-exporter:v2.0.8@sha256:1fdd62807c89f6d36fa5ac1f3dea9621dfb606c01aa5270e54f1ffaf476f9902
-        securityContext:
-          capabilities:
-            drop:
-            - ALL
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 65532
-          runAsGroup: 65532
-          allowPrivilegeEscalation: false
-        imagePullPolicy: IfNotPresent
-        ports:
-        - containerPort: 8000
-          name: metrics
-          protocol: TCP
-        volumeMounts:
-        - name: adguard-data
-          mountPath: /opt/adguardhome/work
-        resources:
-          requests:
-            memory: 100Mi
-            cpu: "5m"
-          limits:
-            cpu: 100m
-            memory: 100Mi
-        livenessProbe:
-          httpGet:
-            path: /livez
-            port: metrics
-        readinessProbe:
-          httpGet:
-            path: /readyz
-            port: metrics
+        - name: adguard-home
+          image: adguard/adguardhome:v0.107.74@sha256:f29c58a91f79387cbbbb042e140814f58e830d457d44af03d662c8df43db9dea
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 53
+              name: dns
+              protocol: UDP
+            - containerPort: 53
+              name: dnstcp
+              protocol: TCP
+            - containerPort: 3000
+              name: http-initial
+              protocol: TCP
+            - containerPort: 80
+              name: http
+              protocol: TCP
+          volumeMounts:
+            - name: adguard-data
+              mountPath: /opt/adguardhome/work
+            - name: adguard-conf
+              mountPath: /opt/adguardhome/conf
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: "15m"
+            limits:
+              cpu: 500m
+              memory: 1Gi
+          livenessProbe: &probe
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - nslookup localhost 127.0.0.1
+          readinessProbe: *probe
+        - name: adguard-exporter
+          image: ghcr.io/sholdee/adguard-exporter:v2.1.0@sha256:6b18d7bd9cc5d590a8e7a0961b5f6cce7bcb63b981f9fd81de09f42740b55452
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            allowPrivilegeEscalation: false
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              name: metrics
+              protocol: TCP
+          volumeMounts:
+            - name: adguard-data
+              mountPath: /opt/adguardhome/work
+          resources:
+            requests:
+              memory: 100Mi
+              cpu: "5m"
+            limits:
+              cpu: 100m
+              memory: 100Mi
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: metrics
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: metrics
       volumes:
-      - emptyDir: {}
-        name: adguard-data
-      - emptyDir: {}
-        name: adguard-conf
-      - name: adguard-secret
-        secret:
-          secretName: adguard-secret
+        - emptyDir: {}
+          name: adguard-data
+        - emptyDir: {}
+          name: adguard-conf
+        - name: adguard-secret
+          secret:
+            secretName: adguard-secret
