@@ -4,6 +4,42 @@ crds:
     enabled: false
 prometheus:
   prometheusSpec:
+    image:
+      registry: docker.io
+      repository: sholdee/prompp
+      tag: "0.7.10-jemalloc-aarch64-fix-arm64"
+      sha: df1285d2da16952348de8b094f5332cb68b8241399941b6c2c7c3dc03b284481
+      pullPolicy: IfNotPresent
+    version: v3.11.3
+    initContainers:
+      - name: prompptool-walvanilla
+        image: docker.io/sholdee/prompp:0.7.10-jemalloc-aarch64-fix-arm64@sha256:df1285d2da16952348de8b094f5332cb68b8241399941b6c2c7c3dc03b284481
+        command:
+          - /bin/sh
+          - -ec
+          - |
+            started=/prometheus-volume/.prompp-walvanilla-started
+            complete=/prometheus-volume/.prompp-walvanilla-complete
+            if [ -f "$complete" ]; then
+              echo "Prom++ WAL conversion marker exists; skipping walvanilla"
+              exit 0
+            fi
+            if [ -f "$started" ]; then
+              echo "Prom++ WAL conversion started previously but did not complete; refusing automatic retry" >&2
+              exit 1
+            fi
+            : > "$started"
+            /bin/prompptool --working-dir=/prometheus-volume/prometheus-db walvanilla
+            : > "$complete"
+        volumeMounts:
+          - name: prometheus-kube-prometheus-stack-prometheus-db
+            mountPath: /prometheus-volume
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            memory: 2Gi
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
