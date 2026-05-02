@@ -28,9 +28,9 @@ prometheus:
               echo "Prom++ WAL conversion started previously but did not complete; refusing automatic retry" >&2
               exit 1
             fi
-            touch "$started"
+            : > "$started"
             /bin/prompptool --working-dir=/prometheus walvanilla
-            touch "$complete"
+            : > "$complete"
         volumeMounts:
           - name: prometheus-kube-prometheus-stack-prometheus-db
             mountPath: /prometheus
