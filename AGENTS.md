@@ -82,6 +82,28 @@ branch is merged to `master` and ArgoCD syncs it.
 - `local-path` is intentionally used for small replicated CNPG clusters where important app state is GitOps-managed, such as Grafana
 - For PVC backups, use `components/volsync` and `components/volsync/b2`; patch ReplicationSource, ReplicationDestination, ExternalSecret, and PVC together
 
+## Monitoring
+
+- Prometheus is deployed by kube-prometheus-stack in `apps/monitoring`; image
+  changes belong in `apps/monitoring/values.yaml` under
+  `prometheus.prometheusSpec`, not in generated StatefulSet patches
+- For Prometheus image migrations, keep `prometheus.prometheusSpec.version`
+  explicit when the image tag is not an upstream Prometheus version, because the
+  Prometheus Operator uses it for feature compatibility and command generation
+- Before any Prometheus WAL-format migration, create and verify a Longhorn
+  `VolumeSnapshot` of
+  `prometheus-kube-prometheus-stack-prometheus-db-prometheus-kube-prometheus-stack-prometheus-0`
+- Validate the exact digest-pinned candidate image on the actual ARM64
+  Prometheus node before rollout; local Docker ARM64 checks can miss Raspberry
+  Pi 5 16 KiB page-size issues
+- If a one-shot WAL conversion init container is required, mount the PVC root at
+  `/prometheus-volume`, keep marker files outside `/prometheus-volume/prometheus-db`,
+  make retries fail closed after an incomplete start marker, and remove the init
+  container in a follow-up PR immediately after the first healthy rollout
+- Prom++ writes a different WAL format than upstream Prometheus. Do not simply
+  revert back to `quay.io/prometheus/prometheus` after Prom++ starts; use the
+  documented reverse conversion or restore the pre-migration snapshot
+
 ## Grafana
 
 Grafana is managed by Grafana Operator in `apps/monitoring/grafana`; the
