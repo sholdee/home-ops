@@ -410,7 +410,7 @@ git commit -m "feat: migrate prometheus to prompp"
 
 Expected: a commit containing `apps/monitoring/values.yaml` and this migration plan.
 
-Execution note, 2026-05-02: committed as `cf6d1f46 feat: migrate prometheus to prompp test build`.
+Execution note, 2026-05-02: committed as `e0e2d183 feat: migrate prometheus to prompp test build`; merged through PR #2795 as `067ccaa8`.
 
 ---
 
@@ -420,19 +420,19 @@ Execution note, 2026-05-02: committed as `cf6d1f46 feat: migrate prometheus to p
 
 - No repository files changed.
 
-- [ ] **Step 1: Schedule a maintenance window and prepare cleanup before syncing**
+- [x] **Step 1: Schedule a maintenance window and prepare cleanup before syncing**
 
 Prometheus has one replica, so expect a short monitoring and query outage while the pod restarts and converts WAL. Silence noisy Prometheus/target-down alerts for the maintenance window, and have the cleanup change from Task 4 ready to merge immediately after the first Prom++ readiness check succeeds.
 
 Expected: the operator is not being upgraded, nodes hosting Longhorn replicas are stable, and no node drain is planned during the migration window.
 
-- [ ] **Step 2: Open and merge the migration PR**
+- [x] **Step 2: Open and merge the migration PR**
 
 Use the normal branch and PR flow for this repository. Merge only after CI passes.
 
 Expected: ArgoCD syncs the `monitoring` application from `master`.
 
-- [ ] **Step 3: Watch the Prometheus pod restart**
+- [x] **Step 3: Watch the Prometheus pod restart**
 
 Run:
 
@@ -442,7 +442,7 @@ kubectl get pod -n monitoring prometheus-kube-prometheus-stack-prometheus-0 -w
 
 Expected: the pod restarts, runs the `prompptool-walvanilla` init container, and returns to `2/2 Running`.
 
-- [ ] **Step 4: Check the WAL conversion init container logs**
+- [x] **Step 4: Check the WAL conversion init container logs**
 
 Run:
 
@@ -462,7 +462,9 @@ If logs contain this message, the Prom++ image is still incompatible with the Ra
 
 In that case, do not retry `walvanilla`; the failure happens before WAL conversion code runs.
 
-- [ ] **Step 5: Confirm ArgoCD, Prometheus Operator, and StatefulSet status**
+Execution note, 2026-05-02: `prompptool-walvanilla` exited `0`. Logs showed WAL replay completed, two blocks written, and checkpoint creation completed; no jemalloc page-size error appeared.
+
+- [x] **Step 5: Confirm ArgoCD, Prometheus Operator, and StatefulSet status**
 
 Run:
 
@@ -502,7 +504,7 @@ kubectl logs -n monitoring deploy/kube-prometheus-stack-operator
 kubectl logs -n monitoring prometheus-kube-prometheus-stack-prometheus-0 -c prometheus --previous
 ```
 
-- [ ] **Step 6: Confirm the service is healthy and queryable**
+- [x] **Step 6: Confirm the service is healthy and queryable**
 
 In one terminal, run:
 
@@ -520,6 +522,8 @@ curl -fsS 'http://127.0.0.1:9090/api/v1/query?query=up'
 
 Expected: readiness returns success, both API calls return JSON with `"status":"success"`, and buildinfo reports version `0.7.10-jemalloc-aarch64-fix`.
 
+Execution note, 2026-05-02: ArgoCD synced revision `067ccaa8a4493b54794865d08eea6893f577c5ce`; Prometheus CR rendered the pinned Prom++ image, `v3.11.3`, Available `True`, generation `15` observed as `15`; StatefulSet rollout completed; pod was Ready with `prompptool-walvanilla=0`, `config-reloader=true:0`, and `prometheus=true:0`; `/-/ready`, `/api/v1/status/buildinfo`, and `/api/v1/query?query=up` all succeeded.
+
 ---
 
 ### Task 4: Remove The One-Shot WAL Conversion Init Container
@@ -528,7 +532,7 @@ Expected: readiness returns success, both API calls return JSON with `"status":"
 
 - Modify: `apps/monitoring/values.yaml`
 
-- [ ] **Step 1: Remove only the temporary `initContainers` block**
+- [x] **Step 1: Remove only the temporary `initContainers` block**
 
 Edit `apps/monitoring/values.yaml` so `prometheus.prometheusSpec` keeps this image and version block:
 
@@ -549,7 +553,7 @@ prometheus:
 
 Remove the `prometheus.prometheusSpec.initContainers` key entirely.
 
-- [ ] **Step 2: Render the final Prometheus CR**
+- [x] **Step 2: Render the final Prometheus CR**
 
 Run:
 
@@ -568,7 +572,7 @@ version: v3.11.3
 initContainers: null
 ```
 
-- [ ] **Step 3: Run a server-side dry-run with ArgoCD's field manager**
+- [x] **Step 3: Run a server-side dry-run with ArgoCD's field manager**
 
 Run:
 
@@ -581,7 +585,7 @@ kustomize build --enable-helm \
 
 Expected: the dry-run completes without schema, admission, or field ownership errors.
 
-- [ ] **Step 4: Run repository validation**
+- [x] **Step 4: Run repository validation**
 
 Run:
 
@@ -590,6 +594,8 @@ pre-commit run --files apps/monitoring/values.yaml
 ```
 
 Expected: all hooks pass.
+
+Execution note, 2026-05-02: final render showed the pinned Prom++ image, `version: v3.11.3`, and `initContainers: null`; the ArgoCD-style server-side dry-run completed; `pre-commit run --files apps/monitoring/values.yaml docs/superpowers/plans/2026-05-02-prompp-ghcr-migration.md` passed.
 
 - [ ] **Step 5: Commit the cleanup change**
 
