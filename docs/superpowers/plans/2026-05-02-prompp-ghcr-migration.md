@@ -597,7 +597,7 @@ Expected: all hooks pass.
 
 Execution note, 2026-05-02: final render showed the pinned Prom++ image, `version: v3.11.3`, and `initContainers: null`; the ArgoCD-style server-side dry-run completed; `pre-commit run --files apps/monitoring/values.yaml docs/superpowers/plans/2026-05-02-prompp-ghcr-migration.md` passed.
 
-- [ ] **Step 5: Commit the cleanup change**
+- [x] **Step 5: Commit the cleanup change**
 
 Run:
 
@@ -606,9 +606,11 @@ git add apps/monitoring/values.yaml
 git commit -m "chore: remove prompp wal migration init container"
 ```
 
-Expected: a commit containing only `apps/monitoring/values.yaml`.
+Expected: a commit containing `apps/monitoring/values.yaml` and this migration plan.
 
-- [ ] **Step 6: Merge the cleanup PR and validate final state**
+Execution note, 2026-05-02: committed as `a29b5c82 chore: remove prompp wal migration init container`; merged through PR #2796 as `2c8eae5e`.
+
+- [x] **Step 6: Merge the cleanup PR and validate final state**
 
 After CI passes and ArgoCD syncs, run:
 
@@ -625,6 +627,8 @@ v3.11.3
 ```
 
 The third line should be empty.
+
+Execution note, 2026-05-02: ArgoCD synced cleanup revision `2c8eae5e479f1f5eaba35530f14ce22e9716fb2c` and returned `Synced Healthy Succeeded`; the live Prometheus CR has the pinned Prom++ image, `version: v3.11.3`, no `spec.initContainers`, Available `True`, and generation `16` observed as `16`; the pod is Ready with `init-config-reloader=0`, `config-reloader=true:0`, and `prometheus=true:0`; final API checks returned `Prometheus Server is Ready.`, buildinfo version `0.7.10-jemalloc-aarch64-fix`, and query `up` returned `success results=103`.
 
 ---
 
