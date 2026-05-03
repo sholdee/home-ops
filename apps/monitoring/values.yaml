@@ -4,6 +4,7 @@ crds:
     enabled: false
 prometheus:
   prometheusSpec:
+    replicas: 2
     image:
       registry: docker.io
       repository: sholdee/prompp
@@ -25,10 +26,10 @@ prometheus:
               storage: 50Gi
     resources:
       requests:
-        cpu: 100m
-        memory: 2Gi
+        cpu: 300m
+        memory: 768Mi
       limits:
-        memory: 2Gi
+        memory: 1280Mi
     affinity:
       nodeAffinity:
         preferredDuringSchedulingIgnoredDuringExecution:
