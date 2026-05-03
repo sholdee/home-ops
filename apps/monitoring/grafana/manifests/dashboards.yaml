@@ -103,6 +103,24 @@ spec:
 apiVersion: grafana.integreatly.org/v1beta1
 kind: GrafanaDashboard
 metadata:
+  name: grafana-operator-dashboard
+  namespace: monitoring
+spec:
+  uid: grafana-operator
+  folder: General
+  resyncPeriod: 10m
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  url: https://raw.githubusercontent.com/grafana/grafana-operator/8eb7f61d7361c8abf307f5650cce07c4ce6d4387/deploy/helm/grafana-operator/files/dashboard.json
+  datasources:
+    - inputName: datasource
+      datasourceName: Prometheus
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/grafana.integreatly.org/grafanadashboard_v1beta1.json
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
   name: external-dns-dashboard
   namespace: monitoring
 spec:
