@@ -26,7 +26,7 @@ spec:
         - name: dragonfly
           image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.38.0@sha256:243bf004df5e137d9432c35367d7c86e6d2b5bcb6700be4b6397fcb9306b794b
           args:
-            - --maxmemory=128mb
+            - --maxmemory=256mb
             - --cache_mode=true
           ports:
             - containerPort: 6379
@@ -38,10 +38,10 @@ spec:
           resources:
             requests:
               cpu: 50m
-              memory: 128Mi
+              memory: 256Mi
             limits:
               cpu: 100m
-              memory: 192Mi
+              memory: 256Mi
           volumeMounts:
             - name: data
               mountPath: /data
