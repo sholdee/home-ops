@@ -36,11 +36,11 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: renovate-redis
+  name: dragonfly
 spec:
   endpointSelector:
     matchLabels:
-      app: renovate-redis
+      app: dragonfly
   ingress:
     - fromEndpoints:
         - matchLabels:

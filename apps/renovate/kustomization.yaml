@@ -7,10 +7,10 @@ resources:
   - manifests/externalsecret.yaml
   - manifests/renovatejob.yaml
   - manifests/httproute.yaml
-  - manifests/redis.yaml
   - manifests/netpol.yaml
 components:
   - ../../components/namespace
+  - ../../components/dragonfly
 helmCharts:
   - name: renovate-operator
     repo: oci://ghcr.io/mogenius/helm-charts

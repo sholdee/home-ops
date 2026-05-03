@@ -2,18 +2,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: renovate-redis
+  name: dragonfly
   labels:
-    app: renovate-redis
+    app: dragonfly
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: renovate-redis
+      app: dragonfly
   template:
     metadata:
       labels:
-        app: renovate-redis
+        app: dragonfly
     spec:
       securityContext:
         runAsNonRoot: true
@@ -23,9 +23,11 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: redis
-          image: redis:8.6.2-alpine@sha256:c5e375abb885e6b2021c0377879e4890bf76f9065b8922ffc113f2b226b9fc17
-          args: ["--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+        - name: dragonfly
+          image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.38.0@sha256:243bf004df5e137d9432c35367d7c86e6d2b5bcb6700be4b6397fcb9306b794b
+          args:
+            - --maxmemory=128mb
+            - --cache_mode=true
           ports:
             - containerPort: 6379
           securityContext:
@@ -50,10 +52,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: renovate-redis
+  name: dragonfly
 spec:
   selector:
-    app: renovate-redis
+    app: dragonfly
   ports:
     - port: 6379
       targetPort: 6379
