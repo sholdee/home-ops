@@ -9,3 +9,4 @@ resources:
   - manifests/externalsecret.yaml
   - manifests/grafana.yaml
   - manifests/httproute.yaml
+  - manifests/servicemonitor.yaml

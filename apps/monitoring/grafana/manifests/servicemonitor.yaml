@@ -1,0 +1,20 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/monitoring.coreos.com/servicemonitor_v1.json
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/managed-by: grafana-operator
+      dashboards: grafana
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: grafana
+      path: /metrics
+      interval: 30s
+      honorLabels: true
