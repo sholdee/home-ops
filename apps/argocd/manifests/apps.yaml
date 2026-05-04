@@ -157,7 +157,6 @@ spec:
     targetRevision: v1.5.0
     helm:
       releaseName: dragonfly-operator
-      skipTests: true
       valuesObject:
         crds:
           install: true
