@@ -5,6 +5,7 @@ kind: Kustomization
 namespace: argocd
 components:
   - ../../components/namespace
+  - ../../components/dragonfly
 resources:
   - manifests/apps.yaml
   - manifests/app-project.yaml
@@ -16,6 +17,19 @@ resources:
   - manifests/namespace.yaml
   - manifests/netpol.yaml
   - manifests/externalsecret.yaml
+patches:
+  - target:
+      group: dragonflydb.io
+      version: v1alpha1
+      kind: Dragonfly
+      name: dragonfly
+    patch: |-
+      - op: add
+        path: /spec/authentication
+        value:
+          passwordFromSecret:
+            name: argocd-dragonfly-auth
+            key: redis-password
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm

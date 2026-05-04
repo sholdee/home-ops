@@ -92,3 +92,45 @@ spec:
       toPorts:
         - ports:
             - port: "6379"
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumnetworkpolicy_v2.json
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: argocd-dragonfly
+  namespace: argocd
+spec:
+  endpointSelector:
+    matchLabels:
+      app: dragonfly
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: argocd
+      toPorts:
+        - ports:
+            - port: "6379"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: dragonfly-operator
+            control-plane: controller-manager
+        - matchLabels:
+            io.kubernetes.pod.namespace: argocd
+            app: dragonfly
+      toPorts:
+        - ports:
+            - port: "9999"
+              protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: monitoring
+            app.kubernetes.io/name: prometheus
+      toPorts:
+        - ports:
+            - port: "9999"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: ^/metrics$
