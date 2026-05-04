@@ -1,5 +1,15 @@
 global:
   domain: argocd.sholdee.net
+redis:
+  enabled: false
+redis-ha:
+  enabled: false
+redisSecretInit:
+  enabled: false
+externalRedis:
+  host: dragonfly.argocd.svc.cluster.local
+  port: 6379
+  existingSecret: argocd-dragonfly-auth
 server:
   certificate:
     enabled: false
