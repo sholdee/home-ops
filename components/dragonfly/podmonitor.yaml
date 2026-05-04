@@ -8,6 +8,8 @@ spec:
   selector:
     matchLabels:
       app: dragonfly
+  podTargetLabels:
+    - app
   podMetricsEndpoints:
     - port: admin
       path: /metrics
