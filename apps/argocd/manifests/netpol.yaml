@@ -77,26 +77,6 @@ spec:
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:
-  name: argocd-redis
-  namespace: argocd
-spec:
-  endpointSelector:
-    matchLabels:
-      app.kubernetes.io/component: redis
-      app.kubernetes.io/name: argocd-redis
-  ingress:
-    - fromEndpoints:
-        - matchLabels:
-            io.kubernetes.pod.namespace: argocd
-            app.kubernetes.io/instance: argocd
-      toPorts:
-        - ports:
-            - port: "6379"
----
-# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumnetworkpolicy_v2.json
-apiVersion: cilium.io/v2
-kind: CiliumNetworkPolicy
-metadata:
   name: argocd-dragonfly
   namespace: argocd
 spec:
