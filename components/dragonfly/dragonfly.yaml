@@ -1,61 +1,48 @@
 ---
-apiVersion: apps/v1
-kind: Deployment
+# yaml-language-server: $schema=https://kube-schemas.shold.io/dragonflydb.io/dragonfly_v1alpha1.json
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
 metadata:
   name: dragonfly
   labels:
     app: dragonfly
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: dragonfly
-  template:
-    metadata:
-      labels:
-        app: dragonfly
-    spec:
-      securityContext:
-        runAsNonRoot: true
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: dragonfly
-          image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.38.1@sha256:baf70ba7ad182a992b988497cfa31a488978c8fab7712079784c2401f447e402
-          args:
-            - --maxmemory=256mb
-            - --cache_mode=true
-          ports:
-            - containerPort: 6379
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
-          resources:
-            requests:
-              cpu: 50m
-              memory: 64Mi
-            limits:
-              cpu: 500m
-              memory: 256Mi
-          volumeMounts:
-            - name: data
-              mountPath: /data
-      volumes:
-        - name: data
-          emptyDir: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: dragonfly
-spec:
-  selector:
+  replicas: 2
+  image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.38.1@sha256:baf70ba7ad182a992b988497cfa31a488978c8fab7712079784c2401f447e402
+  args:
+    - --maxmemory=256mb
+    - --cache_mode=true
+  labels:
     app: dragonfly
-  ports:
-    - port: 6379
-      targetPort: 6379
+  ownedObjectsMetadata:
+    labels:
+      app: dragonfly
+  networkPolicyEnabled: false
+  enableReplicationReadinessGate: true
+  pdb:
+    minAvailable: 1
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 65534
+    runAsGroup: 65534
+    fsGroup: 65534
+    seccompProfile:
+      type: RuntimeDefault
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
+      labelSelector:
+        matchLabels:
+          app: dragonfly
