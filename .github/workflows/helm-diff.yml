@@ -204,7 +204,8 @@ jobs:
             DIGEST_VAR="DIGEST_$i"
 
             declare -n IMG="$IMAGE_VAR" TAG="$TAG_VAR" DIG="$DIGEST_VAR"
-            IMAGE_FULL="${IMG:-}:${TAG:-}"
+            IMAGE_FULL="${IMG:-}"
+            [ -n "${TAG:-}" ] && IMAGE_FULL="${IMG}:${TAG}"
             [ -n "${DIG-}" ] && IMAGE_FULL="${IMG}@${DIG}"
 
             echo "Pulling image: $IMAGE_FULL"
