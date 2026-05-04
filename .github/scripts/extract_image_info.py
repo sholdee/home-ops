@@ -1,6 +1,5 @@
 import os
 import re
-import requests
 import sys
 import json
 
@@ -30,8 +29,19 @@ def is_valid_docker_image(image):
     """Validates whether an image reference conforms to Docker standard."""
     return bool(DOCKER_IMAGE_REGEX.fullmatch(image))
 
+def parse_docker_image(image):
+    """Returns image, tag, and digest parts for a valid Docker image reference."""
+    match = DOCKER_IMAGE_REGEX.fullmatch(image)
+    if not match:
+        return None
+
+    image_name, tag, digest = match.groups()
+    return image_name.strip(), (tag or "").strip(), (digest or "").strip()
+
 def extract_images_from_pr_diff():
     """Extracts container image updates from PR files with validation."""
+    import requests
+
     pr_number = os.environ['PR_NUMBER']
     repo = os.environ['GITHUB_REPOSITORY']
     token = os.environ['GITHUB_TOKEN']
@@ -77,10 +87,9 @@ def extract_images_from_pr_diff():
                     match = re.match(r'^\+\s*(?:image|[a-z_]+image|imageName):\s*"?([^\s"]+)"?', line, re.IGNORECASE)
                     if match:
                         image_tag = match.group(1).strip()
-                        if is_valid_docker_image(image_tag):
-                            image = image_tag.split('@')[0].split(':')[0].strip()
-                            tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-                            digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+                        parsed_image = parse_docker_image(image_tag)
+                        if parsed_image:
+                            image, tag, digest = parsed_image
 
                             print(f"   ✅ Found Image: {image}, Tag: {tag}, Digest: {digest}")
                             images.append((image, tag, digest))
@@ -129,11 +138,14 @@ def extract_images_from_helm_diff():
 
                 image_tag = f"{repo_image}@{digest}" if digest else f"{repo_image}:{tag}"
 
-        if image_tag and is_valid_docker_image(image_tag):
+        if image_tag:
             # Extract components
-            image = image_tag.split('@')[0].split(':')[0].strip()
-            tag = image_tag.split(':')[1].split('@')[0].strip() if ':' in image_tag else ""
-            digest = image_tag.split('@')[1].strip() if '@' in image_tag else ""
+            parsed_image = parse_docker_image(image_tag)
+            if not parsed_image:
+                print(f"❌ Invalid Docker Image Reference: {image_tag}")
+                continue
+
+            image, tag, digest = parsed_image
 
             image_entry = (image, tag, digest)
             if image_entry not in unique_images:
@@ -141,8 +153,6 @@ def extract_images_from_helm_diff():
                 unique_images.add(image_entry)
             else:
                 print(f"ℹ️ Skipped Duplicate Image: {image}, Tag: {tag}, Digest: {digest}")
-        elif image_tag:
-            print(f"❌ Invalid Docker Image Reference: {image_tag}")
 
     print(f"📊 Extracted {len(unique_images)} unique images.")
     return list(unique_images)  # Convert set back to list before returning

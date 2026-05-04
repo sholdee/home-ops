@@ -27,7 +27,8 @@ jobs:
           : > pull_results.txt
           PULL_FAILED=0
 
-          IMAGE_FULL="${IMAGE}:${TAG}"
+          IMAGE_FULL="${IMAGE}"
+          [ -n "${TAG:-}" ] && IMAGE_FULL="${IMAGE}:${TAG}"
           [ -n "${DIGEST:-}" ] && IMAGE_FULL="${IMAGE}@${DIGEST}"
 
           echo "Pulling image for linux/arm64: $IMAGE_FULL"
