@@ -49,3 +49,14 @@ spec:
         - ports:
             - port: "6379"
               protocol: TCP
+    - fromEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: dragonfly-operator
+            control-plane: controller-manager
+        - matchLabels:
+            io.kubernetes.pod.namespace: renovate
+            app: dragonfly
+      toPorts:
+        - ports:
+            - port: "9999"
+              protocol: TCP
