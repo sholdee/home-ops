@@ -57,7 +57,7 @@ All checks feed into a single required status gate for branch protection and aut
 ├── 📁 monitoring/    # Grouped: kube-prometheus-stack, Grafana Operator, Prometheus, Alertmanager, Kromgo
 ├── 📁 kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
 └── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
-📁 components/        # Reusable Kustomize Components (namespace pull secrets, VolSync backup templates)
+📁 components/        # Reusable Kustomize Components (namespace pull secrets, Dragonfly, VolSync backups)
 📁 docs/              # Operational documentation
 📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
 ```
@@ -163,6 +163,7 @@ erDiagram
 #### Operators
 
 - **CloudNativePG** — PostgreSQL operator with automated failover and backups
+- **Dragonfly Operator** — manages Redis-compatible HA cache instances
 - **Grafana Operator** — manages Grafana instances, datasources, and dashboard imports
 - **HiveMQ Platform Operator** — manages HiveMQ MQTT broker
 - **MongoDB Controllers for Kubernetes** — manages MongoDB ReplicaSets
