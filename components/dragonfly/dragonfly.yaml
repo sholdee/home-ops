@@ -40,7 +40,7 @@ spec:
               cpu: 50m
               memory: 256Mi
             limits:
-              cpu: 100m
+              cpu: 500m
               memory: 256Mi
           volumeMounts:
             - name: data
