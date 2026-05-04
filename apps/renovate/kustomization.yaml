@@ -20,6 +20,18 @@ helmCharts:
     valuesFile: manifests/values.yaml
 patches:
   - target:
+      group: dragonflydb.io
+      version: v1alpha1
+      kind: Dragonfly
+      name: dragonfly
+    patch: |-
+      - op: add
+        path: /spec/authentication
+        value:
+          passwordFromSecret:
+            name: renovate-dragonfly-auth
+            key: redis-password
+  - target:
       kind: GrafanaDashboard
       name: renovate-operator-dashboard
     patch: |-
