@@ -12,6 +12,7 @@ resources:
   - manifests/repos.yaml
   - manifests/httproute.yaml
   - manifests/cilium-preflight.yaml
+  - manifests/dragonfly-operator-rbac.yaml
   - manifests/namespace.yaml
   - manifests/netpol.yaml
   - manifests/externalsecret.yaml
