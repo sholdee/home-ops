@@ -218,7 +218,10 @@ metadata:
 spec:
   replicas: 2
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       upgrade.cattle.io/controller: system-upgrade-controller
@@ -238,22 +241,11 @@ spec:
                 operator: "In"
                 values:
                 - "linux"
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
               - key: "node-role.kubernetes.io/control-plane"
-                operator: "Exists"
+                operator: "DoesNotExist"
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
           - topologyKey: "kubernetes.io/hostname"
-            labelSelector:
-              matchExpressions:
-              - key: "app.kubernetes.io/name"
-                operator: "In"
-                values:
-                - "system-upgrade-controller"
-          - topologyKey: "node-role.kubernetes.io/control-plane"
             labelSelector:
               matchExpressions:
               - key: "app.kubernetes.io/name"
@@ -264,18 +256,6 @@ spec:
       tolerations:
       - key: "CriticalAddonsOnly"
         operator: "Exists"
-      - key: "node-role.kubernetes.io/master"
-        operator: "Exists"
-        effect: "NoSchedule"
-      - key: "node-role.kubernetes.io/controlplane"
-        operator: "Exists"
-        effect: "NoSchedule"
-      - key: "node-role.kubernetes.io/control-plane"
-        operator: "Exists"
-        effect: "NoSchedule"
-      - key: "node-role.kubernetes.io/etcd"
-        operator: "Exists"
-        effect: "NoExecute"
       containers:
       - name: system-upgrade-controller
         image: rancher/system-upgrade-controller:v0.19.2@sha256:34fa058fe453da2e1d6cf9052d2961976d5c7294921f8a6a6fb75098a27b0e89
@@ -340,3 +320,14 @@ spec:
           type: DirectoryOrCreate
       - name: tmp
         emptyDir: {}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: system-upgrade-controller
+  namespace: system-upgrade
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: system-upgrade-controller
