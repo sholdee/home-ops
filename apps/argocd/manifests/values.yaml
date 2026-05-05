@@ -11,6 +11,17 @@ externalRedis:
   port: 6379
   existingSecret: argocd-dragonfly-auth
 server:
+  replicas: 2
+  env:
+    - name: ARGOCD_API_SERVER_REPLICAS
+      value: "2"
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
   certificate:
     enabled: false
   certificateSecret:
@@ -33,10 +44,29 @@ controller:
     serviceMonitor:
       enabled: true
 repoServer:
+  replicas: 2
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
   metrics:
     enabled: true
     serviceMonitor:
       enabled: true
+applicationSet:
+  replicas: 2
+  extraArgs:
+    - --enable-leader-election=true
+  pdb:
+    enabled: true
+    maxUnavailable: 1
+  topologySpreadConstraints:
+    - maxSkew: 1
+      topologyKey: kubernetes.io/hostname
+      whenUnsatisfiable: DoNotSchedule
 configs:
   cm:
     kustomize.buildOptions: --enable-helm --helm-api-versions grafana.integreatly.org/v1beta1/GrafanaDashboard
