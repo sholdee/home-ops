@@ -105,7 +105,7 @@ spec:
                 - nslookup localhost 127.0.0.1
           readinessProbe: *probe
         - name: adguard-exporter
-          image: ghcr.io/sholdee/adguard-exporter:v2.1.0@sha256:6b18d7bd9cc5d590a8e7a0961b5f6cce7bcb63b981f9fd81de09f42740b55452
+          image: ghcr.io/sholdee/adguard-exporter:2.1.1@sha256:9d7565dd3db81899b499972c5f4e56dead5f28f9f71213b4e96a65d48d3ffcd7
           securityContext:
             capabilities:
               drop:
