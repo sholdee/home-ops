@@ -1,0 +1,38 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cert-manager.io/issuer_v1.json
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-selfsigned
+  namespace: kube-system
+spec:
+  selfSigned: {}
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cert-manager.io/certificate_v1.json
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: cilium-hubble-ca
+  namespace: kube-system
+spec:
+  isCA: true
+  commonName: Cilium Hubble CA
+  secretName: cilium-hubble-ca
+  duration: 43800h
+  renewBefore: 720h
+  privateKey:
+    rotationPolicy: Always
+  issuerRef:
+    group: cert-manager.io
+    kind: Issuer
+    name: cilium-hubble-selfsigned
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cert-manager.io/issuer_v1.json
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: cilium-hubble-ca
+  namespace: kube-system
+spec:
+  ca:
+    secretName: cilium-hubble-ca
