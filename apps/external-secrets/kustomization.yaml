@@ -21,3 +21,15 @@ helmCharts:
     releaseName: 1password-connect
     namespace: external-secrets
     valuesFile: manifests/values-op.yaml
+patches:
+  - target:
+      kind: Deployment
+      name: onepassword-connect
+    patch: |-
+      - op: add
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+          rollingUpdate:
+            maxSurge: 0
+            maxUnavailable: 1

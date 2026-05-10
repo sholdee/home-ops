@@ -142,6 +142,7 @@ spec:
     syncOptions:
       - ApplyOutOfSyncOnly=true
       - CreateNamespace=true
+      - ServerSideApply=true
 ---
 # yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
 apiVersion: argoproj.io/v1alpha1
