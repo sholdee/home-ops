@@ -76,7 +76,7 @@ just bootstrap-live-phase argocd default
 
 - Bootstrap is deliberately narrower than steady-state GitOps. Keep it limited to dependencies required before ArgoCD can take over: CRDs, cert-manager, External Secrets and 1Password Connect, Dragonfly Operator, ArgoCD dependencies, and ArgoCD itself.
 - Do not add normal workloads to `hack/bootstrap/` if ArgoCD can safely reconcile them after takeover.
-- `kind-kind` bootstrap validation intentionally omits real-cluster-only resources when `ciliumnetworkpolicies.cilium.io` is absent: the `k3s-apps` ApplicationSet, Cilium apps, Longhorn, and `crd-schema-publisher`.
+- Kind bootstrap validation uses the repo-specific `home-ops-bootstrap` cluster by default and intentionally omits real-cluster-only resources when `ciliumnetworkpolicies.cilium.io` is absent: the `k3s-apps` ApplicationSet, Cilium apps, Longhorn, and `crd-schema-publisher`.
 - `bootstrap-kind-dry-run` is a post-bootstrap validation pass. It is not a clean-cluster first-boot test because server-side dry-run does not persist CRDs for later CR validation.
 - Do not let local kind tests publish schemas or touch other external live services.
 - Secret manifests from 1Password must be streamed, normalized to Secret `data`, and applied server-side; do not write them to disk, logs, or client-side last-applied annotations. The seed Secret may use scoped `--force-conflicts` because the 1Password item is authoritative.

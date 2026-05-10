@@ -30,6 +30,13 @@ just bootstrap-test
 
 ## Local Kind Test
 
+Kind recipes use the repo-specific cluster name `home-ops-bootstrap`, which
+creates the kube context `kind-home-ops-bootstrap`. Override it only when needed:
+
+```sh
+KIND_CLUSTER=my-test-cluster just kind-reset
+```
+
 Create a clean three-node kind cluster:
 
 ```sh
@@ -61,6 +68,12 @@ dry-run validation against the local API:
 
 ```sh
 just bootstrap-kind-dry-run
+```
+
+Delete the local kind cluster when validation is complete:
+
+```sh
+just kind-delete
 ```
 
 Do not use `bootstrap-kind-dry-run` as the first command after `kind-reset`.

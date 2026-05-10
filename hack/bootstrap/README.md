@@ -32,7 +32,7 @@ exist.
 Run against an explicit context:
 
 ```sh
-./hack/bootstrap/bootstrap.sh --kube-context kind-kind --yes
+./hack/bootstrap/bootstrap.sh --kube-context kind-home-ops-bootstrap --yes
 ```
 
 For local bootstrap testing, recreate kind as one control-plane plus two worker
@@ -50,7 +50,7 @@ If more than one 1Password account is configured and the default account is
 wrong, pin the account explicitly:
 
 ```sh
-./hack/bootstrap/bootstrap.sh --kube-context kind-kind --op-account my --yes
+./hack/bootstrap/bootstrap.sh --kube-context kind-home-ops-bootstrap --op-account my --yes
 ```
 
 The script writes local run logs under `.out/`. Secret manifests read from
@@ -70,5 +70,5 @@ script, let your shell run `op read` and pipe the manifest to the seed phase:
 
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \
-  | ./hack/bootstrap/bootstrap.sh --kube-context kind-kind --only-phase seed-secret --seed-secret-stdin --yes
+  | ./hack/bootstrap/bootstrap.sh --kube-context kind-home-ops-bootstrap --only-phase seed-secret --seed-secret-stdin --yes
 ```
