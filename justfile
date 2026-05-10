@@ -20,7 +20,7 @@ bootstrap-kind-dry-run:
   ./hack/bootstrap/bootstrap.sh --kube-context '{{kind_context}}' --from-phase bootstrap-crds --dry-run --yes
 
 bootstrap-kind-seed:
-  @op read op://Kubernetes/op-credentials/op-credentials.yaml | ./hack/bootstrap/bootstrap.sh --kube-context '{{kind_context}}' --only-phase seed-secret --seed-secret-stdin --yes
+  ./hack/bootstrap/bootstrap.sh --kube-context '{{kind_context}}' --only-phase seed-secret --yes
 
 bootstrap-kind-resume phase='bootstrap-crds':
   ./hack/bootstrap/bootstrap.sh --kube-context '{{kind_context}}' --from-phase '{{phase}}' --yes
