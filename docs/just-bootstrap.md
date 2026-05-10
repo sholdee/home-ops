@@ -180,10 +180,10 @@ Secret. This one apply path uses scoped server-side `--force-conflicts` because
 the 1Password item is authoritative for the bootstrap seed Secret and older
 clusters may have created it with client-side apply.
 
-Before reading from 1Password, the seed phase runs `op whoami`. If the CLI is
-not signed in and the run is interactive, it runs `op signin`, evaluates the
-returned session export inside the bootstrap process without logging it, and
-then retries the read.
+The seed phase first tries `op read`. If that fails and the run is interactive,
+it runs `op signin`, evaluates the returned session export inside the bootstrap
+process without logging it, and then retries the read. Only the Secret manifest
+is written to stdout for the YAML pipeline.
 
 If the automatic prompt is not appropriate, authenticate first:
 
