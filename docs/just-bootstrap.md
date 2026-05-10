@@ -55,8 +55,7 @@ Recreate kind and then run the bootstrap in one step:
 just bootstrap-kind-fresh
 ```
 
-If the local shell needs to read the 1Password seed secret first, seed kind and
-resume from the next phase:
+To seed kind separately before resuming the remaining phases:
 
 ```sh
 just bootstrap-kind-seed
@@ -181,14 +180,19 @@ Secret. This one apply path uses scoped server-side `--force-conflicts` because
 the 1Password item is authoritative for the bootstrap seed Secret and older
 clusters may have created it with client-side apply.
 
-If `op` works in the shell but not inside the bootstrap script, authenticate
-first:
+Before reading from 1Password, the seed phase runs `op whoami`. If the CLI is
+not signed in and the run is interactive, it runs `op signin`, evaluates the
+returned session export inside the bootstrap process without logging it, and
+then retries the read.
+
+If the automatic prompt is not appropriate, authenticate first:
 
 ```sh
 eval "$(op signin)"
 ```
 
-Then rerun bootstrap, or pipe the seed manifest directly:
+Then rerun bootstrap. You can also pipe the seed manifest directly to bypass
+all script-managed `op` calls:
 
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \

@@ -59,14 +59,15 @@ written to disk or stored in the local run report. The seed Secret is normalized
 to `data`, applied server-side, and cleaned of any old
 `kubectl.kubernetes.io/last-applied-configuration` annotation. That seed apply
 uses scoped server-side `--force-conflicts` because the 1Password item is
-authoritative. Keep 1Password CLI desktop app integration enabled and the app
-unlocked for local interactive bootstrap runs, or authenticate `op` before
-invoking the script. Leave `--op-account` unset unless you need to
-disambiguate accounts; when you do set it, use the shorthand from
-`op account list`, such as `my`.
+authoritative. The seed phase checks `op whoami` and, when stdin is
+interactive, falls back to `op signin` without logging the returned session
+export. Keep 1Password CLI desktop app integration enabled and the app unlocked
+for local interactive bootstrap runs, or authenticate `op` before invoking the
+script. Leave `--op-account` unset unless you need to disambiguate accounts;
+when you do set it, use the shorthand from `op account list`, such as `my`.
 
-If `op` works in your interactive shell but not from inside the bootstrap
-script, let your shell run `op read` and pipe the manifest to the seed phase:
+If script-managed `op` auth is not appropriate, let your shell run `op read`
+and pipe the manifest to the seed phase:
 
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \
