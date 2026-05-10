@@ -9,3 +9,10 @@ resources:
   - https://raw.githubusercontent.com/rancher/system-upgrade-controller/refs/tags/v0.19.2/pkg/crds/yaml/generated/upgrade.cattle.io_plans.yaml
   - manifests/controller.yaml
   - manifests/plan.yaml
+  - manifests/os-plan.yaml
+secretGenerator:
+  - name: raspios-upgrade-script
+    files:
+      - upgrade.sh=manifests/raspios-upgrade.sh
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,51 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/upgrade.cattle.io/plan_v1.json
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: raspios-bookworm
+  namespace: system-upgrade
+  labels:
+    os-upgrade: raspios-bookworm
+spec:
+  concurrency: 1
+  exclusive: true
+  jobActiveDeadlineSecs: 7200
+  postCompleteDelay: "5m"
+  version: bookworm-2026-05-09
+  nodeSelector:
+    matchExpressions:
+      - key: plan.upgrade.cattle.io/raspios-bookworm
+        operator: Exists
+      - key: plan.upgrade.cattle.io/raspios-bookworm
+        operator: NotIn
+        values:
+          - "disabled"
+          - "false"
+  serviceAccountName: system-upgrade
+  secrets:
+    - name: raspios-upgrade-script
+      path: /host/run/system-upgrade/secrets/raspios-bookworm
+      ignoreUpdates: true
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/master
+      operator: Exists
+      effect: NoSchedule
+    - key: node-role.kubernetes.io/etcd
+      operator: Exists
+      effect: NoExecute
+    - key: node-role.kubernetes.io/etcd
+      operator: Exists
+      effect: NoSchedule
+  drain:
+    force: true
+    skipWaitForDeleteTimeout: 180
+  upgrade:
+    image: debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
+    command: ["chroot", "/host"]
+    args: ["sh", "/run/system-upgrade/secrets/raspios-bookworm/upgrade.sh"]
