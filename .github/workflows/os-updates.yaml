@@ -1,0 +1,140 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: OS Updates
+
+on:
+  schedule:
+    - cron: "0 8 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check schedule window
+        id: schedule
+        run: |
+          set -euo pipefail
+
+          should_run=true
+          if [[ "${GITHUB_EVENT_NAME}" == "schedule" ]]; then
+            day="$(date -u +%d)"
+            if (( 10#${day} > 7 )); then
+              should_run=false
+            fi
+          fi
+
+          echo "should_run=${should_run}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate Token
+        if: steps.schedule.outputs.should_run == 'true'
+        id: app-token
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: "${{ secrets.BOT_APP_ID }}"
+          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+
+      - name: Checkout repository
+        if: steps.schedule.outputs.should_run == 'true'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          token: "${{ steps.app-token.outputs.token }}"
+
+      - name: Compute trigger values
+        if: steps.schedule.outputs.should_run == 'true'
+        id: trigger
+        run: |
+          set -euo pipefail
+
+          month="$(date -u +%Y-%m)"
+          version="bookworm-$(date -u +%Y-%m-%d)"
+          branch="chore/os-updates-${month}"
+          title="chore: trigger os updates for ${month}"
+
+          {
+            echo "month=${month}"
+            echo "version=${version}"
+            echo "branch=${branch}"
+            echo "title=${title}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Update OS update trigger
+        if: steps.schedule.outputs.should_run == 'true'
+        id: update
+        env:
+          VERSION: "${{ steps.trigger.outputs.version }}"
+        run: |
+          set -euo pipefail
+
+          python3 <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("apps/system-upgrade/manifests/os-plan.yaml")
+          version = os.environ["VERSION"]
+          text = path.read_text()
+          pattern = re.compile(r"^  version: bookworm-\d{4}-\d{2}-\d{2}$", re.MULTILINE)
+          replacement = f"  version: {version}"
+          updated, count = pattern.subn(replacement, text, count=1)
+
+          if count != 1:
+              raise SystemExit("expected exactly one Raspberry Pi OS Plan version to update")
+
+          path.write_text(updated)
+          PY
+
+          if git diff --quiet -- apps/system-upgrade/manifests/os-plan.yaml; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+            echo "OS update trigger is already ${VERSION}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+            git diff -- apps/system-upgrade/manifests/os-plan.yaml
+          fi
+
+      - name: Create pull request
+        if: steps.schedule.outputs.should_run == 'true' && steps.update.outputs.changed == 'true'
+        env:
+          BRANCH: "${{ steps.trigger.outputs.branch }}"
+          GH_TOKEN: "${{ steps.app-token.outputs.token }}"
+          TITLE: "${{ steps.trigger.outputs.title }}"
+          VERSION: "${{ steps.trigger.outputs.version }}"
+        run: |
+          set -euo pipefail
+
+          git config user.name "pull-bunyan[bot]"
+          git config user.email "pull-bunyan[bot]@users.noreply.github.com"
+          git checkout -B "${BRANCH}"
+          git add apps/system-upgrade/manifests/os-plan.yaml
+          git commit -m "${TITLE}"
+          git push --force-with-lease origin "${BRANCH}"
+
+          body="$(mktemp)"
+          cat > "${body}" <<EOF
+          ## Summary
+          - bump the Raspberry Pi OS update trigger to \`${VERSION}\`
+
+          ## Rollout
+          Merging this PR starts the opt-in System Upgrade Controller rollout for nodes selected by \`plan.upgrade.cattle.io/raspios-bookworm\`.
+          EOF
+
+          pr_number="$(gh pr list \
+            --head "${BRANCH}" \
+            --state open \
+            --json number \
+            --jq '.[0].number // empty')"
+
+          if [[ -n "${pr_number}" ]]; then
+            gh pr edit "${pr_number}" \
+              --title "${TITLE}" \
+              --body-file "${body}"
+          else
+            gh pr create \
+              --base master \
+              --head "${BRANCH}" \
+              --title "${TITLE}" \
+              --body-file "${body}"
+          fi
