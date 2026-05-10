@@ -12,16 +12,14 @@ fi
 
 op_signin_if_needed() {
   bool "$SEED_SECRET_STDIN" && return
-  op whoami "${op_args[@]}" >/dev/null 2>&1 && return
 
   [[ -t 0 ]] || die "1Password CLI is not signed in and stdin is not interactive; run 'eval \"\$(op signin)\"' first, or pipe the seed Secret with --seed-secret-stdin"
 
-  log "1Password CLI is not signed in; starting interactive op signin"
+  log "1Password CLI is not signed in; starting interactive op signin" >&2
   local signin
   signin="$(op signin --force "${op_args[@]}")" || die "op signin failed"
   # op signin writes shell exports to stdout. Evaluate them without logging.
   eval "$signin"
-  op whoami "${op_args[@]}" >/dev/null 2>&1 || die "op signin completed but op whoami still failed"
 }
 
 op_read_seed_secret() {
@@ -29,8 +27,15 @@ op_read_seed_secret() {
     cat
     return
   fi
+  local seed_secret
+  if seed_secret="$(op read "${op_args[@]}" "$op_ref" 2>/dev/null)"; then
+    printf '%s\n' "$seed_secret"
+    return
+  fi
+
   op_signin_if_needed
-  op read "${op_args[@]}" "$op_ref"
+  seed_secret="$(op read "${op_args[@]}" "$op_ref")" || die "op read failed after op signin"
+  printf '%s\n' "$seed_secret"
 }
 
 normalize_seed_secret() {
