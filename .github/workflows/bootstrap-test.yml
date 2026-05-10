@@ -1,0 +1,47 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Bootstrap Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install CLI tools
+        uses: ./.github/actions/setup-tools
+
+      - name: Check justfile formatting
+        run: just --fmt --check
+
+      - name: List just tasks
+        run: just --list
+
+      - name: Check aggregate task wiring
+        run: just --dry-run check
+
+      - name: Show runner yq
+        run: yq --version
+
+      - name: Smoke render app helper
+        run: just --quiet app-build adguard >/tmp/adguard.yaml
+
+      - name: Verify app helper rejects path arguments
+        run: |
+          if just --quiet app-build ..; then
+            echo "app-build accepted a path-like app argument" >&2
+            exit 1
+          fi
+
+      - name: Check bootstrap test wiring
+        run: just --dry-run bootstrap-test
+
+      - name: Run bootstrap offline parse test
+        run: hack/bootstrap/tests/offline-parse.sh
