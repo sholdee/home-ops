@@ -69,6 +69,9 @@ jobs:
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
 
+  bootstrap-test:
+    uses: ./.github/workflows/bootstrap-test.yml
+
   helm-diff:
     needs: detect
     if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.helm == 'true'
@@ -84,18 +87,19 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     if: always()
-    needs: [detect, pre-commit, helm-diff, docker-verify]
+    needs: [detect, pre-commit, bootstrap-test, helm-diff, docker-verify]
     steps:
       - name: Evaluate results
         run: |
           DETECT="${{ needs.detect.result }}"
           PRECOMMIT="${{ needs.pre-commit.result }}"
+          BOOTSTRAP="${{ needs.bootstrap-test.result }}"
           HELM="${{ needs.helm-diff.result }}"
           DOCKER="${{ needs.docker-verify.result }}"
 
-          echo "detect=$DETECT pre-commit=$PRECOMMIT helm-diff=$HELM docker-verify=$DOCKER"
+          echo "detect=$DETECT pre-commit=$PRECOMMIT bootstrap-test=$BOOTSTRAP helm-diff=$HELM docker-verify=$DOCKER"
 
-          if [[ "$DETECT" == "failure" || "$PRECOMMIT" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
+          if [[ "$DETECT" == "failure" || "$PRECOMMIT" == "failure" || "$BOOTSTRAP" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
             echo "CI failed"
             exit 1
           fi

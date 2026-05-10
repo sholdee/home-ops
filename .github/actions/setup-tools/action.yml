@@ -1,7 +1,7 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-action.json
 name: Setup CLI Tools
-description: Install kubeconform, actionlint, kustomize, and Helm for CI workflows
+description: Install shared CLI tools for CI workflows
 
 inputs:
   kubeconform-version:
@@ -20,6 +20,10 @@ inputs:
     description: Helm version
     # renovate: datasource=github-releases depName=helm/helm
     default: '3.20.2'
+  just-version:
+    description: just version
+    # renovate: datasource=github-releases depName=casey/just
+    default: '1.51.0'
 
 runs:
   using: composite
@@ -29,7 +33,7 @@ runs:
       uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: /usr/local/bin/setup-tools
-        key: setup-tools-${{ inputs.kubeconform-version }}-${{ inputs.actionlint-version }}-${{ inputs.kustomize-version }}
+        key: setup-tools-${{ inputs.kubeconform-version }}-${{ inputs.actionlint-version }}-${{ inputs.kustomize-version }}-${{ inputs.just-version }}
 
     - name: Install kubeconform
       if: steps.cli-cache.outputs.cache-hit != 'true'
@@ -64,6 +68,17 @@ runs:
         tar -xzf kustomize.tar.gz
         mv kustomize /usr/local/bin/setup-tools/kustomize
         rm kustomize.tar.gz
+
+    - name: Install just
+      if: steps.cli-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        VERSION="${{ inputs.just-version }}"
+        curl -sSLo just.tar.gz \
+          "https://github.com/casey/just/releases/download/${VERSION}/just-${VERSION}-x86_64-unknown-linux-musl.tar.gz"
+        tar -xzf just.tar.gz just
+        mv just /usr/local/bin/setup-tools/just
+        rm just.tar.gz
 
     - name: Add tools to PATH
       shell: bash
