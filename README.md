@@ -59,8 +59,20 @@ All checks feed into a single required status gate for branch protection and aut
 └── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
 📁 components/        # Reusable Kustomize Components (namespace pull secrets, Dragonfly, VolSync backups)
 📁 docs/              # Operational documentation
+📁 hack/bootstrap/    # Local bootstrap runner for fresh clusters before ArgoCD takeover
 📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
 ```
+
+### Bootstrap 🚀
+
+Cluster bootstrap is intentionally smaller than steady-state GitOps. After
+`k3s-ansible` provides a working Kubernetes API and Cilium, the local bootstrap
+runner seeds the minimum dependencies required for ArgoCD to take over:
+cert-manager, External Secrets with 1Password Connect, Dragonfly Operator, and
+ArgoCD itself.
+
+See [docs/just-bootstrap.md](docs/just-bootstrap.md) for the `just` runbook,
+kind validation path, live dry-run checks, and safety notes.
 
 ### ArgoCD Project Structure 🏗️
 

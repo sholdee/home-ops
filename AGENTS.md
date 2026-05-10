@@ -13,6 +13,7 @@ a PR with passing `CI / gate`.
 - `apps/`: ArgoCD watches `apps/*` and creates one Application per top-level directory
 - `components/`: reusable Kustomize components such as namespace and VolSync
 - `docs/`: operational docs and templates
+- `hack/bootstrap/`: local bootstrap runner for fresh clusters before ArgoCD takeover
 - `.github/`: CI, Renovate, and helper scripts
 
 Key files:
@@ -21,7 +22,9 @@ Key files:
 - `apps/argocd/manifests/apps.yaml`: explicit ArgoCD Application CRs
 - `apps/argocd/manifests/repos.yaml`: Helm repo credentials; add entries for new Application CR repos
 - `apps/monitoring/grafana/`: Grafana Operator instance, datasources, HTTPRoute, ExternalSecret, dashboards, and CNPG database
+- `docs/just-bootstrap.md`: `just` runbook for kind and live bootstrap validation
 - `docs/howto-templates.md`: templates for apps, Helm, VolSync, secrets, routes, and Cilium policies
+- `justfile`: bootstrap and validation recipes
 
 ## Validation
 
@@ -50,6 +53,17 @@ Using kubectl's default field manager can create misleading managedFields
 ownership and drift. Live applies are only validation drift until the matching
 branch is merged to `master` and ArgoCD syncs it.
 
+For bootstrap changes:
+
+```bash
+just bootstrap-test
+just bootstrap-kind-fresh
+just bootstrap-kind-dry-run
+just bootstrap-live-audit default
+just bootstrap-live-dry-run default
+just bootstrap-live-phase argocd default
+```
+
 ## ArgoCD Notes
 
 - ApplicationSet-generated apps default to server-side diff/apply, prune, `SkipDryRunOnMissingResource=true`, `ApplyOutOfSyncOnly=true`, `CreateNamespace=true`, and `RespectIgnoreDifferences=true`
@@ -57,6 +71,17 @@ branch is merged to `master` and ArgoCD syncs it.
 - Do not disable server-side diff or add broad ignore rules until the drift source is proven with ArgoCD and `kubectl` output
 - If server-side diff reports impossible changes to `Application.status` or tracking annotations, inspect managed fields and fix stale live ownership instead of hiding it in Git
 - If repo-server Helm rendering fails with cache extraction errors, first verify local `kustomize build`; if local render is clean, recycle the repo-server pod
+
+## Bootstrap Notes
+
+- Bootstrap is deliberately narrower than steady-state GitOps. Keep it limited to dependencies required before ArgoCD can take over: CRDs, cert-manager, External Secrets and 1Password Connect, Dragonfly Operator, ArgoCD dependencies, and ArgoCD itself.
+- Do not add normal workloads to `hack/bootstrap/` if ArgoCD can safely reconcile them after takeover.
+- `kind-kind` bootstrap validation intentionally omits real-cluster-only resources when `ciliumnetworkpolicies.cilium.io` is absent: the `k3s-apps` ApplicationSet, Cilium apps, Longhorn, and `crd-schema-publisher`.
+- `bootstrap-kind-dry-run` is a post-bootstrap validation pass. It is not a clean-cluster first-boot test because server-side dry-run does not persist CRDs for later CR validation.
+- Do not let local kind tests publish schemas or touch other external live services.
+- Secret manifests from 1Password must be streamed, normalized to Secret `data`, and applied server-side; do not write them to disk, logs, or client-side last-applied annotations. The seed Secret may use scoped `--force-conflicts` because the 1Password item is authoritative.
+- The live homelab kube context is `default`. Use live dry-run and audit recipes for validation; do not run a live non-dry-run bootstrap from an unmerged branch.
+- If live server-side dry-run finds managedFields conflicts, diagnose ownership first. Prefer Git-side `ServerSideApply=true` for explicit ArgoCD Applications, and use live `--force-conflicts` only for narrow, one-time ownership migrations after confirming the rendered manifest matches intent.
 
 ## App Conventions
 
