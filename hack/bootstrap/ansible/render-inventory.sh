@@ -66,7 +66,6 @@ output_dir="${output_dir:-$(ansible_inventory_dir "$profile")}"
 
 ansible_require_tool yq
 ansible_require_tool jq
-ansible_assert_cilium_version_match
 ansible_render_inventory "$profile" "$source_dir" "$output_dir"
 ansible_log "rendered ${profile} Ansible inventory: ${output_dir}/hosts.yml"
 

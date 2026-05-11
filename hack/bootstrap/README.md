@@ -165,6 +165,10 @@ For live inventory, derived-owned values fail on conflict instead of silently
 overriding human input. This keeps Ansible bootstrap aligned with the GitOps
 state ArgoCD will enforce later.
 
+The external `k3s-ansible` defaults do not need to match home-ops versions or
+network settings. Keep that checkout close to upstream and let this wrapper
+render the homelab-specific K3s, Cilium, BGP, kube-vip, and API endpoint values.
+
 The live K3s token is stored at `op://Kubernetes/k3s-bootstrap/k3s_token`.
 Normal runs load it from 1Password. If a fresh cluster has no remote token and
 the 1Password item is missing, the wrapper generates and stores a token. If an

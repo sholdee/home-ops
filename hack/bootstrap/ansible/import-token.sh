@@ -54,7 +54,6 @@ ansible_require_tool jq
 ansible_require_tool ssh
 ansible_require_tool op
 ansible_require_tool openssl
-ansible_assert_cilium_version_match
 ansible_render_inventory live "$source_dir" "$output_dir"
 ansible_print_summary live "$output_dir"
 

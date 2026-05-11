@@ -70,16 +70,6 @@ ansible_home_ops_cilium_tag() {
   printf 'v%s\n' "${version#v}"
 }
 
-ansible_assert_cilium_version_match() {
-  local home_ops_tag ansible_tag
-  home_ops_tag="$(ansible_home_ops_cilium_tag)"
-  ansible_tag="$(yq -r '.cilium_tag // ""' "${K3S_ANSIBLE_DIR}/roles/k3s_server_post/defaults/main.yml")"
-  [[ -n "$ansible_tag" && "$ansible_tag" != "null" ]] ||
-    ansible_die "k3s-ansible has no roles/k3s_server_post default cilium_tag"
-  [[ "$ansible_tag" == "$home_ops_tag" ]] ||
-    ansible_die "Cilium version mismatch: home-ops=${home_ops_tag}, k3s-ansible=${ansible_tag}"
-}
-
 ansible_write_derived_vars() {
   local output="$1"
   local cilium_app="${REPO_ROOT}/apps/argocd/manifests/apps.yaml"

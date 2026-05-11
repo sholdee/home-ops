@@ -105,7 +105,6 @@ ansible_require_tool yq
 ansible_require_tool jq
 
 if ! ansible_bool "$skip_render"; then
-  ansible_assert_cilium_version_match
   ansible_render_inventory "$profile" "$source_dir" "$inventory_dir"
 fi
 

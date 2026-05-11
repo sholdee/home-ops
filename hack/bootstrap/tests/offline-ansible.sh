@@ -16,9 +16,7 @@ tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
 k3s_ansible="${tmp}/k3s-ansible"
-mkdir -p \
-  "${k3s_ansible}/inventory/sample/group_vars" \
-  "${k3s_ansible}/roles/k3s_server_post/defaults"
+mkdir -p "${k3s_ansible}/inventory/sample/group_vars"
 
 cilium_tag="$(
   yq -r '
@@ -36,11 +34,6 @@ system_timezone: Etc/UTC
 custom_registries: false
 proxmox_lxc_configure: false
 k3s_token: sample-token
-EOF
-
-cat > "${k3s_ansible}/roles/k3s_server_post/defaults/main.yml" <<EOF
----
-cilium_tag: ${cilium_tag}
 EOF
 
 out="${tmp}/out"

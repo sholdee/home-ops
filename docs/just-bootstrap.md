@@ -114,7 +114,7 @@ Defaults:
 - guest storage prerequisites: `open-iscsi` and `nfs-common` are installed on
   each VM before k3s-ansible runs so Longhorn block and RWX volumes can mount
 - Cilium version: derived from `Application/cilium.spec.source.targetRevision`
-  and required to match the k3s-ansible role default
+  and rendered over the k3s-ansible sample defaults
 - Cilium datapath mode: `netkit`, matching the steady-state ArgoCD values
 - Cilium takeover: Hubble CA resources are applied before ArgoCD Cilium, and
   stale Hubble cert Secrets from the initial Ansible install are rotated
@@ -317,6 +317,9 @@ ArgoCD Application, Cilium BGP resources from `apps/kube-system/cilium`, and
 the kube-vip tag/API VIP from `apps/kube-system/kube-vip`. If the checked-in
 live overrides try to set one of those derived-owned values differently, the
 render fails instead of silently choosing one.
+
+Keep `../k3s-ansible` close to upstream. The wrapper does not require its sample
+defaults to match the homelab; it renders the homelab values as an overlay.
 
 Review the active context:
 
