@@ -6,6 +6,7 @@ namespace: gateway
 components:
   - ../../components/namespace
 resources:
+  - manifests/cert-backups.yaml
   - manifests/external-gateway.yaml
   - manifests/guest-gateway.yaml
   - manifests/envoy-gateway.yaml

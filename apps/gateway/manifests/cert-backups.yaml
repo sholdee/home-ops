@@ -1,0 +1,99 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/clustersecretstore_v1.json
+apiVersion: external-secrets.io/v1
+kind: ClusterSecretStore
+metadata:
+  name: gateway-cert-backups
+spec:
+  provider:
+    onepassword:
+      connectHost: http://onepassword-connect.external-secrets.svc.cluster.local:8080
+      vaults:
+        Kubernetes: 1
+      auth:
+        secretRef:
+          connectTokenSecretRef:
+            name: op-credentials
+            key: token
+            namespace: external-secrets
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/pushsecret_v1alpha1.json
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: external-wildcard
+spec:
+  updatePolicy: Replace
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: gateway-cert-backups
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: external-wildcard
+  data:
+    - match:
+        secretKey: tls.crt
+        remoteRef:
+          remoteKey: gateway-external-wildcard
+          property: tls.crt
+    - match:
+        secretKey: tls.key
+        remoteRef:
+          remoteKey: gateway-external-wildcard
+          property: tls.key
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/pushsecret_v1alpha1.json
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: mgmt-wildcard
+spec:
+  updatePolicy: Replace
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: gateway-cert-backups
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: mgmt-wildcard
+  data:
+    - match:
+        secretKey: tls.crt
+        remoteRef:
+          remoteKey: gateway-mgmt-wildcard
+          property: tls.crt
+    - match:
+        secretKey: tls.key
+        remoteRef:
+          remoteKey: gateway-mgmt-wildcard
+          property: tls.key
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/pushsecret_v1alpha1.json
+apiVersion: external-secrets.io/v1alpha1
+kind: PushSecret
+metadata:
+  name: guest-wildcard
+spec:
+  updatePolicy: Replace
+  deletionPolicy: None
+  refreshInterval: 1h
+  secretStoreRefs:
+    - name: gateway-cert-backups
+      kind: ClusterSecretStore
+  selector:
+    secret:
+      name: guest-wildcard
+  data:
+    - match:
+        secretKey: tls.crt
+        remoteRef:
+          remoteKey: gateway-guest-wildcard
+          property: tls.crt
+    - match:
+        secretKey: tls.key
+        remoteRef:
+          remoteKey: gateway-guest-wildcard
+          property: tls.key
