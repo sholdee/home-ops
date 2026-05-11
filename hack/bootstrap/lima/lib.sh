@@ -139,6 +139,10 @@ lima_inventory_dir() {
   printf '%s\n' "${LIMA_OUT_DIR}/inventory"
 }
 
+lima_inventory_source_dir() {
+  printf '%s\n' "${LIMA_OUT_DIR}/inventory-source"
+}
+
 lima_inventory_file() {
   printf '%s\n' "$(lima_inventory_dir)/hosts.yml"
 }

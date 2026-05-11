@@ -18,7 +18,8 @@ runner is used on the real cluster.
 - `jq`
 - `op`
 - `shellcheck`
-- `limactl` and `ansible-playbook` for the optional Lima VM bootstrap tests
+- `ansible-playbook` and `ansible-galaxy` for Ansible-based bootstrap
+- `limactl` for the optional Lima VM bootstrap tests
 - A kubeconfig pointing at the target cluster
 - 1Password CLI signed in with access to
   `op://Kubernetes/op-credentials/op-credentials.yaml`
@@ -257,6 +258,65 @@ control; admission is there to fail closed if a future manifest reintroduces a
 writer.
 
 ## Real Cluster Bootstrap
+
+### Live Ansible Wrapper
+
+The physical-node Ansible wrapper lives in `hack/bootstrap/ansible/`. It uses
+the external `../k3s-ansible` checkout as the engine, but renders site-specific
+inventory and values from home-ops.
+
+Render the live plan without changing nodes:
+
+```sh
+just bootstrap-live-ansible-plan
+```
+
+This writes non-secret generated inventory under
+`hack/bootstrap/.out/ansible-live/` and prints the target hosts, first
+control-plane node, K3s version, Cilium version/config, kube-vip tag, and API
+endpoint.
+
+The live `k3s_token` is stored in 1Password at:
+
+```text
+op://Kubernetes/k3s-bootstrap/k3s_token
+```
+
+For an existing cluster, import the already-running server token explicitly
+before the first wrapper-managed run:
+
+```sh
+just bootstrap-ansible-import-token
+```
+
+The import command reads the token from the first control-plane node and writes
+it to 1Password. It does not run Ansible or Kubernetes bootstrap and does not
+log the token.
+
+Run Ansible convergence only:
+
+```sh
+just bootstrap-live-ansible
+```
+
+Run the Kubernetes bootstrap only, after K3s already exists:
+
+```sh
+just bootstrap-live-kube default
+```
+
+Run both behind one wrapper-level confirmation prompt:
+
+```sh
+just bootstrap-live-full
+```
+
+The live wrapper derives values that must match GitOps desired state, including
+the K3s version from `apps/system-upgrade`, Cilium Helm values from the explicit
+ArgoCD Application, Cilium BGP resources from `apps/kube-system/cilium`, and
+the kube-vip tag/API VIP from `apps/kube-system/kube-vip`. If the checked-in
+live overrides try to set one of those derived-owned values differently, the
+render fails instead of silently choosing one.
 
 Review the active context:
 

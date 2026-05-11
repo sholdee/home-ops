@@ -1,0 +1,29 @@
+---
+ansible_user: ethan
+systemd_dir: /etc/systemd/system
+system_timezone: America/Chicago
+
+proxmox_lxc_configure: false
+custom_registries: false
+
+cilium_iface: eth0
+kube_vip_iface: eth0
+kube_vip_enabled: true
+kube_vip_arp: true
+kube_vip_bgp: false
+k3s_master_taint: true
+
+k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"
+extra_args: >-
+  --node-ip={{ k3s_node_ip }}
+extra_server_args: >-
+  {{ extra_args }}
+  {{ '--node-taint node-role.kubernetes.io/master=true:NoSchedule' if k3s_master_taint else '' }}
+  --flannel-backend=none
+  --disable-network-policy
+  --cluster-cidr={{ cluster_cidr }}
+  --tls-san {{ apiserver_endpoint }}
+  --disable servicelb
+  --disable traefik
+extra_agent_args: >-
+  {{ extra_args }}

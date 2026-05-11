@@ -135,6 +135,62 @@ foundation ArgoCD resources. This is intentionally Lima-only: the real cluster
 can route pod CIDRs, but Lima's user-mode network cannot route pod CIDRs back
 to pods, so pod DNS and external egress require masquerading.
 
+## Live Ansible Bootstrap
+
+`hack/bootstrap/ansible/` orchestrates the external `k3s-ansible` checkout for
+the physical cluster. It is a thin wrapper: `k3s-ansible` remains the engine,
+while home-ops owns site inventory, derived values, token handling, and the
+optional handoff into the Kubernetes bootstrap runner.
+
+The live inventory is intentionally non-secret and checked in under
+`hack/bootstrap/ansible/inventory/live/`. Generated inventory, group vars, and
+kubeconfigs are written under `hack/bootstrap/.out/ansible-live/`.
+
+Render a non-mutating plan:
+
+```sh
+just bootstrap-live-ansible-plan
+```
+
+The rendered vars are a deterministic merge of:
+
+1. `k3s-ansible` sample vars.
+2. live home-ops overrides such as host facts, SSH user, interface names, and
+   timezone.
+3. values derived from home-ops manifests, including K3s version, Cilium
+   version/config, Cilium BGP settings, kube-vip tag, and API VIP.
+4. runtime secret references.
+
+For live inventory, derived-owned values fail on conflict instead of silently
+overriding human input. This keeps Ansible bootstrap aligned with the GitOps
+state ArgoCD will enforce later.
+
+The live K3s token is stored at `op://Kubernetes/k3s-bootstrap/k3s_token`.
+Normal runs load it from 1Password. If a fresh cluster has no remote token and
+the 1Password item is missing, the wrapper generates and stores a token. If an
+existing cluster already has a token, import it explicitly first:
+
+```sh
+just bootstrap-ansible-import-token
+```
+
+Then converge nodes with Ansible:
+
+```sh
+just bootstrap-live-ansible
+```
+
+Or run Ansible and then the home-ops Kubernetes bootstrap in one guarded
+command:
+
+```sh
+just bootstrap-live-full
+```
+
+The live Ansible run prompts for explicit confirmation by default and prints
+the target hosts, first control-plane host, derived K3s/Cilium versions, and API
+endpoint before making changes.
+
 After the Ansible phase, the Lima harness imports the context
 `lima-home-ops-k3s-test` into the local kubeconfig and keeps an SSH tunnel open
 for the K3s API. Use `just bootstrap-lima-kubecontext` to refresh only that

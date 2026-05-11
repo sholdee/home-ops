@@ -5,10 +5,10 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 lima_require_common_tools
-lima_assert_cilium_version_match
 
-inventory_dir="$(lima_inventory_dir)"
-inventory_file="$(lima_inventory_file)"
+inventory_dir="$(lima_inventory_source_dir)"
+generated_inventory_dir="$(lima_inventory_dir)"
+inventory_file="${inventory_dir}/hosts.yml"
 group_vars_dir="${inventory_dir}/group_vars"
 mkdir -p "$group_vars_dir"
 
@@ -16,17 +16,21 @@ server_ip="$(lima_guest_ip "$LIMA_SERVER_NAME")"
 [[ -n "$server_ip" ]] || lima_die "could not determine guest IP for ${LIMA_SERVER_NAME}"
 server_iface="$(lima_guest_iface "$LIMA_SERVER_NAME")"
 [[ -n "$server_iface" ]] || lima_die "could not determine guest interface for ${LIMA_SERVER_NAME}"
-cilium_tag="$(lima_home_ops_cilium_tag)"
+server_ssh_user="$(lima_ssh_option "$LIMA_SERVER_NAME" User)"
+[[ -n "$server_ssh_user" ]] || lima_die "could not determine SSH user for ${LIMA_SERVER_NAME}"
 
 write_host_vars() {
   local instance="$1"
   local role="$2"
-  local ssh_config
+  local ssh_config ssh_user
   ssh_config="$(lima_ssh_config_file "$instance")"
   [[ -f "$ssh_config" ]] || lima_die "could not read SSH config for ${instance}"
+  ssh_user="$(lima_ssh_option "$instance" User)"
+  [[ -n "$ssh_user" ]] || lima_die "could not determine SSH user for ${instance}"
   cat <<EOF
             ${instance}:
               ansible_host: lima-${instance}
+              ansible_user: ${ssh_user}
               ansible_ssh_common_args: >-
                 -F ${ssh_config}
                 -o StrictHostKeyChecking=no
@@ -57,7 +61,7 @@ EOF
 
 cat > "${group_vars_dir}/all.yml" <<EOF
 ---
-k3s_version: v1.35.4+k3s1
+ansible_user: ${server_ssh_user}
 systemd_dir: /etc/systemd/system
 system_timezone: Etc/UTC
 
@@ -65,25 +69,11 @@ proxmox_lxc_configure: false
 custom_registries: false
 
 cilium_iface: ${server_iface}
-cilium_mode: native
-cilium_datapath_mode: netkit
-cilium_tag: ${cilium_tag}
-cilium_hubble: true
-cilium_bgp: true
-cilium_bgp_apply_legacy_peering_policy: false
-cilium_bgp_my_asn: "64770"
-cilium_bgp_peer_asn: "64777"
-cilium_bgp_peer_address: 192.168.99.1
-cilium_bgp_lb_cidr: 192.168.77.0/24
-
-cluster_cidr: 10.52.0.0/16
 enable_bpf_masquerade: true
-kube_proxy_replacement: true
 
 # Lima user-mode networking does not provide a reliable L2 ARP VIP for node join.
 # Production/sample k3s-ansible vars still pin kube-vip to v1.1.2.
 kube_vip_enabled: false
-kube_vip_tag_version: v1.1.2
 kube_vip_arp: true
 kube_vip_bgp: false
 apiserver_endpoint: ${server_ip}
@@ -107,4 +97,9 @@ extra_agent_args: >-
   {{ extra_args }}
 EOF
 
-lima_log "wrote inventory: ${inventory_file}"
+"${BOOTSTRAP_DIR}/ansible/render-inventory.sh" \
+  --profile lima \
+  --inventory-source "$inventory_dir" \
+  --output-dir "$generated_inventory_dir"
+
+lima_log "wrote inventory: $(lima_inventory_file)"
