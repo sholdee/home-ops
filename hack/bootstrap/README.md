@@ -1,13 +1,18 @@
 # Home Ops Bootstrap
 
-This directory contains the local bootstrap runner for a fresh cluster after
-`k3s-ansible` has produced a working Kubernetes API and kubeconfig.
+This directory contains the local bootstrap tooling for fresh-cluster takeover.
+It covers two layers:
+
+1. a guarded wrapper around the external `../k3s-ansible` checkout for physical
+   node convergence
+2. the Kubernetes bootstrap runner that seeds the minimum dependencies needed
+   before ArgoCD can take over
 
 For the operator-facing `just` runbook, see
 [`docs/just-bootstrap.md`](../../docs/just-bootstrap.md).
 
-The runner is intentionally outside normal GitOps app state. It seeds the
-minimum dependencies needed for ArgoCD to take over:
+The Kubernetes runner is intentionally outside normal GitOps app state. It
+seeds the minimum dependencies needed for ArgoCD to take over:
 
 1. Seed `Secret/external-secrets/op-credentials` from 1Password CLI.
 2. Install required CRDs.
@@ -21,7 +26,17 @@ minimum dependencies needed for ArgoCD to take over:
 9. Wait for ArgoCD components.
 10. Run conservative Helm takeover cleanup and audit.
 
-Run a dry-run against the current kube context:
+The physical-node Ansible wrapper is the supported way to run `k3s-ansible` for
+this repo. It renders the homelab inventory and GitOps-owned values before
+calling Ansible.
+
+Render the live Ansible plan without changing nodes:
+
+```sh
+just bootstrap-live-ansible-plan
+```
+
+Run a Kubernetes bootstrap dry-run against the current kube context:
 
 ```sh
 ./hack/bootstrap/bootstrap.sh --dry-run
@@ -124,23 +139,30 @@ Lima VM creation installs `open-iscsi` and `nfs-common` before k3s-ansible runs.
 Longhorn needs the iSCSI initiator for block volumes, and RWX volumes need the
 NFS mount helper on each node.
 
-The Lima inventory uses the server VM IP as the K3s API endpoint. Production
-`k3s-ansible` group vars still pin kube-vip to `v1.1.2`, but Lima's default
-user-mode networking is not a reliable place to validate an ARP VIP join path.
-The initial Cilium install uses `netkit` so pod endpoints are created with the
-same datapath mode used by the steady-state ArgoCD Cilium chart.
+The Lima inventory uses the server VM IP as the K3s API endpoint. Lima's
+default user-mode networking is not a reliable place to validate an ARP VIP
+join path, so the Lima overlay disables kube-vip while still using the same
+K3s/Cilium/BGP values as the live wrapper where they matter. The initial Cilium
+install uses `netkit` so pod endpoints are created with the same datapath mode
+used by the steady-state ArgoCD Cilium chart.
 
 The Lima wrapper keeps Cilium masquerading enabled when it applies the
 foundation ArgoCD resources. This is intentionally Lima-only: the real cluster
 can route pod CIDRs, but Lima's user-mode network cannot route pod CIDRs back
 to pods, so pod DNS and external egress require masquerading.
 
+After the Lima Ansible phase, the Lima harness imports the context
+`lima-home-ops-k3s-test` into the local kubeconfig and keeps an SSH tunnel open
+for the K3s API. Use `just bootstrap-lima-kubecontext` to refresh only that
+context and tunnel. `just bootstrap-lima-delete` stops the recorded tunnel.
+
 ## Live Ansible Bootstrap
 
 `hack/bootstrap/ansible/` orchestrates the external `k3s-ansible` checkout for
-the physical cluster. It is a thin wrapper: `k3s-ansible` remains the engine,
-while home-ops owns site inventory, derived values, token handling, and the
-optional handoff into the Kubernetes bootstrap runner.
+the physical cluster. `k3s-ansible` remains the engine, while home-ops owns site
+inventory, derived values, token handling, and the optional handoff into the
+Kubernetes bootstrap runner. This keeps the fork close to upstream while still
+making the rendered Ansible inputs match the live cluster.
 
 The live inventory is intentionally non-secret and checked in under
 `hack/bootstrap/ansible/inventory/live/`. Generated inventory, group vars, and
@@ -167,7 +189,8 @@ state ArgoCD will enforce later.
 
 The external `k3s-ansible` defaults do not need to match home-ops versions or
 network settings. Keep that checkout close to upstream and let this wrapper
-render the homelab-specific K3s, Cilium, BGP, kube-vip, and API endpoint values.
+render the homelab-specific K3s, Cilium, BGP, kube-vip, API endpoint, and
+control-plane taint values.
 
 The live K3s token is stored at `op://Kubernetes/k3s-bootstrap/k3s_token`.
 Normal runs load it from 1Password. If a fresh cluster has no remote token and
@@ -184,6 +207,12 @@ Then converge nodes with Ansible:
 just bootstrap-live-ansible
 ```
 
+Run only the Kubernetes bootstrap after K3s already exists:
+
+```sh
+just bootstrap-live-kube default
+```
+
 Or run Ansible and then the home-ops Kubernetes bootstrap in one guarded
 command:
 
@@ -194,11 +223,6 @@ just bootstrap-live-full
 The live Ansible run prompts for explicit confirmation by default and prints
 the target hosts, first control-plane host, derived K3s/Cilium versions, and API
 endpoint before making changes.
-
-After the Ansible phase, the Lima harness imports the context
-`lima-home-ops-k3s-test` into the local kubeconfig and keeps an SSH tunnel open
-for the K3s API. Use `just bootstrap-lima-kubecontext` to refresh only that
-context and tunnel. `just bootstrap-lima-delete` stops the recorded tunnel.
 
 If more than one 1Password account is configured and the default account is
 wrong, pin the account explicitly:
