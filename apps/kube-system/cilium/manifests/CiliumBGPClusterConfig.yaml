@@ -1,6 +1,6 @@
 ---
-# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpclusterconfig_v2alpha1.json
-apiVersion: cilium.io/v2alpha1
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpclusterconfig_v2.json
+apiVersion: cilium.io/v2
 kind: CiliumBGPClusterConfig
 metadata:
   name: cilium-bgp
@@ -18,8 +18,8 @@ spec:
           peerConfigRef:
             name: "cilium-peer"
 ---
-# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgppeerconfig_v2alpha1.json
-apiVersion: cilium.io/v2alpha1
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgppeerconfig_v2.json
+apiVersion: cilium.io/v2
 kind: CiliumBGPPeerConfig
 metadata:
   name: cilium-peer
@@ -35,8 +35,8 @@ spec:
     holdTimeSeconds: 9
     keepAliveTimeSeconds: 3
 ---
-# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpadvertisement_v2alpha1.json
-apiVersion: cilium.io/v2alpha1
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumbgpadvertisement_v2.json
+apiVersion: cilium.io/v2
 kind: CiliumBGPAdvertisement
 metadata:
   name: cilium-advert
@@ -60,8 +60,8 @@ spec:
         matchExpressions:
           - { key: somekey, operator: NotIn, values: ["never-used-value"] }
 ---
-# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumloadbalancerippool_v2alpha1.json
-apiVersion: "cilium.io/v2alpha1"
+# yaml-language-server: $schema=https://kube-schemas.shold.io/cilium.io/ciliumloadbalancerippool_v2.json
+apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
   name: "01-lb-pool"

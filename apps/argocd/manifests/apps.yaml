@@ -37,6 +37,7 @@ spec:
         routingMode: "native"
         autoDirectNodeRoutes: true
         kubeProxyReplacement: true
+        rollOutCiliumPods: true
         bpf:
           masquerade: false
           datapathMode: "netkit"
@@ -67,11 +68,14 @@ spec:
                 name: cilium-hubble-ca
           relay:
             enabled: true
+            rollOutPods: true
           ui:
             enabled: true
+            rollOutPods: true
         installNoConntrackIptablesRules: true
         operator:
           replicas: 3
+          rollOutPods: true
           prometheus:
             enabled: true
             serviceMonitor:
@@ -85,6 +89,8 @@ spec:
             trustCRDsExist: true
         dashboards:
           enabled: true
+        envoy:
+          rollOutPods: true
         gatewayAPI:
           enabled: true
           enableAlpn: true

@@ -41,6 +41,7 @@ Options:
   --op-account NAME        Optional 1Password account shorthand.
   --seed-secret-stdin      Read the 1Password seed Secret manifest from stdin.
   --field-manager NAME     Server-side apply field manager. Defaults to argocd-controller.
+  --profile NAME           Bootstrap profile: full or foundation. Defaults to full.
   --dry-run                Use server-side dry-run where possible.
   --yes                    Do not prompt for confirmation.
   --audit-only             Run only the audit phase.
@@ -62,6 +63,7 @@ parse_args() {
   BOOTSTRAP_OP_ACCOUNT="${BOOTSTRAP_OP_ACCOUNT:-}"
   SEED_SECRET_STDIN=false
   FIELD_MANAGER="argocd-controller"
+  BOOTSTRAP_PROFILE="full"
   DRY_RUN=false
   YES=false
   AUDIT_ONLY=false
@@ -112,6 +114,10 @@ parse_args() {
         ;;
       --field-manager)
         FIELD_MANAGER="$2"
+        shift 2
+        ;;
+      --profile)
+        BOOTSTRAP_PROFILE="$2"
         shift 2
         ;;
       --dry-run)
@@ -203,6 +209,11 @@ validate_phase_names() {
     done
     [[ "$found" == true ]] || die "unknown phase: ${candidate}"
   done
+
+  case "$BOOTSTRAP_PROFILE" in
+    full|foundation) ;;
+    *) die "unknown bootstrap profile: ${BOOTSTRAP_PROFILE}" ;;
+  esac
 }
 
 run_phase() {
@@ -226,6 +237,7 @@ main() {
 
   export BOOTSTRAP_DIR REPO_ROOT TMP_DIR REPORT_DIR
   export KUBECONFIG_PATH KUBE_CONTEXT OP_VAULT OP_ITEM OP_FIELD BOOTSTRAP_OP_ACCOUNT SEED_SECRET_STDIN FIELD_MANAGER
+  export BOOTSTRAP_PROFILE
   export DRY_RUN YES AUDIT_ONLY
 
   for phase in "${PHASES[@]}"; do

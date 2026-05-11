@@ -156,6 +156,45 @@ wait_secret_keys() {
   die "timed out waiting for secret/${name} keys in ${namespace}: $*"
 }
 
+delete_secret_unless_cert_manager_issuer() {
+  local namespace="$1"
+  local name="$2"
+  local issuer="$3"
+  if bool "$DRY_RUN"; then
+    log "dry-run: skip stale cert-manager issuer check for secret/${name} in ${namespace}"
+    return 1
+  fi
+  local actual
+  actual="$(
+    kubectl_cmd -n "$namespace" get "secret/${name}" \
+      -o jsonpath='{.metadata.annotations.cert-manager\.io/issuer-name}' 2>/dev/null || true
+  )"
+  if [[ -z "$actual" ]]; then
+    if kubectl_cmd -n "$namespace" get "secret/${name}" >/dev/null 2>&1; then
+      log "deleting stale secret/${name} in ${namespace}; missing cert-manager issuer ${issuer}"
+      kubectl_cmd -n "$namespace" delete "secret/${name}" --ignore-not-found
+      return 0
+    fi
+    return 1
+  fi
+  if [[ "$actual" != "$issuer" ]]; then
+    log "deleting stale secret/${name} in ${namespace}; issuer ${actual} != ${issuer}"
+    kubectl_cmd -n "$namespace" delete "secret/${name}" --ignore-not-found
+    return 0
+  fi
+  return 1
+}
+
+wait_certificate_ready() {
+  local namespace="$1"
+  local name="$2"
+  if bool "$DRY_RUN"; then
+    log "dry-run: skip wait for certificate/${name} in ${namespace}"
+    return
+  fi
+  kubectl_cmd -n "$namespace" wait --for=condition=Ready "certificate/${name}" --timeout=180s
+}
+
 wait_clustersecretstore_ready() {
   local name="$1"
   if bool "$DRY_RUN"; then

@@ -13,6 +13,7 @@ write_inventory() {
 {
   "repoRoot": "${REPO_ROOT}",
   "dryRun": ${DRY_RUN},
+  "profile": "${BOOTSTRAP_PROFILE}",
   "fieldManager": "${FIELD_MANAGER}",
   "opVault": "${OP_VAULT}",
   "opItem": "${OP_ITEM}",
