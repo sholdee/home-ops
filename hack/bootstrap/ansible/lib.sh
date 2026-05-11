@@ -234,11 +234,34 @@ ansible_first_master_user() {
   yq -r '.ansible_user // env(BOOTSTRAP_ANSIBLE_SSH_USER) // ""' "$vars_file"
 }
 
+ansible_expand_path() {
+  local path="$1"
+  case "$path" in
+    \~)
+      printf '%s\n' "$HOME"
+      ;;
+    \~/*)
+      printf '%s/%s\n' "$HOME" "${path#"~/"}"
+      ;;
+    *)
+      printf '%s\n' "$path"
+      ;;
+  esac
+}
+
+ansible_ssh_key_file() {
+  local vars_file="$1"
+  local key_file
+  key_file="$(yq -r '.ansible_ssh_private_key_file // .ansible_private_key_file // ""' "$vars_file")"
+  [[ -n "$key_file" && "$key_file" != "null" ]] || return 0
+  ansible_expand_path "$key_file"
+}
+
 ansible_read_remote_token_if_exists() {
   local inventory_dir="$1"
   local inventory_file="${inventory_dir}/hosts.yml"
   local vars_file="${inventory_dir}/group_vars/all.yml"
-  local first_master host address user
+  local first_master host address user key_file ssh_args
 
   first_master="$(ansible_first_master_name "$inventory_file")"
   [[ -n "$first_master" && "$first_master" != "null" ]] || ansible_die "inventory has no master hosts"
@@ -246,8 +269,13 @@ ansible_read_remote_token_if_exists() {
   user="$(ansible_first_master_user "$vars_file")"
   [[ -n "$user" && "$user" != "null" ]] || ansible_die "ansible_user is required for token checks"
   host="${user}@${address}"
+  key_file="$(ansible_ssh_key_file "$vars_file")"
+  ssh_args=(-o BatchMode=yes -o StrictHostKeyChecking=accept-new)
+  if [[ -n "$key_file" ]]; then
+    ssh_args+=(-i "$key_file")
+  fi
 
-  ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new "$host" \
+  ssh "${ssh_args[@]}" "$host" \
     'if sudo -n test -f /var/lib/rancher/k3s/server/token; then sudo -n cat /var/lib/rancher/k3s/server/token; fi'
 }
 
@@ -255,21 +283,76 @@ ansible_read_token_from_op() {
   op read -n "$(ansible_token_ref)" 2>/dev/null
 }
 
+ansible_new_token_item_json() {
+  local token="$1"
+  jq -n \
+    --arg title "$BOOTSTRAP_ANSIBLE_OP_ITEM" \
+    --arg field "$BOOTSTRAP_ANSIBLE_OP_FIELD" \
+    --arg token "$token" \
+    '{
+      title: $title,
+      category: "SECURE_NOTE",
+      fields: [
+        {
+          id: $field,
+          label: $field,
+          type: "CONCEALED",
+          value: $token
+        }
+      ]
+    }'
+}
+
+ansible_update_token_item_json() {
+  local token="$1"
+  jq \
+    --arg field "$BOOTSTRAP_ANSIBLE_OP_FIELD" \
+    --arg token "$token" \
+    '
+      def token_field: {
+        id: $field,
+        label: $field,
+        type: "CONCEALED",
+        value: $token
+      };
+
+      .fields = (
+        (.fields // []) as $fields |
+        if any($fields[]?; .id == $field or .label == $field) then
+          [
+            $fields[] |
+            if .id == $field or .label == $field then
+              . + {
+                label: (.label // $field),
+                type: "CONCEALED",
+                value: $token
+              }
+            else
+              .
+            end
+          ]
+        else
+          $fields + [token_field]
+        end
+      )
+    '
+}
+
 ansible_write_token_to_op() {
   local token="$1"
   local item_json
-  item_json="$(
-    printf '%s' "$token" |
-      jq -Rs \
-        --arg title "$BOOTSTRAP_ANSIBLE_OP_ITEM" \
-        --arg field "$BOOTSTRAP_ANSIBLE_OP_FIELD" \
-        '{title: $title, category: "PASSWORD", fields: [{label: $field, type: "CONCEALED", value: .}]}'
-  )"
 
   if op item get "$BOOTSTRAP_ANSIBLE_OP_ITEM" --vault "$BOOTSTRAP_ANSIBLE_OP_VAULT" >/dev/null 2>&1; then
+    item_json="$(
+      op item get "$BOOTSTRAP_ANSIBLE_OP_ITEM" \
+        --vault "$BOOTSTRAP_ANSIBLE_OP_VAULT" \
+        --format json |
+        ansible_update_token_item_json "$token"
+    )"
     printf '%s\n' "$item_json" |
       op item edit "$BOOTSTRAP_ANSIBLE_OP_ITEM" --vault "$BOOTSTRAP_ANSIBLE_OP_VAULT" >/dev/null
   else
+    item_json="$(ansible_new_token_item_json "$token")"
     printf '%s\n' "$item_json" |
       op item create --vault "$BOOTSTRAP_ANSIBLE_OP_VAULT" - >/dev/null
   fi
