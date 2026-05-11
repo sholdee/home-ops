@@ -11,7 +11,7 @@ kube_vip_iface: eth0
 kube_vip_enabled: true
 kube_vip_arp: true
 kube_vip_bgp: false
-k3s_master_taint: true
+k3s_master_taint: false
 
 k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"
 extra_args: >-
