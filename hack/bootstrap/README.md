@@ -66,7 +66,11 @@ When Cilium CRDs are present, bootstrap still withholds
 `ApplicationSet/k3s-apps` from the first ArgoCD apply. It applies the Hubble CA
 chain, reconciles `Application/cilium`, waits for the Hubble server and relay
 certificates, restarts Cilium/Hubble if stale takeover certs were replaced, and
-only then applies `ApplicationSet/k3s-apps`.
+then waits for the explicit platform Applications for Dragonfly Operator,
+Grafana Operator, Longhorn, Reloader, and VolSync. Before releasing
+`ApplicationSet/k3s-apps`, it also applies external-snapshotter from
+`apps/kube-system/external-snapshotter` so VolSync restore workloads have
+snapshot CRDs/controller available.
 
 For a closer foundation test on Apple Silicon, use the Lima harness under
 `hack/bootstrap/lima/`. It creates one K3s server and two agents, runs the
