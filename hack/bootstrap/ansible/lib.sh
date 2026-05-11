@@ -501,3 +501,11 @@ ansible_run_site() {
     ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i "$inventory_file" site.yml
   )
 }
+
+ansible_disable_kube_proxy_after_cilium() {
+  local inventory_file="$1"
+  ansible_log "converging post-Cilium K3s kube-proxy state"
+  ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook \
+    -i "$inventory_file" \
+    "${ANSIBLE_BOOTSTRAP_DIR}/playbooks/disable-kube-proxy.yml"
+}

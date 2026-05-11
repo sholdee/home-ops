@@ -136,6 +136,7 @@ ansible_install_collections
 
 if ! ansible_bool "$skip_site"; then
   ansible_run_site "$inventory_file"
+  ansible_disable_kube_proxy_after_cilium "$inventory_file"
 fi
 
 if ! ansible_bool "$skip_import"; then

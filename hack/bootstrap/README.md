@@ -192,6 +192,15 @@ network settings. Keep that checkout close to upstream and let this wrapper
 render the homelab-specific K3s, Cilium, BGP, kube-vip, API endpoint, and
 control-plane taint values.
 
+Initial K3s server args intentionally leave kube-proxy enabled so the
+`k3s-ansible` bootstrap can complete before Cilium owns Service routing. After
+`site.yml` installs and waits for Cilium, the wrapper runs a home-ops
+post-Cilium playbook. When the derived Cilium config has
+`kube_proxy_replacement: true`, that playbook writes
+`/etc/rancher/k3s/config.yaml.d/90-home-ops-kube-proxy.yaml` with
+`disable-kube-proxy: true`, then restarts K3s servers one at a time and waits
+for each node plus Cilium to become ready.
+
 The live K3s token is stored at `op://Kubernetes/k3s-bootstrap/k3s_token`.
 Normal runs load it from 1Password. If a fresh cluster has no remote token and
 the 1Password item is missing, the wrapper generates and stores a token. If an

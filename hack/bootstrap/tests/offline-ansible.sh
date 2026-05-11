@@ -47,10 +47,19 @@ test "$(yq -r '.ansible_user' "$vars")" = "ethan"
 test "$(yq -r '.ansible_ssh_private_key_file' "$vars")" = "$expected_key"
 test "$(yq -r '.k3s_version' "$vars")" = "v1.35.4+k3s1"
 test "$(yq -r '.cilium_tag' "$vars")" = "$cilium_tag"
+test "$(yq -r '.kube_proxy_replacement' "$vars")" = "true"
 test "$(yq -r '.apiserver_endpoint' "$vars")" = "192.168.99.77"
 test "$(yq -r '.k3s_token' "$vars")" = "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}"
 if grep -q 'sample-token' "$vars"; then
   echo "generated vars contain sample token" >&2
+  exit 1
+fi
+if yq -r '.extra_server_args' "$vars" | grep -q -- '--disable-kube-proxy'; then
+  echo "initial server args disable kube-proxy before Cilium is ready" >&2
+  exit 1
+fi
+if ! grep -q 'ansible_disable_kube_proxy_after_cilium' "${ROOT}/hack/bootstrap/ansible/run.sh"; then
+  echo "run.sh does not call the post-Cilium kube-proxy convergence playbook" >&2
   exit 1
 fi
 
