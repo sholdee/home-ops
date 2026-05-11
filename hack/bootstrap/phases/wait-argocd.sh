@@ -75,6 +75,16 @@ wait_cilium_ready_for_k3s_apps() {
   wait_application_ready cilium
 }
 
+wait_platform_applications_for_k3s_apps() {
+  local apps=(dragonfly-operator grafana-operator longhorn reloader volsync)
+  log "refreshing explicit platform applications before applying applicationset/k3s-apps"
+  refresh_applications "${apps[@]}"
+  local app
+  for app in "${apps[@]}"; do
+    wait_application_operation_healthy "$app"
+  done
+}
+
 write_lima_apps_kustomize_patches() {
   local output="$1"
   cat > "$output" <<'EOF'
@@ -389,7 +399,7 @@ apply_lima_apps_safety_policies() {
   save_render_if_safe lima-apps-safety-policies "$policies"
 }
 
-apply_lima_apps_external_snapshotter() {
+apply_external_snapshotter() {
   local snapshotter
   if crd_exists volumesnapshotclasses.snapshot.storage.k8s.io &&
     crd_exists volumesnapshotcontents.snapshot.storage.k8s.io &&
@@ -400,10 +410,10 @@ apply_lima_apps_external_snapshotter() {
     return
   fi
 
-  snapshotter="${TMP_DIR}/lima-apps-external-snapshotter.yaml"
+  snapshotter="${TMP_DIR}/external-snapshotter.yaml"
   render_kustomize_app apps/kube-system/external-snapshotter > "$snapshotter"
   apply_file "$snapshotter"
-  save_render_if_safe lima-apps-external-snapshotter "$snapshotter"
+  save_render_if_safe external-snapshotter "$snapshotter"
   wait_crd volumesnapshotclasses.snapshot.storage.k8s.io
   wait_crd volumesnapshotcontents.snapshot.storage.k8s.io
   wait_crd volumesnapshots.snapshot.storage.k8s.io
@@ -469,13 +479,9 @@ elif [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
 elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
   log "waiting for Cilium and explicit operators before applying sanitized applicationset/k3s-apps"
   wait_cilium_ready_for_k3s_apps
-  log "refreshing explicit operator applications after Cilium readiness"
-  refresh_applications dragonfly-operator grafana-operator longhorn reloader volsync
-  for app in dragonfly-operator grafana-operator longhorn reloader volsync; do
-    wait_application_operation_healthy "$app"
-  done
+  wait_platform_applications_for_k3s_apps
   log "applying external snapshotter before VolSync restore workloads"
-  apply_lima_apps_external_snapshotter
+  apply_external_snapshotter
   log "applying Lima safety admission policies"
   apply_lima_apps_safety_policies
   log "applying sanitized infra applicationset/k3s-apps for lima-apps"
@@ -490,9 +496,12 @@ elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
 elif ! crd_exists ciliumnetworkpolicies.cilium.io; then
   log "CiliumNetworkPolicy CRD absent; skip wait for real-cluster applicationset/k3s-apps"
 else
-  log "waiting for Cilium and Hubble certs before applying applicationset/k3s-apps"
+  log "waiting for Cilium, Hubble certs, and platform applications before applying applicationset/k3s-apps"
   wait_cilium_ready_for_k3s_apps
-  log "applying applicationset/k3s-apps after Cilium is ready"
+  wait_platform_applications_for_k3s_apps
+  log "applying external snapshotter before VolSync restore workloads"
+  apply_external_snapshotter
+  log "applying applicationset/k3s-apps after platform prerequisites are ready"
   apply_k3s_apps_appset
   kubectl_cmd -n argocd get applicationset/k3s-apps >/dev/null
 fi
