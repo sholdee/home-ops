@@ -119,6 +119,26 @@ bootstrap-live-dry-run context='default':
 bootstrap-live-phase phase context='default':
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --only-phase '{{ phase }}' --dry-run --yes
 
+# Render live k3s-ansible inventory and derived vars without changing nodes.
+bootstrap-live-ansible-plan:
+    ./hack/bootstrap/ansible/render-inventory.sh --profile live --summary
+
+# Import the existing live K3s server token into 1Password.
+bootstrap-ansible-import-token:
+    ./hack/bootstrap/ansible/import-token.sh
+
+# Run the live k3s-ansible convergence wrapper.
+bootstrap-live-ansible:
+    ./hack/bootstrap/ansible/run.sh --profile live
+
+# Run the Kubernetes bootstrap phase against the live default context.
+bootstrap-live-kube context='default':
+    ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --profile full --yes
+
+# Run live k3s-ansible convergence, then home-ops Kubernetes bootstrap.
+bootstrap-live-full:
+    ./hack/bootstrap/ansible/run.sh --profile live --kube-bootstrap
+
 # Delete and recreate the configured three-node kind cluster.
 kind-reset:
     kind delete cluster --name '{{ kind_cluster }}'
@@ -193,5 +213,6 @@ bootstrap-audit:
 
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 bootstrap-test:
-    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh
+    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh
     hack/bootstrap/tests/offline-parse.sh
+    hack/bootstrap/tests/offline-ansible.sh

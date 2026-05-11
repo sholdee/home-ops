@@ -45,3 +45,6 @@ jobs:
 
       - name: Run bootstrap offline parse test
         run: hack/bootstrap/tests/offline-parse.sh
+
+      - name: Run bootstrap offline Ansible test
+        run: hack/bootstrap/tests/offline-ansible.sh

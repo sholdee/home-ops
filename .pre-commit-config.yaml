@@ -59,7 +59,7 @@ repos:
           - "-schema-location"
           - "https://kube-schemas.shold.io/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
         types: [yaml]
-        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
+        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|^hack/bootstrap/ansible/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
 
   - repo: local
     hooks:

@@ -46,6 +46,11 @@ normal app graph.
   long bootstrap runs.
 - Keep `bootstrap.sh` generic and put profile-specific behavior in narrow phase
   helpers or Lima wrapper scripts.
+- Keep physical-node Ansible orchestration in `hack/bootstrap/ansible/`.
+  Generated inventories, kubeconfigs, and run output belong under `.out/`.
+  1Password may hold durable bootstrap secrets such as the K3s token; scripts
+  must pass secret values through stdin, environment, or memory and never log
+  them.
 - Validate script changes with `just bootstrap-test` and targeted `shellcheck`.
   For app-profile changes, also use the relevant Lima validation recipe.
 - If a long Lima run fails, identify whether it is an ordering problem,

@@ -84,28 +84,6 @@ lima_require_common_tools() {
   lima_require_tool jq
 }
 
-lima_home_ops_cilium_tag() {
-  local version
-  version="$(
-    yq -r '
-      select(.kind == "Application" and .metadata.name == "cilium") |
-      .spec.source.targetRevision
-    ' "${REPO_ROOT}/apps/argocd/manifests/apps.yaml"
-  )"
-  [[ -n "$version" && "$version" != "null" ]] || lima_die "could not derive Cilium targetRevision from home-ops"
-  printf 'v%s\n' "${version#v}"
-}
-
-lima_assert_cilium_version_match() {
-  local home_ops_tag ansible_tag
-  home_ops_tag="$(lima_home_ops_cilium_tag)"
-  ansible_tag="$(yq -r '.cilium_tag // ""' "${K3S_ANSIBLE_DIR}/roles/k3s_server_post/defaults/main.yml")"
-  [[ -n "$ansible_tag" && "$ansible_tag" != "null" ]] || lima_die "k3s-ansible has no roles/k3s_server_post default cilium_tag"
-  [[ "$ansible_tag" == "$home_ops_tag" ]] || {
-    lima_die "Cilium version mismatch: home-ops=${home_ops_tag}, k3s-ansible=${ansible_tag}"
-  }
-}
-
 lima_ssh_option() {
   local instance="$1"
   local option="$2"
@@ -137,6 +115,10 @@ lima_guest_iface() {
 
 lima_inventory_dir() {
   printf '%s\n' "${LIMA_OUT_DIR}/inventory"
+}
+
+lima_inventory_source_dir() {
+  printf '%s\n' "${LIMA_OUT_DIR}/inventory-source"
 }
 
 lima_inventory_file() {
