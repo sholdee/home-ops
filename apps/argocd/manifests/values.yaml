@@ -77,6 +77,102 @@ configs:
          - CiliumIdentity
        clusters:
          - "*"
+    resource.customizations.health.external-secrets.io_ClusterSecretStore: |
+      hs = { status = "Progressing", message = "Waiting for ClusterSecretStore readiness" }
+      if obj.status and obj.status.conditions then
+        for _, condition in ipairs(obj.status.conditions) do
+          if condition.type == "Ready" then
+            hs.message = condition.message or condition.reason or hs.message
+            if condition.status == "True" then
+              hs.status = "Healthy"
+            elseif condition.status == "False" then
+              hs.status = "Degraded"
+            end
+            return hs
+          end
+        end
+      end
+      return hs
+    resource.customizations.health.external-secrets.io_ExternalSecret: |
+      hs = { status = "Progressing", message = "Waiting for ExternalSecret readiness" }
+      if obj.status and obj.status.conditions then
+        for _, condition in ipairs(obj.status.conditions) do
+          if condition.type == "Ready" then
+            hs.message = condition.message or condition.reason or hs.message
+            if condition.status == "True" then
+              hs.status = "Healthy"
+            elseif condition.status == "False" then
+              hs.status = "Degraded"
+            end
+            return hs
+          end
+        end
+      end
+      return hs
+    resource.customizations.health.gateway.networking.k8s.io_Gateway: |
+      hs = { status = "Progressing", message = "Waiting for Gateway programming" }
+      local accepted = false
+      local programmed = false
+      if obj.status and obj.status.conditions then
+        for _, condition in ipairs(obj.status.conditions) do
+          if condition.status == "False" then
+            hs.status = "Degraded"
+            hs.message = condition.message or condition.reason or hs.message
+            return hs
+          end
+          if condition.type == "Accepted" and condition.status == "True" then
+            accepted = true
+          end
+          if condition.type == "Programmed" and condition.status == "True" then
+            programmed = true
+          end
+        end
+      end
+      if accepted and programmed then
+        hs.status = "Healthy"
+        hs.message = "Gateway accepted and programmed"
+      end
+      return hs
+    resource.customizations.health.postgresql.cnpg.io_Cluster: |
+      hs = { status = "Progressing", message = "Waiting for CNPG cluster readiness" }
+      if obj.status and obj.status.conditions then
+        for _, condition in ipairs(obj.status.conditions) do
+          if condition.type == "Ready" then
+            hs.message = condition.message or condition.reason or hs.message
+            if condition.status == "True" then
+              hs.status = "Healthy"
+            end
+            return hs
+          end
+        end
+      end
+      return hs
+    resource.customizations.health.postgresql.cnpg.io_Database: |
+      hs = { status = "Progressing", message = "Waiting for CNPG database reconcile" }
+      if obj.status and obj.status.applied == true then
+        hs.status = "Healthy"
+        hs.message = "Database applied"
+      end
+      return hs
+    resource.customizations.health.postgresql.cnpg.io_Pooler: |
+      hs = { status = "Progressing", message = "Waiting for CNPG pooler readiness" }
+      if obj.status and obj.status.instances and obj.spec and obj.spec.instances and obj.status.instances == obj.spec.instances then
+        hs.status = "Healthy"
+        hs.message = "Pooler instances reconciled"
+      end
+      return hs
+    resource.customizations.health.volsync.backube_ReplicationDestination: |
+      hs = { status = "Progressing", message = "Waiting for VolSync restore" }
+      if obj.status and obj.status.latestMoverStatus then
+        if obj.status.latestMoverStatus.result == "Successful" then
+          hs.status = "Healthy"
+          hs.message = "Restore completed"
+        elseif obj.status.latestMoverStatus.result == "Failed" then
+          hs.status = "Degraded"
+          hs.message = "Restore failed"
+        end
+      end
+      return hs
     users.anonymous.enabled: "true"
   rbac:
     policy.default: 'role:readonly'

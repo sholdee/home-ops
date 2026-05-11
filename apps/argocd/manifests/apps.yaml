@@ -264,6 +264,8 @@ spec:
     chart: longhorn
     helm:
       valuesObject:
+        preUpgradeChecker:
+          jobEnabled: false
         defaultSettings:
           defaultDataLocality: best-effort
           concurrentAutomaticEngineUpgradePerNodeLimit: "2"

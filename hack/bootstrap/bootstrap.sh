@@ -17,6 +17,7 @@ PHASES=(
   bootstrap-crds
   cert-manager
   external-secrets
+  gateway-cert-seed
   dragonfly-operator
   argocd-dependencies
   argocd
@@ -41,7 +42,7 @@ Options:
   --op-account NAME        Optional 1Password account shorthand.
   --seed-secret-stdin      Read the 1Password seed Secret manifest from stdin.
   --field-manager NAME     Server-side apply field manager. Defaults to argocd-controller.
-  --profile NAME           Bootstrap profile: full or foundation. Defaults to full.
+  --profile NAME           Bootstrap profile: full, foundation, or lima-apps. Defaults to full.
   --dry-run                Use server-side dry-run where possible.
   --yes                    Do not prompt for confirmation.
   --audit-only             Run only the audit phase.
@@ -211,7 +212,7 @@ validate_phase_names() {
   done
 
   case "$BOOTSTRAP_PROFILE" in
-    full|foundation) ;;
+    full|foundation|lima-apps) ;;
     *) die "unknown bootstrap profile: ${BOOTSTRAP_PROFILE}" ;;
   esac
 }

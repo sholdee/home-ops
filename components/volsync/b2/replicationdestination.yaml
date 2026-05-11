@@ -4,6 +4,8 @@ apiVersion: volsync.backube/v1alpha1
 kind: ReplicationDestination
 metadata:
   name: app-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
 spec:
   restic:
     accessModes:

@@ -4,6 +4,8 @@ apiVersion: volsync.backube/v1alpha1
 kind: ReplicationSource
 metadata:
   name: app
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   restic:
     accessModes:

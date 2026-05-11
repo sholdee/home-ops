@@ -4,6 +4,8 @@ apiVersion: external-secrets.io/v1
 kind: ClusterSecretStore
 metadata:
   name: gateway-cert-backups
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   provider:
     onepassword:
@@ -17,11 +19,100 @@ spec:
             key: token
             namespace: external-secrets
 ---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: external-wildcard-restore
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshPolicy: CreatedOnce
+  secretStoreRef:
+    name: gateway-cert-backups
+    kind: ClusterSecretStore
+  target:
+    name: external-wildcard
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      type: kubernetes.io/tls
+  data:
+    - secretKey: tls.crt
+      remoteRef:
+        key: gateway-external-wildcard
+        property: tls.crt
+    - secretKey: tls.key
+      remoteRef:
+        key: gateway-external-wildcard
+        property: tls.key
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: mgmt-wildcard-restore
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshPolicy: CreatedOnce
+  secretStoreRef:
+    name: gateway-cert-backups
+    kind: ClusterSecretStore
+  target:
+    name: mgmt-wildcard
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      type: kubernetes.io/tls
+  data:
+    - secretKey: tls.crt
+      remoteRef:
+        key: gateway-mgmt-wildcard
+        property: tls.crt
+    - secretKey: tls.key
+      remoteRef:
+        key: gateway-mgmt-wildcard
+        property: tls.key
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/externalsecret_v1.json
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: guest-wildcard-restore
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  refreshPolicy: CreatedOnce
+  secretStoreRef:
+    name: gateway-cert-backups
+    kind: ClusterSecretStore
+  target:
+    name: guest-wildcard
+    creationPolicy: Orphan
+    deletionPolicy: Retain
+    template:
+      engineVersion: v2
+      type: kubernetes.io/tls
+  data:
+    - secretKey: tls.crt
+      remoteRef:
+        key: gateway-guest-wildcard
+        property: tls.crt
+    - secretKey: tls.key
+      remoteRef:
+        key: gateway-guest-wildcard
+        property: tls.key
+---
 # yaml-language-server: $schema=https://kube-schemas.shold.io/external-secrets.io/pushsecret_v1alpha1.json
 apiVersion: external-secrets.io/v1alpha1
 kind: PushSecret
 metadata:
   name: external-wildcard
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   updatePolicy: Replace
   deletionPolicy: None
@@ -49,6 +140,8 @@ apiVersion: external-secrets.io/v1alpha1
 kind: PushSecret
 metadata:
   name: mgmt-wildcard
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   updatePolicy: Replace
   deletionPolicy: None
@@ -76,6 +169,8 @@ apiVersion: external-secrets.io/v1alpha1
 kind: PushSecret
 metadata:
   name: guest-wildcard
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   updatePolicy: Replace
   deletionPolicy: None

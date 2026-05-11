@@ -13,11 +13,13 @@ minimum dependencies needed for ArgoCD to take over:
 2. Install required CRDs.
 3. Bootstrap cert-manager.
 4. Bootstrap External Secrets and 1Password Connect.
-5. Bootstrap Dragonfly Operator.
-6. Apply narrow ArgoCD dependencies.
-7. Apply the canonical `apps/argocd` render.
-8. Wait for ArgoCD components.
-9. Run conservative Helm takeover cleanup and audit.
+5. Seed Gateway wildcard TLS Secrets from 1Password when the selected profile
+   will apply normal apps.
+6. Bootstrap Dragonfly Operator.
+7. Apply narrow ArgoCD dependencies.
+8. Apply the canonical `apps/argocd` render.
+9. Wait for ArgoCD components.
+10. Run conservative Helm takeover cleanup and audit.
 
 Run a dry-run against the current kube context:
 
@@ -80,10 +82,43 @@ Ansible-installed Cilium, it rotates stale Hubble cert Secrets that were not
 issued by `Issuer/cilium-hubble-ca` and restarts Cilium/Hubble after the
 replacement certs are ready.
 
-By default the disposable server VM uses `4` CPU and `6GiB` memory, while each
-agent VM uses `2` CPU and `3GiB` memory. Override with `LIMA_SERVER_CPUS`,
-`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_CPUS`, or `LIMA_AGENT_MEMORY_GIB` when
-needed.
+After foundation is working, the Lima harness can run the narrower app profile:
+
+```sh
+just bootstrap-lima-bootstrap-apps
+just bootstrap-lima-validate-apps
+```
+
+If an app-profile test needs app manifests from a branch before they merge to
+`master`, push the branch and set `LIMA_APPSET_TARGET_REVISION` for the Lima
+bootstrap run.
+
+The `lima-apps` profile restores Gateway wildcard TLS Secrets from 1Password
+through `ExternalSecret` resources before applying normal apps. It then applies
+external-snapshotter from `apps/kube-system/external-snapshotter` so VolSync
+restore workloads have snapshot CRDs/controller available, then applies the
+existing `ApplicationSet/k3s-apps` name with a Lima-only allowlist and
+render-time patches. The first app profile includes cert-manager,
+external-secrets, kube-system support resources, Longhorn support resources,
+CNPG, Envoy Gateway, Gateway, `hass`, and `powerdns`. It removes Gateway ACME
+annotations, disables CNPG WAL archiving while keeping recovery configuration,
+deletes backup schedules and VolSync upload sources, and applies Lima-only
+admission policies that deny known external writer resources. VolSync restore
+destinations keep retain storage so the restored snapshot can populate the
+final PVC.
+
+By default the disposable foundation shape is one server VM using `4` CPU and
+`6GiB` memory plus two agent VMs using `2` CPU and `3GiB` memory. The app-profile
+`just` recipes create three larger agent VMs using `4` CPU and `6GiB` memory
+each with `120GiB` disks, because the allowed app set includes topology-spread
+workloads, Longhorn, VolSync restores, retained restore source volumes, and
+database operators. Override with `LIMA_SERVER_CPUS`,
+`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`,
+`LIMA_AGENT_MEMORY_GIB`, or `LIMA_DISK_GIB` when needed.
+
+Lima VM creation installs `open-iscsi` and `nfs-common` before k3s-ansible runs.
+Longhorn needs the iSCSI initiator for block volumes, and RWX volumes need the
+NFS mount helper on each node.
 
 The Lima inventory uses the server VM IP as the K3s API endpoint. Production
 `k3s-ansible` group vars still pin kube-vip to `v1.1.2`, but Lima's default

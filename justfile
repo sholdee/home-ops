@@ -1,6 +1,7 @@
 kind_cluster := env_var_or_default("KIND_CLUSTER", "home-ops-bootstrap")
 kind_context := "kind-" + kind_cluster
 helm_api_version := "grafana.integreatly.org/v1beta1/GrafanaDashboard"
+lima_app_env := "LIMA_AGENT_COUNT=3 LIMA_AGENT_CPUS=4 LIMA_AGENT_MEMORY_GIB=6 LIMA_DISK_GIB=120 LIMA_VALIDATE_APP_WAIT_SECONDS=3600"
 
 # Show available just tasks and their descriptions.
 default:
@@ -131,9 +132,17 @@ kind-delete:
 bootstrap-lima-create:
     ./hack/bootstrap/lima/create.sh
 
+# Create larger Lima VMs for the app bootstrap profile.
+bootstrap-lima-create-apps:
+    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
+
 # Run k3s-ansible against the configured Lima VMs.
 bootstrap-lima-ansible:
     ./hack/bootstrap/lima/run-ansible.sh
+
+# Run k3s-ansible against the larger Lima app-profile VM shape.
+bootstrap-lima-ansible-apps:
+    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
 
 # Import/update the Lima K3s context in the local kubeconfig and keep its API tunnel running.
 bootstrap-lima-kubecontext:
@@ -143,6 +152,14 @@ bootstrap-lima-kubecontext:
 bootstrap-lima-bootstrap:
     ./hack/bootstrap/lima/bootstrap-home-ops.sh
 
+# Run home-ops app bootstrap profile against the Lima K3s cluster.
+bootstrap-lima-bootstrap-apps:
+    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh
+
+# Run Lima app bootstrap with the seed Secret manifest provided on stdin.
+bootstrap-lima-bootstrap-apps-stdin:
+    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
+
 # Run Lima foundation bootstrap with the seed Secret manifest provided on stdin.
 bootstrap-lima-bootstrap-stdin:
     ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
@@ -151,12 +168,24 @@ bootstrap-lima-bootstrap-stdin:
 bootstrap-lima-validate:
     ./hack/bootstrap/lima/validate.sh
 
+# Validate app-profile safety invariants in the Lima cluster.
+bootstrap-lima-validate-apps:
+    LIMA_VALIDATE_PROFILE=lima-apps ./hack/bootstrap/lima/validate.sh
+
 # Delete the configured Lima VMs.
 bootstrap-lima-delete:
     ./hack/bootstrap/lima/delete.sh
 
 # Recreate Lima VMs, run k3s-ansible, bootstrap home-ops, and validate foundation state.
 bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima-ansible bootstrap-lima-bootstrap bootstrap-lima-validate
+
+# Recreate larger Lima VMs, run k3s-ansible, bootstrap app profile, and validate app safety.
+bootstrap-lima-fresh-apps:
+    {{ lima_app_env }} ./hack/bootstrap/lima/delete.sh
+    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
+    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
+    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh
+    LIMA_VALIDATE_PROFILE=lima-apps ./hack/bootstrap/lima/validate.sh
 
 # Audit the current kube context for bootstrap/takeover state.
 bootstrap-audit:

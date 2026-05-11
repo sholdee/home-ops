@@ -6,6 +6,7 @@ metadata:
   name: grafana-db
   namespace: monitoring
   annotations:
+    argocd.argoproj.io/sync-wave: "-3"
     cnpg.io/skipEmptyWalArchiveCheck: enabled
 spec:
   instances: 3
@@ -36,6 +37,8 @@ kind: Database
 metadata:
   name: grafana
   namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: grafana-db
@@ -65,6 +68,8 @@ kind: Pooler
 metadata:
   name: grafana-db-pooler-rw
   namespace: monitoring
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: grafana-db

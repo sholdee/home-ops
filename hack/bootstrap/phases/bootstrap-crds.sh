@@ -19,15 +19,33 @@ apply_crds_from_chart() {
   save_render_if_safe "${name}-crds" "$output"
 }
 
-if ! crd_exists httproutes.gateway.networking.k8s.io; then
+gateway_crds=(
+  httproutes.gateway.networking.k8s.io
+  backendtlspolicies.gateway.networking.k8s.io
+  envoyproxies.gateway.envoyproxy.io
+  clienttrafficpolicies.gateway.envoyproxy.io
+  backendtrafficpolicies.gateway.envoyproxy.io
+  securitypolicies.gateway.envoyproxy.io
+)
+gateway_crds_missing=false
+for gateway_crd in "${gateway_crds[@]}"; do
+  if ! crd_exists "$gateway_crd"; then
+    gateway_crds_missing=true
+    break
+  fi
+done
+
+if [[ "$gateway_crds_missing" == true ]]; then
   envoy_chart="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.name')"
   envoy_repo="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.repo')"
   envoy_version="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.version')"
   apply_crds_from_chart gateway-api "$envoy_chart" "$envoy_repo" "$envoy_version" envoy-gateway-system
-  wait_crd httproutes.gateway.networking.k8s.io
 else
-  log "Gateway API CRDs already present"
+  log "Gateway API and Envoy Gateway CRDs already present"
 fi
+for gateway_crd in "${gateway_crds[@]}"; do
+  wait_crd "$gateway_crd"
+done
 
 prom_chart="$(chart_value "${REPO_ROOT}/apps/monitoring/kustomization.yaml" kube-prometheus-stack '.name')"
 prom_repo="$(chart_value "${REPO_ROOT}/apps/monitoring/kustomization.yaml" kube-prometheus-stack '.repo')"
@@ -43,6 +61,8 @@ apply_crds_from_chart external-secrets "$eso_chart" "$eso_repo" "$eso_version" e
 wait_crd clustersecretstores.external-secrets.io
 wait_crd externalsecrets.external-secrets.io
 wait_crd passwords.generators.external-secrets.io
+wait_crd pushsecrets.external-secrets.io
+wait_crd clusterpushsecrets.external-secrets.io
 
 grafana_chart="$(app_value grafana-operator '.spec.source.chart')"
 grafana_repo="$(app_value grafana-operator '.spec.source.repoURL')"

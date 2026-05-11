@@ -11,11 +11,12 @@ lima_require_tool nc
 mkdir -p "$LIMA_OUT_DIR"
 lima_start_apiserver_tunnel >/dev/null
 kubeconfig="$(lima_prepare_kubeconfig)"
+profile="${LIMA_BOOTSTRAP_PROFILE:-foundation}"
 
-lima_log "running home-ops foundation bootstrap"
+lima_log "running home-ops ${profile} bootstrap"
 BOOTSTRAP_LIMA=true "${BOOTSTRAP_DIR}/bootstrap.sh" \
   --repo "$REPO_ROOT" \
   --kubeconfig "$kubeconfig" \
-  --profile foundation \
+  --profile "$profile" \
   --yes \
   "$@"
