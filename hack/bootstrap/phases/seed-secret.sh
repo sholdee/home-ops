@@ -49,6 +49,16 @@ normalize_seed_secret() {
       else
         .
       end;
+    def scrub_server_metadata:
+      del(
+        .metadata.creationTimestamp,
+        .metadata.generation,
+        .metadata.managedFields,
+        .metadata.resourceVersion,
+        .metadata.selfLink,
+        .metadata.uid,
+        .status
+      );
 
     (if .kind != "Secret" then
        .
@@ -61,7 +71,7 @@ normalize_seed_secret() {
       .data["1password-credentials.json"] = (.data["1password-credentials.json"] | @base64d)
     else
       .
-    end) | string_data_to_data
+    end) | string_data_to_data | scrub_server_metadata
   ' | yq -P
 }
 

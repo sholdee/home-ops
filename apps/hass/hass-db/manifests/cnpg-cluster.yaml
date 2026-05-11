@@ -6,6 +6,7 @@ metadata:
   name: &name hass-db2
   namespace: hass
   annotations:
+    argocd.argoproj.io/sync-wave: "-3"
     cnpg.io/skipEmptyWalArchiveCheck: enabled
 spec:
   instances: 3
@@ -68,6 +69,8 @@ kind: Database
 metadata:
   name: hass
   namespace: hass
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: hass-db2
@@ -82,6 +85,8 @@ kind: Database
 metadata:
   name: mealie
   namespace: hass
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: hass-db2
@@ -111,6 +116,8 @@ kind: Pooler
 metadata:
   name: hass-db-pooler-rw
   namespace: hass
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: hass-db2

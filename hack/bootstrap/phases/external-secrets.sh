@@ -33,5 +33,25 @@ wait_clustersecretstore_ready onepassword-connect
 
 cert_render="${TMP_DIR}/cert-manager-full.yaml"
 render_kustomize_app apps/cert-manager > "$cert_render"
+if [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
+  cert_lima_render="${TMP_DIR}/cert-manager-lima-apps.yaml"
+  yq '
+    select(
+      (
+        .apiVersion == "external-secrets.io/v1" and
+        .kind == "ExternalSecret" and
+        .metadata.name == "cloudflare-api-token-secret"
+      ) | not
+    ) |
+    select(
+      (
+        .apiVersion == "cert-manager.io/v1" and
+        .kind == "ClusterIssuer" and
+        .metadata.name == "cloudflare"
+      ) | not
+    )
+  ' "$cert_render" > "$cert_lima_render"
+  cert_render="$cert_lima_render"
+fi
 apply_file "$cert_render"
 log "full cert-manager app applied after External Secrets readiness"

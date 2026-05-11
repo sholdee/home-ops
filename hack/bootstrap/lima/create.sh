@@ -29,6 +29,7 @@ for instance in $(lima_instance_names); do
     --disk="$LIMA_DISK_GIB" \
     --network=lima:user-v2 \
     "$LIMA_TEMPLATE"
+  lima_install_guest_prereqs "$instance"
 done
 
 "${SCRIPT_DIR}/inventory.sh"

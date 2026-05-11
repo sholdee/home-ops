@@ -123,6 +123,9 @@ spec:
         - matchLabels:
             cnpg.io/podRole: instance
             cnpg.io/cluster: powerdns-db
+        - matchLabels:
+            cnpg.io/jobRole: join
+            cnpg.io/cluster: powerdns-db
       toPorts:
         - ports:
             - port: "5432"

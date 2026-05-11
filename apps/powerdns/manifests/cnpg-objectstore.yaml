@@ -4,6 +4,8 @@ apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:
   name: cnpg-powerdns-b2
+  annotations:
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   configuration:
     destinationPath: s3://sholdee-cnpg-powerdns/

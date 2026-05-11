@@ -6,6 +6,7 @@ metadata:
   name: &name powerdns-db
   namespace: powerdns
   annotations:
+    argocd.argoproj.io/sync-wave: "-3"
     cnpg.io/skipEmptyWalArchiveCheck: enabled
 spec:
   instances: 3
@@ -200,6 +201,8 @@ kind: Database
 metadata:
   name: powerdns
   namespace: powerdns
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: powerdns-db
@@ -244,6 +247,8 @@ kind: Pooler
 metadata:
   name: powerdns-db-pooler-rw
   namespace: powerdns
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
 spec:
   cluster:
     name: powerdns-db

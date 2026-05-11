@@ -18,7 +18,7 @@ runner is used on the real cluster.
 - `jq`
 - `op`
 - `shellcheck`
-- `limactl` and `ansible-playbook` for the optional Lima VM foundation test
+- `limactl` and `ansible-playbook` for the optional Lima VM bootstrap tests
 - A kubeconfig pointing at the target cluster
 - 1Password CLI signed in with access to
   `op://Kubernetes/op-credentials/op-credentials.yaml`
@@ -105,10 +105,13 @@ checkout, then runs home-ops bootstrap with `--profile foundation`.
 Defaults:
 
 - Lima cluster prefix: `home-ops-k3s-test`
+- foundation VM shape: one server and two agents
 - k3s-ansible checkout: `../k3s-ansible`, relative to the home-ops checkout
 - home-ops checkout: the current working tree
 - server VM size: `4` CPU and `6GiB` memory
-- agent VM size: `2` CPU and `3GiB` memory
+- foundation agent VM size: `2` CPU and `3GiB` memory
+- guest storage prerequisites: `open-iscsi` and `nfs-common` are installed on
+  each VM before k3s-ansible runs so Longhorn block and RWX volumes can mount
 - Cilium version: derived from `Application/cilium.spec.source.targetRevision`
   and required to match the k3s-ansible role default
 - Cilium datapath mode: `netkit`, matching the steady-state ArgoCD values
@@ -120,7 +123,7 @@ Defaults:
 - Local kube context: `lima-home-ops-k3s-test`
 
 The size can be overridden with `LIMA_SERVER_CPUS`,
-`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_CPUS`, and
+`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`, and
 `LIMA_AGENT_MEMORY_GIB`.
 
 Run the full disposable VM flow:
@@ -155,6 +158,13 @@ op read op://Kubernetes/op-credentials/op-credentials.yaml \
   | just bootstrap-lima-bootstrap-stdin
 ```
 
+Use the app-profile variant for the same stdin seed flow:
+
+```sh
+op read op://Kubernetes/op-credentials/op-credentials.yaml \
+  | just bootstrap-lima-bootstrap-apps-stdin
+```
+
 Delete the VMs:
 
 ```sh
@@ -181,6 +191,70 @@ foundation ArgoCD resources. The real cluster disables Cilium masquerading
 because its network can route pod CIDRs; Lima's user-mode network cannot route
 pod CIDRs back to pods, so pod DNS and external egress require masquerading in
 the disposable test cluster.
+
+## Local Lima App Test
+
+After the foundation profile is healthy, run the app profile against the same
+Lima cluster. The app profile is materially heavier than foundation mode and
+expects at least three schedulable worker nodes with `4` CPU, `6GiB` memory,
+and enough disk for Longhorn restore and replica scheduling. The app-specific
+recipes create `120GiB` VM disks and preflight requires at least `100GiB`
+allocatable ephemeral storage per schedulable worker. Use the app-specific
+create/ansible recipes if running phase by phase:
+
+```sh
+just bootstrap-lima-delete
+just bootstrap-lima-create-apps
+just bootstrap-lima-ansible-apps
+```
+
+Then bootstrap and validate:
+
+```sh
+just bootstrap-lima-bootstrap-apps
+just bootstrap-lima-validate-apps
+```
+
+Or recreate the VMs and run the app profile in one step:
+
+```sh
+just bootstrap-lima-fresh-apps
+```
+
+To validate app-level changes from a branch before they merge to `master`, push
+the branch first and point the generated Applications at it:
+
+```sh
+LIMA_APPSET_TARGET_REVISION=feat/my-branch just bootstrap-lima-fresh-apps
+```
+
+The app profile uses `--profile lima-apps`. It is intentionally still scoped:
+it restores Gateway wildcard TLS Secrets from 1Password, waits for
+`gateway/external-wildcard`, `gateway/mgmt-wildcard`, and
+`gateway/guest-wildcard` to contain `tls.crt` and `tls.key`, applies
+external-snapshotter from `apps/kube-system/external-snapshotter`, then applies
+the existing `ApplicationSet/k3s-apps` name with a Lima-only allowlist.
+Validation waits for allowlisted ArgoCD Application sync operations and then
+requires those Applications to become `Synced` and `Healthy`. It then requires
+all non-completed pods to settle to Running and Ready.
+
+The first allowlist includes cert-manager, external-secrets, kube-system
+support resources, Longhorn support resources, CNPG, Envoy Gateway, Gateway,
+`hass`, and `powerdns`. The rendered desired state removes Gateway ACME
+annotations, removes `PushSecret` resources, removes VolSync
+`ReplicationSource`, removes CNPG backup schedules, disables CNPG WAL archiving
+while keeping recovery configuration, removes the Longhorn backup
+`RecurringJob`, and removes kube-vip from the disposable Lima cluster. VolSync
+restore destinations keep their retain storage class because the restored
+snapshot must survive long enough to populate the final PVC.
+
+The app profile also installs Lima-only `ValidatingAdmissionPolicy` guardrails
+that deny known external writer resources such as `PushSecret`,
+`ClusterPushSecret`, ACME `Order`/`Challenge`, VolSync `ReplicationSource`,
+CNPG backup resources, Velero backup resources, external-dns `DNSEndpoint`, and
+Longhorn backup `RecurringJob`. The render-time patches are the primary safety
+control; admission is there to fail closed if a future manifest reintroduces a
+writer.
 
 ## Real Cluster Bootstrap
 

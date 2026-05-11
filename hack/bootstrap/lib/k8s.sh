@@ -138,12 +138,13 @@ wait_secret_keys() {
     log "dry-run: skip wait for secret/${name} keys in ${namespace}"
     return
   fi
-  local i key
+  local i key secret_json
   for ((i = 0; i < 60; i++)); do
     local all_present=true
+    secret_json="$(kubectl_cmd -n "$namespace" get "secret/${name}" -o json 2>/dev/null || true)"
     for key in "$@"; do
-      if ! kubectl_cmd -n "$namespace" get "secret/${name}" -o json |
-        jq -e --arg key "$key" '.data[$key] // empty' >/dev/null 2>&1; then
+      if [[ -z "$secret_json" ]] ||
+        ! jq -e --arg key "$key" '.data[$key] // empty' <<<"$secret_json" >/dev/null 2>&1; then
         all_present=false
         break
       fi

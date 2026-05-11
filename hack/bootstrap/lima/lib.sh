@@ -6,12 +6,9 @@ REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
 LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-home-ops-k3s-test}"
 LIMA_SERVER_NAME="${LIMA_CLUSTER_NAME}-server-1"
-LIMA_AGENT_NAMES=(
-  "${LIMA_CLUSTER_NAME}-agent-1"
-  "${LIMA_CLUSTER_NAME}-agent-2"
-)
 K3S_ANSIBLE_DIR="${K3S_ANSIBLE_DIR:-${REPO_ROOT}/../k3s-ansible}"
 LIMA_OUT_DIR="${LIMA_OUT_DIR:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME}}"
+LIMA_AGENT_COUNT="${LIMA_AGENT_COUNT:-2}"
 LIMA_CPUS="${LIMA_CPUS:-2}"
 LIMA_MEMORY_GIB="${LIMA_MEMORY_GIB:-3}"
 LIMA_SERVER_CPUS="${LIMA_SERVER_CPUS:-4}"
@@ -23,6 +20,16 @@ LIMA_TEMPLATE="${LIMA_TEMPLATE:-template:ubuntu}"
 LIMA_KUBECONFIG_PORT="${LIMA_KUBECONFIG_PORT:-16443}"
 LIMA_KUBECONTEXT="${LIMA_KUBECONTEXT:-lima-${LIMA_CLUSTER_NAME}}"
 LIMA_USER_KUBECONFIG="${LIMA_USER_KUBECONFIG:-${HOME}/.kube/config}"
+
+if [[ ! "$LIMA_AGENT_COUNT" =~ ^[0-9]+$ || "$LIMA_AGENT_COUNT" -lt 1 ]]; then
+  printf 'ERROR: LIMA_AGENT_COUNT must be a positive integer\n' >&2
+  exit 1
+fi
+
+LIMA_AGENT_NAMES=()
+for agent_index in $(seq 1 "$LIMA_AGENT_COUNT"); do
+  LIMA_AGENT_NAMES+=("${LIMA_CLUSTER_NAME}-agent-${agent_index}")
+done
 
 lima_log() {
   printf '[%s] %s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$*"
@@ -42,8 +49,33 @@ lima_instance_names() {
   printf '%s\n' "${LIMA_AGENT_NAMES[@]}"
 }
 
+lima_cluster_instance_names() {
+  limactl list --format='{{.Name}}' 2>/dev/null |
+    grep -E "^${LIMA_CLUSTER_NAME}-(server|agent)-[0-9]+$" || true
+}
+
 lima_instance_exists() {
   limactl list --format='{{.Name}}' 2>/dev/null | grep -Fxq "$1"
+}
+
+lima_install_guest_prereqs() {
+  local instance="$1"
+  local attempt
+  for attempt in $(seq 1 12); do
+    lima_log "installing guest prerequisites on ${instance} (${attempt}/12)"
+    if limactl shell --tty=false "$instance" -- sudo sh -lc '
+      set -eu
+      export DEBIAN_FRONTEND=noninteractive
+      apt-get update
+      apt-get install -y open-iscsi nfs-common
+      systemctl enable --now iscsid
+    '; then
+      return 0
+    fi
+    sleep 10
+  done
+
+  lima_die "failed to install guest prerequisites on ${instance}"
 }
 
 lima_require_common_tools() {
