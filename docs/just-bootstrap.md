@@ -18,6 +18,7 @@ runner is used on the real cluster.
 - `jq`
 - `op`
 - `shellcheck`
+- `limactl` and `ansible-playbook` for the optional Lima VM foundation test
 - A kubeconfig pointing at the target cluster
 - 1Password CLI signed in with access to
   `op://Kubernetes/op-credentials/op-credentials.yaml`
@@ -88,6 +89,99 @@ does not publish schemas over the live schema index. That keeps kind focused on
 bootstrap dependency ordering instead of trying to run every homelab workload
 without Cilium, Longhorn, and real infrastructure.
 
+If the target cluster already has Cilium CRDs, bootstrap still delays
+`ApplicationSet/k3s-apps`. The ArgoCD phase applies Hubble CA resources and the
+explicit foundation Applications first; the wait phase then waits for
+`Application/cilium` to be `Synced` and `Healthy`, waits for Hubble server and
+relay certificates, restarts Cilium/Hubble when stale takeover certs were
+replaced, and applies `ApplicationSet/k3s-apps` only after that completes.
+
+## Local Lima Foundation Test
+
+The Lima path is a closer end-to-end bootstrap rehearsal for Apple Silicon. It
+creates one K3s server and two K3s agents, runs the external `k3s-ansible`
+checkout, then runs home-ops bootstrap with `--profile foundation`.
+
+Defaults:
+
+- Lima cluster prefix: `home-ops-k3s-test`
+- k3s-ansible checkout: `../k3s-ansible`, relative to the home-ops checkout
+- home-ops checkout: the current working tree
+- server VM size: `4` CPU and `6GiB` memory
+- agent VM size: `2` CPU and `3GiB` memory
+- Cilium version: derived from `Application/cilium.spec.source.targetRevision`
+  and required to match the k3s-ansible role default
+- Cilium datapath mode: `netkit`, matching the steady-state ArgoCD values
+- Cilium takeover: Hubble CA resources are applied before ArgoCD Cilium, and
+  stale Hubble cert Secrets from the initial Ansible install are rotated
+- Dragonfly Operator: reconciled through ArgoCD without optional
+  `ServiceMonitor` or `GrafanaDashboard` resources in foundation mode
+- K3s API endpoint: the server VM IP, not kube-vip
+- Local kube context: `lima-home-ops-k3s-test`
+
+The size can be overridden with `LIMA_SERVER_CPUS`,
+`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_CPUS`, and
+`LIMA_AGENT_MEMORY_GIB`.
+
+Run the full disposable VM flow:
+
+```sh
+just bootstrap-lima-fresh
+```
+
+Or run it phase by phase:
+
+```sh
+just bootstrap-lima-create
+just bootstrap-lima-ansible
+just bootstrap-lima-bootstrap
+just bootstrap-lima-validate
+```
+
+`bootstrap-lima-ansible` imports or updates the local kube context and starts a
+persistent SSH tunnel for the K3s API. Re-run this if you only need to refresh
+the context:
+
+```sh
+just bootstrap-lima-kubecontext
+kubectl --context lima-home-ops-k3s-test get nodes
+```
+
+If this agent process is not signed in to 1Password, stream the seed Secret from
+your own shell instead:
+
+```sh
+op read op://Kubernetes/op-credentials/op-credentials.yaml \
+  | just bootstrap-lima-bootstrap-stdin
+```
+
+Delete the VMs:
+
+```sh
+just bootstrap-lima-delete
+```
+
+Deleting the Lima VMs also stops the recorded local API tunnel.
+
+Foundation mode always omits the broad `ApplicationSet/k3s-apps`. The Lima
+validation requires the foundation Cilium and Dragonfly Operator Applications to
+be `Synced` and `Healthy`. It also fails if backup-writing or real-workload
+resources appear, including `Application/powerdns`, `Application/hass`, CNPG
+`ScheduledBackup` and `ObjectStore` resources, VolSync `ReplicationSource`,
+Velero `Schedule`, and the external-dns deployment. The real 1Password seed may
+be used because the profile does not create those writers.
+
+The Lima inventory deliberately disables kube-vip while keeping the same
+K3s/Cilium/BGP versions as the real bootstrap path. Production `k3s-ansible`
+group vars still pin kube-vip to `v1.1.2`; Lima's default user-mode networking
+is not a reliable validation target for ARP VIP behavior.
+
+The Lima wrapper also keeps Cilium masquerading enabled when it applies the
+foundation ArgoCD resources. The real cluster disables Cilium masquerading
+because its network can route pod CIDRs; Lima's user-mode network cannot route
+pod CIDRs back to pods, so pod DNS and external egress require masquerading in
+the disposable test cluster.
+
 ## Real Cluster Bootstrap
 
 Review the active context:
@@ -117,7 +211,7 @@ just bootstrap-yes
 Run against an explicit local repo path:
 
 ```sh
-just bootstrap /Users/ethan.shold/git/home-ops
+just bootstrap /path/to/home-ops
 ```
 
 ## Live Cluster Validation

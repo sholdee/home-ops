@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# shellcheck disable=SC1091
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+lima_require_common_tools
+lima_assert_cilium_version_match
+
+inventory_dir="$(lima_inventory_dir)"
+inventory_file="$(lima_inventory_file)"
+group_vars_dir="${inventory_dir}/group_vars"
+mkdir -p "$group_vars_dir"
+
+server_ip="$(lima_guest_ip "$LIMA_SERVER_NAME")"
+[[ -n "$server_ip" ]] || lima_die "could not determine guest IP for ${LIMA_SERVER_NAME}"
+server_iface="$(lima_guest_iface "$LIMA_SERVER_NAME")"
+[[ -n "$server_iface" ]] || lima_die "could not determine guest interface for ${LIMA_SERVER_NAME}"
+cilium_tag="$(lima_home_ops_cilium_tag)"
+
+write_host_vars() {
+  local instance="$1"
+  local role="$2"
+  local ssh_config
+  ssh_config="$(lima_ssh_config_file "$instance")"
+  [[ -f "$ssh_config" ]] || lima_die "could not read SSH config for ${instance}"
+  cat <<EOF
+            ${instance}:
+              ansible_host: lima-${instance}
+              ansible_ssh_common_args: >-
+                -F ${ssh_config}
+                -o StrictHostKeyChecking=no
+                -o UserKnownHostsFile=/dev/null
+              k3s_role: ${role}
+EOF
+}
+
+{
+  cat <<EOF
+---
+all:
+  children:
+    k3s_cluster:
+      children:
+        master:
+          hosts:
+EOF
+  write_host_vars "$LIMA_SERVER_NAME" server
+  cat <<EOF
+        node:
+          hosts:
+EOF
+  for agent in "${LIMA_AGENT_NAMES[@]}"; do
+    write_host_vars "$agent" agent
+  done
+} > "$inventory_file"
+
+cat > "${group_vars_dir}/all.yml" <<EOF
+---
+k3s_version: v1.35.4+k3s1
+systemd_dir: /etc/systemd/system
+system_timezone: Etc/UTC
+
+proxmox_lxc_configure: false
+custom_registries: false
+
+cilium_iface: ${server_iface}
+cilium_mode: native
+cilium_datapath_mode: netkit
+cilium_tag: ${cilium_tag}
+cilium_hubble: true
+cilium_bgp: true
+cilium_bgp_apply_legacy_peering_policy: false
+cilium_bgp_my_asn: "64770"
+cilium_bgp_peer_asn: "64777"
+cilium_bgp_peer_address: 192.168.99.1
+cilium_bgp_lb_cidr: 192.168.77.0/24
+
+cluster_cidr: 10.52.0.0/16
+enable_bpf_masquerade: true
+kube_proxy_replacement: true
+
+# Lima user-mode networking does not provide a reliable L2 ARP VIP for node join.
+# Production/sample k3s-ansible vars still pin kube-vip to v1.1.2.
+kube_vip_enabled: false
+kube_vip_tag_version: v1.1.2
+kube_vip_arp: true
+kube_vip_bgp: false
+apiserver_endpoint: ${server_ip}
+k3s_token: homeopslimabootstrap
+k3s_master_taint: true
+retry_count: 45
+
+k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"
+extra_args: >-
+  --node-ip={{ k3s_node_ip }}
+extra_server_args: >-
+  {{ extra_args }}
+  {{ '--node-taint node-role.kubernetes.io/master=true:NoSchedule' if k3s_master_taint else '' }}
+  --flannel-backend=none
+  --disable-network-policy
+  --cluster-cidr={{ cluster_cidr }}
+  --tls-san {{ apiserver_endpoint }}
+  --disable servicelb
+  --disable traefik
+extra_agent_args: >-
+  {{ extra_args }}
+EOF
+
+lima_log "wrote inventory: ${inventory_file}"

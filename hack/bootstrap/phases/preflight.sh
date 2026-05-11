@@ -21,6 +21,7 @@ print_target_cluster
 write_inventory
 
 log "repo root: ${REPO_ROOT}"
+log "profile: ${BOOTSTRAP_PROFILE}"
 log "dry-run: ${DRY_RUN}"
 log "field manager: ${FIELD_MANAGER}"
 log "report dir: ${REPORT_DIR}"

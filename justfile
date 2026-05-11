@@ -127,11 +127,42 @@ kind-reset:
 kind-delete:
     kind delete cluster --name '{{ kind_cluster }}'
 
+# Create the configured Lima VMs for a foundation bootstrap test.
+bootstrap-lima-create:
+    ./hack/bootstrap/lima/create.sh
+
+# Run k3s-ansible against the configured Lima VMs.
+bootstrap-lima-ansible:
+    ./hack/bootstrap/lima/run-ansible.sh
+
+# Import/update the Lima K3s context in the local kubeconfig and keep its API tunnel running.
+bootstrap-lima-kubecontext:
+    ./hack/bootstrap/lima/kubecontext.sh
+
+# Run home-ops foundation bootstrap against the Lima K3s cluster.
+bootstrap-lima-bootstrap:
+    ./hack/bootstrap/lima/bootstrap-home-ops.sh
+
+# Run Lima foundation bootstrap with the seed Secret manifest provided on stdin.
+bootstrap-lima-bootstrap-stdin:
+    ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
+
+# Validate Cilium BGP APIs and backup-safety invariants in the Lima cluster.
+bootstrap-lima-validate:
+    ./hack/bootstrap/lima/validate.sh
+
+# Delete the configured Lima VMs.
+bootstrap-lima-delete:
+    ./hack/bootstrap/lima/delete.sh
+
+# Recreate Lima VMs, run k3s-ansible, bootstrap home-ops, and validate foundation state.
+bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima-ansible bootstrap-lima-bootstrap bootstrap-lima-validate
+
 # Audit the current kube context for bootstrap/takeover state.
 bootstrap-audit:
     ./hack/bootstrap/bootstrap.sh --audit-only
 
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 bootstrap-test:
-    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh
+    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh
     hack/bootstrap/tests/offline-parse.sh

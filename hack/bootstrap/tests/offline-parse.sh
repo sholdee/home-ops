@@ -15,6 +15,7 @@ require kustomize
 
 test "$(yq -r 'select(.kind == "Application" and .metadata.name == "dragonfly-operator") | .spec.source.chart' "$ROOT/apps/argocd/manifests/apps.yaml")" = "dragonfly-operator"
 test "$(yq -r 'select(.kind == "Application" and .metadata.name == "grafana-operator") | .spec.source.chart' "$ROOT/apps/argocd/manifests/apps.yaml")" = "grafana-operator"
+test "$(yq -r 'select(.kind == "ApplicationSet" and .metadata.name == "k3s-apps") | .spec.generators[0].git.directories[0].path' "$ROOT/apps/argocd/manifests/app-set.yaml")" = "apps/*"
 test "$(yq -r '.helmCharts[] | select(.name == "argo-cd") | .version' "$ROOT/apps/argocd/kustomization.yaml")" != "null"
 test "$(yq -r '.helmCharts[] | select(.name == "external-secrets") | .version' "$ROOT/apps/external-secrets/kustomization.yaml")" != "null"
 test "$(yq -r '.helmCharts[] | select(.name == "gateway-helm") | .version' "$ROOT/apps/envoy-gateway-system/kustomization.yaml")" != "null"
