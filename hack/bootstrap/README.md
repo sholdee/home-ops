@@ -27,8 +27,8 @@ seeds the minimum dependencies needed for ArgoCD to take over:
 10. Run conservative Helm takeover cleanup and audit.
 
 The physical-node Ansible wrapper is the supported way to run `k3s-ansible` for
-this repo. Do not run the playbook directly; the wrapper renders the homelab
-inventory and GitOps-owned values before calling Ansible.
+this repo. It renders the homelab inventory and GitOps-owned values before
+calling Ansible.
 
 Render the live Ansible plan without changing nodes:
 

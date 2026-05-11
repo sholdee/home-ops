@@ -69,7 +69,7 @@ Cluster bootstrap is intentionally smaller than steady-state GitOps. The
 supported path starts with the guarded wrapper in `hack/bootstrap/ansible/`,
 which runs the external `../k3s-ansible` checkout with home-ops-rendered
 inventory, GitOps-owned K3s/Cilium/BGP/kube-vip values, and 1Password-backed
-token handling. The playbook should not be run directly for this cluster.
+token handling.
 
 Once K3s and Cilium are available, the Kubernetes bootstrap runner seeds the
 minimum dependencies required for ArgoCD to take over: cert-manager, External
