@@ -1,0 +1,83 @@
+---
+- name: Disable K3s kube-proxy after Cilium takeover
+  hosts: master
+  become: true
+  gather_facts: true
+  serial: 1
+  vars:
+    kube_proxy_config_dir: /etc/rancher/k3s/config.yaml.d
+    kube_proxy_config_file: "{{ kube_proxy_config_dir }}/90-home-ops-kube-proxy.yaml"
+    kube_proxy_config_content: |
+      disable-kube-proxy: true
+    bootstrap_first_master: "{{ groups[group_name_master | default('master')][0] }}"
+    bootstrap_node_name: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
+
+  pre_tasks:
+    - name: Skip when Cilium kube-proxy replacement is disabled
+      ansible.builtin.meta: end_play
+      when: not (kube_proxy_replacement | default(false) | bool)
+
+    - name: Wait for Cilium DaemonSet before disabling K3s kube-proxy
+      ansible.builtin.command: >-
+        {{ k3s_kubectl_binary | default('k3s kubectl') }}
+        -n kube-system rollout status daemonset/cilium --timeout=5m
+      delegate_to: "{{ bootstrap_first_master }}"
+      run_once: true
+      changed_when: false
+
+    - name: Wait for Cilium operator before disabling K3s kube-proxy
+      ansible.builtin.command: >-
+        {{ k3s_kubectl_binary | default('k3s kubectl') }}
+        -n kube-system rollout status deployment/cilium-operator --timeout=5m
+      delegate_to: "{{ bootstrap_first_master }}"
+      run_once: true
+      changed_when: false
+
+  tasks:
+    - name: Create K3s config drop-in directory
+      ansible.builtin.file:
+        path: "{{ kube_proxy_config_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Write K3s kube-proxy disable drop-in
+      ansible.builtin.copy:
+        dest: "{{ kube_proxy_config_file }}"
+        content: "{{ kube_proxy_config_content }}"
+        owner: root
+        group: root
+        mode: "0644"
+      register: kube_proxy_config
+
+    - name: Restart K3s server to apply kube-proxy disable drop-in
+      ansible.builtin.systemd:
+        name: k3s
+        daemon_reload: true
+        state: restarted
+      when: kube_proxy_config.changed
+
+    - name: Wait for local K3s API port after restart
+      ansible.builtin.wait_for:
+        host: 127.0.0.1
+        port: 6443
+        delay: 3
+        timeout: 180
+      when: kube_proxy_config.changed
+
+    - name: Wait for restarted server node to be Ready
+      ansible.builtin.command: >-
+        {{ k3s_kubectl_binary | default('k3s kubectl') }}
+        wait node/{{ bootstrap_node_name }} --for=condition=Ready --timeout=5m
+      delegate_to: "{{ bootstrap_first_master }}"
+      changed_when: false
+      when: kube_proxy_config.changed
+
+    - name: Wait for Cilium DaemonSet after server restart
+      ansible.builtin.command: >-
+        {{ k3s_kubectl_binary | default('k3s kubectl') }}
+        -n kube-system rollout status daemonset/cilium --timeout=5m
+      delegate_to: "{{ bootstrap_first_master }}"
+      changed_when: false
+      when: kube_proxy_config.changed
