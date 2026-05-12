@@ -417,13 +417,20 @@ if [[ "$joined_args" == *"member remove"* ]]; then
   exit 0
 fi
 
+removed_member_id="${FAKE_ETCD_ABSENT_MEMBER_ID:-}"
 printf 'k3s_service_active=active\n'
 printf 'embedded_etcd_data=present\n'
 printf 'etcdctl=/usr/local/bin/etcdctl\n'
 printf 'etcd_member_simple_begin\n'
-printf '70594c7c481c118, started, k3s-master-1-ff2e5a37, https://192.168.99.11:2380, https://192.168.99.11:2379, false\n'
-printf 'c9e409fd1205cc0a, started, k3s-master-0-b8caf5ab, https://192.168.99.10:2380, https://192.168.99.10:2379, false\n'
-printf 'ee5329b5b8ee26b3, started, k3s-master-2-f7c0824c, https://192.168.99.12:2380, https://192.168.99.12:2379, false\n'
+if [[ "$removed_member_id" != "70594c7c481c118" ]]; then
+  printf '70594c7c481c118, started, k3s-master-1-ff2e5a37, https://192.168.99.11:2380, https://192.168.99.11:2379, false\n'
+fi
+if [[ "$removed_member_id" != "c9e409fd1205cc0a" ]]; then
+  printf 'c9e409fd1205cc0a, started, k3s-master-0-b8caf5ab, https://192.168.99.10:2380, https://192.168.99.10:2379, false\n'
+fi
+if [[ "$removed_member_id" != "ee5329b5b8ee26b3" ]]; then
+  printf 'ee5329b5b8ee26b3, started, k3s-master-2-f7c0824c, https://192.168.99.12:2380, https://192.168.99.12:2379, false\n'
+fi
 printf 'etcd_member_simple_end\n'
 printf 'etcd_endpoint_status_begin\n'
 printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9, 123, 123, \n'
@@ -491,6 +498,189 @@ grep -q 'snapshot_name=pre-remove-k3s-master-1-' <<<"$control_plane_delete_outpu
 grep -q 'Member 70594c7c481c118 removed from cluster' <<<"$control_plane_delete_output"
 grep -q 'node "k3s-master-1" deleted' <<<"$control_plane_delete_output"
 grep -q 'control-plane delete complete: k3s-master-1' <<<"$control_plane_delete_output"
+
+control_plane_cleanup_output="$(
+  PATH="${tmp}:${PATH}" \
+  FAKE_KUBECTL_STATE_DIR="${tmp}/control-plane-state" \
+  FAKE_ETCD_ABSENT_MEMBER_ID=70594c7c481c118 \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
+)"
+
+grep -q 'stopping k3s server on k3s-master-1 before deleted-node cleanup' <<<"$control_plane_cleanup_output"
+grep -q 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0' <<<"$control_plane_cleanup_output"
+grep -q 'control-plane delete cleanup complete: k3s-master-1' <<<"$control_plane_cleanup_output"
+
+fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
+cat > "$fake_longhorn_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+state_dir="${FAKE_KUBECTL_STATE_DIR:?}"
+mode="${FAKE_LONGHORN_MODE:-cleanup}"
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf '{"metadata":{"name":"volumes.longhorn.io"}}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/deleted-node" ]]; then
+  printf 'Error from server (NotFound): nodes "deleted-node" not found\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "nodes.longhorn.io/deleted-node" ]]; then
+  if [[ -f "${state_dir}/longhorn-node-deleted" ]]; then
+    printf 'Error from server (NotFound): nodes.longhorn.io "deleted-node" not found\n' >&2
+    exit 1
+  fi
+  cat <<'JSON'
+{
+  "metadata": {"name": "deleted-node"},
+  "spec": {"allowScheduling": false, "evictionRequested": true},
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "False", "reason": "KubernetesNodeGone"},
+      {"type": "Schedulable", "status": "False", "reason": "KubernetesNodeCordoned"}
+    ]
+  }
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "volumes.longhorn.io" ]]; then
+  if [[ "$mode" == blockers ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "volume-a"},
+      "spec": {"numberOfReplicas": 2, "nodeID": "deleted-node"},
+      "status": {"state": "attaching", "robustness": "unknown", "currentNodeID": ""}
+    }
+  ]
+}
+JSON
+  else
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "volume-a"},
+      "spec": {"numberOfReplicas": 2, "nodeID": "other-a"},
+      "status": {"state": "attached", "robustness": "healthy", "currentNodeID": "other-a"}
+    }
+  ]
+}
+JSON
+  fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "engines.longhorn.io" ]]; then
+  if [[ "$mode" == blockers ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "volume-a-e-0"},
+      "spec": {"volumeName": "volume-a", "nodeID": "deleted-node", "desireState": "running"},
+      "status": {"currentState": "stopped", "currentNodeID": "", "ownerID": "other-a"}
+    },
+    {
+      "metadata": {"name": "volume-b-e-0"},
+      "spec": {"volumeName": "volume-b", "nodeID": "other-a", "desireState": "running"},
+      "status": {"currentState": "stopped", "currentNodeID": "", "ownerID": "deleted-node"}
+    }
+  ]
+}
+JSON
+  else
+    printf '{"items":[]}\n'
+  fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "replicas.longhorn.io" ]]; then
+  if [[ -f "${state_dir}/stale-replica-deleted" || "$mode" == blockers ]]; then
+    printf '{"items":[]}\n'
+  else
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "stale-replica", "labels": {"longhornnode": "deleted-node", "longhornvolume": "volume-a"}},
+      "spec": {"nodeID": "deleted-node", "volumeName": "volume-a", "desireState": "stopped", "failedAt": "2026-05-12T00:00:00Z"},
+      "status": {"currentState": "stopped", "started": false, "instanceManagerName": "", "healthyAt": "2026-05-11T00:00:00Z"}
+    },
+    {
+      "metadata": {"name": "healthy-a", "labels": {"longhornnode": "other-a", "longhornvolume": "volume-a"}},
+      "spec": {"nodeID": "other-a", "volumeName": "volume-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T00:00:00Z"},
+      "status": {"currentState": "running", "started": true, "instanceManagerName": "im-a"}
+    },
+    {
+      "metadata": {"name": "healthy-b", "labels": {"longhornnode": "other-b", "longhornvolume": "volume-a"}},
+      "spec": {"nodeID": "other-b", "volumeName": "volume-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T00:00:00Z"},
+      "status": {"currentState": "running", "started": true, "instanceManagerName": "im-b"}
+    }
+  ]
+}
+JSON
+  fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "-n" && "${2:-}" == "longhorn-system" && "${3:-}" == "delete" && "${4:-}" == "replicas.longhorn.io" && "${5:-}" == "stale-replica" ]]; then
+  touch "${state_dir}/stale-replica-deleted"
+  printf 'replica.longhorn.io "stale-replica" deleted\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "-n" && "${2:-}" == "longhorn-system" && "${3:-}" == "delete" && "${4:-}" == "nodes.longhorn.io/deleted-node" ]]; then
+  [[ -f "${state_dir}/stale-replica-deleted" ]] || exit 1
+  touch "${state_dir}/longhorn-node-deleted"
+  printf 'node.longhorn.io "deleted-node" deleted\n'
+  exit 0
+fi
+
+printf 'unexpected fake Longhorn kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+chmod +x "$fake_longhorn_kubectl"
+
+mkdir -p "${tmp}/longhorn-state"
+longhorn_cleanup_output="$(
+  FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" \
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_longhorn_deleted_node test deleted-node 1"
+)"
+grep -q 'deleting safe stale Longhorn replica stale-replica' <<<"$longhorn_cleanup_output"
+grep -q 'replica.longhorn.io "stale-replica" deleted' <<<"$longhorn_cleanup_output"
+grep -q 'node.longhorn.io "deleted-node" deleted' <<<"$longhorn_cleanup_output"
+
+if FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" \
+  FAKE_LONGHORN_MODE=blockers \
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test deleted-node" \
+  >"${tmp}/longhorn-blockers.out" \
+  2>"${tmp}/longhorn-blockers.err"; then
+  echo "expected Longhorn target-node blockers to fail delete safety" >&2
+  exit 1
+fi
+grep -q 'reason=volume-still-targets-node' "${tmp}/longhorn-blockers.err"
+grep -q 'reason=engine-still-targets-node' "${tmp}/longhorn-blockers.err"
+grep -q 'volume-b-e-0.*owner=deleted-node.*reason=engine-still-targets-node' "${tmp}/longhorn-blockers.err"
 
 if PATH="${tmp}:${PATH}" \
   NODE_LIVE_INVENTORY_DIR="$inventory" \
@@ -571,6 +761,11 @@ JSON
 }
 JSON
   fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "engines.longhorn.io" ]]; then
+  printf '{"items":[]}\n'
   exit 0
 fi
 
