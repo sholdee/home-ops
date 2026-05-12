@@ -29,6 +29,12 @@ all:
             k3s-master-0:
               ansible_host: 192.168.99.10
               k3s_role: server
+            k3s-master-1:
+              ansible_host: 192.168.99.11
+              k3s_role: server
+            k3s-master-2:
+              ansible_host: 192.168.99.12
+              k3s_role: server
         node:
           hosts:
             k3s-worker-0:
@@ -83,7 +89,7 @@ master_count="$(
   NODE_LIVE_INVENTORY_DIR="$inventory" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_group_count live master"
 )"
-test "$master_count" = "1"
+test "$master_count" = "3"
 
 quorum_size="$(
   bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_etcd_quorum_size 3"
@@ -245,11 +251,12 @@ if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
   exit 0
 fi
 
-if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-master-0" ]]; then
-  cat <<'JSON'
+if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
+  node_name="${2#node/}"
+  sed "s/__NODE_NAME__/${node_name}/g" <<'JSON'
 {
   "metadata": {
-    "name": "k3s-master-0",
+    "name": "__NODE_NAME__",
     "labels": {"node-role.kubernetes.io/control-plane": "true"}
   },
   "status": {
@@ -274,6 +281,20 @@ if [[ "${1:-}" == "get" && "${2:-}" == "nodes" ]]; then
       "status": {"conditions": [{"type": "Ready", "status": "True"}]}
     },
     {
+      "metadata": {
+        "name": "k3s-master-1",
+        "labels": {"node-role.kubernetes.io/control-plane": "true"}
+      },
+      "status": {"conditions": [{"type": "Ready", "status": "True"}]}
+    },
+    {
+      "metadata": {
+        "name": "k3s-master-2",
+        "labels": {"node-role.kubernetes.io/control-plane": "true"}
+      },
+      "status": {"conditions": [{"type": "Ready", "status": "True"}]}
+    },
+    {
       "metadata": {"name": "k3s-worker-0", "labels": {}},
       "status": {"conditions": [{"type": "Ready", "status": "True"}]}
     }
@@ -292,10 +313,40 @@ fake_ansible="${tmp}/ansible"
 cat > "$fake_ansible" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'k3s-master-0 | CHANGED | rc=0 >>\n'
+target=""
+skip_next=false
+for arg in "$@"; do
+  if $skip_next; then
+    skip_next=false
+    continue
+  fi
+  case "$arg" in
+    -i)
+      skip_next=true
+      ;;
+    --*)
+      ;;
+    -*)
+      ;;
+    *)
+      target="$arg"
+      break
+      ;;
+  esac
+done
+target="${target:-k3s-master-0}"
+printf '%s | CHANGED | rc=0 >>\n' "$target"
 printf 'k3s_service_active=active\n'
 printf 'embedded_etcd_data=present\n'
-printf 'etcdctl=absent\n'
+printf 'etcdctl=/usr/local/bin/etcdctl\n'
+printf 'etcd_member_simple_begin\n'
+printf '70594c7c481c118, started, k3s-master-1-ff2e5a37, https://192.168.99.11:2380, https://192.168.99.11:2379, false\n'
+printf 'c9e409fd1205cc0a, started, k3s-master-0-b8caf5ab, https://192.168.99.10:2380, https://192.168.99.10:2379, false\n'
+printf 'ee5329b5b8ee26b3, started, k3s-master-2-f7c0824c, https://192.168.99.12:2380, https://192.168.99.12:2379, false\n'
+printf 'etcd_member_simple_end\n'
+printf 'etcd_endpoint_status_begin\n'
+printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9, 123, 123, \n'
+printf 'etcd_endpoint_status_end\n'
 EOF
 chmod +x "$fake_ansible"
 
@@ -306,14 +357,29 @@ control_plane_output="$(
     "${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --profile live --context test k3s-master-0
 )"
 
-grep -q '^inventory_control_planes: k3s-master-0$' <<<"$control_plane_output"
-grep -q '^inventory_control_plane_count: 1$' <<<"$control_plane_output"
-grep -q '^ready_control_plane_count: 1$' <<<"$control_plane_output"
-grep -q '^etcd_quorum_size_from_inventory: 1$' <<<"$control_plane_output"
+grep -q '^inventory_control_planes: k3s-master-0,k3s-master-1,k3s-master-2$' <<<"$control_plane_output"
+grep -q '^inventory_control_plane_count: 3$' <<<"$control_plane_output"
+grep -q '^ready_control_plane_count: 3$' <<<"$control_plane_output"
+grep -q '^etcd_quorum_size_from_inventory: 2$' <<<"$control_plane_output"
 grep -q 'embedded_etcd_data=present' <<<"$control_plane_output"
+
+control_plane_preflight_output="$(
+  PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --profile live --context test k3s-master-0
+)"
+
+grep -q '^probe_inventory_node: k3s-master-1$' <<<"$control_plane_preflight_output"
+grep -q '^etcd_member_count: 3$' <<<"$control_plane_preflight_output"
+grep -q '^post_remove_member_count: 2$' <<<"$control_plane_preflight_output"
+grep -q '^preflight_result: pass$' <<<"$control_plane_preflight_output"
+grep -q '  id: c9e409fd1205cc0a$' <<<"$control_plane_preflight_output"
+grep -q 'member remove c9e409fd1205cc0a' <<<"$control_plane_preflight_output"
 
 "${ROOT}/hack/bootstrap/nodes/drain.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null

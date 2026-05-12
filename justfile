@@ -182,6 +182,11 @@ node-live-status node:
 node-live-control-plane-status node:
     ./hack/bootstrap/nodes/control-plane-status.sh --profile live --context default '{{ node }}'
 
+# Run read-only control-plane delete preflight for a live cluster node.
+[group('node-live')]
+node-live-control-plane-delete-preflight node:
+    ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
+
 # Drain a live worker node before deletion or maintenance.
 [group('node-live')]
 node-live-drain node:
@@ -296,6 +301,11 @@ node-lima-status node:
 [group('node-lima')]
 node-lima-control-plane-status node:
     ./hack/bootstrap/nodes/control-plane-status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Run read-only control-plane delete preflight for a Lima cluster node.
+[group('node-lima')]
+node-lima-control-plane-delete-preflight node:
+    ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Drain a Lima worker node before deletion or maintenance.
 [group('node-lima')]
