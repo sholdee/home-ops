@@ -1,0 +1,26 @@
+---
+- name: Join one home-ops worker with a temporary scheduling taint
+  hosts: node
+  gather_facts: true
+  become: true
+  vars:
+    home_ops_node_taints:
+      - node.home-ops.sh/joining=true:NoSchedule
+  tasks:
+    - name: Run worker preflight checks
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
+    - name: Install required Debian-family packages
+      ansible.builtin.import_tasks: tasks/packages-debian.yml
+
+    - name: Configure kernel prerequisites
+      ansible.builtin.import_tasks: tasks/kernel.yml
+
+    - name: Install K3s binary
+      ansible.builtin.import_tasks: tasks/download-k3s.yml
+
+    - name: Write K3s token file
+      ansible.builtin.import_tasks: tasks/token.yml
+
+    - name: Join K3s agent with temporary taint
+      ansible.builtin.import_tasks: tasks/join-agents.yml

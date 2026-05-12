@@ -48,3 +48,6 @@ jobs:
 
       - name: Run bootstrap offline Ansible test
         run: hack/bootstrap/tests/offline-ansible.sh
+
+      - name: Run bootstrap offline node lifecycle test
+        run: hack/bootstrap/tests/offline-nodes.sh

@@ -98,10 +98,17 @@ default_backend="$(
 test "$default_backend" = "home-ops"
 
 if command -v ansible-playbook >/dev/null 2>&1; then
-  ansible-playbook --syntax-check \
-    -i "${home_ops_out}/inventory/live/hosts.yml" \
-    "${ROOT}/hack/bootstrap/ansible/home-ops/site.yml" >/dev/null
+  for playbook in \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/site.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/worker-join.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/worker-finalize.yml"; do
+    ansible-playbook --syntax-check \
+      -i "${home_ops_out}/inventory/live/hosts.yml" \
+      "$playbook" >/dev/null
+  done
 fi
+
+grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2"
 
 conflict_source="${tmp}/conflict-source"
 mkdir -p "${conflict_source}/group_vars"
