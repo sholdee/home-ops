@@ -347,6 +347,7 @@ into explicit operator steps:
 ```sh
 just node-live-status k3s-worker-0
 just node-live-drain k3s-worker-0
+just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
 just node-live-refresh-ssh-host-key k3s-worker-0
 just node-live-join k3s-worker-0
@@ -358,6 +359,7 @@ The Lima equivalents use the `node-lima-*` group:
 ```sh
 just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-drain home-ops-k3s-test-agent-1
+just node-lima-longhorn-evict home-ops-k3s-test-agent-1
 just node-lima-delete home-ops-k3s-test-agent-1
 just node-lima-refresh-ssh-host-key home-ops-k3s-test-agent-1
 just node-lima-join home-ops-k3s-test-agent-1
@@ -367,27 +369,26 @@ just node-lima-uncordon home-ops-k3s-test-agent-1
 Mutating commands support worker nodes only. Control-plane lifecycle remains
 blocked until the embedded-etcd member removal and rejoin procedure is proven.
 
+For normal node maintenance or reboots, run drain and then uncordon. Drain only
+requires ordinary workloads to move and Longhorn volumes to detach from the
+target node. It does not require every Longhorn volume to stay healthy, because
+three-replica volumes on exactly three storage nodes will be temporarily
+degraded while one node is drained.
+
 The delete step is deliberately conservative. It stops and disables `k3s-node`
 through Ansible before deleting the Kubernetes `Node` and the K3s node-password
-Secret, so the old node cannot immediately re-register. When Longhorn is
-installed, delete also requires Longhorn scheduling to be disabled for the
-target node and all target-node replicas/attached volumes to be gone. Evacuate
-Longhorn replicas first, then rerun delete. Disabling scheduling can be done in
-the Longhorn UI or with:
-
-```sh
-kubectl -n longhorn-system patch nodes.longhorn.io/k3s-worker-0 --type=merge -p '{"spec":{"allowScheduling":false}}'
-```
-
-After the rebuilt worker has joined, re-enable Longhorn scheduling before
-running uncordon.
+Secret, so the old node cannot immediately re-register. For node replacement,
+run `node-*-longhorn-evict` after drain and before delete. The eviction helper
+disables Longhorn scheduling for the target, requests replica eviction, and
+fails before mutating anything if the remaining eligible storage nodes cannot
+hold the maximum configured replica count.
 
 Join uses the generated home-ops Ansible worker playbook and starts the agent
 with `node.home-ops.sh/joining=true:NoSchedule`. After the node object appears,
 the helper cordons it while Cilium settles. The uncordon helper removes the
 taint from the rendered agent service, restarts the agent if needed, removes
-the live taint, waits for Cilium and Longhorn safety checks, and only then
-uncordons the node.
+the live taint, waits for Cilium, verifies Longhorn is ready to schedule on the
+node, uncordons, and then verifies Longhorn marks the node schedulable.
 
 Review the active context:
 

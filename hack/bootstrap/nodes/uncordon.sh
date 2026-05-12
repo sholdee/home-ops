@@ -99,8 +99,9 @@ fi
 
 node_wait_for_ready "$context" "$kubernetes_node_name"
 node_wait_for_cilium_ready "$context" "$kubernetes_node_name"
-node_wait_for_longhorn_safe "$context" "$kubernetes_node_name"
-node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name"
+node_log "restoring Longhorn scheduling for ${kubernetes_node_name} if Longhorn is installed"
+node_restore_longhorn_scheduling "$context" "$kubernetes_node_name"
+node_wait_for_longhorn_ready_for_kubernetes_uncordon "$context" "$kubernetes_node_name"
 
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node disappeared before uncordon: ${kubernetes_node_name}"
@@ -110,4 +111,5 @@ node_assert_no_joining_taint "$node_json" "$kubernetes_node_name"
 
 node_log "uncordoning ${kubernetes_node_name}"
 node_kubectl "$context" uncordon "$kubernetes_node_name"
+node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name"
 node_log "uncordon complete: ${kubernetes_node_name}"

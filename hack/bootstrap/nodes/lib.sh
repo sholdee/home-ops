@@ -586,9 +586,13 @@ node_longhorn_node_report() {
 
   # shellcheck disable=SC2016
   "$NODE_JQ_BIN" -r '
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    def eviction_requested:
+      if ((.spec // {}) | has("evictionRequested")) then .spec.evictionRequested else false end;
     def condition_status($type):
       ([.status.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
-    "allowScheduling=\((.spec.allowScheduling // true) | tostring) ready=\(condition_status("Ready")) schedulable=\(condition_status("Schedulable"))"
+    "allowScheduling=\(allow_scheduling | tostring) evictionRequested=\(eviction_requested | tostring) ready=\(condition_status("Ready")) schedulable=\(condition_status("Schedulable"))"
   ' <<<"$longhorn_node_json"
 }
 
@@ -776,6 +780,52 @@ node_longhorn_replicas_on_node() {
   ' <<<"$replicas_json"
 }
 
+node_longhorn_max_replica_count() {
+  local context="$1"
+  local volumes_json
+
+  volumes_json="$(node_get_json "$context" -n longhorn-system volumes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$volumes_json" ]] || {
+    printf 'Longhorn volumes not readable\n'
+    return 0
+  }
+
+  "$NODE_JQ_BIN" -r '
+    [
+      .items[]
+      | (.spec.numberOfReplicas // 0)
+      | tonumber
+    ] | max // 0
+  ' <<<"$volumes_json"
+}
+
+node_longhorn_eligible_storage_node_count_excluding() {
+  local context="$1"
+  local node="$2"
+  local nodes_json
+
+  nodes_json="$(node_get_json "$context" -n longhorn-system nodes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$nodes_json" ]] || {
+    printf 'Longhorn nodes not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" '
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    def condition_status($type):
+      ([.status.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
+    [
+      .items[]
+      | select(.metadata.name != $node)
+      | select(allow_scheduling == true)
+      | select(condition_status("Ready") == "True")
+      | select(condition_status("Schedulable") == "True")
+    ] | length
+  ' <<<"$nodes_json"
+}
+
 node_longhorn_scheduling_problem() {
   local context="$1"
   local node="$2"
@@ -788,7 +838,9 @@ node_longhorn_scheduling_problem() {
   }
 
   "$NODE_JQ_BIN" -r '
-    select((.spec.allowScheduling // true) != false)
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    select(allow_scheduling != false)
     | "Longhorn scheduling is still enabled"
   ' <<<"$longhorn_node_json"
 }
@@ -815,6 +867,33 @@ node_longhorn_managers_report() {
         }
       | "\($kind)/\(.name) state=\(.state)"
     ] | if length == 0 then "no \($kind) resources on node" else .[] end
+  ' <<<"$json"
+}
+
+node_longhorn_managers_on_node() {
+  local context="$1"
+  local node="$2"
+  local kind="$3"
+  local resource="$4"
+  local json
+
+  json="$(node_get_json "$context" -n longhorn-system "$resource" 2>/dev/null || true)"
+  [[ -n "$json" ]] || {
+    printf '%s not readable\n' "$kind"
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" --arg kind "$kind" '
+    [
+      .items[]
+      | select((.spec.nodeID // .status.ownerID // .status.currentNodeID // "") == $node)
+      | {
+          name: .metadata.name,
+          state: (.status.currentState // .status.state // "unknown")
+        }
+      | "\($kind)/\(.name) state=\(.state)"
+    ] | .[]
   ' <<<"$json"
 }
 
@@ -872,6 +951,28 @@ node_assert_longhorn_safe() {
   fi
 }
 
+node_assert_longhorn_maintenance_safe() {
+  local context="$1"
+  local node="$2"
+  local problems state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  problems="$(
+    {
+      node_longhorn_attached_volumes_on_node "$context" "$node"
+    } | sed '/^$/d'
+  )"
+
+  if [[ -n "$problems" ]]; then
+    printf '%s\n' "$problems" >&2
+    node_die "Longhorn volumes are still attached to ${node}; wait for workloads to move before maintenance"
+  fi
+}
+
 node_assert_longhorn_empty_for_delete() {
   local context="$1"
   local node="$2"
@@ -892,8 +993,86 @@ node_assert_longhorn_empty_for_delete() {
 
   if [[ -n "$problems" ]]; then
     printf '%s\n' "$problems" >&2
-    node_die "Longhorn still has target-node state; disable scheduling and evict replicas before deleting ${node}"
+    node_die "Longhorn still has target-node state; run the explicit Longhorn eviction helper before deleting ${node}"
   fi
+}
+
+node_assert_longhorn_eviction_feasible() {
+  local context="$1"
+  local node="$2"
+  local state max_replicas eligible_nodes problems
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  [[ "$state" == installed ]] || node_die "Longhorn is not installed in ${context}"
+
+  max_replicas="$(node_longhorn_max_replica_count "$context")"
+  [[ "$max_replicas" =~ ^[0-9]+$ ]] || node_die "$max_replicas"
+  eligible_nodes="$(node_longhorn_eligible_storage_node_count_excluding "$context" "$node")"
+  [[ "$eligible_nodes" =~ ^[0-9]+$ ]] || node_die "$eligible_nodes"
+
+  problems="$(
+    {
+      if ((max_replicas > eligible_nodes)); then
+        printf 'Longhorn eviction is not feasible: max volume replicas=%s, eligible storage nodes after removing target=%s\n' \
+          "$max_replicas" "$eligible_nodes"
+        printf 'Add another storage node or temporarily lower replica counts before replacing %s; use drain/uncordon for reboot maintenance.\n' \
+          "$node"
+      fi
+      node_longhorn_attached_volumes_on_node "$context" "$node"
+    } | sed '/^$/d'
+  )"
+
+  if [[ -n "$problems" ]]; then
+    printf '%s\n' "$problems" >&2
+    node_die "Longhorn cannot safely evict ${node}"
+  fi
+}
+
+node_request_longhorn_eviction() {
+  local context="$1"
+  local node="$2"
+
+  node_kubectl "$context" -n longhorn-system patch "nodes.longhorn.io/${node}" \
+    --type=merge \
+    -p '{"spec":{"allowScheduling":false,"evictionRequested":true}}'
+}
+
+node_restore_longhorn_scheduling() {
+  local context="$1"
+  local node="$2"
+  local state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  node_wait_for_longhorn_node_resource "$context" "$node"
+  node_kubectl "$context" -n longhorn-system patch "nodes.longhorn.io/${node}" \
+    --type=merge \
+    -p '{"spec":{"allowScheduling":true,"evictionRequested":false}}'
+}
+
+node_wait_for_longhorn_node_resource() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local state longhorn_node_json
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  while true; do
+    longhorn_node_json="$(node_get_json "$context" -n longhorn-system "nodes.longhorn.io/${node}" 2>/dev/null || true)"
+    if [[ -n "$longhorn_node_json" ]]; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_die "timed out waiting for Longhorn node resource: ${node}"
+    sleep 5
+  done
 }
 
 node_longhorn_uncordon_problems() {
@@ -909,11 +1088,18 @@ node_longhorn_uncordon_problems() {
 
   # shellcheck disable=SC2016
   "$NODE_JQ_BIN" -r '
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    def eviction_requested:
+      if ((.spec // {}) | has("evictionRequested")) then .spec.evictionRequested else false end;
     def condition_status($type):
       ([.status.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
     [
-      if ((.spec.allowScheduling // true) != true) then
+      if allow_scheduling != true then
         "Longhorn scheduling is not enabled"
+      else empty end,
+      if eviction_requested != false then
+        "Longhorn eviction is still requested"
       else empty end,
       if condition_status("Ready") != "True" then
         "Longhorn node Ready condition is \(condition_status("Ready"))"
@@ -923,6 +1109,56 @@ node_longhorn_uncordon_problems() {
       else empty end
     ] | .[]
   ' <<<"$longhorn_node_json"
+}
+
+node_longhorn_ready_for_kubernetes_uncordon_problems() {
+  local context="$1"
+  local node="$2"
+  local longhorn_node_json
+
+  longhorn_node_json="$(node_get_json "$context" -n longhorn-system "nodes.longhorn.io/${node}" 2>/dev/null || true)"
+  [[ -n "$longhorn_node_json" ]] || {
+    printf 'Longhorn node resource not readable: %s\n' "$node"
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r '
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    def eviction_requested:
+      if ((.spec // {}) | has("evictionRequested")) then .spec.evictionRequested else false end;
+    def condition_status($type):
+      ([.status.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
+    [
+      if allow_scheduling != true then
+        "Longhorn scheduling is not enabled"
+      else empty end,
+      if eviction_requested != false then
+        "Longhorn eviction is still requested"
+      else empty end,
+      if condition_status("Ready") != "True" then
+        "Longhorn node Ready condition is \(condition_status("Ready"))"
+      else empty end
+    ] | .[]
+  ' <<<"$longhorn_node_json"
+}
+
+node_assert_longhorn_ready_for_kubernetes_uncordon() {
+  local context="$1"
+  local node="$2"
+  local problems state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  problems="$(node_longhorn_ready_for_kubernetes_uncordon_problems "$context" "$node")"
+  if [[ -n "$problems" ]]; then
+    printf '%s\n' "$problems" >&2
+    node_die "Longhorn node is not ready for Kubernetes uncordon: ${node}"
+  fi
 }
 
 node_assert_longhorn_ready_for_uncordon() {
@@ -1068,6 +1304,51 @@ node_wait_for_longhorn_safe() {
       return 0
     fi
     ((SECONDS < deadline)) || node_assert_longhorn_safe "$context" "$node"
+    sleep 5
+  done
+}
+
+node_wait_for_longhorn_maintenance_safe() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+
+  while true; do
+    if (node_assert_longhorn_maintenance_safe "$context" "$node") >/dev/null 2>&1; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_assert_longhorn_maintenance_safe "$context" "$node"
+    sleep 5
+  done
+}
+
+node_wait_for_longhorn_empty_for_delete() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-1800}"
+  local deadline=$((SECONDS + timeout))
+
+  while true; do
+    if (node_assert_longhorn_empty_for_delete "$context" "$node") >/dev/null 2>&1; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_assert_longhorn_empty_for_delete "$context" "$node"
+    sleep 10
+  done
+}
+
+node_wait_for_longhorn_ready_for_kubernetes_uncordon() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+
+  while true; do
+    if (node_assert_longhorn_ready_for_kubernetes_uncordon "$context" "$node") >/dev/null 2>&1; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_assert_longhorn_ready_for_kubernetes_uncordon "$context" "$node"
     sleep 5
   done
 }

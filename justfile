@@ -187,6 +187,11 @@ node-live-drain node:
 node-live-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile live --context default '{{ node }}'
 
+# Evict Longhorn replicas from a drained live worker before replacement.
+[group('node-live')]
+node-live-longhorn-evict node:
+    ./hack/bootstrap/nodes/longhorn-evict.sh --profile live --context default '{{ node }}'
+
 # Refresh a rebuilt live worker's SSH host key in known_hosts.
 [group('node-live')]
 node-live-refresh-ssh-host-key node:
@@ -197,7 +202,7 @@ node-live-refresh-ssh-host-key node:
 node-live-join node:
     ./hack/bootstrap/nodes/join.sh --profile live --context default '{{ node }}'
 
-# Remove the temporary live worker taint, validate system health, and uncordon.
+# Remove the temporary live worker taint and restore scheduling.
 [group('node-live')]
 node-live-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
@@ -292,6 +297,11 @@ node-lima-drain node:
 node-lima-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
+# Evict Longhorn replicas from a drained Lima worker before replacement.
+[group('node-lima')]
+node-lima-longhorn-evict node:
+    ./hack/bootstrap/nodes/longhorn-evict.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
 # Refresh a rebuilt Lima worker's SSH host key in known_hosts.
 [group('node-lima')]
 node-lima-refresh-ssh-host-key node:
@@ -302,7 +312,7 @@ node-lima-refresh-ssh-host-key node:
 node-lima-join node:
     ./hack/bootstrap/nodes/join.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Remove the temporary Lima worker taint, validate system health, and uncordon.
+# Remove the temporary Lima worker taint and restore scheduling.
 [group('node-lima')]
 node-lima-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
