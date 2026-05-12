@@ -193,6 +193,40 @@ node_inventory_value() {
     "$inventory"
 }
 
+node_inventory_group_names() {
+  local profile="$1"
+  local group="$2"
+  local inventory
+  inventory="$(node_inventory_file "$profile")"
+  [[ -f "$inventory" ]] || return 0
+  "$NODE_YQ_BIN" -r \
+    ".all.children.k3s_cluster.children.${group}.hosts // {} | keys | .[]" \
+    "$inventory"
+}
+
+node_inventory_group_count() {
+  local profile="$1"
+  local group="$2"
+  local inventory
+  inventory="$(node_inventory_file "$profile")"
+  [[ -f "$inventory" ]] || {
+    printf '0\n'
+    return 0
+  }
+  "$NODE_YQ_BIN" -r \
+    ".all.children.k3s_cluster.children.${group}.hosts // {} | length" \
+    "$inventory"
+}
+
+node_etcd_quorum_size() {
+  local member_count="$1"
+  ((member_count > 0)) || {
+    printf '0\n'
+    return 0
+  }
+  printf '%s\n' $((member_count / 2 + 1))
+}
+
 node_group_var() {
   local profile="$1"
   local key="$2"
@@ -336,6 +370,28 @@ node_assert_inventory_worker() {
   esac
 }
 
+node_assert_inventory_control_plane() {
+  local inventory_node="$1"
+  local inventory_role="$2"
+
+  case "$inventory_role" in
+    master)
+      ;;
+    node)
+      node_die "node is a worker in the selected inventory: ${inventory_node}"
+      ;;
+    absent)
+      node_die "node is not present in the selected inventory: ${inventory_node}"
+      ;;
+    conflict)
+      node_die "node appears in both master and node inventory groups: ${inventory_node}"
+      ;;
+    *)
+      node_die "unexpected inventory role for ${inventory_node}: ${inventory_role}"
+      ;;
+  esac
+}
+
 node_assert_kubernetes_worker() {
   local node_json="$1"
   local node="$2"
@@ -344,6 +400,16 @@ node_assert_kubernetes_worker() {
   k8s_role="$(node_k8s_role_from_node_json <<<"$node_json")"
   [[ "$k8s_role" == node ]] ||
     node_die "control-plane lifecycle is not implemented yet: ${node}"
+}
+
+node_assert_kubernetes_control_plane() {
+  local node_json="$1"
+  local node="$2"
+  local k8s_role
+
+  k8s_role="$(node_k8s_role_from_node_json <<<"$node_json")"
+  [[ "$k8s_role" == control-plane ]] ||
+    node_die "node is not a Kubernetes control-plane node: ${node}"
 }
 
 node_assert_ready() {

@@ -177,6 +177,11 @@ bootstrap-live-full:
 node-live-status node:
     ./hack/bootstrap/nodes/status.sh --profile live --context default '{{ node }}'
 
+# Show read-only control-plane quorum and embedded-etcd status for a live cluster node.
+[group('node-live')]
+node-live-control-plane-status node:
+    ./hack/bootstrap/nodes/control-plane-status.sh --profile live --context default '{{ node }}'
+
 # Drain a live worker node before deletion or maintenance.
 [group('node-live')]
 node-live-drain node:
@@ -286,6 +291,11 @@ bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima
 [group('node-lima')]
 node-lima-status node:
     ./hack/bootstrap/nodes/status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Show read-only control-plane quorum and embedded-etcd status for a Lima cluster node.
+[group('node-lima')]
+node-lima-control-plane-status node:
+    ./hack/bootstrap/nodes/control-plane-status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Drain a Lima worker node before deletion or maintenance.
 [group('node-lima')]
