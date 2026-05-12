@@ -269,6 +269,7 @@ delete, join, and uncordon steps:
 
 ```sh
 just node-live-status k3s-worker-0
+just node-live-control-plane-status k3s-master-0
 just node-live-drain k3s-worker-0
 just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
@@ -276,10 +277,15 @@ just node-live-refresh-ssh-host-key k3s-worker-0
 just node-live-join k3s-worker-0
 just node-live-uncordon k3s-worker-0
 just node-lima-status home-ops-k3s-test-agent-1
+just node-lima-control-plane-status home-ops-k3s-test-server-1
 ```
 
-Control-plane lifecycle is intentionally refused until the embedded-etcd member
-procedure is proven. Worker delete stops and disables `k3s-node` before deleting
+Control-plane lifecycle mutations are intentionally refused until the
+embedded-etcd member procedure is proven. The control-plane status helper is
+read-only: it checks the inventory control-plane set, Ready control-plane nodes,
+quorum math, K3s service state, local datastore indicators, etcd listeners, and
+whether `etcdctl` is available for member inspection. Worker delete stops and
+disables `k3s-node` before deleting
 the Kubernetes Node and node-password Secret. If Longhorn is installed, delete
 also requires Longhorn scheduling to be disabled for the target node, no attached
 volumes on the target node, and no active or unsafe target-node replica state.

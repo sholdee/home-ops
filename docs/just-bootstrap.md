@@ -347,6 +347,7 @@ into explicit operator steps:
 
 ```sh
 just node-live-status k3s-worker-0
+just node-live-control-plane-status k3s-master-0
 just node-live-drain k3s-worker-0
 just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
@@ -359,6 +360,7 @@ The Lima equivalents use the `node-lima-*` group:
 
 ```sh
 just node-lima-status home-ops-k3s-test-agent-1
+just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-drain home-ops-k3s-test-agent-1
 just node-lima-longhorn-evict home-ops-k3s-test-agent-1
 just node-lima-delete home-ops-k3s-test-agent-1
@@ -369,6 +371,10 @@ just node-lima-uncordon home-ops-k3s-test-agent-1
 
 Mutating commands support worker nodes only. Control-plane lifecycle remains
 blocked until the embedded-etcd member removal and rejoin procedure is proven.
+The control-plane status command is read-only and exists to validate that future
+procedure: it reports inventory/Ready quorum math and probes the selected server
+for K3s service state, datastore files, etcd listeners, and `etcdctl`
+availability.
 
 For normal node maintenance or reboots, run drain and then uncordon. Drain only
 requires ordinary workloads to move and Longhorn volumes to detach from the
