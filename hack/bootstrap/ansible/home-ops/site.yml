@@ -1,0 +1,63 @@
+---
+- name: Prepare home-ops K3s nodes
+  hosts: k3s_cluster
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Run preflight checks
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
+    - name: Install required Debian-family packages
+      ansible.builtin.import_tasks: tasks/packages-debian.yml
+
+    - name: Configure kernel prerequisites
+      ansible.builtin.import_tasks: tasks/kernel.yml
+
+    - name: Install K3s binary
+      ansible.builtin.import_tasks: tasks/download-k3s.yml
+
+    - name: Write K3s token file
+      ansible.builtin.import_tasks: tasks/token.yml
+
+- name: Install first home-ops control-plane node
+  hosts: master[0]
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Render kube-vip bootstrap manifests
+      ansible.builtin.import_tasks: tasks/kube-vip.yml
+
+    - name: Start first K3s server
+      ansible.builtin.import_tasks: tasks/first-server.yml
+
+- name: Join remaining home-ops control-plane nodes
+  hosts: master[1:]
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Join K3s servers
+      ansible.builtin.import_tasks: tasks/join-servers.yml
+
+- name: Join home-ops worker nodes
+  hosts: node
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Join K3s agents
+      ansible.builtin.import_tasks: tasks/join-agents.yml
+
+- name: Install bootstrap Cilium
+  hosts: master[0]
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install bootstrap Cilium
+      ansible.builtin.import_tasks: tasks/cilium.yml
+
+- name: Fetch home-ops kubeconfig
+  hosts: master[0]
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Prepare and fetch kubeconfig
+      ansible.builtin.import_tasks: tasks/kubeconfig.yml

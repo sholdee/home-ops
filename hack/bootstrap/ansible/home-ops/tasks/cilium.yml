@@ -1,0 +1,143 @@
+---
+- name: Ensure temporary bootstrap directory exists
+  ansible.builtin.file:
+    path: /tmp/home-ops-bootstrap
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check installed Cilium CLI version
+  ansible.builtin.command: cilium version
+  register: home_ops_cilium_cli_version
+  failed_when: false
+  changed_when: false
+
+- name: Download Cilium CLI stable version marker
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
+    dest: /tmp/home-ops-bootstrap/cilium-cli-stable.txt
+    owner: root
+    group: root
+    mode: "0644"
+  register: home_ops_cilium_cli_stable_download
+  until: home_ops_cilium_cli_stable_download is succeeded
+  retries: 5
+  delay: 10
+
+- name: Read Cilium CLI stable version
+  ansible.builtin.command: cat /tmp/home-ops-bootstrap/cilium-cli-stable.txt
+  register: home_ops_cilium_cli_stable
+  changed_when: false
+
+- name: Set Cilium CLI architecture
+  ansible.builtin.set_fact:
+    home_ops_cilium_cli_arch: "{{ 'arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64' }}"
+    home_ops_installed_cilium_cli_version: >-
+      {{-
+        home_ops_cilium_cli_version.stdout_lines
+        | default([])
+        | join(' ')
+        | regex_findall('cilium-cli: (v[0-9]+\.[0-9]+\.[0-9]+)')
+        | first
+        | default('')
+      -}}
+
+- name: Install or update Cilium CLI
+  when: home_ops_installed_cilium_cli_version != home_ops_cilium_cli_stable.stdout
+  block:
+    - name: Download Cilium CLI archive and checksum
+      ansible.builtin.get_url:
+        url: "https://github.com/cilium/cilium-cli/releases/download/{{ home_ops_cilium_cli_stable.stdout }}/cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
+        dest: "/tmp/home-ops-bootstrap/cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - .tar.gz
+        - .tar.gz.sha256sum
+      register: home_ops_cilium_cli_archive_download
+      until: home_ops_cilium_cli_archive_download is succeeded
+      retries: 5
+      delay: 10
+
+    - name: Verify Cilium CLI archive
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd /tmp/home-ops-bootstrap
+        sha256sum --check cilium-linux-{{ home_ops_cilium_cli_arch }}.tar.gz.sha256sum
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Extract Cilium CLI
+      ansible.builtin.unarchive:
+        src: "/tmp/home-ops-bootstrap/cilium-linux-{{ home_ops_cilium_cli_arch }}.tar.gz"
+        dest: /usr/local/bin
+        remote_src: true
+
+- name: Check existing Cilium DaemonSet
+  ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system get daemonset/cilium"
+  register: home_ops_cilium_daemonset
+  failed_when: false
+  changed_when: false
+
+- name: Render Cilium bootstrap values
+  ansible.builtin.template:
+    src: templates/cilium-values.yaml.j2
+    dest: "{{ home_ops_cilium_values_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Calculate Cilium bootstrap checksum
+  ansible.builtin.shell: |
+    set -euo pipefail
+    {
+      printf '%s\n' {{ cilium_tag | quote }}
+      cat {{ home_ops_cilium_values_file | quote }}
+    } | sha256sum | awk '{print $1}'
+  args:
+    executable: /bin/bash
+  register: home_ops_cilium_checksum
+  changed_when: false
+
+- name: Read previous Cilium bootstrap checksum
+  ansible.builtin.command: "cat {{ home_ops_cilium_checksum_file }}"
+  register: home_ops_previous_cilium_checksum
+  failed_when: false
+  changed_when: false
+
+- name: Install or upgrade Cilium
+  ansible.builtin.command: >-
+    cilium {{ 'install' if home_ops_cilium_daemonset.rc != 0 else 'upgrade' }}
+    --version {{ cilium_tag }}
+    --values {{ home_ops_cilium_values_file }}
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: home_ops_cilium_install
+  changed_when: home_ops_cilium_install.rc == 0
+  when: >-
+    home_ops_cilium_daemonset.rc != 0 or
+    home_ops_previous_cilium_checksum.rc != 0 or
+    home_ops_previous_cilium_checksum.stdout != home_ops_cilium_checksum.stdout
+
+- name: Persist Cilium bootstrap checksum
+  ansible.builtin.copy:
+    content: "{{ home_ops_cilium_checksum.stdout }}\n"
+    dest: "{{ home_ops_cilium_checksum_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Wait for Cilium operator
+  ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system rollout status deployment/cilium-operator --timeout=5m"
+  changed_when: false
+
+- name: Wait for Cilium DaemonSet
+  ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system rollout status daemonset/cilium --timeout=5m"
+  changed_when: false
+
+- name: Wait for all nodes to become Ready
+  ansible.builtin.command: "{{ k3s_kubectl_binary }} wait node --all --for=condition=Ready --timeout=5m"
+  changed_when: false

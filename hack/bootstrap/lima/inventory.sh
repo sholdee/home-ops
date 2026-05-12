@@ -49,7 +49,9 @@ all:
         master:
           hosts:
 EOF
-  write_host_vars "$LIMA_SERVER_NAME" server
+  for server in "${LIMA_SERVER_NAMES[@]}"; do
+    write_host_vars "$server" server
+  done
   cat <<EOF
         node:
           hosts:
@@ -72,13 +74,13 @@ cilium_iface: ${server_iface}
 enable_bpf_masquerade: true
 
 # Lima user-mode networking does not provide a reliable L2 ARP VIP for node join.
-# Production/sample k3s-ansible vars still pin kube-vip to v1.1.2.
+# Live inventory still pins kube-vip to v1.1.2.
 kube_vip_enabled: false
 kube_vip_arp: true
 kube_vip_bgp: false
 apiserver_endpoint: ${server_ip}
 k3s_token: homeopslimabootstrap
-k3s_master_taint: true
+k3s_master_taint: ${LIMA_K3S_MASTER_TAINT}
 retry_count: 45
 
 k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"

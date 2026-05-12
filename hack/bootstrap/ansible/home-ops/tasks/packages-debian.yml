@@ -1,0 +1,16 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install bootstrap packages
+  ansible.builtin.apt:
+    name: "{{ home_ops_debian_packages }}"
+    state: present
+
+- name: Enable iSCSI daemon
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started

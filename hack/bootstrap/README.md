@@ -3,8 +3,7 @@
 This directory contains the local bootstrap tooling for fresh-cluster takeover.
 It covers two layers:
 
-1. a guarded wrapper around the external `../k3s-ansible` checkout for physical
-   node convergence
+1. a guarded Ansible wrapper for physical node convergence
 2. the Kubernetes bootstrap runner that seeds the minimum dependencies needed
    before ArgoCD can take over
 
@@ -26,9 +25,12 @@ seeds the minimum dependencies needed for ArgoCD to take over:
 9. Wait for ArgoCD components.
 10. Run conservative Helm takeover cleanup and audit.
 
-The physical-node Ansible wrapper is the supported way to run `k3s-ansible` for
-this repo. It renders the homelab inventory and GitOps-owned values before
-calling Ansible.
+The physical-node Ansible wrapper is the supported way to converge K3s nodes
+for this repo. It renders the homelab inventory and GitOps-owned values before
+calling Ansible. The default backend is the in-repo
+`hack/bootstrap/ansible/home-ops/` implementation. The external
+`../k3s-ansible` checkout remains available as an explicit compatibility
+backend for side-by-side comparison.
 
 Render the live Ansible plan without changing nodes:
 
@@ -89,11 +91,11 @@ snapshot CRDs/controller available.
 
 For a closer foundation test on Apple Silicon, use the Lima harness under
 `hack/bootstrap/lima/`. It creates one K3s server and two agents, runs the
-external `k3s-ansible` checkout, bootstraps home-ops with `--profile
-foundation`, validates current Cilium BGP CRDs/manifests, and fails if backup
-writers such as `powerdns`, `hass`, VolSync, Velero, or CNPG backup resources
-are created. It also requires the foundation ArgoCD Applications for Cilium and
-Dragonfly Operator to be `Synced` and `Healthy`.
+selected Ansible backend, bootstraps home-ops with `--profile foundation`,
+validates current Cilium BGP CRDs/manifests, and fails if backup writers such
+as `powerdns`, `hass`, VolSync, Velero, or CNPG backup resources are created.
+It also requires the foundation ArgoCD Applications for Cilium and Dragonfly
+Operator to be `Synced` and `Healthy`.
 
 The foundation profile applies the Hubble cert-manager issuer chain before
 ArgoCD reconciles the Cilium Helm chart. During takeover from the initial
@@ -131,11 +133,12 @@ By default the disposable foundation shape is one server VM using `4` CPU and
 `just` recipes create three larger agent VMs using `4` CPU and `6GiB` memory
 each with `120GiB` disks, because the allowed app set includes topology-spread
 workloads, Longhorn, VolSync restores, retained restore source volumes, and
-database operators. Override with `LIMA_SERVER_CPUS`,
+database operators. Override with `LIMA_SERVER_COUNT`, `LIMA_SERVER_CPUS`,
 `LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`,
-`LIMA_AGENT_MEMORY_GIB`, or `LIMA_DISK_GIB` when needed.
+`LIMA_AGENT_MEMORY_GIB`, `LIMA_K3S_MASTER_TAINT`, or `LIMA_DISK_GIB` when
+needed.
 
-Lima VM creation installs `open-iscsi` and `nfs-common` before k3s-ansible runs.
+Lima VM creation installs `open-iscsi` and `nfs-common` before Ansible runs.
 Longhorn needs the iSCSI initiator for block volumes, and RWX volumes need the
 NFS mount helper on each node.
 
@@ -158,11 +161,18 @@ context and tunnel. `just bootstrap-lima-delete` stops the recorded tunnel.
 
 ## Live Ansible Bootstrap
 
-`hack/bootstrap/ansible/` orchestrates the external `k3s-ansible` checkout for
-the physical cluster. `k3s-ansible` remains the engine, while home-ops owns site
-inventory, derived values, token handling, and the optional handoff into the
-Kubernetes bootstrap runner. This keeps the fork close to upstream while still
-making the rendered Ansible inputs match the live cluster.
+`hack/bootstrap/ansible/` orchestrates physical-node K3s convergence for the
+cluster. By default it uses the in-repo `home-ops` backend, while the external
+`../k3s-ansible` checkout remains available with
+`BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible` or `--backend k3s-ansible`.
+
+The `home-ops` backend is a small home-ops-specific playbook for Debian-family,
+systemd nodes. It supports the current live and Lima shapes, installs kube-vip
+and a minimal bootstrap Cilium, fetches kubeconfig into the same `.out/` flow,
+and leaves ArgoCD takeover plus the post-Cilium kube-proxy disable phase to the
+existing wrapper. It is intentionally not a broad replacement for
+`k3s-ansible`: it does not support reset/destroy, K3s upgrades, non-Debian OS
+families, or alternate CNIs.
 
 The live inventory is intentionally non-secret and checked in under
 `hack/bootstrap/ansible/inventory/live/`. Generated inventory, group vars, and
@@ -174,7 +184,14 @@ Render a non-mutating plan:
 just bootstrap-live-ansible-plan
 ```
 
-The rendered vars are a deterministic merge of:
+Render the same plan through the external compatibility backend:
+
+```sh
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-live-ansible-plan
+```
+
+For the external `k3s-ansible` backend, the rendered vars are a deterministic
+merge of:
 
 1. `k3s-ansible` sample vars.
 2. live home-ops overrides such as host facts, SSH user, interface names, and
@@ -183,19 +200,23 @@ The rendered vars are a deterministic merge of:
    version/config, Cilium BGP settings, kube-vip tag, and API VIP.
 4. runtime secret references.
 
+For the default `home-ops` backend, the external sample vars are omitted; the
+same live overrides, derived values, and runtime secret references are merged
+directly.
+
 For live inventory, derived-owned values fail on conflict instead of silently
 overriding human input. This keeps Ansible bootstrap aligned with the GitOps
 state ArgoCD will enforce later.
 
 The external `k3s-ansible` defaults do not need to match home-ops versions or
-network settings. Keep that checkout close to upstream and let this wrapper
-render the homelab-specific K3s, Cilium, BGP, kube-vip, API endpoint, and
-control-plane taint values.
+network settings when that backend is explicitly selected. Keep that checkout
+close to upstream and let this wrapper render the homelab-specific K3s, Cilium,
+BGP, kube-vip, API endpoint, and control-plane taint values.
 
-Initial K3s server args intentionally leave kube-proxy enabled so the
-`k3s-ansible` bootstrap can complete before Cilium owns Service routing. After
-`site.yml` installs and waits for Cilium, the wrapper runs a home-ops
-post-Cilium playbook. When the derived Cilium config has
+Initial K3s server args intentionally leave kube-proxy enabled so Ansible
+bootstrap can complete before Cilium owns Service routing. After the selected
+backend installs and waits for Cilium, the wrapper runs a home-ops post-Cilium
+playbook. When the derived Cilium config has
 `kube_proxy_replacement: true`, that playbook writes
 `/etc/rancher/k3s/config.yaml.d/90-home-ops-kube-proxy.yaml` with
 `disable-kube-proxy: true`, then restarts K3s servers one at a time and waits
@@ -214,6 +235,12 @@ Then converge nodes with Ansible:
 
 ```sh
 just bootstrap-live-ansible
+```
+
+Use the external compatibility backend explicitly when comparing behavior:
+
+```sh
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-live-ansible
 ```
 
 Run only the Kubernetes bootstrap after K3s already exists:

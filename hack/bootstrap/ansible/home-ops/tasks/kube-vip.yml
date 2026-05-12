@@ -1,0 +1,35 @@
+---
+- name: Ensure K3s manifests directory exists
+  ansible.builtin.file:
+    path: "{{ home_ops_k3s_manifests_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Render kube-vip RBAC manifest
+  ansible.builtin.template:
+    src: templates/kube-vip-rbac.yaml.j2
+    dest: "{{ home_ops_k3s_manifests_dir }}/vip-rbac.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kube_vip_enabled | bool
+
+- name: Render kube-vip DaemonSet manifest
+  ansible.builtin.template:
+    src: templates/kube-vip-daemonset.yaml.j2
+    dest: "{{ home_ops_k3s_manifests_dir }}/vip.yaml"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kube_vip_enabled | bool
+
+- name: Remove kube-vip manifests when disabled
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - "{{ home_ops_k3s_manifests_dir }}/vip-rbac.yaml"
+    - "{{ home_ops_k3s_manifests_dir }}/vip.yaml"
+  when: not (kube_vip_enabled | bool)

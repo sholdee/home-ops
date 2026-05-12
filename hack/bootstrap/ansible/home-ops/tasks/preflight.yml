@@ -1,0 +1,87 @@
+---
+- name: Verify Ansible version
+  ansible.builtin.assert:
+    that:
+      - ansible_version.full is version('2.14', '>=')
+    fail_msg: "home-ops bootstrap requires Ansible 2.14 or newer"
+
+- name: Verify supported OS family
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["os_family"] == home_ops_supported_os_family
+      - ansible_facts["distribution"] in home_ops_supported_distributions
+    fail_msg: >-
+      Unsupported OS for home-ops bootstrap:
+      {{ ansible_facts["distribution"] }} {{ ansible_facts["distribution_version"] }}
+      (family {{ ansible_facts["os_family"] }}).
+
+- name: Verify supported architecture
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["architecture"] in home_ops_supported_architectures
+    fail_msg: "Unsupported architecture for home-ops bootstrap: {{ ansible_facts['architecture'] }}"
+
+- name: Verify systemd service manager
+  ansible.builtin.assert:
+    that:
+      - ansible_facts["service_mgr"] == "systemd"
+    fail_msg: "home-ops bootstrap requires systemd hosts"
+
+- name: Verify required bootstrap variables
+  ansible.builtin.assert:
+    that:
+      - k3s_version is defined
+      - k3s_version | length > 0
+      - k3s_token is defined
+      - k3s_token | length > 0
+      - cluster_cidr is defined
+      - cluster_cidr | length > 0
+      - apiserver_endpoint is defined
+      - apiserver_endpoint | length > 0
+      - cilium_tag is defined
+      - cilium_tag | length > 0
+    fail_msg: "missing required home-ops bootstrap variables"
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Read installed K3s version
+  ansible.builtin.command: "{{ home_ops_k3s_binary_path }} --version"
+  register: home_ops_k3s_version_cmd
+  failed_when: false
+  changed_when: false
+
+- name: Set installed K3s version fact
+  ansible.builtin.set_fact:
+    home_ops_installed_k3s_version: >-
+      {{
+        home_ops_k3s_version_cmd.stdout
+        | regex_findall('k3s version ([^ ]+)')
+        | first
+        | default('')
+      }}
+  when: home_ops_k3s_version_cmd.rc == 0
+
+- name: Fail when installed K3s version does not match desired version
+  ansible.builtin.fail:
+    msg: >-
+      Installed K3s version {{ home_ops_installed_k3s_version }} does not match
+      desired bootstrap version {{ k3s_version }}. Use System Upgrade Controller
+      for version changes before rerunning this backend.
+  when:
+    - home_ops_installed_k3s_version | default('') | length > 0
+    - home_ops_installed_k3s_version != k3s_version
+
+- name: Fail when a server host already has an agent service
+  ansible.builtin.fail:
+    msg: "server host {{ inventory_hostname }} has {{ home_ops_k3s_agent_service_name }} service state"
+  when:
+    - inventory_hostname in groups[group_name_master]
+    - (home_ops_k3s_agent_service_name ~ '.service') in ansible_facts.services
+
+- name: Fail when an agent host already has a server service
+  ansible.builtin.fail:
+    msg: "agent host {{ inventory_hostname }} has {{ home_ops_k3s_server_service_name }} service state"
+  when:
+    - inventory_hostname in (groups[group_name_node] | default([]))
+    - (home_ops_k3s_server_service_name ~ '.service') in ansible_facts.services

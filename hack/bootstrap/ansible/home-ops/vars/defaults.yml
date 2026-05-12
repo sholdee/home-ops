@@ -1,0 +1,65 @@
+---
+group_name_master: master
+group_name_node: node
+k3s_kubectl_binary: k3s kubectl
+systemd_dir: /etc/systemd/system
+
+home_ops_supported_os_family: Debian
+home_ops_supported_distributions:
+  - Debian
+  - Raspbian
+  - Raspberry Pi OS
+  - Ubuntu
+home_ops_supported_architectures:
+  - aarch64
+  - arm64
+  - x86_64
+  - amd64
+
+home_ops_debian_packages:
+  - ca-certificates
+  - curl
+  - iproute2
+  - iptables
+  - nfs-common
+  - open-iscsi
+  - socat
+
+home_ops_k3s_binary_path: /usr/local/bin/k3s
+home_ops_k3s_server_service_name: k3s
+home_ops_k3s_agent_service_name: k3s-node
+home_ops_k3s_manifests_dir: /var/lib/rancher/k3s/server/manifests
+home_ops_k3s_runtime_dir: /var/lib/rancher/k3s/server
+home_ops_k3s_config_dir: /etc/rancher/k3s
+home_ops_k3s_token_file: /etc/rancher/k3s/home-ops-token
+home_ops_remote_kubeconfig: /tmp/home-ops-kubeconfig
+home_ops_cilium_values_file: /tmp/home-ops-cilium-values.yaml
+home_ops_cilium_checksum_file: /var/lib/rancher/k3s/server/home-ops-cilium-bootstrap.sha256
+
+kube_vip_enabled: true
+kube_vip_arp: true
+kube_vip_bgp: false
+kube_vip_iface: ""
+
+retry_count: 45
+
+home_ops_first_master: "{{ groups[group_name_master][0] }}"
+home_ops_first_master_join_ip: "{{ hostvars[home_ops_first_master].k3s_node_ip | string | split(',') | first }}"
+home_ops_node_name: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
+
+home_ops_first_server_args: >-
+  {{ '--cluster-init' if (groups[group_name_master] | length) > 1 else '' }}
+  --token-file {{ home_ops_k3s_token_file }}
+  {{ extra_server_args | default('') }}
+home_ops_join_server_args: >-
+  --server https://{{ home_ops_first_master_join_ip }}:6443
+  --token-file {{ home_ops_k3s_token_file }}
+  {{ extra_server_args | default('') }}
+home_ops_agent_args: >-
+  --server https://{{ apiserver_endpoint }}:6443
+  --token-file {{ home_ops_k3s_token_file }}
+  {{ extra_agent_args | default('') }}
+
+cilium_iface: auto
+cilium_export_pod_cidr: "false"
+cilium_extra_values_files: []

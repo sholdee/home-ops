@@ -5,10 +5,13 @@ BOOTSTRAP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
 LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-home-ops-k3s-test}"
-LIMA_SERVER_NAME="${LIMA_CLUSTER_NAME}-server-1"
+BOOTSTRAP_ANSIBLE_BACKEND="${BOOTSTRAP_ANSIBLE_BACKEND:-home-ops}"
+BOOTSTRAP_ANSIBLE_OUT_DIR="${BOOTSTRAP_ANSIBLE_OUT_DIR:-${BOOTSTRAP_DIR}/.out/ansible-lima}"
 K3S_ANSIBLE_DIR="${K3S_ANSIBLE_DIR:-${REPO_ROOT}/../k3s-ansible}"
 LIMA_OUT_DIR="${LIMA_OUT_DIR:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME}}"
+LIMA_SERVER_COUNT="${LIMA_SERVER_COUNT:-1}"
 LIMA_AGENT_COUNT="${LIMA_AGENT_COUNT:-2}"
+LIMA_K3S_MASTER_TAINT="${LIMA_K3S_MASTER_TAINT:-true}"
 LIMA_CPUS="${LIMA_CPUS:-2}"
 LIMA_MEMORY_GIB="${LIMA_MEMORY_GIB:-3}"
 LIMA_SERVER_CPUS="${LIMA_SERVER_CPUS:-4}"
@@ -21,10 +24,30 @@ LIMA_KUBECONFIG_PORT="${LIMA_KUBECONFIG_PORT:-16443}"
 LIMA_KUBECONTEXT="${LIMA_KUBECONTEXT:-lima-${LIMA_CLUSTER_NAME}}"
 LIMA_USER_KUBECONFIG="${LIMA_USER_KUBECONFIG:-${HOME}/.kube/config}"
 
+if [[ ! "$LIMA_SERVER_COUNT" =~ ^[0-9]+$ || "$LIMA_SERVER_COUNT" -lt 1 ]]; then
+  printf 'ERROR: LIMA_SERVER_COUNT must be a positive integer\n' >&2
+  exit 1
+fi
+
 if [[ ! "$LIMA_AGENT_COUNT" =~ ^[0-9]+$ || "$LIMA_AGENT_COUNT" -lt 1 ]]; then
   printf 'ERROR: LIMA_AGENT_COUNT must be a positive integer\n' >&2
   exit 1
 fi
+
+case "$LIMA_K3S_MASTER_TAINT" in
+  true|false)
+    ;;
+  *)
+    printf 'ERROR: LIMA_K3S_MASTER_TAINT must be true or false\n' >&2
+    exit 1
+    ;;
+esac
+
+LIMA_SERVER_NAMES=()
+for server_index in $(seq 1 "$LIMA_SERVER_COUNT"); do
+  LIMA_SERVER_NAMES+=("${LIMA_CLUSTER_NAME}-server-${server_index}")
+done
+LIMA_SERVER_NAME="${LIMA_SERVER_NAMES[0]}"
 
 LIMA_AGENT_NAMES=()
 for agent_index in $(seq 1 "$LIMA_AGENT_COUNT"); do
@@ -45,8 +68,17 @@ lima_require_tool() {
 }
 
 lima_instance_names() {
-  printf '%s\n' "$LIMA_SERVER_NAME"
+  printf '%s\n' "${LIMA_SERVER_NAMES[@]}"
   printf '%s\n' "${LIMA_AGENT_NAMES[@]}"
+}
+
+lima_is_server_instance() {
+  local instance="$1"
+  local server
+  for server in "${LIMA_SERVER_NAMES[@]}"; do
+    [[ "$instance" == "$server" ]] && return 0
+  done
+  return 1
 }
 
 lima_cluster_instance_names() {
@@ -129,6 +161,20 @@ lima_kubeconfig_file() {
   printf '%s\n' "${LIMA_OUT_DIR}/kubeconfig"
 }
 
+lima_raw_kubeconfig_file() {
+  case "$BOOTSTRAP_ANSIBLE_BACKEND" in
+    k3s-ansible)
+      printf '%s\n' "${K3S_ANSIBLE_DIR}/kubeconfig"
+      ;;
+    home-ops)
+      printf '%s\n' "${BOOTSTRAP_ANSIBLE_OUT_DIR}/kubeconfig-raw-lima"
+      ;;
+    *)
+      lima_die "unknown Ansible backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+      ;;
+  esac
+}
+
 lima_tunnel_pid_file() {
   printf '%s\n' "${LIMA_OUT_DIR}/apiserver-tunnel.pid"
 }
@@ -147,10 +193,11 @@ lima_tunnel_pid_alive() {
 }
 
 lima_prepare_kubeconfig() {
-  local raw_kubeconfig="${K3S_ANSIBLE_DIR}/kubeconfig"
+  local raw_kubeconfig
   local kubeconfig
+  raw_kubeconfig="$(lima_raw_kubeconfig_file)"
   kubeconfig="$(lima_kubeconfig_file)"
-  [[ -f "$raw_kubeconfig" ]] || lima_die "missing kubeconfig from k3s-ansible run: ${raw_kubeconfig}"
+  [[ -f "$raw_kubeconfig" ]] || lima_die "missing kubeconfig from ${BOOTSTRAP_ANSIBLE_BACKEND} run: ${raw_kubeconfig}"
   mkdir -p "$LIMA_OUT_DIR"
   cp "$raw_kubeconfig" "$kubeconfig"
   LIMA_KUBECONTEXT="$LIMA_KUBECONTEXT" yq -i '
@@ -169,8 +216,9 @@ lima_prepare_kubeconfig() {
 }
 
 lima_existing_apiserver_tunnel_valid() {
-  local raw_kubeconfig="${K3S_ANSIBLE_DIR}/kubeconfig"
+  local raw_kubeconfig
   local kubeconfig
+  raw_kubeconfig="$(lima_raw_kubeconfig_file)"
   [[ -f "$raw_kubeconfig" ]] || return 1
   kubeconfig="$(lima_prepare_kubeconfig)"
   kubectl --kubeconfig "$kubeconfig" get "node/lima-${LIMA_SERVER_NAME}" >/dev/null 2>&1

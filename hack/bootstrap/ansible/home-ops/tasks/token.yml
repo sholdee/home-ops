@@ -1,0 +1,17 @@
+---
+- name: Ensure K3s config directory exists
+  ansible.builtin.file:
+    path: "{{ home_ops_k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write root-only K3s token file
+  ansible.builtin.copy:
+    content: "{{ k3s_token }}\n"
+    dest: "{{ home_ops_k3s_token_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true

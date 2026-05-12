@@ -9,12 +9,14 @@ usage() {
 Usage: hack/bootstrap/ansible/run.sh [options]
 
 Options:
+  --backend NAME          Ansible backend: k3s-ansible or home-ops.
+                          Defaults to BOOTSTRAP_ANSIBLE_BACKEND or home-ops.
   --profile NAME          Inventory profile: live or lima. Defaults to live.
   --inventory-source DIR  Source inventory directory.
   --inventory-dir DIR     Existing/generated inventory directory.
   --skip-render           Use --inventory-dir as-is.
-  --skip-prereqs          Do not run the home-ops node prerequisite playbook.
-  --skip-site             Do not run k3s-ansible site.yml.
+  --skip-prereqs          Do not run the k3s-ansible node prerequisite playbook.
+  --skip-site             Do not run the selected backend site.yml.
   --skip-import           Do not import the fetched kubeconfig.
   --kube-bootstrap        Run hack/bootstrap/bootstrap.sh --profile full after Ansible.
   --plan                  Render inventory and print summary only.
@@ -24,6 +26,7 @@ EOF
 }
 
 profile="live"
+backend="$BOOTSTRAP_ANSIBLE_BACKEND"
 source_dir=""
 inventory_dir=""
 skip_render=false
@@ -36,6 +39,10 @@ yes=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --backend)
+      backend="$2"
+      shift 2
+      ;;
     --profile)
       profile="$2"
       shift 2
@@ -86,6 +93,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+case "$backend" in
+  k3s-ansible|home-ops)
+    BOOTSTRAP_ANSIBLE_BACKEND="$backend"
+    export BOOTSTRAP_ANSIBLE_BACKEND
+    ;;
+  *)
+    ansible_die "unknown Ansible backend: ${backend}"
+    ;;
+esac
+
 case "$profile" in
   live)
     source_dir="${source_dir:-$BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR}"
@@ -97,6 +114,7 @@ case "$profile" in
     ansible_die "unknown Ansible bootstrap profile: ${profile}"
     ;;
 esac
+ansible_set_profile "$profile"
 
 inventory_dir="${inventory_dir:-$(ansible_inventory_dir "$profile")}"
 inventory_file="${inventory_dir}/hosts.yml"
@@ -128,11 +146,13 @@ if [[ "$profile" == live ]]; then
   export K3S_TOKEN
 fi
 
-if ! ansible_bool "$skip_prereqs"; then
+if ! ansible_bool "$skip_prereqs" && [[ "$BOOTSTRAP_ANSIBLE_BACKEND" == k3s-ansible ]]; then
   ansible_run_prereqs "$inventory_file"
 fi
 
-ansible_install_collections
+if [[ "$BOOTSTRAP_ANSIBLE_BACKEND" == k3s-ansible ]]; then
+  ansible_install_collections
+fi
 
 if ! ansible_bool "$skip_site"; then
   ansible_run_site "$inventory_file"

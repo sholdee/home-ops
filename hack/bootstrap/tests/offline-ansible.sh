@@ -11,6 +11,7 @@ require() {
 }
 
 require yq
+require jq
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -38,6 +39,7 @@ EOF
 
 out="${tmp}/out"
 K3S_ANSIBLE_DIR="$k3s_ansible" \
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible \
 BOOTSTRAP_ANSIBLE_OUT_DIR="$out" \
   "${ROOT}/hack/bootstrap/ansible/render-inventory.sh" --profile live >/dev/null
 
@@ -64,6 +66,43 @@ if ! grep -q 'ansible_disable_kube_proxy_after_cilium' "${ROOT}/hack/bootstrap/a
   exit 1
 fi
 
+home_ops_out="${tmp}/home-ops-out"
+BOOTSTRAP_ANSIBLE_OUT_DIR="$home_ops_out" \
+  "${ROOT}/hack/bootstrap/ansible/render-inventory.sh" --profile live >/dev/null
+
+home_ops_vars="${home_ops_out}/inventory/live/group_vars/all.yml"
+test "$(yq -r '.ansible_user' "$home_ops_vars")" = "ethan"
+test "$(yq -r '.k3s_version' "$home_ops_vars")" = "v1.35.4+k3s1"
+test "$(yq -r '.cilium_tag' "$home_ops_vars")" = "$cilium_tag"
+test "$(yq -r '.cluster_cidr' "$home_ops_vars")" = "10.52.0.0/16"
+test "$(yq -r '.k3s_token' "$home_ops_vars")" = "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}"
+if grep -q 'sample-token' "$home_ops_vars"; then
+  echo "home-ops backend vars contain sample token" >&2
+  exit 1
+fi
+
+home_ops_raw_kubeconfig="$(
+  BOOTSTRAP_ANSIBLE_OUT_DIR="$home_ops_out" \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_raw_kubeconfig_file live"
+)"
+test "$home_ops_raw_kubeconfig" = "${home_ops_out}/kubeconfig-raw-live"
+
+default_lima_inventory="$(
+  bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_set_profile lima; ansible_inventory_dir"
+)"
+test "$default_lima_inventory" = "${ROOT}/hack/bootstrap/.out/ansible-lima/inventory/lima"
+
+default_backend="$(
+  bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; printf '%s\n' \"\$BOOTSTRAP_ANSIBLE_BACKEND\""
+)"
+test "$default_backend" = "home-ops"
+
+if command -v ansible-playbook >/dev/null 2>&1; then
+  ansible-playbook --syntax-check \
+    -i "${home_ops_out}/inventory/live/hosts.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/site.yml" >/dev/null
+fi
+
 conflict_source="${tmp}/conflict-source"
 mkdir -p "${conflict_source}/group_vars"
 cp "${ROOT}/hack/bootstrap/ansible/inventory/live/hosts.yml" "${conflict_source}/hosts.yml"
@@ -74,6 +113,7 @@ apiserver_endpoint: 1.2.3.4
 EOF
 
 if K3S_ANSIBLE_DIR="$k3s_ansible" \
+  BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible \
   BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/conflict-out" \
   "${ROOT}/hack/bootstrap/ansible/render-inventory.sh" \
     --profile live \

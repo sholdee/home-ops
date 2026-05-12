@@ -145,7 +145,7 @@ bootstrap-live-dry-run context='default':
 bootstrap-live-phase phase context='default':
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --only-phase '{{ phase }}' --dry-run --yes
 
-# Render live k3s-ansible inventory and derived vars without changing nodes.
+# Render live Ansible inventory and derived vars without changing nodes.
 [group('bootstrap-live')]
 bootstrap-live-ansible-plan:
     ./hack/bootstrap/ansible/render-inventory.sh --profile live --summary
@@ -155,7 +155,7 @@ bootstrap-live-ansible-plan:
 bootstrap-ansible-import-token:
     ./hack/bootstrap/ansible/import-token.sh
 
-# Run the live k3s-ansible convergence wrapper.
+# Run the live Ansible convergence wrapper.
 [group('bootstrap-live')]
 bootstrap-live-ansible:
     ./hack/bootstrap/ansible/run.sh --profile live
@@ -165,7 +165,7 @@ bootstrap-live-ansible:
 bootstrap-live-kube context='default':
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --profile full --yes
 
-# Run live k3s-ansible convergence, then home-ops Kubernetes bootstrap.
+# Run live Ansible convergence, then home-ops Kubernetes bootstrap.
 [group('bootstrap-live')]
 bootstrap-live-full:
     ./hack/bootstrap/ansible/run.sh --profile live --kube-bootstrap
@@ -191,12 +191,12 @@ bootstrap-lima-create:
 bootstrap-lima-create-apps:
     {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
 
-# Run k3s-ansible against the configured Lima VMs.
+# Run the selected Ansible backend against the configured Lima VMs.
 [group('bootstrap-lima')]
 bootstrap-lima-ansible:
     ./hack/bootstrap/lima/run-ansible.sh
 
-# Run k3s-ansible against the larger Lima app-profile VM shape.
+# Run the selected Ansible backend against the larger Lima app-profile VM shape.
 [group('bootstrap-lima-apps')]
 bootstrap-lima-ansible-apps:
     {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
@@ -241,11 +241,11 @@ bootstrap-lima-validate-apps:
 bootstrap-lima-delete:
     ./hack/bootstrap/lima/delete.sh
 
-# Recreate Lima VMs, run k3s-ansible, bootstrap home-ops, and validate foundation state.
+# Recreate Lima VMs, run Ansible, bootstrap home-ops, and validate foundation state.
 [group('bootstrap-lima')]
 bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima-ansible bootstrap-lima-bootstrap bootstrap-lima-validate
 
-# Recreate larger Lima VMs, run k3s-ansible, bootstrap app profile, and validate app safety.
+# Recreate larger Lima VMs, run Ansible, bootstrap app profile, and validate app safety.
 [group('bootstrap-lima-apps')]
 bootstrap-lima-fresh-apps:
     {{ lima_app_env }} ./hack/bootstrap/lima/delete.sh

@@ -1,0 +1,46 @@
+---
+operator:
+  replicas: 1
+
+{% if cilium_iface != 'auto' %}
+devices: "{{ cilium_iface }}"
+
+{% endif %}
+ipam:
+  operator:
+    clusterPoolIPv4PodCIDRList:
+      - "{{ cluster_cidr }}"
+
+{% if cilium_mode == "native" or (cilium_bgp | bool and (cilium_export_pod_cidr | default('false') | string) != 'false') %}
+ipv4NativeRoutingCIDR: "{{ cluster_cidr }}"
+
+{% endif %}
+k8sServiceHost: "127.0.0.1"
+k8sServicePort: 6444
+
+routingMode: "{{ cilium_mode }}"
+autoDirectNodeRoutes: {{ (cilium_mode == "native") | ternary('true', 'false') }}
+
+kubeProxyReplacement: {{ (kube_proxy_replacement | bool) | ternary('true', 'false') }}
+
+bpf:
+  masquerade: {{ (enable_bpf_masquerade | bool) | ternary('true', 'false') }}
+{% if cilium_datapath_mode | default('') | length > 0 %}
+  datapathMode: "{{ cilium_datapath_mode }}"
+{% endif %}
+
+bgpControlPlane:
+  enabled: {{ (cilium_bgp | default(false) | bool) | ternary('true', 'false') }}
+
+hubble:
+  enabled: {{ (cilium_hubble | bool) | ternary('true', 'false') }}
+  relay:
+    enabled: {{ (cilium_hubble | bool) | ternary('true', 'false') }}
+  ui:
+    enabled: {{ (cilium_hubble | bool) | ternary('true', 'false') }}
+
+{% if kube_proxy_replacement is not false %}
+loadBalancer:
+  algorithm: "{{ bpf_lb_algorithm }}"
+  mode: "{{ bpf_lb_mode }}"
+{% endif %}
