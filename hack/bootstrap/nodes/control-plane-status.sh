@@ -179,7 +179,7 @@ if [ -n "$etcdctl_path" ] &&
   [ -f "$etcd_tls_dir/client.crt" ] &&
   [ -f "$etcd_tls_dir/client.key" ]; then
   printf 'etcd_member_list_begin\n'
-  ETCDCTL_API=3 "$etcdctl_path" \
+  "$etcdctl_path" \
     --endpoints=https://127.0.0.1:2379 \
     --dial-timeout=3s \
     --command-timeout=5s \
