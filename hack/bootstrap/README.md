@@ -130,10 +130,11 @@ final PVC.
 
 By default the disposable foundation shape is one server VM using `4` CPU and
 `6GiB` memory plus two agent VMs using `2` CPU and `3GiB` memory. The app-profile
-`just` recipes create three larger agent VMs using `4` CPU and `6GiB` memory
+`just` recipes create four larger agent VMs using `4` CPU and `6GiB` memory
 each with `120GiB` disks, because the allowed app set includes topology-spread
-workloads, Longhorn, VolSync restores, retained restore source volumes, and
-database operators. Override with `LIMA_SERVER_COUNT`, `LIMA_SERVER_CPUS`,
+workloads, Longhorn, VolSync restores, retained restore source volumes,
+database operators, and one-node replacement testing. Override with
+`LIMA_SERVER_COUNT`, `LIMA_SERVER_CPUS`,
 `LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`,
 `LIMA_AGENT_MEMORY_GIB`, `LIMA_K3S_MASTER_TAINT`, or `LIMA_DISK_GIB` when
 needed.
@@ -280,8 +281,12 @@ just node-lima-status home-ops-k3s-test-agent-1
 Control-plane lifecycle is intentionally refused until the embedded-etcd member
 procedure is proven. Worker delete stops and disables `k3s-node` before deleting
 the Kubernetes Node and node-password Secret. If Longhorn is installed, delete
-also requires Longhorn scheduling to be disabled for the target node and all
-target-node replicas and attached volumes to be gone.
+also requires Longhorn scheduling to be disabled for the target node, no attached
+volumes on the target node, and no active or unsafe target-node replica state.
+Stopped stale replica records are allowed only when Longhorn already has the
+desired healthy replica count on other nodes. Delete then clears stale pod
+objects still bound to the deleted node and waits for the Longhorn node resource
+to disappear before the same node name can be joined again.
 
 For normal maintenance or reboot work, use `drain` and `uncordon` only. The
 drain helper allows the expected temporary Longhorn degraded state after

@@ -204,9 +204,10 @@ the disposable test cluster.
 
 After the foundation profile is healthy, run the app profile against the same
 Lima cluster. The app profile is materially heavier than foundation mode and
-expects at least three schedulable worker nodes with `4` CPU, `6GiB` memory,
-and enough disk for Longhorn restore and replica scheduling. The app-specific
-recipes create `120GiB` VM disks and preflight requires at least `100GiB`
+defaults to four schedulable worker nodes with `4` CPU, `6GiB` memory,
+and enough disk for Longhorn restore, replica scheduling, and one-node
+replacement testing. The app-specific recipes create `120GiB` VM disks and
+preflight requires at least `100GiB`
 allocatable ephemeral storage per schedulable worker. Use the app-specific
 create/ansible recipes if running phase by phase:
 
@@ -381,7 +382,11 @@ Secret, so the old node cannot immediately re-register. For node replacement,
 run `node-*-longhorn-evict` after drain and before delete. The eviction helper
 disables Longhorn scheduling for the target, requests replica eviction, and
 fails before mutating anything if the remaining eligible storage nodes cannot
-hold the maximum configured replica count.
+hold the maximum configured replica count. Delete and eviction completion allow
+stopped stale target-node replica records only after the desired healthy replica
+count exists on other nodes. Delete also clears stale pod objects still bound to
+the removed node and waits for the Longhorn node resource to disappear before a
+same-name join can proceed.
 
 Join uses the generated home-ops Ansible worker playbook and starts the agent
 with `node.home-ops.sh/joining=true:NoSchedule`. After the node object appears,
