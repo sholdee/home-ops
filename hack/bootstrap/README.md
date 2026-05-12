@@ -260,6 +260,21 @@ The live Ansible run prompts for explicit confirmation by default and prints
 the target hosts, first control-plane host, derived K3s/Cilium versions, and API
 endpoint before making changes.
 
+## Node Lifecycle Status
+
+`hack/bootstrap/nodes/` contains existing-cluster node lifecycle helpers. The
+first supported commands are read-only status checks:
+
+```sh
+just node-live-status k3s-worker-0
+just node-lima-status home-ops-k3s-test-agent-1
+```
+
+Status reports the selected profile/context, inventory role, Kubernetes role,
+Ready/schedulable state, temporary joining taint, ordinary pods on the node,
+Cilium readiness, and Longhorn signals when Longhorn is installed. Mutating
+drain/delete/join/uncordon commands are intentionally separate follow-up work.
+
 If more than one 1Password account is configured and the default account is
 wrong, pin the account explicitly:
 
