@@ -348,6 +348,7 @@ into explicit operator steps:
 ```sh
 just node-live-status k3s-worker-0
 just node-live-control-plane-status k3s-master-0
+just node-live-control-plane-delete-preflight k3s-master-0
 just node-live-drain k3s-worker-0
 just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
@@ -361,6 +362,7 @@ The Lima equivalents use the `node-lima-*` group:
 ```sh
 just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
+just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
 just node-lima-drain home-ops-k3s-test-agent-1
 just node-lima-longhorn-evict home-ops-k3s-test-agent-1
 just node-lima-delete home-ops-k3s-test-agent-1
@@ -378,6 +380,11 @@ availability. The home-ops Ansible backend derives the upstream `etcdctl`
 version from the K3s release's embedded Etcd version, verifies the release
 archive checksum, and installs `etcdctl` on control-plane nodes so
 embedded-etcd member inspection is available after node convergence.
+The control-plane delete preflight is also read-only. It queries etcd from an
+alternate Ready control-plane, maps the target node to exactly one etcd member,
+checks quorum math, and prints the future `etcdctl member remove` command
+without running it. Single-server Lima clusters cannot pass that HA preflight
+because there is no alternate etcd member to query.
 
 For normal node maintenance or reboots, run drain and then uncordon. Drain only
 requires ordinary workloads to move and Longhorn volumes to detach from the

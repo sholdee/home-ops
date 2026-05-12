@@ -270,6 +270,7 @@ delete, join, and uncordon steps:
 ```sh
 just node-live-status k3s-worker-0
 just node-live-control-plane-status k3s-master-0
+just node-live-control-plane-delete-preflight k3s-master-0
 just node-live-drain k3s-worker-0
 just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
@@ -278,6 +279,7 @@ just node-live-join k3s-worker-0
 just node-live-uncordon k3s-worker-0
 just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
+just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
 ```
 
 Control-plane lifecycle mutations are intentionally refused until the
@@ -288,7 +290,12 @@ whether `etcdctl` is available for member inspection. The home-ops Ansible
 backend derives the upstream `etcdctl` version from the K3s release's embedded
 Etcd version, verifies the release archive checksum, and installs `etcdctl` on
 control-plane nodes so this probe can list members once embedded etcd is
-present. Worker delete stops and disables `k3s-node` before deleting
+present. The control-plane delete preflight is also read-only: it must query
+etcd from an alternate Ready control-plane, match the target Kubernetes node to
+exactly one etcd member, check quorum math, and print the future
+`etcdctl member remove` command without running it. Single-server Lima clusters
+cannot pass that HA preflight because there is no alternate etcd member to
+query. Worker delete stops and disables `k3s-node` before deleting
 the Kubernetes Node and node-password Secret. If Longhorn is installed, delete
 also requires Longhorn scheduling to be disabled for the target node, no attached
 volumes on the target node, and no active or unsafe target-node replica state.
