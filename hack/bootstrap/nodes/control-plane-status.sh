@@ -152,9 +152,13 @@ else
   printf 'sqlite_state_db=absent\n'
 fi
 
+etcd_listeners=unknown_no_ss
 if command -v ss >/dev/null 2>&1; then
   etcd_listeners="$(ss -ltn 2>/dev/null | awk 'NR > 1 {print $4}' | grep -E '(:|\])23(79|80)$' | paste -sd ',' - || true)"
   printf 'etcd_listeners=%s\n' "${etcd_listeners:-none}"
+  if [ -z "$etcd_listeners" ]; then
+    etcd_listeners=none
+  fi
 else
   printf 'etcd_listeners=unknown_no_ss\n'
 fi
@@ -162,11 +166,15 @@ fi
 etcdctl_path="$(command -v etcdctl 2>/dev/null || true)"
 if [ -n "$etcdctl_path" ]; then
   printf 'etcdctl=%s\n' "$etcdctl_path"
+  etcdctl_version="$("$etcdctl_path" version 2>/dev/null | sed -n '1p' || true)"
+  printf 'etcdctl_version=%s\n' "${etcdctl_version:-unknown}"
 else
   printf 'etcdctl=absent\n'
 fi
 
 if [ -n "$etcdctl_path" ] &&
+  [ "$etcd_listeners" != "none" ] &&
+  [ "$etcd_listeners" != "unknown_no_ss" ] &&
   [ -f "$etcd_tls_dir/server-ca.crt" ] &&
   [ -f "$etcd_tls_dir/client.crt" ] &&
   [ -f "$etcd_tls_dir/client.key" ]; then
@@ -181,7 +189,7 @@ if [ -n "$etcdctl_path" ] &&
     member list -w table || printf 'etcd_member_list_error=%s\n' "$?"
   printf 'etcd_member_list_end\n'
 else
-  printf 'etcd_member_list=skipped_missing_etcdctl_or_certs\n'
+  printf 'etcd_member_list=skipped_missing_etcdctl_listener_or_certs\n'
 fi
 EOF
 

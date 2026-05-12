@@ -284,8 +284,11 @@ Control-plane lifecycle mutations are intentionally refused until the
 embedded-etcd member procedure is proven. The control-plane status helper is
 read-only: it checks the inventory control-plane set, Ready control-plane nodes,
 quorum math, K3s service state, local datastore indicators, etcd listeners, and
-whether `etcdctl` is available for member inspection. Worker delete stops and
-disables `k3s-node` before deleting
+whether `etcdctl` is available for member inspection. The home-ops Ansible
+backend derives the upstream `etcdctl` version from the K3s release's embedded
+Etcd version, verifies the release archive checksum, and installs `etcdctl` on
+control-plane nodes so this probe can list members once embedded etcd is
+present. Worker delete stops and disables `k3s-node` before deleting
 the Kubernetes Node and node-password Secret. If Longhorn is installed, delete
 also requires Longhorn scheduling to be disabled for the target node, no attached
 volumes on the target node, and no active or unsafe target-node replica state.

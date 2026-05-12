@@ -374,7 +374,10 @@ blocked until the embedded-etcd member removal and rejoin procedure is proven.
 The control-plane status command is read-only and exists to validate that future
 procedure: it reports inventory/Ready quorum math and probes the selected server
 for K3s service state, datastore files, etcd listeners, and `etcdctl`
-availability.
+availability. The home-ops Ansible backend derives the upstream `etcdctl`
+version from the K3s release's embedded Etcd version, verifies the release
+archive checksum, and installs `etcdctl` on control-plane nodes so
+embedded-etcd member inspection is available after node convergence.
 
 For normal node maintenance or reboots, run drain and then uncordon. Drain only
 requires ordinary workloads to move and Longhorn volumes to detach from the

@@ -65,6 +65,9 @@ if ! grep -q 'ansible_disable_kube_proxy_after_cilium' "${ROOT}/hack/bootstrap/a
   echo "run.sh does not call the post-Cilium kube-proxy convergence playbook" >&2
   exit 1
 fi
+grep -q 'api.github.com/repos/k3s-io/k3s/releases/tags' "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml"
+grep -q 'home_ops_embedded_etcd_version' "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml"
+grep -q 'home_ops_etcdctl_version_effective' "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml"
 
 home_ops_out="${tmp}/home-ops-out"
 BOOTSTRAP_ANSIBLE_OUT_DIR="$home_ops_out" \
@@ -76,6 +79,7 @@ test "$(yq -r '.k3s_version' "$home_ops_vars")" = "v1.35.4+k3s1"
 test "$(yq -r '.cilium_tag' "$home_ops_vars")" = "$cilium_tag"
 test "$(yq -r '.cluster_cidr' "$home_ops_vars")" = "10.52.0.0/16"
 test "$(yq -r '.k3s_token' "$home_ops_vars")" = "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}"
+test "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" = ""
 if grep -q 'sample-token' "$home_ops_vars"; then
   echo "home-ops backend vars contain sample token" >&2
   exit 1
