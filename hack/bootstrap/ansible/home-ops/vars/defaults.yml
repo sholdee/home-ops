@@ -35,6 +35,10 @@ home_ops_k3s_token_file: /etc/rancher/k3s/home-ops-token
 home_ops_remote_kubeconfig: /tmp/home-ops-kubeconfig
 home_ops_cilium_values_file: /tmp/home-ops-cilium-values.yaml
 home_ops_cilium_checksum_file: /var/lib/rancher/k3s/server/home-ops-cilium-bootstrap.sha256
+# Empty means derive the upstream etcdctl base version from the K3s release's
+# embedded Etcd version, such as K3s Etcd v3.6.7-k3s1 -> etcdctl v3.6.7.
+home_ops_etcdctl_version_override: ""
+home_ops_etcdctl_binary_path: /usr/local/bin/etcdctl
 
 kube_vip_enabled: true
 kube_vip_arp: true

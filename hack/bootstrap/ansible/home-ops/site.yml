@@ -19,6 +19,16 @@
     - name: Write K3s token file
       ansible.builtin.import_tasks: tasks/token.yml
 
+- name: Install home-ops control-plane tools
+  hosts: master
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Install etcdctl
+      ansible.builtin.import_tasks: tasks/etcdctl.yml
+      tags:
+        - etcdctl
+
 - name: Install first home-ops control-plane node
   hosts: master[0]
   gather_facts: true

@@ -1,0 +1,135 @@
+---
+- name: Ensure temporary bootstrap directory exists
+  ansible.builtin.file:
+    path: /tmp/home-ops-bootstrap
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Set etcdctl defaults
+  ansible.builtin.set_fact:
+    home_ops_etcdctl_binary_path_effective: "{{ home_ops_etcdctl_binary_path | default('/usr/local/bin/etcdctl') }}"
+    home_ops_etcdctl_version_override_effective: "{{ home_ops_etcdctl_version_override | default('') }}"
+
+- name: Fetch K3s release metadata
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/k3s-io/k3s/releases/tags/{{ k3s_version | urlencode }}"
+    return_content: true
+  register: home_ops_k3s_release_metadata
+  until: home_ops_k3s_release_metadata is succeeded
+  retries: 5
+  delay: 10
+
+- name: Set embedded Etcd version fact
+  ansible.builtin.set_fact:
+    home_ops_embedded_etcd_version: >-
+      {{-
+        home_ops_k3s_release_metadata.json.body
+        | regex_findall('\| Etcd \| \[v([0-9]+\.[0-9]+\.[0-9]+)(?:-k3s[0-9]+)?\]')
+        | first
+        | default('')
+      -}}
+
+- name: Fail if embedded Etcd version cannot be derived
+  ansible.builtin.fail:
+    msg: "Could not derive embedded Etcd version from K3s release metadata for {{ k3s_version }}"
+  when: home_ops_embedded_etcd_version | length == 0
+
+- name: Set effective etcdctl version
+  ansible.builtin.set_fact:
+    home_ops_etcdctl_version_effective: >-
+      {{-
+        home_ops_etcdctl_version_override_effective
+        if (home_ops_etcdctl_version_override_effective | length > 0)
+        else 'v' ~ home_ops_embedded_etcd_version
+      -}}
+
+- name: Set etcdctl release facts
+  ansible.builtin.set_fact:
+    home_ops_etcdctl_arch: "{{ 'arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64' }}"
+    home_ops_etcdctl_version_number: "{{ home_ops_etcdctl_version_effective | regex_replace('^v', '') }}"
+
+- name: Set etcdctl archive fact
+  ansible.builtin.set_fact:
+    home_ops_etcdctl_archive: "etcd-{{ home_ops_etcdctl_version_effective }}-linux-{{ home_ops_etcdctl_arch }}.tar.gz"
+    home_ops_etcdctl_extract_dir: "/tmp/home-ops-bootstrap/etcd-{{ home_ops_etcdctl_version_effective }}-linux-{{ home_ops_etcdctl_arch }}"
+
+- name: Check installed etcdctl version
+  ansible.builtin.command: "{{ home_ops_etcdctl_binary_path_effective }} version"
+  register: home_ops_etcdctl_version_check
+  failed_when: false
+  changed_when: false
+
+- name: Set installed etcdctl version fact
+  ansible.builtin.set_fact:
+    home_ops_installed_etcdctl_version: >-
+      {{-
+        home_ops_etcdctl_version_check.stdout_lines
+        | default([])
+        | join(' ')
+        | regex_findall('etcdctl version: ([0-9]+\.[0-9]+\.[0-9]+)')
+        | first
+        | default('')
+      -}}
+
+- name: Install or update etcdctl
+  when: home_ops_installed_etcdctl_version != home_ops_etcdctl_version_number
+  block:
+    - name: Download etcd release archive and checksums
+      ansible.builtin.get_url:
+        url: "https://github.com/etcd-io/etcd/releases/download/{{ home_ops_etcdctl_version_effective }}/{{ item }}"
+        dest: "/tmp/home-ops-bootstrap/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - "{{ home_ops_etcdctl_archive }}"
+        - SHA256SUMS
+      register: home_ops_etcdctl_archive_download
+      until: home_ops_etcdctl_archive_download is succeeded
+      retries: 5
+      delay: 10
+
+    - name: Verify etcd release archive
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd /tmp/home-ops-bootstrap
+        archive={{ home_ops_etcdctl_archive | quote }}
+        checksum_line="$(awk -v archive="$archive" '$2 == archive {print}' SHA256SUMS)"
+        test -n "$checksum_line"
+        printf '%s\n' "$checksum_line" | sha256sum --check
+      args:
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Ensure etcd release extract directory exists
+      ansible.builtin.file:
+        path: "{{ home_ops_etcdctl_extract_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Extract etcdctl from release archive
+      ansible.builtin.unarchive:
+        src: "/tmp/home-ops-bootstrap/{{ home_ops_etcdctl_archive }}"
+        dest: "{{ home_ops_etcdctl_extract_dir }}"
+        remote_src: true
+        extra_opts:
+          - --strip-components=1
+
+    - name: Install etcdctl binary
+      ansible.builtin.copy:
+        src: "{{ home_ops_etcdctl_extract_dir }}/etcdctl"
+        dest: "{{ home_ops_etcdctl_binary_path_effective }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+
+- name: Verify installed etcdctl version
+  ansible.builtin.command: "{{ home_ops_etcdctl_binary_path_effective }} version"
+  register: home_ops_etcdctl_verify
+  changed_when: false
+  failed_when: "'etcdctl version: ' ~ home_ops_etcdctl_version_number not in home_ops_etcdctl_verify.stdout"
