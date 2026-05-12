@@ -1,0 +1,16 @@
+---
+- name: Remove the temporary home-ops worker joining taint from K3s service args
+  hosts: node
+  gather_facts: true
+  become: true
+  vars:
+    home_ops_node_taints: []
+  tasks:
+    - name: Run worker preflight checks
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
+    - name: Write K3s token file
+      ansible.builtin.import_tasks: tasks/token.yml
+
+    - name: Render K3s agent service without temporary taint
+      ansible.builtin.import_tasks: tasks/join-agents.yml

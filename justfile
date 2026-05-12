@@ -177,6 +177,31 @@ bootstrap-live-full:
 node-live-status node:
     ./hack/bootstrap/nodes/status.sh --profile live --context default '{{ node }}'
 
+# Drain a live worker node before deletion or maintenance.
+[group('node-live')]
+node-live-drain node:
+    ./hack/bootstrap/nodes/drain.sh --profile live --context default '{{ node }}'
+
+# Delete a drained live worker node after Longhorn state has been evacuated.
+[group('node-live')]
+node-live-delete node:
+    ./hack/bootstrap/nodes/delete.sh --profile live --context default '{{ node }}'
+
+# Refresh a rebuilt live worker's SSH host key in known_hosts.
+[group('node-live')]
+node-live-refresh-ssh-host-key node:
+    ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile live '{{ node }}'
+
+# Join a live worker from inventory with a temporary scheduling taint.
+[group('node-live')]
+node-live-join node:
+    ./hack/bootstrap/nodes/join.sh --profile live --context default '{{ node }}'
+
+# Remove the temporary live worker taint, validate system health, and uncordon.
+[group('node-live')]
+node-live-uncordon node:
+    ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
+
 # Delete and recreate the configured three-node kind cluster.
 [group('bootstrap-kind')]
 kind-reset:
@@ -256,6 +281,31 @@ bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima
 [group('node-lima')]
 node-lima-status node:
     ./hack/bootstrap/nodes/status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Drain a Lima worker node before deletion or maintenance.
+[group('node-lima')]
+node-lima-drain node:
+    ./hack/bootstrap/nodes/drain.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Delete a drained Lima worker node after Longhorn state has been evacuated.
+[group('node-lima')]
+node-lima-delete node:
+    ./hack/bootstrap/nodes/delete.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Refresh a rebuilt Lima worker's SSH host key in known_hosts.
+[group('node-lima')]
+node-lima-refresh-ssh-host-key node:
+    ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile lima '{{ node }}'
+
+# Join a Lima worker from inventory with a temporary scheduling taint.
+[group('node-lima')]
+node-lima-join node:
+    ./hack/bootstrap/nodes/join.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Remove the temporary Lima worker taint, validate system health, and uncordon.
+[group('node-lima')]
+node-lima-uncordon node:
+    ./hack/bootstrap/nodes/uncordon.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Recreate larger Lima VMs, run Ansible, bootstrap app profile, and validate app safety.
 [group('bootstrap-lima-apps')]

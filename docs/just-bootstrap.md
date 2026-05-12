@@ -338,22 +338,56 @@ backend. The wrapper does not require its sample defaults to match the homelab;
 it renders the homelab values as an overlay. The default `home-ops` backend
 does not use the external checkout.
 
-### Node Lifecycle Status
+### Node Lifecycle
 
 Node lifecycle helpers live in `hack/bootstrap/nodes/` and are for existing
-clusters, not first-boot bootstrap. The current commands are read-only status
-checks:
+clusters, not first-boot bootstrap. Worker lifecycle is intentionally split
+into explicit operator steps:
 
 ```sh
 just node-live-status k3s-worker-0
-just node-lima-status home-ops-k3s-test-agent-1
+just node-live-drain k3s-worker-0
+just node-live-delete k3s-worker-0
+just node-live-refresh-ssh-host-key k3s-worker-0
+just node-live-join k3s-worker-0
+just node-live-uncordon k3s-worker-0
 ```
 
-Status prints inventory role, Kubernetes role, Ready/schedulable state, the
-temporary joining taint, ordinary pods on the node, Cilium readiness, and
-Longhorn signals when Longhorn is installed. Future mutating lifecycle commands
-will be added separately and must keep drain/delete/join/uncordon as explicit
-operator steps.
+The Lima equivalents use the `node-lima-*` group:
+
+```sh
+just node-lima-status home-ops-k3s-test-agent-1
+just node-lima-drain home-ops-k3s-test-agent-1
+just node-lima-delete home-ops-k3s-test-agent-1
+just node-lima-refresh-ssh-host-key home-ops-k3s-test-agent-1
+just node-lima-join home-ops-k3s-test-agent-1
+just node-lima-uncordon home-ops-k3s-test-agent-1
+```
+
+Mutating commands support worker nodes only. Control-plane lifecycle remains
+blocked until the embedded-etcd member removal and rejoin procedure is proven.
+
+The delete step is deliberately conservative. It stops and disables `k3s-node`
+through Ansible before deleting the Kubernetes `Node` and the K3s node-password
+Secret, so the old node cannot immediately re-register. When Longhorn is
+installed, delete also requires Longhorn scheduling to be disabled for the
+target node and all target-node replicas/attached volumes to be gone. Evacuate
+Longhorn replicas first, then rerun delete. Disabling scheduling can be done in
+the Longhorn UI or with:
+
+```sh
+kubectl -n longhorn-system patch nodes.longhorn.io/k3s-worker-0 --type=merge -p '{"spec":{"allowScheduling":false}}'
+```
+
+After the rebuilt worker has joined, re-enable Longhorn scheduling before
+running uncordon.
+
+Join uses the generated home-ops Ansible worker playbook and starts the agent
+with `node.home-ops.sh/joining=true:NoSchedule`. After the node object appears,
+the helper cordons it while Cilium settles. The uncordon helper removes the
+taint from the rendered agent service, restarts the agent if needed, removes
+the live taint, waits for Cilium and Longhorn safety checks, and only then
+uncordons the node.
 
 Review the active context:
 

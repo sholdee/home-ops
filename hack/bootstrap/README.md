@@ -260,20 +260,32 @@ The live Ansible run prompts for explicit confirmation by default and prints
 the target hosts, first control-plane host, derived K3s/Cilium versions, and API
 endpoint before making changes.
 
-## Node Lifecycle Status
+## Node Lifecycle
 
 `hack/bootstrap/nodes/` contains existing-cluster node lifecycle helpers. The
-first supported commands are read-only status checks:
+worker path is split into explicit status, drain, delete, join, and uncordon
+steps:
 
 ```sh
 just node-live-status k3s-worker-0
+just node-live-drain k3s-worker-0
+just node-live-delete k3s-worker-0
+just node-live-refresh-ssh-host-key k3s-worker-0
+just node-live-join k3s-worker-0
+just node-live-uncordon k3s-worker-0
 just node-lima-status home-ops-k3s-test-agent-1
 ```
 
-Status reports the selected profile/context, inventory role, Kubernetes role,
-Ready/schedulable state, temporary joining taint, ordinary pods on the node,
-Cilium readiness, and Longhorn signals when Longhorn is installed. Mutating
-drain/delete/join/uncordon commands are intentionally separate follow-up work.
+Control-plane lifecycle is intentionally refused until the embedded-etcd member
+procedure is proven. Worker delete stops and disables `k3s-node` before deleting
+the Kubernetes Node and node-password Secret. If Longhorn is installed, delete
+also requires Longhorn scheduling to be disabled for the target node and all
+target-node replicas/attached volumes to be gone.
+
+Worker join starts the agent with
+`node.home-ops.sh/joining=true:NoSchedule`, then cordons the node. The uncordon
+helper removes that taint from the rendered agent service and live Node, waits
+for Cilium and Longhorn checks, and uncordons last.
 
 If more than one 1Password account is configured and the default account is
 wrong, pin the account explicitly:

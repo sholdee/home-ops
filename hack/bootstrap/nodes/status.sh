@@ -143,8 +143,14 @@ while IFS= read -r line; do
 done < <(node_cilium_report "$context" "$kubernetes_node_name")
 
 printf '\nlonghorn:\n'
-if node_longhorn_installed "$context"; then
+longhorn_state_output="$(node_longhorn_state "$context")"
+longhorn_state="${longhorn_state_output%%$'\t'*}"
+if [[ "$longhorn_state" == installed ]]; then
   printf '  installed: true\n'
+  printf '  node:\n'
+  while IFS= read -r line; do
+    printf '    %s\n' "$line"
+  done < <(node_longhorn_node_report "$context" "$kubernetes_node_name")
   printf '  node_pods:\n'
   while IFS= read -r line; do
     printf '    %s\n' "$line"
@@ -165,8 +171,13 @@ if node_longhorn_installed "$context"; then
   while IFS= read -r line; do
     printf '    %s\n' "$line"
   done < <(node_longhorn_managers_report "$context" "$kubernetes_node_name" ShareManager sharemanagers.longhorn.io)
-else
+elif [[ "$longhorn_state" == absent ]]; then
   printf '  installed: false\n'
+else
+  longhorn_error="${longhorn_state_output#"$longhorn_state"}"
+  longhorn_error="${longhorn_error#$'\t'}"
+  printf '  installed: unknown\n'
+  printf '  discovery_error: %s\n' "${longhorn_error:-unknown error}"
 fi
 
 if [[ "$k8s_role" == control-plane ]]; then

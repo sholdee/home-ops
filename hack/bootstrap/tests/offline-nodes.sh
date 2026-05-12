@@ -73,6 +73,17 @@ expanded_key="$(
 )"
 test "$expanded_key" = "/tmp/home/ansiblekey"
 
+resolved_worker="$(
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_resolve_inventory_node live k3s-worker-0"
+)"
+test "$resolved_worker" = "$(printf 'k3s-worker-0\tnode')"
+
+expected_lima_node="$(
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_expected_kubernetes_node_name lima home-ops-k3s-test-agent-1 home-ops-k3s-test-agent-1"
+)"
+test "$expected_lima_node" = "lima-home-ops-k3s-test-agent-1"
+
 live_context="$(bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_context_for_profile live")"
 test "$live_context" = "default"
 
@@ -81,6 +92,20 @@ lima_context="$(
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_context_for_profile lima"
 )"
 test "$lima_context" = "lima-test-cluster"
+
+exact_joining_taint="$(
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_joining_taint_from_node_json" <<'JSON'
+{"spec":{"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"NoSchedule"}]}}
+JSON
+)"
+test "$exact_joining_taint" = "present"
+
+invalid_joining_taint="$(
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_joining_taint_from_node_json" <<'JSON'
+{"spec":{"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"PreferNoSchedule"}]}}
+JSON
+)"
+test "$invalid_joining_taint" = "invalid"
 
 fake_kubectl="${tmp}/kubectl"
 cat > "$fake_kubectl" <<'EOF'
@@ -171,6 +196,7 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
   exit 1
 fi
 
@@ -193,5 +219,11 @@ grep -q '^joining_taint: present$' <<<"$status_output"
 grep -q 'default/workload phase=Running owner=ReplicaSet' <<<"$status_output"
 grep -q 'cilium-one phase=Running ready=1/1' <<<"$status_output"
 grep -q 'installed: false' <<<"$status_output"
+
+"${ROOT}/hack/bootstrap/nodes/drain.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/uncordon.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/refresh-ssh-host-key.sh" --help >/dev/null
 
 echo "offline node lifecycle test passed"
