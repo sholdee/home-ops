@@ -21,6 +21,20 @@ test "$(yq -r '.helmCharts[] | select(.name == "external-secrets") | .version' "
 test "$(yq -r '.helmCharts[] | select(.name == "gateway-helm") | .version' "$ROOT/apps/envoy-gateway-system/kustomization.yaml")" != "null"
 test "$(yq -r '.helmCharts[] | select(.name == "kube-prometheus-stack") | .version' "$ROOT/apps/monitoring/kustomization.yaml")" != "null"
 
+while IFS= read -r file; do
+  [[ -n "$file" ]] || continue
+  bad_count="$(
+    yq ea -r '
+      [.[] | select(type == "!!map") | select(.kind == "ScheduledBackup" and .apiVersion == "postgresql.cnpg.io/v1" and .spec.target != "primary")]
+      | length
+    ' "$file"
+  )"
+  [[ "$bad_count" == "0" ]] || {
+    echo "ScheduledBackup resources must set spec.target: primary: $file" >&2
+    exit 1
+  }
+done < <(find "$ROOT/apps" -path '*/charts/*' -prune -o -name '*.yaml' -type f -print)
+
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 

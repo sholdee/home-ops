@@ -221,6 +221,7 @@ spec:
   cluster:
     name: powerdns-db
   schedule: "0 0 0 * * *"
+  target: primary
   backupOwnerReference: self
   method: plugin
   pluginConfiguration:

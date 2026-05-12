@@ -105,6 +105,7 @@ spec:
   cluster:
     name: hass-db2
   schedule: "0 0 0 * * *"
+  target: primary
   backupOwnerReference: self
   method: plugin
   pluginConfiguration:
