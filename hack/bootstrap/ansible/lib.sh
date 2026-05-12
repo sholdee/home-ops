@@ -5,8 +5,14 @@ BOOTSTRAP_DIR="$(cd "${ANSIBLE_BOOTSTRAP_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
 K3S_ANSIBLE_DIR="${K3S_ANSIBLE_DIR:-${REPO_ROOT}/../k3s-ansible}"
+BOOTSTRAP_ANSIBLE_BACKEND="${BOOTSTRAP_ANSIBLE_BACKEND:-home-ops}"
 BOOTSTRAP_ANSIBLE_PROFILE="${BOOTSTRAP_ANSIBLE_PROFILE:-live}"
-BOOTSTRAP_ANSIBLE_OUT_DIR="${BOOTSTRAP_ANSIBLE_OUT_DIR:-${BOOTSTRAP_DIR}/.out/ansible-${BOOTSTRAP_ANSIBLE_PROFILE}}"
+if [[ -z "${BOOTSTRAP_ANSIBLE_OUT_DIR+x}" ]]; then
+  BOOTSTRAP_ANSIBLE_OUT_DIR_DEFAULTED=true
+  BOOTSTRAP_ANSIBLE_OUT_DIR="${BOOTSTRAP_DIR}/.out/ansible-${BOOTSTRAP_ANSIBLE_PROFILE}"
+else
+  BOOTSTRAP_ANSIBLE_OUT_DIR_DEFAULTED=false
+fi
 BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR="${BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR:-${ANSIBLE_BOOTSTRAP_DIR}/inventory/live}"
 BOOTSTRAP_ANSIBLE_OP_VAULT="${BOOTSTRAP_ANSIBLE_OP_VAULT:-Kubernetes}"
 BOOTSTRAP_ANSIBLE_OP_ITEM="${BOOTSTRAP_ANSIBLE_OP_ITEM:-k3s-bootstrap}"
@@ -36,6 +42,15 @@ ansible_inventory_dir() {
   printf '%s/inventory/%s\n' "$BOOTSTRAP_ANSIBLE_OUT_DIR" "$profile"
 }
 
+ansible_set_profile() {
+  BOOTSTRAP_ANSIBLE_PROFILE="$1"
+  export BOOTSTRAP_ANSIBLE_PROFILE
+  if ansible_bool "$BOOTSTRAP_ANSIBLE_OUT_DIR_DEFAULTED"; then
+    BOOTSTRAP_ANSIBLE_OUT_DIR="${BOOTSTRAP_DIR}/.out/ansible-${BOOTSTRAP_ANSIBLE_PROFILE}"
+    export BOOTSTRAP_ANSIBLE_OUT_DIR
+  fi
+}
+
 ansible_inventory_file() {
   local profile="${1:-$BOOTSTRAP_ANSIBLE_PROFILE}"
   printf '%s/hosts.yml\n' "$(ansible_inventory_dir "$profile")"
@@ -49,6 +64,26 @@ ansible_generated_vars_file() {
 ansible_kubeconfig_file() {
   local profile="${1:-$BOOTSTRAP_ANSIBLE_PROFILE}"
   printf '%s/kubeconfig-%s\n' "$BOOTSTRAP_ANSIBLE_OUT_DIR" "$profile"
+}
+
+ansible_home_ops_raw_kubeconfig_file() {
+  local profile="${1:-$BOOTSTRAP_ANSIBLE_PROFILE}"
+  printf '%s/kubeconfig-raw-%s\n' "$BOOTSTRAP_ANSIBLE_OUT_DIR" "$profile"
+}
+
+ansible_raw_kubeconfig_file() {
+  local profile="${1:-$BOOTSTRAP_ANSIBLE_PROFILE}"
+  case "$BOOTSTRAP_ANSIBLE_BACKEND" in
+    k3s-ansible)
+      printf '%s/kubeconfig\n' "$K3S_ANSIBLE_DIR"
+      ;;
+    home-ops)
+      ansible_home_ops_raw_kubeconfig_file "$profile"
+      ;;
+    *)
+      ansible_die "unknown Ansible backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+      ;;
+  esac
 }
 
 ansible_token_ref() {
@@ -189,13 +224,13 @@ ansible_render_inventory() {
   local source_dir="$2"
   local output_dir="$3"
   local base_vars="${K3S_ANSIBLE_DIR}/inventory/sample/group_vars/all.yml"
+  local home_ops_defaults="${BOOTSTRAP_DIR}/ansible/home-ops/vars/defaults.yml"
   local source_hosts="${source_dir}/hosts.yml"
   local source_vars="${source_dir}/group_vars/all.yml"
   local derived="${output_dir}/group_vars/derived.yml"
   local runtime="${output_dir}/group_vars/runtime.yml"
   local output_vars="${output_dir}/group_vars/all.yml"
 
-  [[ -f "$base_vars" ]] || ansible_die "missing k3s-ansible sample vars: ${base_vars}"
   [[ -f "$source_hosts" ]] || ansible_die "missing inventory hosts: ${source_hosts}"
   [[ -f "$source_vars" ]] || ansible_die "missing inventory group vars: ${source_vars}"
 
@@ -207,14 +242,42 @@ ansible_render_inventory() {
     live)
       ansible_check_live_derived_conflicts "$source_vars" "$derived"
       ansible_write_runtime_vars "$runtime"
-      # shellcheck disable=SC2016
-      yq eval-all '. as $item ireduce ({}; . * $item)' \
-        "$base_vars" "$source_vars" "$derived" "$runtime" > "$output_vars"
+      case "$BOOTSTRAP_ANSIBLE_BACKEND" in
+        k3s-ansible)
+          [[ -f "$base_vars" ]] || ansible_die "missing k3s-ansible sample vars: ${base_vars}"
+          # shellcheck disable=SC2016
+          yq eval-all '. as $item ireduce ({}; . * $item)' \
+            "$base_vars" "$source_vars" "$derived" "$runtime" > "$output_vars"
+          ;;
+        home-ops)
+          [[ -f "$home_ops_defaults" ]] || ansible_die "missing home-ops backend defaults: ${home_ops_defaults}"
+          # shellcheck disable=SC2016
+          yq eval-all '. as $item ireduce ({}; . * $item)' \
+            "$home_ops_defaults" "$source_vars" "$derived" "$runtime" > "$output_vars"
+          ;;
+        *)
+          ansible_die "unknown Ansible backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+          ;;
+      esac
       ;;
     lima)
-      # shellcheck disable=SC2016
-      yq eval-all '. as $item ireduce ({}; . * $item)' \
-        "$base_vars" "$derived" "$source_vars" > "$output_vars"
+      case "$BOOTSTRAP_ANSIBLE_BACKEND" in
+        k3s-ansible)
+          [[ -f "$base_vars" ]] || ansible_die "missing k3s-ansible sample vars: ${base_vars}"
+          # shellcheck disable=SC2016
+          yq eval-all '. as $item ireduce ({}; . * $item)' \
+            "$base_vars" "$derived" "$source_vars" > "$output_vars"
+          ;;
+        home-ops)
+          [[ -f "$home_ops_defaults" ]] || ansible_die "missing home-ops backend defaults: ${home_ops_defaults}"
+          # shellcheck disable=SC2016
+          yq eval-all '. as $item ireduce ({}; . * $item)' \
+            "$home_ops_defaults" "$derived" "$source_vars" > "$output_vars"
+          ;;
+        *)
+          ansible_die "unknown Ansible backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+          ;;
+      esac
       ;;
     *)
       ansible_die "unknown Ansible bootstrap profile: ${profile}"
@@ -398,7 +461,10 @@ ansible_print_summary() {
   local inventory_file="${inventory_dir}/hosts.yml"
 
   ansible_log "Ansible bootstrap profile: ${profile}"
-  ansible_log "k3s-ansible checkout: ${K3S_ANSIBLE_DIR}"
+  ansible_log "Ansible bootstrap backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+  if [[ "$BOOTSTRAP_ANSIBLE_BACKEND" == k3s-ansible ]]; then
+    ansible_log "k3s-ansible checkout: ${K3S_ANSIBLE_DIR}"
+  fi
   ansible_log "inventory: ${inventory_file}"
   ansible_log "first control-plane host: $(ansible_first_master_name "$inventory_file")"
   ansible_log "hosts:"
@@ -447,10 +513,11 @@ ansible_confirm_live_run() {
 
 ansible_prepare_kubeconfig() {
   local profile="$1"
-  local raw_kubeconfig="${K3S_ANSIBLE_DIR}/kubeconfig"
+  local raw_kubeconfig
   local kubeconfig
+  raw_kubeconfig="$(ansible_raw_kubeconfig_file "$profile")"
   kubeconfig="$(ansible_kubeconfig_file "$profile")"
-  [[ -f "$raw_kubeconfig" ]] || ansible_die "missing kubeconfig from k3s-ansible run: ${raw_kubeconfig}"
+  [[ -f "$raw_kubeconfig" ]] || ansible_die "missing kubeconfig from ${BOOTSTRAP_ANSIBLE_BACKEND} run: ${raw_kubeconfig}"
   mkdir -p "$(dirname "$kubeconfig")"
   cp "$raw_kubeconfig" "$kubeconfig"
   BOOTSTRAP_ANSIBLE_KUBECONTEXT="$BOOTSTRAP_ANSIBLE_KUBECONTEXT" yq -i '
@@ -499,11 +566,28 @@ ansible_run_prereqs() {
 
 ansible_run_site() {
   local inventory_file="$1"
-  ansible_log "running k3s-ansible site.yml"
-  (
-    cd "$K3S_ANSIBLE_DIR" || exit
-    ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i "$inventory_file" site.yml
-  )
+  local raw_kubeconfig
+  case "$BOOTSTRAP_ANSIBLE_BACKEND" in
+    k3s-ansible)
+      ansible_log "running k3s-ansible site.yml"
+      (
+        cd "$K3S_ANSIBLE_DIR" || exit
+        ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i "$inventory_file" site.yml
+      )
+      ;;
+    home-ops)
+      ansible_log "running home-ops Ansible site.yml"
+      raw_kubeconfig="$(ansible_raw_kubeconfig_file "$BOOTSTRAP_ANSIBLE_PROFILE")"
+      mkdir -p "$(dirname "$raw_kubeconfig")"
+      ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook \
+        -i "$inventory_file" \
+        "${ANSIBLE_BOOTSTRAP_DIR}/home-ops/site.yml" \
+        --extra-vars "home_ops_kubeconfig_output=${raw_kubeconfig}"
+      ;;
+    *)
+      ansible_die "unknown Ansible backend: ${BOOTSTRAP_ANSIBLE_BACKEND}"
+      ;;
+  esac
 }
 
 ansible_disable_kube_proxy_after_cilium() {

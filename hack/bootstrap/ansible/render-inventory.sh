@@ -9,6 +9,8 @@ usage() {
 Usage: hack/bootstrap/ansible/render-inventory.sh [options]
 
 Options:
+  --backend NAME          Ansible backend: k3s-ansible or home-ops.
+                          Defaults to BOOTSTRAP_ANSIBLE_BACKEND or home-ops.
   --profile NAME          Inventory profile: live or lima. Defaults to live.
   --inventory-source DIR  Source inventory directory with hosts.yml and group_vars/all.yml.
   --output-dir DIR        Generated inventory directory.
@@ -18,12 +20,17 @@ EOF
 }
 
 profile="live"
+backend="$BOOTSTRAP_ANSIBLE_BACKEND"
 source_dir=""
 output_dir=""
 summary=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --backend)
+      backend="$2"
+      shift 2
+      ;;
     --profile)
       profile="$2"
       shift 2
@@ -50,6 +57,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+case "$backend" in
+  k3s-ansible|home-ops)
+    BOOTSTRAP_ANSIBLE_BACKEND="$backend"
+    export BOOTSTRAP_ANSIBLE_BACKEND
+    ;;
+  *)
+    ansible_die "unknown Ansible backend: ${backend}"
+    ;;
+esac
+
 case "$profile" in
   live)
     source_dir="${source_dir:-$BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR}"
@@ -61,6 +78,7 @@ case "$profile" in
     ansible_die "unknown Ansible bootstrap profile: ${profile}"
     ;;
 esac
+ansible_set_profile "$profile"
 
 output_dir="${output_dir:-$(ansible_inventory_dir "$profile")}"
 

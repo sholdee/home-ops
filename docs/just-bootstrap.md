@@ -3,10 +3,10 @@
 This page documents the `just` recipes for bootstrapping a fresh cluster into
 the minimum state ArgoCD needs before it can take over normal GitOps sync.
 
-The bootstrap runner lives in `hack/bootstrap/`. It assumes `k3s-ansible` or an
-equivalent process has already produced a working Kubernetes API and kubeconfig.
-For the first implementation, Cilium is expected to be installed before this
-runner is used on the real cluster.
+The bootstrap runner lives in `hack/bootstrap/`. It assumes the Ansible wrapper
+or an equivalent process has already produced a working Kubernetes API,
+kubeconfig, and initial Cilium install before this runner is used on the real
+cluster.
 
 ## Prerequisites
 
@@ -100,21 +100,22 @@ replaced, and applies `ApplicationSet/k3s-apps` only after that completes.
 ## Local Lima Foundation Test
 
 The Lima path is a closer end-to-end bootstrap rehearsal for Apple Silicon. It
-creates one K3s server and two K3s agents, runs the external `k3s-ansible`
-checkout, then runs home-ops bootstrap with `--profile foundation`.
+creates one K3s server and two K3s agents, runs the selected Ansible backend,
+then runs home-ops bootstrap with `--profile foundation`.
 
 Defaults:
 
 - Lima cluster prefix: `home-ops-k3s-test`
 - foundation VM shape: one server and two agents
-- k3s-ansible checkout: `../k3s-ansible`, relative to the home-ops checkout
+- Ansible backend: `home-ops` by default, using
+  `hack/bootstrap/ansible/home-ops/`
 - home-ops checkout: the current working tree
 - server VM size: `4` CPU and `6GiB` memory
 - foundation agent VM size: `2` CPU and `3GiB` memory
 - guest storage prerequisites: `open-iscsi` and `nfs-common` are installed on
-  each VM before k3s-ansible runs so Longhorn block and RWX volumes can mount
+  each VM before Ansible runs so Longhorn block and RWX volumes can mount
 - Cilium version: derived from `Application/cilium.spec.source.targetRevision`
-  and rendered over the k3s-ansible sample defaults
+  and rendered into the selected Ansible backend
 - Cilium datapath mode: `netkit`, matching the steady-state ArgoCD values
 - Cilium takeover: Hubble CA resources are applied before ArgoCD Cilium, and
   stale Hubble cert Secrets from the initial Ansible install are rotated
@@ -123,9 +124,9 @@ Defaults:
 - K3s API endpoint: the server VM IP, not kube-vip
 - Local kube context: `lima-home-ops-k3s-test`
 
-The size can be overridden with `LIMA_SERVER_CPUS`,
-`LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`, and
-`LIMA_AGENT_MEMORY_GIB`.
+The shape and size can be overridden with `LIMA_SERVER_COUNT`,
+`LIMA_SERVER_CPUS`, `LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`,
+`LIMA_AGENT_CPUS`, `LIMA_AGENT_MEMORY_GIB`, and `LIMA_K3S_MASTER_TAINT`.
 
 Run the full disposable VM flow:
 
@@ -140,6 +141,12 @@ just bootstrap-lima-create
 just bootstrap-lima-ansible
 just bootstrap-lima-bootstrap
 just bootstrap-lima-validate
+```
+
+The external compatibility backend can be tested through the same Lima flow:
+
+```sh
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-lima-ansible
 ```
 
 `bootstrap-lima-ansible` imports or updates the local kube context and starts a
@@ -183,9 +190,9 @@ Velero `Schedule`, and the external-dns deployment. The real 1Password seed may
 be used because the profile does not create those writers.
 
 The Lima inventory deliberately disables kube-vip while keeping the same
-K3s/Cilium/BGP versions as the real bootstrap path. Production `k3s-ansible`
-group vars still pin kube-vip to `v1.1.2`; Lima's default user-mode networking
-is not a reliable validation target for ARP VIP behavior.
+K3s/Cilium/BGP versions as the real bootstrap path. The live inventory still
+pins kube-vip to `v1.1.2`; Lima's default user-mode networking is not a
+reliable validation target for ARP VIP behavior.
 
 The Lima wrapper also keeps Cilium masquerading enabled when it applies the
 foundation ArgoCD resources. The real cluster disables Cilium masquerading
@@ -262,13 +269,21 @@ writer.
 ### Live Ansible Wrapper
 
 The physical-node Ansible wrapper lives in `hack/bootstrap/ansible/`. It uses
-the external `../k3s-ansible` checkout as the engine, but renders site-specific
-inventory and values from home-ops.
+the in-repo `home-ops` backend by default and renders site-specific inventory
+and values from home-ops. The external `../k3s-ansible` checkout remains
+available as an explicit compatibility backend with
+`BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible`.
 
 Render the live plan without changing nodes:
 
 ```sh
 just bootstrap-live-ansible-plan
+```
+
+Render through the external compatibility backend:
+
+```sh
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-live-ansible-plan
 ```
 
 This writes non-secret generated inventory under
@@ -318,8 +333,10 @@ the kube-vip tag/API VIP from `apps/kube-system/kube-vip`. If the checked-in
 live overrides try to set one of those derived-owned values differently, the
 render fails instead of silently choosing one.
 
-Keep `../k3s-ansible` close to upstream. The wrapper does not require its sample
-defaults to match the homelab; it renders the homelab values as an overlay.
+Keep `../k3s-ansible` close to upstream when using the external compatibility
+backend. The wrapper does not require its sample defaults to match the homelab;
+it renders the homelab values as an overlay. The default `home-ops` backend
+does not use the external checkout.
 
 Review the active context:
 

@@ -1,0 +1,19 @@
+---
+- name: Select K3s binary architecture
+  ansible.builtin.set_fact:
+    home_ops_k3s_binary_release_name: "{{ 'k3s-arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'k3s' }}"
+    home_ops_k3s_checksum_name: "{{ 'sha256sum-arm64.txt' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'sha256sum-amd64.txt' }}"
+
+- name: Download K3s binary
+  ansible.builtin.get_url:
+    url: "https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ home_ops_k3s_binary_release_name }}"
+    checksum: "sha256:https://github.com/k3s-io/k3s/releases/download/{{ k3s_version }}/{{ home_ops_k3s_checksum_name }}"
+    dest: "{{ home_ops_k3s_binary_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  register: home_ops_k3s_binary_download
+  until: home_ops_k3s_binary_download is succeeded
+  retries: 5
+  delay: 10
+  when: home_ops_installed_k3s_version | default("") != k3s_version

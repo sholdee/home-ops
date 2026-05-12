@@ -22,7 +22,6 @@
         {{ k3s_kubectl_binary | default('k3s kubectl') }}
         -n kube-system rollout status daemonset/cilium --timeout=5m
       delegate_to: "{{ bootstrap_first_master }}"
-      run_once: true
       changed_when: false
 
     - name: Wait for Cilium operator before disabling K3s kube-proxy
@@ -30,7 +29,6 @@
         {{ k3s_kubectl_binary | default('k3s kubectl') }}
         -n kube-system rollout status deployment/cilium-operator --timeout=5m
       delegate_to: "{{ bootstrap_first_master }}"
-      run_once: true
       changed_when: false
 
   tasks:
@@ -50,34 +48,36 @@
         group: root
         mode: "0644"
       register: kube_proxy_config
+      notify: Converge K3s after kube-proxy config
 
-    - name: Restart K3s server to apply kube-proxy disable drop-in
+  handlers:
+    - name: Restart K3s after kube-proxy config
+      listen: Converge K3s after kube-proxy config
       ansible.builtin.systemd:
         name: k3s
         daemon_reload: true
         state: restarted
-      when: kube_proxy_config.changed
 
     - name: Wait for local K3s API port after restart
+      listen: Converge K3s after kube-proxy config
       ansible.builtin.wait_for:
         host: 127.0.0.1
         port: 6443
         delay: 3
         timeout: 180
-      when: kube_proxy_config.changed
 
     - name: Wait for restarted server node to be Ready
+      listen: Converge K3s after kube-proxy config
       ansible.builtin.command: >-
         {{ k3s_kubectl_binary | default('k3s kubectl') }}
         wait node/{{ bootstrap_node_name }} --for=condition=Ready --timeout=5m
       delegate_to: "{{ bootstrap_first_master }}"
       changed_when: false
-      when: kube_proxy_config.changed
 
     - name: Wait for Cilium DaemonSet after server restart
+      listen: Converge K3s after kube-proxy config
       ansible.builtin.command: >-
         {{ k3s_kubectl_binary | default('k3s kubectl') }}
         -n kube-system rollout status daemonset/cilium --timeout=5m
       delegate_to: "{{ bootstrap_first_master }}"
       changed_when: false
-      when: kube_proxy_config.changed

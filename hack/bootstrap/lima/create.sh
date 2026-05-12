@@ -17,7 +17,7 @@ done
 for instance in $(lima_instance_names); do
   cpus="$LIMA_AGENT_CPUS"
   memory_gib="$LIMA_AGENT_MEMORY_GIB"
-  if [[ "$instance" == "$LIMA_SERVER_NAME" ]]; then
+  if lima_is_server_instance "$instance"; then
     cpus="$LIMA_SERVER_CPUS"
     memory_gib="$LIMA_SERVER_MEMORY_GIB"
   fi

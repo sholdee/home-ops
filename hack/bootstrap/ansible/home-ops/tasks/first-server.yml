@@ -1,0 +1,33 @@
+---
+- name: Render first K3s server service
+  ansible.builtin.template:
+    src: templates/k3s-server.service.j2
+    dest: "{{ systemd_dir }}/{{ home_ops_k3s_server_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    home_ops_k3s_exec_args: "{{ home_ops_first_server_args }}"
+  register: home_ops_k3s_server_service
+
+- name: Start first K3s server service
+  ansible.builtin.systemd:
+    name: "{{ home_ops_k3s_server_service_name }}"
+    daemon_reload: true
+    enabled: true
+    state: "{{ 'restarted' if home_ops_k3s_server_service.changed else 'started' }}"
+
+- name: Wait for first K3s API port
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 6443
+    delay: 3
+    timeout: 240
+
+- name: Wait for first control-plane node object
+  ansible.builtin.command: "{{ k3s_kubectl_binary }} get node/{{ home_ops_node_name }}"
+  changed_when: false
+  register: home_ops_first_node
+  until: home_ops_first_node.rc == 0
+  retries: "{{ retry_count }}"
+  delay: 5
