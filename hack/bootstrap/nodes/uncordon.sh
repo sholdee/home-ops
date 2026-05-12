@@ -92,7 +92,7 @@ node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 joining_taint="$(node_joining_taint_from_node_json <<<"$node_json")"
 if [[ "$joining_taint" == present || "$joining_taint" == invalid ]]; then
   node_log "removing live temporary joining taint from ${kubernetes_node_name}"
-  node_kubectl "$context" taint "node/${kubernetes_node_name}" "${NODE_JOINING_TAINT_KEY}-" --overwrite
+  node_kubectl "$context" taint node "$kubernetes_node_name" "${NODE_JOINING_TAINT_KEY}-" --overwrite
 else
   node_log "live temporary joining taint is already absent from ${kubernetes_node_name}"
 fi

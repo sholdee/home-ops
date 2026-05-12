@@ -106,6 +106,35 @@ if command -v ansible-playbook >/dev/null 2>&1; then
       -i "${home_ops_out}/inventory/live/hosts.yml" \
       "$playbook" >/dev/null
   done
+
+  render_playbook="${tmp}/render-agent-service.yml"
+  rendered_service="${tmp}/k3s-node.service"
+  cat > "$render_playbook" <<EOF
+---
+- name: Render K3s agent service template
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    home_ops_k3s_binary_path: /usr/local/bin/k3s
+    home_ops_agent_args: "--server https://example.invalid:6443 --token-file /token"
+    home_ops_node_taints:
+      - node.home-ops.sh/joining=true:NoSchedule
+  tasks:
+    - name: Render agent service
+      ansible.builtin.template:
+        src: ${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2
+        dest: ${rendered_service}
+        mode: "0644"
+EOF
+  ansible-playbook -i localhost, "$render_playbook" >/dev/null
+  grep -q -- '--node-taint node.home-ops.sh/joining=true:NoSchedule' "$rendered_service"
+  grep -q '^KillMode=process$' "$rendered_service"
+  if grep -q -- 'NoScheduleKillMode' "$rendered_service"; then
+    echo "rendered K3s agent service joined taint args to the next unit key" >&2
+    exit 1
+  fi
 fi
 
 grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2"
