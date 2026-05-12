@@ -187,17 +187,17 @@ node-live-control-plane-status node:
 node-live-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
 
-# Drain a live worker node before deletion or maintenance.
+# Drain a live worker or control-plane node before deletion or maintenance.
 [group('node-live')]
 node-live-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile live --context default '{{ node }}'
 
-# Delete a drained live worker node after Longhorn state has been evacuated.
+# Delete a drained live worker or control-plane node after Longhorn state has been evacuated.
 [group('node-live')]
 node-live-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile live --context default '{{ node }}'
 
-# Evict Longhorn replicas from a drained live worker before replacement.
+# Evict Longhorn replicas from a drained live node before replacement.
 [group('node-live')]
 node-live-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile live --context default '{{ node }}'
@@ -307,17 +307,17 @@ node-lima-control-plane-status node:
 node-lima-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Drain a Lima worker node before deletion or maintenance.
+# Drain a Lima worker or control-plane node before deletion or maintenance.
 [group('node-lima')]
 node-lima-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Delete a drained Lima worker node after Longhorn state has been evacuated.
+# Delete a drained Lima worker or control-plane node after Longhorn state has been evacuated.
 [group('node-lima')]
 node-lima-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Evict Longhorn replicas from a drained Lima worker before replacement.
+# Evict Longhorn replicas from a drained Lima node before replacement.
 [group('node-lima')]
 node-lima-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile lima --context '{{ lima_context }}' '{{ node }}'

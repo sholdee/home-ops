@@ -246,6 +246,12 @@ if [[ "${1:-}" == "--context" ]]; then
   shift 2
 fi
 
+state_dir="${FAKE_KUBECTL_STATE_DIR:-}"
+
+node_is_deleted() {
+  [[ -n "$state_dir" && -f "${state_dir}/deleted-${1}" ]]
+}
+
 if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
   printf 'ok\n'
   exit 0
@@ -253,11 +259,18 @@ fi
 
 if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
   node_name="${2#node/}"
+  if node_is_deleted "$node_name"; then
+    printf 'Error from server (NotFound): nodes "%s" not found\n' "$node_name" >&2
+    exit 1
+  fi
   sed "s/__NODE_NAME__/${node_name}/g" <<'JSON'
 {
   "metadata": {
     "name": "__NODE_NAME__",
     "labels": {"node-role.kubernetes.io/control-plane": "true"}
+  },
+  "spec": {
+    "unschedulable": true
   },
   "status": {
     "conditions": [
@@ -267,6 +280,16 @@ if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
 }
 JSON
   exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  printf '{"items":[]}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "nodes" ]]; then
@@ -304,6 +327,26 @@ JSON
   exit 0
 fi
 
+if [[ "${1:-}" == "drain" && "${2:-}" =~ ^k3s-master-[0-2]$ ]]; then
+  printf 'node/%s drained\n' "$2"
+  exit 0
+fi
+
+if [[ "${1:-}" == "delete" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
+  node_name="${2#node/}"
+  if [[ -n "$state_dir" ]]; then
+    mkdir -p "$state_dir"
+    touch "${state_dir}/deleted-${node_name}"
+  fi
+  printf 'node "%s" deleted\n' "$node_name"
+  exit 0
+fi
+
+if [[ "${1:-}" == "-n" && "${2:-}" == "kube-system" && "${3:-}" == "delete" && "${4:-}" =~ ^secret/k3s-master-[0-2]\.node-password\.k3s$ ]]; then
+  printf 'secret "%s" deleted\n' "${4#secret/}"
+  exit 0
+fi
+
 printf 'unexpected fake control-plane kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
@@ -335,7 +378,45 @@ for arg in "$@"; do
   esac
 done
 target="${target:-k3s-master-0}"
+joined_args="$*"
 printf '%s | CHANGED | rc=0 >>\n' "$target"
+
+if [[ "$joined_args" == *"ansible.builtin.systemd"* ]]; then
+  printf '{"changed": true}\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"etcd-snapshot save"* ]]; then
+  snapshot_name="$(sed -n 's/^snapshot_name="\([^"]*\)"/\1/p' <<<"$joined_args" | sed -n '1p')"
+  snapshot_name="${snapshot_name:-pre-remove-k3s-master-0-20260512T000000Z}"
+  printf 'snapshot_name=%s\n' "$snapshot_name"
+  printf 'Snapshot saved at /var/lib/rancher/k3s/server/db/snapshots/%s\n' "$snapshot_name"
+  printf 'snapshot_list_begin\n'
+  printf '%s file:///var/lib/rancher/k3s/server/db/snapshots/%s 1234 2026-05-12T00:00:00Z\n' "$snapshot_name" "$snapshot_name"
+  printf 'snapshot_list_end\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"member remove"* ]]; then
+  member_id="$(sed -n 's/^member_id="\([^"]*\)"/\1/p' <<<"$joined_args" | sed -n '1p')"
+  member_id="${member_id:-c9e409fd1205cc0a}"
+  printf 'member_remove_begin\n'
+  printf 'Member %s removed from cluster\n' "$member_id"
+  printf 'member_remove_end\n'
+  printf 'member_list_after_begin\n'
+  if [[ "$member_id" != "70594c7c481c118" ]]; then
+    printf '70594c7c481c118, started, k3s-master-1-ff2e5a37, https://192.168.99.11:2380, https://192.168.99.11:2379, false\n'
+  fi
+  if [[ "$member_id" != "c9e409fd1205cc0a" ]]; then
+    printf 'c9e409fd1205cc0a, started, k3s-master-0-b8caf5ab, https://192.168.99.10:2380, https://192.168.99.10:2379, false\n'
+  fi
+  if [[ "$member_id" != "ee5329b5b8ee26b3" ]]; then
+    printf 'ee5329b5b8ee26b3, started, k3s-master-2-f7c0824c, https://192.168.99.12:2380, https://192.168.99.12:2379, false\n'
+  fi
+  printf 'member_list_after_end\n'
+  exit 0
+fi
+
 printf 'k3s_service_active=active\n'
 printf 'embedded_etcd_data=present\n'
 printf 'etcdctl=/usr/local/bin/etcdctl\n'
@@ -377,9 +458,65 @@ grep -q '^preflight_result: pass$' <<<"$control_plane_preflight_output"
 grep -q '  id: c9e409fd1205cc0a$' <<<"$control_plane_preflight_output"
 grep -q 'member remove c9e409fd1205cc0a' <<<"$control_plane_preflight_output"
 
+control_plane_drain_output="$(
+  PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/drain.sh" --profile live --context test --yes k3s-master-0
+)"
+
+grep -q 'preflight_result: pass' <<<"$control_plane_drain_output"
+grep -q 'drain complete: k3s-master-0' <<<"$control_plane_drain_output"
+
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0 \
+  2>"${tmp}/first-master-delete.err"; then
+  echo "expected first inventory master delete to be refused" >&2
+  exit 1
+fi
+grep -q 'first inventory master is deferred' "${tmp}/first-master-delete.err"
+
+mkdir -p "${tmp}/control-plane-state"
+control_plane_delete_output="$(
+  PATH="${tmp}:${PATH}" \
+  FAKE_KUBECTL_STATE_DIR="${tmp}/control-plane-state" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
+)"
+
+grep -q 'snapshot_name=pre-remove-k3s-master-1-' <<<"$control_plane_delete_output"
+grep -q 'Member 70594c7c481c118 removed from cluster' <<<"$control_plane_delete_output"
+grep -q 'node "k3s-master-1" deleted' <<<"$control_plane_delete_output"
+grep -q 'control-plane delete complete: k3s-master-1' <<<"$control_plane_delete_output"
+
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --profile live --context test --yes k3s-master-0 \
+  2>"${tmp}/first-master-longhorn-evict.err"; then
+  echo "expected first inventory master Longhorn eviction to be refused" >&2
+  exit 1
+fi
+grep -q 'first inventory master is deferred' "${tmp}/first-master-longhorn-evict.err"
+
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --profile live --context test --yes k3s-master-2 \
+  >"${tmp}/control-plane-longhorn-evict.out" \
+  2>"${tmp}/control-plane-longhorn-evict.err"; then
+  echo "expected control-plane Longhorn eviction to fail when Longhorn is absent" >&2
+  exit 1
+fi
+grep -q 'Longhorn is not installed in test' "${tmp}/control-plane-longhorn-evict.err"
+
 "${ROOT}/hack/bootstrap/nodes/drain.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/control-plane-delete.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null

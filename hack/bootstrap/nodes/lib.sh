@@ -1466,6 +1466,21 @@ node_stop_k3s_agent() {
     -a "name=k3s-node enabled=false state=stopped"
 }
 
+node_stop_k3s_server() {
+  local profile="$1"
+  local inventory_node="$2"
+  local inventory_file
+
+  inventory_file="$(node_ansible_inventory_file "$profile")"
+  node_require_tool ansible
+  ANSIBLE_HOST_KEY_CHECKING=False ansible \
+    -i "$inventory_file" \
+    "$inventory_node" \
+    --become \
+    -m ansible.builtin.systemd \
+    -a "name=k3s enabled=false state=stopped"
+}
+
 node_run_worker_ansible_action() {
   local profile="$1"
   local inventory_node="$2"
