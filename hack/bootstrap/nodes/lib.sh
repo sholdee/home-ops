@@ -819,6 +819,34 @@ node_longhorn_attached_volumes_on_node() {
   ' <<<"$volumes_json"
 }
 
+node_longhorn_volume_delete_blockers() {
+  local context="$1"
+  local node="$2"
+  local volumes_json
+
+  volumes_json="$(node_get_json "$context" -n longhorn-system volumes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$volumes_json" ]] || {
+    printf 'Longhorn volumes not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" '
+    [
+      .items[]
+      | {
+          name: .metadata.name,
+          state: (.status.state // "unknown"),
+          robustness: (.status.robustness // "unknown"),
+          specNode: (.spec.nodeID // ""),
+          currentNode: (.status.currentNodeID // "")
+        }
+      | select(.specNode == $node or .currentNode == $node)
+      | "\(.name) state=\(.state) robustness=\(.robustness) specNode=\(.specNode) currentNode=\(.currentNode) reason=volume-still-targets-node"
+    ] | .[]
+  ' <<<"$volumes_json"
+}
+
 node_longhorn_volume_problems() {
   local context="$1"
   local volumes_json
@@ -1002,6 +1030,101 @@ node_longhorn_replica_delete_blockers() {
       else
         empty
       end
+  ' <<<"$replicas_json"
+}
+
+node_longhorn_engine_delete_blockers() {
+  local context="$1"
+  local node="$2"
+  local engines_json
+
+  engines_json="$(node_get_json "$context" -n longhorn-system engines.longhorn.io 2>/dev/null || true)"
+  [[ -n "$engines_json" ]] || {
+    printf 'Longhorn engines not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" '
+    [
+      .items[]
+      | {
+          name: .metadata.name,
+          volume: (.spec.volumeName // .metadata.labels.longhornvolume // ""),
+          state: (.status.currentState // .status.state // "unknown"),
+          desireState: (.spec.desireState // ""),
+          specNode: (.spec.nodeID // ""),
+          currentNode: (.status.currentNodeID // ""),
+          ownerNode: (.status.ownerID // "")
+        }
+      | select(.specNode == $node or .currentNode == $node or .ownerNode == $node)
+      | "\(.name) volume=\(.volume) state=\(.state) desired=\(.desireState) specNode=\(.specNode) currentNode=\(.currentNode) owner=\(.ownerNode) reason=engine-still-targets-node"
+    ] | .[]
+  ' <<<"$engines_json"
+}
+
+node_longhorn_safe_stale_replicas_for_deleted_node() {
+  local context="$1"
+  local node="$2"
+  local replicas_json volumes_json
+
+  replicas_json="$(node_get_json "$context" -n longhorn-system replicas.longhorn.io 2>/dev/null || true)"
+  [[ -n "$replicas_json" ]] || {
+    printf 'Longhorn replicas not readable\n'
+    return 0
+  }
+
+  volumes_json="$(node_get_json "$context" -n longhorn-system volumes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$volumes_json" ]] || {
+    printf 'Longhorn volumes not readable\n'
+    return 0
+  }
+
+  # Keep this predicate in lockstep with node_longhorn_replica_delete_blockers.
+  # These replicas are safe to delete only after the Kubernetes node is gone.
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") '
+    ($volumes[0].items // []) as $volume_items |
+    def node_id:
+      (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
+    def volume_name:
+      (.spec.volumeName // .metadata.labels.longhornvolume // "");
+    def replica_state:
+      (.status.currentState // .status.state // "unknown");
+    def desire_state:
+      (.spec.desireState // "");
+    def failed_at:
+      (.spec.failedAt // .status.failedAt // "");
+    def healthy_at:
+      (.spec.healthyAt // .status.healthyAt // "");
+    def healthy_replica:
+      failed_at == "" and
+      healthy_at != "" and
+      (replica_state == "running" or replica_state == "stopped");
+    def running_replica:
+      replica_state == "running" or
+      (.status.started // false) == true or
+      ((.status.instanceManagerName // "") != "");
+    def volume_by_name($name):
+      first($volume_items[]? | select(.metadata.name == $name)) // null;
+    (.items // []) as $all_replicas |
+    $all_replicas[]
+    | select(node_id == $node)
+    | . as $replica
+    | (volume_name) as $volume_name
+    | (volume_by_name($volume_name)) as $volume
+    | ($volume.spec.numberOfReplicas // 1 | tonumber? // 1) as $desired_replicas
+    | ([ $all_replicas[]
+        | select(volume_name == $volume_name)
+        | select(node_id != $node)
+        | select(healthy_replica)
+      ] | length) as $healthy_elsewhere
+    | select($volume != null)
+    | select(running_replica | not)
+    | select(replica_state == "stopped")
+    | select(desire_state == "stopped")
+    | select($healthy_elsewhere >= $desired_replicas)
+    | .metadata.name
   ' <<<"$replicas_json"
 }
 
@@ -1212,13 +1335,15 @@ node_assert_longhorn_empty_for_delete() {
     {
       node_longhorn_scheduling_problem "$context" "$node"
       node_longhorn_attached_volumes_on_node "$context" "$node"
+      node_longhorn_volume_delete_blockers "$context" "$node"
+      node_longhorn_engine_delete_blockers "$context" "$node"
       node_longhorn_replica_delete_blockers "$context" "$node"
     } | sed '/^$/d'
   )"
 
   if [[ -n "$problems" ]]; then
     printf '%s\n' "$problems" >&2
-    node_die "Longhorn still has target-node state; run the explicit Longhorn eviction helper before deleting ${node}"
+    node_die "Longhorn still has target-node state; run the explicit Longhorn eviction helper before deleting ${node}, or wait for reported deleted-node blockers to clear before resuming cleanup"
   fi
 }
 
@@ -1331,6 +1456,65 @@ node_wait_for_longhorn_node_absent() {
     ((SECONDS < deadline)) || node_die "timed out waiting for Longhorn node deletion: ${node}"
     sleep 5
   done
+}
+
+node_wait_for_longhorn_replicas_absent() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local replicas
+
+  while true; do
+    replicas="$(node_longhorn_replicas_on_node "$context" "$node" | sed '/^$/d')"
+    if [[ -z "$replicas" ]]; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || {
+      printf '%s\n' "$replicas" >&2
+      node_die "timed out waiting for Longhorn replicas to disappear from deleted node: ${node}"
+    }
+    sleep 5
+  done
+}
+
+node_cleanup_longhorn_deleted_node() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local state stale_replicas replica
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  if node_has_resource "$context" "node/${node}"; then
+    node_die "refusing to clean Longhorn deleted-node state while Kubernetes node still exists: ${node}"
+  fi
+
+  if ! node_has_resource "$context" -n longhorn-system "nodes.longhorn.io/${node}"; then
+    return
+  fi
+
+  node_assert_longhorn_empty_for_delete "$context" "$node"
+  stale_replicas="$(node_longhorn_safe_stale_replicas_for_deleted_node "$context" "$node" | sed '/^$/d')"
+  if [[ -n "$stale_replicas" ]]; then
+    while IFS= read -r replica; do
+      [[ -n "$replica" ]] || continue
+      node_log "deleting safe stale Longhorn replica ${replica} from deleted node ${node}"
+      node_kubectl "$context" -n longhorn-system delete replicas.longhorn.io "$replica" \
+        --wait=false \
+        --ignore-not-found
+    done <<<"$stale_replicas"
+    node_wait_for_longhorn_replicas_absent "$context" "$node" "$timeout"
+  fi
+
+  node_log "deleting Longhorn node resource for deleted node ${node}"
+  node_kubectl "$context" -n longhorn-system delete "nodes.longhorn.io/${node}" \
+    --wait=false \
+    --ignore-not-found
+  node_wait_for_longhorn_node_absent "$context" "$node" "$timeout"
 }
 
 node_longhorn_uncordon_problems() {
