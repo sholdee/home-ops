@@ -169,7 +169,7 @@ printf 'etcd_member_simple_begin\n'
   --key="$etcd_tls_dir/client.key" \
   member list
 printf 'etcd_member_simple_end\n'
-printf 'etcd_endpoint_health_begin\n'
+printf 'etcd_endpoint_status_begin\n'
 "$etcdctl_path" \
   --endpoints=https://127.0.0.1:2379 \
   --dial-timeout=3s \
@@ -177,8 +177,8 @@ printf 'etcd_endpoint_health_begin\n'
   --cacert="$etcd_tls_dir/server-ca.crt" \
   --cert="$etcd_tls_dir/client.crt" \
   --key="$etcd_tls_dir/client.key" \
-  endpoint health
-printf 'etcd_endpoint_health_end\n'
+  endpoint status
+printf 'etcd_endpoint_status_end\n'
 EOF
 
 if remote_output="$(
@@ -204,9 +204,9 @@ if grep -q '^preflight_error=' <<<"$filtered_remote_output"; then
 fi
 
 member_lines="$(extract_block etcd_member_simple_begin etcd_member_simple_end <<<"$filtered_remote_output")"
-endpoint_health="$(extract_block etcd_endpoint_health_begin etcd_endpoint_health_end <<<"$filtered_remote_output")"
+endpoint_status="$(extract_block etcd_endpoint_status_begin etcd_endpoint_status_end <<<"$filtered_remote_output")"
 [[ -n "$member_lines" ]] || node_die "etcd member list was empty"
-[[ -n "$endpoint_health" ]] || node_die "etcd endpoint health output was empty"
+[[ -n "$endpoint_status" ]] || node_die "etcd endpoint status output was empty"
 
 target_member_id=""
 target_member_status=""
@@ -299,8 +299,8 @@ printf '  peer_urls: %s\n' "$target_member_peer_urls"
 printf '  client_urls: %s\n' "$target_member_client_urls"
 printf '  is_learner: %s\n' "$target_member_is_learner"
 
-printf '\netcd_endpoint_health:\n'
-indent_block <<<"$endpoint_health"
+printf '\netcd_endpoint_status:\n'
+indent_block <<<"$endpoint_status"
 
 printf '\nplanned_member_remove:\n'
 printf '  run_on_inventory_node: %s\n' "$probe_inventory_node"

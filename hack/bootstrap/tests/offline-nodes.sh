@@ -344,9 +344,9 @@ printf '70594c7c481c118, started, k3s-master-1-ff2e5a37, https://192.168.99.11:2
 printf 'c9e409fd1205cc0a, started, k3s-master-0-b8caf5ab, https://192.168.99.10:2380, https://192.168.99.10:2379, false\n'
 printf 'ee5329b5b8ee26b3, started, k3s-master-2-f7c0824c, https://192.168.99.12:2380, https://192.168.99.12:2379, false\n'
 printf 'etcd_member_simple_end\n'
-printf 'etcd_endpoint_health_begin\n'
-printf 'https://127.0.0.1:2379 is healthy: successfully committed proposal: took = 1.2ms\n'
-printf 'etcd_endpoint_health_end\n'
+printf 'etcd_endpoint_status_begin\n'
+printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9, 123, 123, \n'
+printf 'etcd_endpoint_status_end\n'
 EOF
 chmod +x "$fake_ansible"
 
