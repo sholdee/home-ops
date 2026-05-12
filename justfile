@@ -76,10 +76,19 @@ app-diff $app $context='default':
       echo "ERROR: ${dir}/kustomization.yaml does not exist" >&2
       exit 2
     fi
-    trap 'rm -rf "${dir}/charts"' EXIT
+    render="$(mktemp)"
+    trap 'rm -f "${render}"; rm -rf "${dir}/charts"' EXIT
     rm -rf "${dir}/charts"
-    kustomize build --enable-helm --helm-api-versions '{{ helm_api_version }}' "${dir}" \
-      | kubectl --context "${context}" diff --server-side --field-manager=argocd-controller -f -
+    kustomize build --enable-helm --helm-api-versions '{{ helm_api_version }}' "${dir}" > "${render}"
+    set +e
+    KUBECTL_EXTERNAL_DIFF="${PWD}/hack/kubectl-git-diff.sh" \
+      kubectl --context "${context}" diff --server-side --field-manager=argocd-controller -f "${render}"
+    status="$?"
+    set -e
+    if [[ "${status}" == 1 ]]; then
+      exit 0
+    fi
+    exit "${status}"
 
 # Run the bootstrap flow against the current kube context with confirmation.
 [group('bootstrap')]
