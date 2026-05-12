@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 usage() {
   cat <<'EOF'
-Usage: hack/bootstrap/nodes/drain.sh [options] NODE
+Usage: hack/bootstrap/nodes/longhorn-evict.sh [options] NODE
 
 Options:
   --profile NAME   Node lifecycle profile: live or lima. Defaults to live.
@@ -67,19 +67,12 @@ node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${kubernetes_node_name}"
 node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
-
-node_confirm "$yes" "drain ${kubernetes_node_name} from ${context}"
-node_log "draining ${kubernetes_node_name}"
-node_kubectl "$context" drain "$kubernetes_node_name" \
-  --ignore-daemonsets \
-  --delete-emptydir-data \
-  --grace-period=120 \
-  --timeout=15m
-
-node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
-[[ -n "$node_json" ]] || node_die "Kubernetes node disappeared during drain: ${kubernetes_node_name}"
-node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
 node_assert_cordoned "$node_json" "$kubernetes_node_name"
 node_assert_no_ordinary_pods "$context" "$kubernetes_node_name"
-node_wait_for_longhorn_maintenance_safe "$context" "$kubernetes_node_name"
-node_log "drain complete: ${kubernetes_node_name}"
+node_assert_longhorn_eviction_feasible "$context" "$kubernetes_node_name"
+
+node_confirm "$yes" "evict Longhorn replicas from ${kubernetes_node_name} in ${context}"
+node_log "requesting Longhorn replica eviction from ${kubernetes_node_name}"
+node_request_longhorn_eviction "$context" "$kubernetes_node_name"
+node_wait_for_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
+node_log "Longhorn eviction complete: ${kubernetes_node_name}"

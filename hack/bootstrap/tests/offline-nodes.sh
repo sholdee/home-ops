@@ -222,8 +222,106 @@ grep -q 'installed: false' <<<"$status_output"
 
 "${ROOT}/hack/bootstrap/nodes/drain.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/uncordon.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/refresh-ssh-host-key.sh" --help >/dev/null
+
+fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
+cat > "$fake_longhorn_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf '{"metadata":{"name":"volumes.longhorn.io"}}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "volumes.longhorn.io" ]]; then
+  cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "detached", "robustness": "healthy", "currentNodeID": ""}}
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "nodes.longhorn.io/k3s-worker-0" ]]; then
+  cat <<'JSON'
+{
+  "metadata": {"name": "k3s-worker-0"},
+  "spec": {"allowScheduling": false, "evictionRequested": true},
+  "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "False"}]}
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "-n" && "${2:-}" == "longhorn-system" && "${3:-}" == "patch" && "${4:-}" == "nodes.longhorn.io/k3s-worker-0" ]]; then
+  printf 'node.longhorn.io/k3s-worker-0 patched\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "nodes.longhorn.io" ]]; then
+  cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "k3s-worker-0"},
+      "spec": {"allowScheduling": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "True"}]}
+    },
+    {
+      "metadata": {"name": "k3s-worker-1"},
+      "spec": {"allowScheduling": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "True"}]}
+    },
+    {
+      "metadata": {"name": "k3s-worker-2"},
+      "spec": {"allowScheduling": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "True"}]}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+printf 'unexpected fake Longhorn kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+chmod +x "$fake_longhorn_kubectl"
+
+if NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_eviction_feasible test k3s-worker-0" \
+  2>"${tmp}/longhorn-evict.err"; then
+  echo "expected Longhorn eviction feasibility to fail for 3 replicas on 2 remaining nodes" >&2
+  exit 1
+fi
+grep -q 'max volume replicas=3, eligible storage nodes after removing target=2' "${tmp}/longhorn-evict.err"
+
+longhorn_node_report="$(
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_node_report test k3s-worker-0"
+)"
+grep -q 'allowScheduling=false evictionRequested=true' <<<"$longhorn_node_report"
+
+longhorn_scheduling_problem="$(
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_scheduling_problem test k3s-worker-0"
+)"
+test -z "$longhorn_scheduling_problem"
+
+restore_scheduling_output="$(
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"
+)"
+grep -q 'node.longhorn.io/k3s-worker-0 patched' <<<"$restore_scheduling_output"
 
 echo "offline node lifecycle test passed"
