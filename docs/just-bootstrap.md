@@ -338,6 +338,23 @@ backend. The wrapper does not require its sample defaults to match the homelab;
 it renders the homelab values as an overlay. The default `home-ops` backend
 does not use the external checkout.
 
+### Node Lifecycle Status
+
+Node lifecycle helpers live in `hack/bootstrap/nodes/` and are for existing
+clusters, not first-boot bootstrap. The current commands are read-only status
+checks:
+
+```sh
+just node-live-status k3s-worker-0
+just node-lima-status home-ops-k3s-test-agent-1
+```
+
+Status prints inventory role, Kubernetes role, Ready/schedulable state, the
+temporary joining taint, ordinary pods on the node, Cilium readiness, and
+Longhorn signals when Longhorn is installed. Future mutating lifecycle commands
+will be added separately and must keep drain/delete/join/uncordon as explicit
+operator steps.
+
 Review the active context:
 
 ```sh

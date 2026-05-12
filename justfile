@@ -1,5 +1,7 @@
 kind_cluster := env_var_or_default("KIND_CLUSTER", "home-ops-bootstrap")
 kind_context := "kind-" + kind_cluster
+lima_cluster := env_var_or_default("LIMA_CLUSTER_NAME", "home-ops-k3s-test")
+lima_context := "lima-" + lima_cluster
 helm_api_version := "grafana.integreatly.org/v1beta1/GrafanaDashboard"
 lima_app_env := "LIMA_AGENT_COUNT=3 LIMA_AGENT_CPUS=4 LIMA_AGENT_MEMORY_GIB=6 LIMA_DISK_GIB=120 LIMA_VALIDATE_APP_WAIT_SECONDS=3600"
 
@@ -170,6 +172,11 @@ bootstrap-live-kube context='default':
 bootstrap-live-full:
     ./hack/bootstrap/ansible/run.sh --profile live --kube-bootstrap
 
+# Show read-only node lifecycle status for a live cluster node.
+[group('node-live')]
+node-live-status node:
+    ./hack/bootstrap/nodes/status.sh --profile live --context default '{{ node }}'
+
 # Delete and recreate the configured three-node kind cluster.
 [group('bootstrap-kind')]
 kind-reset:
@@ -245,6 +252,11 @@ bootstrap-lima-delete:
 [group('bootstrap-lima')]
 bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima-ansible bootstrap-lima-bootstrap bootstrap-lima-validate
 
+# Show read-only node lifecycle status for a Lima cluster node.
+[group('node-lima')]
+node-lima-status node:
+    ./hack/bootstrap/nodes/status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
 # Recreate larger Lima VMs, run Ansible, bootstrap app profile, and validate app safety.
 [group('bootstrap-lima-apps')]
 bootstrap-lima-fresh-apps:
@@ -262,6 +274,7 @@ bootstrap-audit:
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 [group('bootstrap')]
 bootstrap-test:
-    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh
+    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/nodes/*.sh
     hack/bootstrap/tests/offline-parse.sh
     hack/bootstrap/tests/offline-ansible.sh
+    hack/bootstrap/tests/offline-nodes.sh
