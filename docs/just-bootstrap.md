@@ -343,12 +343,17 @@ does not use the external checkout.
 
 Node lifecycle helpers live in `hack/bootstrap/nodes/` and are for existing
 clusters, not first-boot bootstrap. Worker lifecycle is intentionally split
-into explicit operator steps:
+into explicit operator steps. Control-plane nodes support status, read-only
+delete preflight, drain, and delete; control-plane join and uncordon remain
+deferred:
 
 ```sh
 just node-live-status k3s-worker-0
 just node-live-control-plane-status k3s-master-0
 just node-live-control-plane-delete-preflight k3s-master-0
+just node-live-drain k3s-master-1
+just node-live-longhorn-evict k3s-master-1
+just node-live-delete k3s-master-1
 just node-live-drain k3s-worker-0
 just node-live-longhorn-evict k3s-worker-0
 just node-live-delete k3s-worker-0
@@ -363,6 +368,9 @@ The Lima equivalents use the `node-lima-*` group:
 just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
+just node-lima-drain home-ops-k3s-test-server-2
+just node-lima-longhorn-evict home-ops-k3s-test-server-2
+just node-lima-delete home-ops-k3s-test-server-2
 just node-lima-drain home-ops-k3s-test-agent-1
 just node-lima-longhorn-evict home-ops-k3s-test-agent-1
 just node-lima-delete home-ops-k3s-test-agent-1
@@ -371,8 +379,9 @@ just node-lima-join home-ops-k3s-test-agent-1
 just node-lima-uncordon home-ops-k3s-test-agent-1
 ```
 
-Mutating commands support worker nodes only. Control-plane lifecycle remains
-blocked until the embedded-etcd member removal and rejoin procedure is proven.
+Mutating control-plane join and uncordon remain blocked until the replacement
+path is proven. Control-plane drain and delete are guarded by the embedded-etcd
+member preflight.
 The control-plane status command is read-only and exists to validate that future
 procedure: it reports inventory/Ready quorum math and probes the selected server
 for K3s service state, datastore files, etcd listeners, and `etcdctl`
@@ -392,17 +401,24 @@ target node. It does not require every Longhorn volume to stay healthy, because
 three-replica volumes on exactly three storage nodes will be temporarily
 degraded while one node is drained.
 
-The delete step is deliberately conservative. It stops and disables `k3s-node`
-through Ansible before deleting the Kubernetes `Node` and the K3s node-password
-Secret, so the old node cannot immediately re-register. For node replacement,
-run `node-*-longhorn-evict` after drain and before delete. The eviction helper
-disables Longhorn scheduling for the target, requests replica eviction, and
-fails before mutating anything if the remaining eligible storage nodes cannot
-hold the maximum configured replica count. Delete and eviction completion allow
-stopped stale target-node replica records only after the desired healthy replica
-count exists on other nodes. Delete also clears stale pod objects still bound to
-the removed node and waits for the Longhorn node resource to disappear before a
-same-name join can proceed.
+The delete step is deliberately conservative. Worker delete stops and disables
+`k3s-node` through Ansible before deleting the Kubernetes `Node` and the K3s
+node-password Secret, so the old node cannot immediately re-register.
+Control-plane delete currently refuses the first inventory master until API
+context handoff and control-plane rejoin are implemented. For other
+control-plane nodes, run the same Longhorn eviction helper after drain and
+before delete when Longhorn is installed. Delete requires the node to be
+cordoned and empty, stops and disables `k3s`, rechecks the preflight from a
+remaining control-plane, creates a fresh K3s etcd snapshot, removes the target
+etcd member, then deletes the Kubernetes `Node` and node-password Secret. For
+node replacement, run `node-*-longhorn-evict` after drain and before delete.
+The eviction helper disables Longhorn scheduling for the target, requests
+replica eviction, and fails before mutating anything if the remaining eligible
+storage nodes cannot hold the maximum configured replica count. Delete and
+eviction completion allow stopped stale target-node replica records only after
+the desired healthy replica count exists on other nodes. Delete also clears
+stale pod objects still bound to the removed node and waits for the Longhorn
+node resource to disappear before a same-name join can proceed.
 
 Join uses the generated home-ops Ansible worker playbook and starts the agent
 with `node.home-ops.sh/joining=true:NoSchedule`. After the node object appears,

@@ -293,6 +293,21 @@ EOF
   esac
 }
 
+lima_apps_workloads_released() {
+  local paths
+
+  if kubectl_cmd -n argocd get application/hass >/dev/null 2>&1 ||
+    kubectl_cmd -n argocd get application/powerdns >/dev/null 2>&1; then
+    return 0
+  fi
+
+  paths="$(
+    kubectl_cmd -n argocd get applicationset/k3s-apps \
+      -o jsonpath='{range .spec.generators[0].git.directories[*]}{.path}{"\n"}{end}' 2>/dev/null || true
+  )"
+  grep -Eq '^apps/(hass|powerdns)$' <<<"$paths"
+}
+
 write_lima_apps_safety_policies() {
   local output="$1"
   cat > "$output" <<'EOF'
@@ -431,6 +446,7 @@ write_lima_apps_appset() {
   write_lima_apps_kustomize_patches "$patches"
   LIMA_APPSET_DIRECTORIES="$directories" LIMA_APPSET_PATCHES="$patches" yq '
     .spec.generators[0].git.directories = load(strenv(LIMA_APPSET_DIRECTORIES)) |
+    .spec.syncPolicy.applicationsSync = "create-update" |
     .spec.template.spec.source.kustomize.patches = load(strenv(LIMA_APPSET_PATCHES))
   ' "$input" > "$output"
 
@@ -477,6 +493,7 @@ elif [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
   wait_cilium_ready_for_k3s_apps
   wait_application_ready dragonfly-operator
 elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
+  lima_workloads_released=false
   log "waiting for Cilium and explicit operators before applying sanitized applicationset/k3s-apps"
   wait_cilium_ready_for_k3s_apps
   wait_platform_applications_for_k3s_apps
@@ -484,15 +501,23 @@ elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
   apply_external_snapshotter
   log "applying Lima safety admission policies"
   apply_lima_apps_safety_policies
-  log "applying sanitized infra applicationset/k3s-apps for lima-apps"
-  apply_k3s_apps_appset infra
+  if lima_apps_workloads_released; then
+    lima_workloads_released=true
+    log "existing Lima workload applications detected; applying full sanitized applicationset/k3s-apps without infra narrowing"
+    apply_k3s_apps_appset
+  else
+    log "applying sanitized infra applicationset/k3s-apps for lima-apps"
+    apply_k3s_apps_appset infra
+  fi
   kubectl_cmd -n argocd get applicationset/k3s-apps >/dev/null
   for app in cert-manager cnpg-system envoy-gateway-system external-secrets gateway kube-system longhorn-system; do
     wait_application_operation_healthy "$app"
   done
-  log "applying sanitized workload applicationset/k3s-apps for lima-apps"
-  apply_k3s_apps_appset
-  kubectl_cmd -n argocd get applicationset/k3s-apps >/dev/null
+  if [[ "$lima_workloads_released" == false ]]; then
+    log "applying sanitized workload applicationset/k3s-apps for lima-apps"
+    apply_k3s_apps_appset
+    kubectl_cmd -n argocd get applicationset/k3s-apps >/dev/null
+  fi
 elif ! crd_exists ciliumnetworkpolicies.cilium.io; then
   log "CiliumNetworkPolicy CRD absent; skip wait for real-cluster applicationset/k3s-apps"
 else
