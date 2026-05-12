@@ -69,7 +69,6 @@ node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
 node_assert_cordoned "$node_json" "$kubernetes_node_name"
 node_assert_no_ordinary_pods "$context" "$kubernetes_node_name"
-node_assert_longhorn_safe "$context" "$kubernetes_node_name"
 node_assert_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
 
 node_confirm "$yes" "delete ${kubernetes_node_name} from ${context}"
@@ -80,4 +79,6 @@ node_log "deleting Kubernetes node ${kubernetes_node_name}"
 node_kubectl "$context" delete "node/${kubernetes_node_name}" --wait=false
 node_kubectl "$context" -n kube-system delete "secret/${kubernetes_node_name}.node-password.k3s" --ignore-not-found
 node_wait_for_node_absent "$context" "$kubernetes_node_name"
+node_cleanup_pods_for_deleted_node "$context" "$kubernetes_node_name"
+node_wait_for_longhorn_node_absent "$context" "$kubernetes_node_name"
 node_log "delete complete: ${kubernetes_node_name}"

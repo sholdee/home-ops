@@ -474,6 +474,82 @@ node_workload_pods_report() {
   ' <<<"$pods_json"
 }
 
+node_pods_on_node() {
+  local context="$1"
+  local node="$2"
+  local pods_json
+  pods_json="$(node_get_json "$context" pods -A --field-selector "spec.nodeName=${node}" 2>/dev/null || true)"
+  [[ -n "$pods_json" ]] || {
+    printf 'pods are not readable for %s\n' "$node"
+    return 0
+  }
+  "$NODE_JQ_BIN" -r '
+    def owner_kind:
+      (.metadata.ownerReferences // [] | map(.kind) | join(","));
+    .items[]
+    | select(.status.phase != "Succeeded")
+    | [
+        .metadata.namespace,
+        .metadata.name,
+        (.status.phase // "unknown"),
+        owner_kind
+      ]
+    | @tsv
+  ' <<<"$pods_json"
+}
+
+node_delete_stale_pods_for_deleted_node() {
+  local context="$1"
+  local node="$2"
+  local pods namespace name _phase _owner
+
+  if node_has_resource "$context" "node/${node}"; then
+    node_die "refusing to delete node-bound pods while Kubernetes node still exists: ${node}"
+  fi
+
+  pods="$(node_pods_on_node "$context" "$node" | sed '/^$/d')"
+  [[ -n "$pods" ]] || return 0
+
+  while IFS=$'\t' read -r namespace name _phase _owner; do
+    [[ -n "$namespace" && -n "$name" ]] || continue
+    node_log "deleting stale pod ${namespace}/${name} bound to deleted node ${node}"
+    node_kubectl "$context" -n "$namespace" delete pod "$name" \
+      --grace-period=0 \
+      --force \
+      --wait=false \
+      --ignore-not-found
+  done <<<"$pods"
+}
+
+node_wait_for_deleted_node_pods_absent() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local pods
+
+  while true; do
+    pods="$(node_pods_on_node "$context" "$node" | sed '/^$/d')"
+    if [[ -z "$pods" ]]; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || {
+      printf '%s\n' "$pods" >&2
+      node_die "timed out waiting for stale node-bound pods to disappear: ${node}"
+    }
+    sleep 5
+  done
+}
+
+node_cleanup_pods_for_deleted_node() {
+  local context="$1"
+  local node="$2"
+
+  node_wait_for_node_absent "$context" "$node"
+  node_delete_stale_pods_for_deleted_node "$context" "$node"
+  node_wait_for_deleted_node_pods_absent "$context" "$node"
+}
+
 node_cilium_report() {
   local context="$1"
   local node="$2"
@@ -780,6 +856,89 @@ node_longhorn_replicas_on_node() {
   ' <<<"$replicas_json"
 }
 
+node_longhorn_replica_delete_blockers() {
+  local context="$1"
+  local node="$2"
+  local replicas_json volumes_json
+
+  replicas_json="$(node_get_json "$context" -n longhorn-system replicas.longhorn.io 2>/dev/null || true)"
+  [[ -n "$replicas_json" ]] || {
+    printf 'Longhorn replicas not readable\n'
+    return 0
+  }
+
+  volumes_json="$(node_get_json "$context" -n longhorn-system volumes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$volumes_json" ]] || {
+    printf 'Longhorn volumes not readable\n'
+    return 0
+  }
+
+  # A stopped target-node replica is not itself a running process, and Longhorn
+  # may keep it around temporarily after rebuilding healthy copies elsewhere.
+  # For node replacement it is only safe to ignore when the desired healthy
+  # replica count is already present on other nodes.
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") '
+    ($volumes[0].items // []) as $volume_items |
+    def node_id:
+      (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
+    def volume_name:
+      (.spec.volumeName // .metadata.labels.longhornvolume // "");
+    def replica_state:
+      (.status.currentState // .status.state // "unknown");
+    def desire_state:
+      (.spec.desireState // "");
+    def failed_at:
+      (.spec.failedAt // .status.failedAt // "");
+    def healthy_at:
+      (.spec.healthyAt // .status.healthyAt // "");
+    def healthy_replica:
+      failed_at == "" and
+      healthy_at != "" and
+      (replica_state == "running" or replica_state == "stopped");
+    def running_replica:
+      replica_state == "running" or
+      (.status.started // false) == true or
+      ((.status.instanceManagerName // "") != "");
+    def volume_by_name($name):
+      first($volume_items[]? | select(.metadata.name == $name)) // null;
+    (.items // []) as $all_replicas |
+    $all_replicas[]
+    | select(node_id == $node)
+    | . as $replica
+    | (volume_name) as $volume_name
+    | (volume_by_name($volume_name)) as $volume
+    | ($volume.spec.numberOfReplicas // 1 | tonumber? // 1) as $desired_replicas
+    | ([ $all_replicas[]
+        | select(volume_name == $volume_name)
+        | select(node_id != $node)
+        | select(healthy_replica)
+      ] | length) as $healthy_elsewhere
+    | {
+        name: (.metadata.name // "unknown"),
+        volume: $volume_name,
+        state: replica_state,
+        desireState: desire_state,
+        failedAt: failed_at,
+        healthyElsewhere: $healthy_elsewhere,
+        desiredReplicas: $desired_replicas,
+        volumeFound: ($volume != null),
+        running: running_replica
+      }
+    | if (.volumeFound | not) then
+        "\(.name) volume=\(.volume) state=\(.state) desired=\(.desireState) failedAt=\(.failedAt) reason=volume-not-found"
+      elif .running then
+        "\(.name) volume=\(.volume) state=\(.state) desired=\(.desireState) failedAt=\(.failedAt) reason=replica-still-running"
+      elif .state != "stopped" or .desireState != "stopped" then
+        "\(.name) volume=\(.volume) state=\(.state) desired=\(.desireState) failedAt=\(.failedAt) reason=replica-not-stopped"
+      elif .healthyElsewhere < .desiredReplicas then
+        "\(.name) volume=\(.volume) state=\(.state) healthyElsewhere=\(.healthyElsewhere)/\(.desiredReplicas) reason=insufficient-healthy-replicas-elsewhere"
+      else
+        empty
+      end
+  ' <<<"$replicas_json"
+}
+
 node_longhorn_max_replica_count() {
   local context="$1"
   local volumes_json
@@ -987,7 +1146,7 @@ node_assert_longhorn_empty_for_delete() {
     {
       node_longhorn_scheduling_problem "$context" "$node"
       node_longhorn_attached_volumes_on_node "$context" "$node"
-      node_longhorn_replicas_on_node "$context" "$node"
+      node_longhorn_replica_delete_blockers "$context" "$node"
     } | sed '/^$/d'
   )"
 
@@ -1040,7 +1199,9 @@ node_request_longhorn_eviction() {
 node_restore_longhorn_scheduling() {
   local context="$1"
   local node="$2"
-  local state
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local output state
 
   state="$(node_assert_longhorn_discovery "$context")"
   if [[ "$state" == absent ]]; then
@@ -1048,9 +1209,19 @@ node_restore_longhorn_scheduling() {
   fi
 
   node_wait_for_longhorn_node_resource "$context" "$node"
-  node_kubectl "$context" -n longhorn-system patch "nodes.longhorn.io/${node}" \
-    --type=merge \
-    -p '{"spec":{"allowScheduling":true,"evictionRequested":false}}'
+  while true; do
+    if output="$(node_kubectl "$context" -n longhorn-system patch "nodes.longhorn.io/${node}" \
+      --type=merge \
+      -p '{"spec":{"allowScheduling":true,"evictionRequested":false}}' 2>&1)"; then
+      printf '%s\n' "$output"
+      return 0
+    fi
+    ((SECONDS < deadline)) || {
+      printf '%s\n' "$output" >&2
+      node_die "timed out restoring Longhorn scheduling for ${node}"
+    }
+    sleep 5
+  done
 }
 
 node_wait_for_longhorn_node_resource() {
@@ -1071,6 +1242,27 @@ node_wait_for_longhorn_node_resource() {
       return 0
     fi
     ((SECONDS < deadline)) || node_die "timed out waiting for Longhorn node resource: ${node}"
+    sleep 5
+  done
+}
+
+node_wait_for_longhorn_node_absent() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  while true; do
+    if ! node_has_resource "$context" -n longhorn-system "nodes.longhorn.io/${node}"; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_die "timed out waiting for Longhorn node deletion: ${node}"
     sleep 5
   done
 }

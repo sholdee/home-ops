@@ -3,7 +3,7 @@ kind_context := "kind-" + kind_cluster
 lima_cluster := env_var_or_default("LIMA_CLUSTER_NAME", "home-ops-k3s-test")
 lima_context := "lima-" + lima_cluster
 helm_api_version := "grafana.integreatly.org/v1beta1/GrafanaDashboard"
-lima_app_env := "LIMA_AGENT_COUNT=3 LIMA_AGENT_CPUS=4 LIMA_AGENT_MEMORY_GIB=6 LIMA_DISK_GIB=120 LIMA_VALIDATE_APP_WAIT_SECONDS=3600"
+lima_app_env := "LIMA_AGENT_COUNT=4 LIMA_AGENT_CPUS=4 LIMA_AGENT_MEMORY_GIB=6 LIMA_DISK_GIB=120 LIMA_VALIDATE_APP_WAIT_SECONDS=3600"
 
 # Show available just tasks and their descriptions.
 [group('core')]

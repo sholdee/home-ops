@@ -252,6 +252,32 @@ JSON
   exit 0
 fi
 
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "replicas.longhorn.io" ]]; then
+  if [[ "${LONGHORN_REPLICA_CASE:-safe}" == "insufficient" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a-r-target"}, "spec": {"nodeID": "k3s-worker-0", "volumeName": "vol-a", "desireState": "stopped", "failedAt": "2026-05-12T19:47:53Z", "healthyAt": "2026-05-12T18:06:04Z"}, "status": {"currentState": "stopped", "started": false, "instanceManagerName": ""}},
+    {"metadata": {"name": "vol-a-r-one"}, "spec": {"nodeID": "k3s-worker-1", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-one"}},
+    {"metadata": {"name": "vol-a-r-two"}, "spec": {"nodeID": "k3s-worker-2", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-two"}}
+  ]
+}
+JSON
+  else
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a-r-target"}, "spec": {"nodeID": "k3s-worker-0", "volumeName": "vol-a", "desireState": "stopped", "failedAt": "2026-05-12T19:47:53Z", "healthyAt": "2026-05-12T18:06:04Z"}, "status": {"currentState": "stopped", "started": false, "instanceManagerName": ""}},
+    {"metadata": {"name": "vol-a-r-one"}, "spec": {"nodeID": "k3s-worker-1", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-one"}},
+    {"metadata": {"name": "vol-a-r-two"}, "spec": {"nodeID": "k3s-worker-2", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-two"}},
+    {"metadata": {"name": "vol-a-r-three"}, "spec": {"nodeID": "k3s-worker-3", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-three"}}
+  ]
+}
+JSON
+  fi
+  exit 0
+fi
+
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "nodes.longhorn.io/k3s-worker-0" ]]; then
   cat <<'JSON'
 {
@@ -318,10 +344,97 @@ longhorn_scheduling_problem="$(
 )"
 test -z "$longhorn_scheduling_problem"
 
+longhorn_replica_delete_blockers="$(
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_replica_delete_blockers test k3s-worker-0"
+)"
+test -z "$longhorn_replica_delete_blockers"
+
+NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test k3s-worker-0"
+
+if LONGHORN_REPLICA_CASE=insufficient \
+  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test k3s-worker-0" \
+  2>"${tmp}/longhorn-delete.err"; then
+  echo "expected Longhorn delete readiness to fail without enough healthy replicas elsewhere" >&2
+  exit 1
+fi
+grep -q 'reason=insufficient-healthy-replicas-elsewhere' "${tmp}/longhorn-delete.err"
+
 restore_scheduling_output="$(
   NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"
 )"
 grep -q 'node.longhorn.io/k3s-worker-0 patched' <<<"$restore_scheduling_output"
+
+fake_stale_pods_kubectl="${tmp}/kubectl-stale-pods"
+stale_pods_state="${tmp}/stale-pods-present"
+touch "$stale_pods_state"
+cat > "$fake_stale_pods_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
+  printf 'Error from server (NotFound): nodes "k3s-worker-0" not found\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pods" && "${3:-}" == "-A" ]]; then
+  if [[ -f "${STALE_PODS_STATE}" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {
+        "namespace": "kube-system",
+        "name": "cilium-old",
+        "ownerReferences": [{"kind": "DaemonSet"}]
+      },
+      "spec": {"nodeName": "k3s-worker-0"},
+      "status": {"phase": "Running"}
+    },
+    {
+      "metadata": {
+        "namespace": "longhorn-system",
+        "name": "longhorn-old",
+        "ownerReferences": [{"kind": "DaemonSet"}]
+      },
+      "spec": {"nodeName": "k3s-worker-0"},
+      "status": {"phase": "Running"}
+    }
+  ]
+}
+JSON
+  else
+    printf '{"items":[]}\n'
+  fi
+  exit 0
+fi
+
+if [[ "${1:-}" == "-n" && "${3:-}" == "delete" && "${4:-}" == "pod" ]]; then
+  rm -f "${STALE_PODS_STATE}"
+  printf 'pod "%s" force deleted\n' "${5:-unknown}"
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
+fi
+
+printf 'unexpected fake stale-pods kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+chmod +x "$fake_stale_pods_kubectl"
+
+STALE_PODS_STATE="$stale_pods_state" \
+NODE_KUBECTL_BIN="$fake_stale_pods_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_pods_for_deleted_node test k3s-worker-0"
+test ! -e "$stale_pods_state"
 
 echo "offline node lifecycle test passed"

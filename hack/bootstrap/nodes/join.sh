@@ -71,6 +71,8 @@ fi
 node_ansible_ping "$profile" "$inventory_node_name"
 node_confirm "$yes" "join ${inventory_node_name} to ${context}"
 
+node_cleanup_pods_for_deleted_node "$context" "$kubernetes_node_name"
+node_wait_for_longhorn_node_absent "$context" "$kubernetes_node_name"
 node_run_worker_ansible_action "$profile" "$inventory_node_name" join
 
 node_json="$(node_wait_for_node_json "$context" "$kubernetes_node_name")"
