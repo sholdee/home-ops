@@ -84,7 +84,11 @@ ansible_write_derived_vars() {
 
   k3s_version="$(yq -r 'select(.kind == "Plan" and .metadata.name == "k3s-server") | .spec.version' "$upgrade_plan")"
   cilium_tag="$(ansible_home_ops_cilium_tag)"
-  cluster_cidr="$(yq -r 'select(.kind == "Application" and .metadata.name == "cilium") | .spec.source.helm.valuesObject.ipam.operator.clusterPoolIPv4PodCIDRList' "$cilium_app")"
+  cluster_cidr="$(yq -r '
+    select(.kind == "Application" and .metadata.name == "cilium") |
+    .spec.source.helm.valuesObject.ipam.operator.clusterPoolIPv4PodCIDRList |
+    .[0] // .
+  ' "$cilium_app")"
   cilium_mode="$(yq -r 'select(.kind == "Application" and .metadata.name == "cilium") | .spec.source.helm.valuesObject.routingMode' "$cilium_app")"
   cilium_datapath_mode="$(yq -r 'select(.kind == "Application" and .metadata.name == "cilium") | .spec.source.helm.valuesObject.bpf.datapathMode' "$cilium_app")"
   cilium_hubble="$(yq -r 'select(.kind == "Application" and .metadata.name == "cilium") | .spec.source.helm.valuesObject.hubble.enabled' "$cilium_app")"
