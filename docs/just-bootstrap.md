@@ -567,12 +567,13 @@ The runner logs each phase name and makes every phase idempotent:
 3. `bootstrap-crds`
 4. `cert-manager`
 5. `external-secrets`
-6. `dragonfly-operator`
-7. `argocd-dependencies`
-8. `argocd`
-9. `wait-argocd`
-10. `takeover-cleanup`
-11. `audit`
+6. `gateway-cert-seed`
+7. `dragonfly-operator`
+8. `argocd-dependencies`
+9. `argocd`
+10. `wait-argocd`
+11. `takeover-cleanup`
+12. `audit`
 
 Run only one phase when debugging:
 
