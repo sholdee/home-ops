@@ -266,6 +266,11 @@ ansible-run:
 ansible-bootstrap:
     ./hack/bootstrap/ansible/run.sh --profile live --kube-bootstrap
 
+# Converge host-level services on one live inventory node without touching Kubernetes workloads.
+[group('ansible')]
+ansible-host-services node:
+    ./hack/bootstrap/ansible/host-services.sh '{{ node }}'
+
 # Show read-only node lifecycle status for a live cluster node.
 [group('node')]
 node-status node:
@@ -282,6 +287,11 @@ node-pods node:
     #!/usr/bin/env bash
     set -euo pipefail
     kubectl --context default get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
+
+# Run one SSH command against a live inventory node without implicit sudo.
+[group('node')]
+node-cmd node +command:
+    ./hack/bootstrap/nodes/cmd.sh --profile live '{{ node }}' -- {{ command }}
 
 # Show read-only control-plane quorum and embedded-etcd status for a live cluster node.
 [group('node')]
@@ -449,6 +459,11 @@ node-lima-pods node:
     #!/usr/bin/env bash
     set -euo pipefail
     kubectl --context '{{ lima_context }}' get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
+
+# Run one SSH command against a Lima inventory node without implicit sudo.
+[group('node-lima')]
+node-lima-cmd node +command:
+    ./hack/bootstrap/nodes/cmd.sh --profile lima '{{ node }}' -- {{ command }}
 
 # Show read-only control-plane quorum and embedded-etcd status for a Lima cluster node.
 [group('node-lima')]

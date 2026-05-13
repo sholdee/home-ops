@@ -17,6 +17,9 @@ BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR="${BOOTSTRAP_ANSIBLE_LIVE_INVENTORY_DIR:-${
 BOOTSTRAP_ANSIBLE_OP_VAULT="${BOOTSTRAP_ANSIBLE_OP_VAULT:-Kubernetes}"
 BOOTSTRAP_ANSIBLE_OP_ITEM="${BOOTSTRAP_ANSIBLE_OP_ITEM:-k3s-bootstrap}"
 BOOTSTRAP_ANSIBLE_OP_FIELD="${BOOTSTRAP_ANSIBLE_OP_FIELD:-k3s_token}"
+BOOTSTRAP_ANSIBLE_OP_ACCOUNT="${BOOTSTRAP_ANSIBLE_OP_ACCOUNT:-${BOOTSTRAP_OP_ACCOUNT:-}}"
+BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_VAULT="${BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_VAULT:-Kubernetes}"
+BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM="${BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM:-host-services}"
 BOOTSTRAP_ANSIBLE_KUBECONTEXT="${BOOTSTRAP_ANSIBLE_KUBECONTEXT:-default}"
 BOOTSTRAP_ANSIBLE_USER_KUBECONFIG="${BOOTSTRAP_ANSIBLE_USER_KUBECONFIG:-${HOME}/.kube/config}"
 
@@ -26,8 +29,12 @@ source "${ANSIBLE_BOOTSTRAP_DIR}/lib/common.sh"
 source "${ANSIBLE_BOOTSTRAP_DIR}/lib/paths.sh"
 # shellcheck source=hack/bootstrap/ansible/lib/inventory.sh
 source "${ANSIBLE_BOOTSTRAP_DIR}/lib/inventory.sh"
+# shellcheck source=hack/bootstrap/ansible/lib/op.sh
+source "${ANSIBLE_BOOTSTRAP_DIR}/lib/op.sh"
 # shellcheck source=hack/bootstrap/ansible/lib/token.sh
 source "${ANSIBLE_BOOTSTRAP_DIR}/lib/token.sh"
+# shellcheck source=hack/bootstrap/ansible/lib/host-services.sh
+source "${ANSIBLE_BOOTSTRAP_DIR}/lib/host-services.sh"
 # shellcheck source=hack/bootstrap/ansible/lib/kubeconfig.sh
 source "${ANSIBLE_BOOTSTRAP_DIR}/lib/kubeconfig.sh"
 # shellcheck source=hack/bootstrap/ansible/lib/playbooks.sh

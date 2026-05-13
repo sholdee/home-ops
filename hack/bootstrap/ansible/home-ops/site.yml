@@ -71,3 +71,19 @@
   tasks:
     - name: Prepare and fetch kubeconfig
       ansible.builtin.import_tasks: tasks/kubeconfig.yml
+
+- name: Converge RPi reporter host service
+  hosts: k3s_cluster
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Apply RPi reporter host service
+      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
+
+- name: Converge NUT client host service
+  hosts: master
+  gather_facts: true
+  become: true
+  tasks:
+    - name: Apply NUT client host service
+      ansible.builtin.import_tasks: tasks/nut-client.yml

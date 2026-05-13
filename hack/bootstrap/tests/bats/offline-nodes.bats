@@ -83,6 +83,39 @@ JSON
   [[ "$output" == "invalid" ]]
 }
 
+@test "node cmd helper resolves live inventory SSH command" {
+  local fake_ssh capture
+  fake_ssh="${tmp}/ssh"
+  capture="${tmp}/ssh-args"
+  cat > "$fake_ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$SSH_CAPTURE"
+EOF
+  chmod +x "$fake_ssh"
+
+  run env PATH="${tmp}:${PATH}" HOME=/tmp/home SSH_CAPTURE="$capture" \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/cmd.sh" \
+      --profile live k3s-worker-0 -- systemctl status isp-rpi-reporter.service
+  assert_success
+  assert_file_contains "$capture" '-o'
+  assert_file_contains "$capture" 'BatchMode=yes'
+  assert_file_contains "$capture" 'StrictHostKeyChecking=accept-new'
+  assert_file_contains "$capture" '-i'
+  assert_file_contains "$capture" '/tmp/home/ansiblekey'
+  assert_file_contains "$capture" 'ethan@192.168.99.20'
+  assert_file_contains "$capture" 'systemctl'
+  assert_file_contains "$capture" 'isp-rpi-reporter.service'
+}
+
+@test "node cmd helper fails closed for absent inventory node" {
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/cmd.sh" \
+      --profile live k3s-worker-9 -- true
+  assert_failure
+  assert_output_contains 'node is not present in live inventory'
+}
+
 @test "worker status command reports inventory, Kubernetes, Cilium, and Longhorn absence" {
   write_worker_status_kubectl
 

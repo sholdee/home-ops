@@ -14,6 +14,9 @@ kube_vip_arp: true
 kube_vip_bgp: false
 k3s_master_taint: false
 
+home_ops_rpi_reporter_enabled: true
+home_ops_nut_client_enabled: true
+
 k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"
 extra_args: >-
   --node-ip={{ k3s_node_ip }}

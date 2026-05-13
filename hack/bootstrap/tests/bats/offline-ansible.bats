@@ -73,6 +73,11 @@ render_home_ops_inventory() {
   [[ "$(yq -r '.cluster_cidr' "$home_ops_vars")" == "10.52.0.0/16" ]]
   [[ "$(yq -r '.k3s_token' "$home_ops_vars")" == "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}" ]]
   [[ "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" == "" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_enabled' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_nut_client_enabled' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
+  [[ "$(yq -r '.home_ops_nut_client_restart_on_change' "$home_ops_vars")" == "false" ]]
   assert_file_not_contains "$home_ops_vars" 'sample-token'
 
   local raw_kubeconfig default_lima_inventory default_backend
@@ -100,6 +105,7 @@ render_home_ops_inventory() {
   local playbook
   for playbook in \
     "${ROOT}/hack/bootstrap/ansible/home-ops/site.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/host-services.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-join.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-join.yml" \
@@ -167,9 +173,18 @@ EOF
 
 @test "static Ansible lifecycle invariants are present" {
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/inventory.sh\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/op.sh\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/token.sh\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/host-services.sh\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/playbooks.sh\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/op.sh" 'op signin --force'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/op.sh" 'BOOTSTRAP_ANSIBLE_OP_SIGNIN_TTY:-/dev/tty'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/token.sh" 'ansible_op_read_optional'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/run.sh" 'ansible_disable_kube_proxy_after_cilium'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/run.sh" 'ansible_require_host_service_env all'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/node-worker.sh" 'ansible_require_host_service_env node'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" 'ansible_require_host_service_env master'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" "ansible_require_host_service_env \"\$node_role\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'api.github.com/repos/k3s-io/k3s/releases/tags'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'home_ops_embedded_etcd_version'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'home_ops_etcdctl_version_effective'
@@ -184,6 +199,123 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml" '../home-ops/tasks/kube-proxy-disable.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/join-servers.yml" 'home_ops_kube_proxy_config.changed'
   assert_file_contains "$ROOT/hack/bootstrap/nodes/control-plane-join.sh" 'node_assert_kube_proxy_disable_dropin'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" 'home-ops/host-services.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'home_ops_rpi_reporter_update_existing'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'fresh pinned clone'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/nut-client.yml" 'nut-client'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/nut-client.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/nut-client.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/rpi-reporter.yml'
+}
+
+@test "host service secret helper loads missing values from 1Password fields" {
+  local fake_op
+  fake_op="${tmp}/op"
+  cat > "$fake_op" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == whoami ]]; then
+  exit 0
+fi
+[[ "$1" == read && "$2" == -n ]] || exit 2
+case "$3" in
+  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME)
+    printf 'mqtt.example.invalid'
+    ;;
+  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_USERNAME)
+    printf 'reporter-user'
+    ;;
+  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_PASSWORD)
+    printf 'reporter-secret'
+    ;;
+  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_SYSTEM)
+    printf 'ups@example.invalid'
+    ;;
+  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_USER)
+    printf 'nut-user'
+    ;;
+  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_PASSWORD)
+    printf 'nut-secret'
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+EOF
+  chmod +x "$fake_op"
+
+  run env PATH="${tmp}:/usr/bin:/bin" \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_require_host_service_env master; printf '%s:%s\n' \"\$HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME\" \"\$HOME_OPS_NUT_MONITOR_SYSTEM\""
+  assert_success
+  [[ "$output" == "mqtt.example.invalid:ups@example.invalid" ]]
+  assert_output_not_contains 'reporter-secret'
+  assert_output_not_contains 'nut-secret'
+}
+
+@test "host service secret helper signs in once in the parent shell before reading fields" {
+  local fake_op calls
+  fake_op="${tmp}/op"
+  calls="${tmp}/op-calls"
+  cat > "$fake_op" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$1" >>"$OP_CALLS"
+case "$1" in
+  whoami)
+    [[ "${OP_SESSION_FAKE:-}" == "1" ]]
+    ;;
+  signin)
+    printf 'export OP_SESSION_FAKE=1\n'
+    ;;
+  read)
+    [[ "${OP_SESSION_FAKE:-}" == "1" ]] || exit 1
+    [[ "$2" == -n ]] || exit 2
+    case "$3" in
+      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME)
+        printf 'mqtt.example.invalid'
+        ;;
+      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_USERNAME)
+        printf 'reporter-user'
+        ;;
+      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_PASSWORD)
+        printf 'reporter-secret'
+        ;;
+      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_SYSTEM)
+        printf 'ups@example.invalid'
+        ;;
+      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_USER)
+        printf 'nut-user'
+        ;;
+      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_PASSWORD)
+        printf 'nut-secret'
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    exit 2
+    ;;
+esac
+EOF
+  chmod +x "$fake_op"
+
+  run env PATH="${tmp}:/usr/bin:/bin" OP_CALLS="$calls" BOOTSTRAP_ANSIBLE_OP_SIGNIN_TTY=/dev/null \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_require_host_service_env master; printf '%s:%s\n' \"\$HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME\" \"\$HOME_OPS_NUT_MONITOR_SYSTEM\""
+  assert_success
+  assert_output_contains 'mqtt.example.invalid:ups@example.invalid'
+  [[ "$(grep -c '^signin$' "$calls")" == "1" ]]
+  assert_output_not_contains 'reporter-secret'
+  assert_output_not_contains 'nut-secret'
+}
+
+@test "host service secret helper fails before playbooks when values are missing" {
+  run env PATH="/usr/bin:/bin" \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_require_host_service_env node"
+  assert_failure
+  assert_output_contains 'missing host service secret environment values for node'
+  assert_output_contains 'HOME_OPS_RPI_REPORTER_MQTT_PASSWORD'
+  assert_output_contains 'op://Kubernetes/host-services'
 }
 
 @test "render inventory fails on derived value conflicts" {

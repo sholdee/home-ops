@@ -24,3 +24,6 @@
 
     - name: Join K3s agent with temporary taint
       ansible.builtin.import_tasks: tasks/join-agents.yml
+
+    - name: Apply RPi reporter host service
+      ansible.builtin.import_tasks: tasks/rpi-reporter.yml

@@ -1,0 +1,93 @@
+---
+- name: Install NUT client package
+  ansible.builtin.package:
+    name: nut-client
+    state: present
+  register: home_ops_nut_client_package
+  when: home_ops_nut_client_enabled | bool
+
+- name: Check NUT client configuration
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - /etc/nut/nut.conf
+    - /etc/nut/upsmon.conf
+  register: home_ops_nut_config_stats
+  when: home_ops_nut_client_enabled | bool
+
+- name: Decide whether to render NUT client configuration
+  ansible.builtin.set_fact:
+    home_ops_nut_client_render_config: >-
+      {{ home_ops_nut_client_manage_config | bool
+      or not (home_ops_nut_config_stats.results
+      | map(attribute='stat.exists') | min) }}
+  when: home_ops_nut_client_enabled | bool
+
+- name: Validate NUT client secret inputs
+  ansible.builtin.assert:
+    that:
+      - home_ops_nut_monitor_system | length > 0
+      - home_ops_nut_monitor_user | length > 0
+      - home_ops_nut_monitor_password | length > 0
+    fail_msg: >-
+      Missing NUT monitor settings. Preserve existing /etc/nut config or
+      provide HOME_OPS_NUT_MONITOR_SYSTEM, HOME_OPS_NUT_MONITOR_USER, and
+      HOME_OPS_NUT_MONITOR_PASSWORD.
+  when:
+    - home_ops_nut_client_enabled | bool
+    - home_ops_nut_client_render_config | bool
+
+- name: Ensure NUT config directory permissions
+  ansible.builtin.file:
+    path: /etc/nut
+    state: directory
+    owner: root
+    group: nut
+    mode: "0755"
+  when:
+    - home_ops_nut_client_enabled | bool
+    - home_ops_nut_client_render_config | bool
+
+- name: Render NUT client mode
+  ansible.builtin.template:
+    src: nut.conf.j2
+    dest: /etc/nut/nut.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  register: home_ops_nut_conf
+  when:
+    - home_ops_nut_client_enabled | bool
+    - home_ops_nut_client_render_config | bool
+
+- name: Render NUT monitor configuration
+  ansible.builtin.template:
+    src: upsmon.conf.j2
+    dest: /etc/nut/upsmon.conf
+    owner: root
+    group: nut
+    mode: "0640"
+  register: home_ops_upsmon_conf
+  no_log: true
+  when:
+    - home_ops_nut_client_enabled | bool
+    - home_ops_nut_client_render_config | bool
+
+- name: Decide whether to restart NUT client
+  ansible.builtin.set_fact:
+    home_ops_nut_client_restart_needed: >-
+      {{ home_ops_nut_client_package.changed | default(false)
+      or home_ops_nut_conf.changed | default(false)
+      or home_ops_upsmon_conf.changed | default(false) }}
+  when: home_ops_nut_client_enabled | bool
+
+- name: Enable and start NUT monitor
+  ansible.builtin.systemd:
+    name: "{{ home_ops_nut_client_service_name }}.service"
+    enabled: true
+    state: >-
+      {{ 'restarted'
+      if (home_ops_nut_client_restart_needed | bool
+      and home_ops_nut_client_restart_on_change | bool)
+      else 'started' }}
+  when: home_ops_nut_client_enabled | bool

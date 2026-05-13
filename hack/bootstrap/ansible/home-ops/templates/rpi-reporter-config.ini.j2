@@ -1,0 +1,22 @@
+[Daemon]
+enabled = {{ home_ops_rpi_reporter_daemon_enabled | bool | lower }}
+fallback_domain = {{ home_ops_rpi_reporter_fallback_domain }}
+interval_in_minutes = {{ home_ops_rpi_reporter_interval_in_minutes }}
+
+[MQTT]
+base_topic = {{ home_ops_rpi_reporter_mqtt_base_topic }}
+discovery_prefix = {{ home_ops_rpi_reporter_mqtt_discovery_prefix }}
+hostname = {{ home_ops_rpi_reporter_mqtt_hostname }}
+keepalive = {{ home_ops_rpi_reporter_mqtt_keepalive }}
+password = {{ home_ops_rpi_reporter_mqtt_password }}
+port = {{ home_ops_rpi_reporter_mqtt_port }}
+sensor_name = {{ home_ops_rpi_reporter_mqtt_sensor_name }}
+tls = {{ home_ops_rpi_reporter_mqtt_tls | bool | lower }}
+username = {{ home_ops_rpi_reporter_mqtt_username }}
+{% if home_ops_rpi_reporter_commands | length > 0 %}
+
+[Commands]
+{% for key, value in home_ops_rpi_reporter_commands.items() %}
+{{ key }} = {{ value }}
+{% endfor %}
+{% endif %}

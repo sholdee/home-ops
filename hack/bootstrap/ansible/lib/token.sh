@@ -54,7 +54,7 @@ ansible_read_remote_token_if_exists() {
 }
 
 ansible_read_token_from_op() {
-  op read -n "$(ansible_token_ref)" 2>/dev/null
+  ansible_op_read_optional "$(ansible_token_ref)"
 }
 
 ansible_new_token_item_json() {
