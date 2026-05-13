@@ -251,7 +251,7 @@ inventory_file="$(node_ansible_inventory_file "$profile")"
 preflight_script="${NODE_SCRIPT_DIR}/control-plane-delete-preflight.sh"
 first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
 if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-  node_die "control-plane delete for the first inventory master is deferred until API context handoff and control-plane rejoin are implemented: ${inventory_node_name}"
+  node_die "control-plane delete for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
 fi
 
 node_assert_api_reachable "$context"

@@ -356,7 +356,7 @@ node_assert_inventory_worker() {
     node)
       ;;
     master)
-      node_die "control-plane lifecycle is not implemented yet: ${inventory_node}"
+      node_die "use the control-plane lifecycle path for this node: ${inventory_node}"
       ;;
     absent)
       node_die "node is not present in the selected inventory: ${inventory_node}"
@@ -399,7 +399,7 @@ node_assert_kubernetes_worker() {
 
   k8s_role="$(node_k8s_role_from_node_json <<<"$node_json")"
   [[ "$k8s_role" == node ]] ||
-    node_die "control-plane lifecycle is not implemented yet: ${node}"
+    node_die "use the control-plane lifecycle path for this node: ${node}"
 }
 
 node_assert_kubernetes_control_plane() {
@@ -1635,6 +1635,153 @@ node_ansible_ping() {
   fi
 }
 
+node_contains_line() {
+  local needle="$1"
+  shift
+  local value
+  for value in "$@"; do
+    [[ "$value" == "$needle" ]] && return 0
+  done
+  return 1
+}
+
+node_trim() {
+  local value="$1"
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+  printf '%s\n' "$value"
+}
+
+node_extract_block() {
+  local begin="$1"
+  local end="$2"
+  awk -v begin="$begin" -v end="$end" '
+    $0 == begin {inside = 1; next}
+    $0 == end {inside = 0}
+    inside {print}
+  '
+}
+
+node_filter_ansible_probe_output() {
+  local host="$1"
+  awk -v host="$host" '
+    $0 == host " | CHANGED | rc=0 >>" {next}
+    $0 == host " | SUCCESS | rc=0 >>" {next}
+    /^\[WARNING\]: / {next}
+    {print}
+  '
+}
+
+node_assert_control_plane_etcd_member_absent() {
+  local profile="$1"
+  local context="$2"
+  local inventory_node_name="$3"
+  local kubernetes_node_name="$4"
+  local inventory_file target_ansible_host probe_inventory_node probe_kubernetes_node remote_member_list
+  local remote_output filtered_remote_output member_lines member_line
+  local _member_id _member_status member_name member_peer_urls member_client_urls _member_is_learner _
+  local matched_member_count=0
+  local -a inventory_masters ready_control_planes
+
+  inventory_file="$(node_ansible_inventory_file "$profile")"
+  target_ansible_host="$(node_inventory_value "$profile" "$inventory_node_name" ansible_host 2>/dev/null || true)"
+  mapfile -t inventory_masters < <(node_inventory_group_names "$profile" master)
+  mapfile -t ready_control_planes < <(node_ready_control_planes "$context")
+
+  probe_inventory_node=""
+  for inventory_master in "${inventory_masters[@]}"; do
+    probe_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_master" "$inventory_master")"
+    if [[ "$probe_kubernetes_node" != "$kubernetes_node_name" ]] &&
+      node_contains_line "$probe_kubernetes_node" "${ready_control_planes[@]}"; then
+      probe_inventory_node="$inventory_master"
+      break
+    fi
+  done
+  [[ -n "$probe_inventory_node" ]] ||
+    node_die "no alternate Ready control-plane node is available to verify etcd membership"
+
+  read -r -d '' remote_member_list <<'EOF' || true
+set -eu
+
+etcd_tls_dir=/var/lib/rancher/k3s/server/tls/etcd
+etcdctl_path="$(command -v etcdctl 2>/dev/null || true)"
+if [ -z "$etcdctl_path" ]; then
+  printf 'member_list_error=etcdctl_absent\n'
+  exit 2
+fi
+
+for cert_file in server-ca.crt client.crt client.key; do
+  if [ ! -f "$etcd_tls_dir/$cert_file" ]; then
+    printf 'member_list_error=missing_etcd_cert:%s\n' "$cert_file"
+    exit 2
+  fi
+done
+
+printf 'etcd_member_simple_begin\n'
+"$etcdctl_path" \
+  --endpoints=https://127.0.0.1:2379 \
+  --dial-timeout=3s \
+  --command-timeout=5s \
+  --cacert="$etcd_tls_dir/server-ca.crt" \
+  --cert="$etcd_tls_dir/client.crt" \
+  --key="$etcd_tls_dir/client.key" \
+  member list
+printf 'etcd_member_simple_end\n'
+EOF
+
+  node_log "verifying ${kubernetes_node_name} is absent from etcd membership using ${probe_inventory_node}"
+  if remote_output="$(
+    ANSIBLE_HOST_KEY_CHECKING=False \
+    ANSIBLE_PYTHON_INTERPRETER=auto_silent \
+      ansible -i "$inventory_file" "$probe_inventory_node" \
+        --become \
+        -m ansible.builtin.shell \
+        -a "$remote_member_list" 2>&1
+  )"; then
+    filtered_remote_output="$(node_filter_ansible_probe_output "$probe_inventory_node" <<<"$remote_output")"
+  else
+    filtered_remote_output="$(node_filter_ansible_probe_output "$probe_inventory_node" <<<"$remote_output")"
+    printf 'remote_probe:\n'
+    while IFS= read -r line; do
+      printf '  %s\n' "$line"
+    done <<<"$filtered_remote_output"
+    node_die "failed to verify etcd membership from ${probe_inventory_node}"
+  fi
+
+  if grep -q '^member_list_error=' <<<"$filtered_remote_output"; then
+    printf 'remote_probe:\n'
+    while IFS= read -r line; do
+      printf '  %s\n' "$line"
+    done <<<"$filtered_remote_output"
+    node_die "etcd member-list probe reported an error"
+  fi
+
+  member_lines="$(node_extract_block etcd_member_simple_begin etcd_member_simple_end <<<"$filtered_remote_output")"
+  [[ -n "$member_lines" ]] || node_die "etcd member list was empty"
+
+  while IFS= read -r member_line; do
+    [[ -n "$member_line" ]] || continue
+    IFS=',' read -r _member_id _member_status member_name member_peer_urls member_client_urls _member_is_learner _ <<<"$member_line"
+    member_name="$(node_trim "$member_name")"
+    member_peer_urls="$(node_trim "$member_peer_urls")"
+    member_client_urls="$(node_trim "$member_client_urls")"
+
+    if [[ "$member_name" == "$kubernetes_node_name" ||
+      "$member_name" == "$inventory_node_name" ||
+      "$member_name" == "${kubernetes_node_name}-"* ||
+      "$member_name" == "${inventory_node_name}-"* ]]; then
+      ((matched_member_count += 1))
+    elif [[ -n "$target_ansible_host" &&
+      ("$member_peer_urls" == *"://${target_ansible_host}:"* ||
+        "$member_client_urls" == *"://${target_ansible_host}:"*) ]]; then
+      ((matched_member_count += 1))
+    fi
+  done <<<"$member_lines"
+
+  ((matched_member_count == 0)) ||
+    node_die "etcd still has ${matched_member_count} member(s) for ${kubernetes_node_name}"
+}
+
 node_stop_k3s_agent() {
   local profile="$1"
   local inventory_node="$2"
@@ -1682,6 +1829,25 @@ node_run_worker_ansible_action() {
   esac
 
   NODE_WORKER_ANSIBLE_INTERNAL=true "${BOOTSTRAP_DIR}/ansible/node-worker.sh" "${args[@]}" "$inventory_node"
+}
+
+node_run_control_plane_ansible_action() {
+  local profile="$1"
+  local inventory_node="$2"
+  local action="$3"
+  local -a args
+
+  args=(--profile "$profile" --action "$action")
+  case "$profile" in
+    live)
+      args+=(--inventory-source "$NODE_LIVE_INVENTORY_DIR")
+      ;;
+    lima)
+      args+=(--inventory-dir "$NODE_LIMA_INVENTORY_DIR")
+      ;;
+  esac
+
+  NODE_CONTROL_PLANE_ANSIBLE_INTERNAL=true "${BOOTSTRAP_DIR}/ansible/node-control-plane.sh" "${args[@]}" "$inventory_node"
 }
 
 node_wait_for_node_json() {

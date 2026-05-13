@@ -71,7 +71,7 @@ case "$inventory_role" in
   master)
     node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
     if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-      node_die "Longhorn eviction for the first inventory master is deferred until API context handoff and control-plane rejoin are implemented: ${inventory_node_name}"
+      node_die "Longhorn eviction for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
     fi
     node_log "running control-plane delete preflight before Longhorn eviction"
     "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/control-plane-delete-preflight.sh" \

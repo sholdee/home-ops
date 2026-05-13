@@ -6,7 +6,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 usage() {
   cat <<'EOF'
-Usage: hack/bootstrap/nodes/uncordon.sh [options] NODE
+Usage: hack/bootstrap/nodes/control-plane-uncordon.sh [options] NODE
 
 Options:
   --profile NAME   Node lifecycle profile: live or lima. Defaults to live.
@@ -58,24 +58,20 @@ context="${context:-$(node_context_for_profile "$profile")}"
 node_require_tool "$NODE_KUBECTL_BIN"
 node_require_tool "$NODE_YQ_BIN"
 node_require_tool "$NODE_JQ_BIN"
+node_require_tool ansible
 
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
-
-if [[ "$inventory_role" == master ]]; then
-  args=(--profile "$profile" --context "$context")
-  if node_bool "$yes"; then
-    args+=(--yes)
-  fi
-  exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/control-plane-uncordon.sh" "${args[@]}" "$node_name"
-fi
-
-node_assert_inventory_worker "$inventory_node_name" "$inventory_role"
+node_assert_inventory_control_plane "$inventory_node_name" "$inventory_role"
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
+first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
+if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
+  node_die "control-plane uncordon for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
+fi
 
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${kubernetes_node_name}"
-node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
+node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
 node_assert_ready "$node_json" "$kubernetes_node_name"
 node_assert_cordoned "$node_json" "$kubernetes_node_name"
 joining_taint="$(node_joining_taint_from_node_json <<<"$node_json")"
@@ -90,11 +86,14 @@ case "$joining_taint" in
     ;;
 esac
 
-node_confirm "$yes" "uncordon ${kubernetes_node_name} in ${context}"
+node_confirm "$yes" "uncordon control-plane node ${kubernetes_node_name} in ${context}"
 
-node_log "removing temporary joining taint from k3s agent service args on ${inventory_node_name}"
-node_run_worker_ansible_action "$profile" "$inventory_node_name" finalize
-node_wait_for_ready "$context" "$kubernetes_node_name"
+node_log "validating control-plane etcd membership for ${kubernetes_node_name}"
+"${NODE_SCRIPT_DIR}/control-plane-delete-preflight.sh" --profile "$profile" --context "$context" "$node_name" >/dev/null
+
+node_log "removing temporary joining taint from k3s server service args on ${inventory_node_name}"
+node_run_control_plane_ansible_action "$profile" "$inventory_node_name" finalize
+node_wait_for_ready "$context" "$kubernetes_node_name" 600
 
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node disappeared before taint removal: ${kubernetes_node_name}"
@@ -106,19 +105,19 @@ else
   node_log "live temporary joining taint is already absent from ${kubernetes_node_name}"
 fi
 
-node_wait_for_ready "$context" "$kubernetes_node_name"
-node_wait_for_cilium_ready "$context" "$kubernetes_node_name"
+node_wait_for_ready "$context" "$kubernetes_node_name" 600
+node_wait_for_cilium_ready "$context" "$kubernetes_node_name" 600
 node_log "restoring Longhorn scheduling for ${kubernetes_node_name} if Longhorn is installed"
 node_restore_longhorn_scheduling "$context" "$kubernetes_node_name"
-node_wait_for_longhorn_ready_for_kubernetes_uncordon "$context" "$kubernetes_node_name"
+node_wait_for_longhorn_ready_for_kubernetes_uncordon "$context" "$kubernetes_node_name" 600
 
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node disappeared before uncordon: ${kubernetes_node_name}"
-node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
+node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
 node_assert_ready "$node_json" "$kubernetes_node_name"
 node_assert_no_joining_taint "$node_json" "$kubernetes_node_name"
 
 node_log "uncordoning ${kubernetes_node_name}"
 node_kubectl "$context" uncordon "$kubernetes_node_name"
-node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name"
-node_log "uncordon complete: ${kubernetes_node_name}"
+node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name" 600
+node_log "control-plane uncordon complete: ${kubernetes_node_name}"

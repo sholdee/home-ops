@@ -1,0 +1,32 @@
+---
+- name: Join one home-ops control-plane node with a temporary scheduling taint
+  hosts: master
+  gather_facts: true
+  become: true
+  vars:
+    home_ops_node_taints:
+      - node.home-ops.sh/joining=true:NoSchedule
+  tasks:
+    - name: Run control-plane preflight checks
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
+    - name: Install required Debian-family packages
+      ansible.builtin.import_tasks: tasks/packages-debian.yml
+
+    - name: Configure kernel prerequisites
+      ansible.builtin.import_tasks: tasks/kernel.yml
+
+    - name: Install K3s binary
+      ansible.builtin.import_tasks: tasks/download-k3s.yml
+
+    - name: Write K3s token file
+      ansible.builtin.import_tasks: tasks/token.yml
+
+    - name: Install etcdctl
+      ansible.builtin.import_tasks: tasks/etcdctl.yml
+
+    - name: Reset stale local K3s server database
+      ansible.builtin.import_tasks: tasks/reset-server-db.yml
+
+    - name: Join K3s server with temporary taint
+      ansible.builtin.import_tasks: tasks/join-servers.yml

@@ -183,7 +183,7 @@ fi
 if [[ "$k8s_role" == control-plane ]]; then
   printf '\netcd:\n'
   printf '  status: deferred\n'
-  printf '  note: embedded-etcd member introspection is read-only discovery for the control-plane lifecycle PR\n'
+  printf '  note: use control-plane-status for embedded-etcd member introspection\n'
   ready_control_planes="$(node_ready_control_planes "$context" | paste -sd ',' -)"
   printf '  ready_control_planes: %s\n' "${ready_control_planes:-none}"
 fi
