@@ -14,7 +14,19 @@ setup_file() {
   [[ "$(yq -r '.helmCharts[] | select(.name == "argo-cd") | .version' "$ROOT/apps/argocd/kustomization.yaml")" != "null" ]]
   [[ "$(yq -r '.helmCharts[] | select(.name == "external-secrets") | .version' "$ROOT/apps/external-secrets/kustomization.yaml")" != "null" ]]
   [[ "$(yq -r '.helmCharts[] | select(.name == "gateway-helm") | .version' "$ROOT/apps/envoy-gateway-system/kustomization.yaml")" != "null" ]]
+  [[ "$(yq -r '.helmCharts[] | select(.name == "gateway-helm") | .includeCRDs' "$ROOT/apps/envoy-gateway-system/kustomization.yaml")" == "true" ]]
   [[ "$(yq -r '.helmCharts[] | select(.name == "kube-prometheus-stack") | .version' "$ROOT/apps/monitoring/kustomization.yaml")" != "null" ]]
+}
+
+@test "bootstrap refreshes Envoy Gateway controller CRDs introduced by chart upgrades" {
+  assert_file_not_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'gateway_crds_missing'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'gatewayclasses.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'gateways.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'grpcroutes.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'listenersets.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'tcproutes.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'tlsroutes.gateway.networking.k8s.io'
+  assert_file_contains "$ROOT/hack/bootstrap/phases/bootstrap-crds.sh" 'udproutes.gateway.networking.k8s.io'
 }
 
 @test "lima app bootstrap removes active CNPG plugins instead of only disabling WAL archiving" {

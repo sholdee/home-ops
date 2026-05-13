@@ -10,16 +10,22 @@ lima_app_env := "LIMA_AGENT_COUNT=4 LIMA_AGENT_CPUS=4 LIMA_AGENT_MEMORY_GIB=6 LI
 default:
     @just --list --unsorted
 
-# Run full local validation, including pre-commit and bootstrap script tests.
+# Run full local validation, including pre-commit, GitHub script tests, and bootstrap script tests.
 [group('core')]
 check:
     just pre-commit
+    just github-test
     just bootstrap-test
 
 # Run every pre-commit hook against the repository.
 [group('core')]
 pre-commit:
     pre-commit run --all-files
+
+# Run lightweight tests for GitHub workflow helper scripts.
+[group('core')]
+github-test:
+    python3 -B .github/scripts/test_extract_image_info.py
 
 # Show current and target cluster status without mutating anything.
 [group('cluster')]

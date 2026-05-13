@@ -27,6 +27,9 @@ jobs:
       - name: Check aggregate task wiring
         run: just --dry-run check
 
+      - name: Run GitHub script tests
+        run: just github-test
+
       - name: Show runner yq
         run: yq --version
 
