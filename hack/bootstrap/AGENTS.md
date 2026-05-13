@@ -129,7 +129,7 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   validation recipe.
 - Validation ladder:
   `just bootstrap-test` for Bash and offline behavior,
-  `just bootstrap-kind-fresh` for disposable Kubernetes bootstrap behavior,
+  `just kind-fresh` for disposable Kubernetes bootstrap behavior,
   Lima foundation recipes for Cilium and ArgoCD takeover behavior,
   Lima app recipes for Longhorn, VolSync, CNPG restore, and workload safety,
   live audit/dry-run recipes for real-cluster field ownership and drift.

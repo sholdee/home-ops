@@ -21,6 +21,71 @@ check:
 pre-commit:
     pre-commit run --all-files
 
+# Show current and target cluster status without mutating anything.
+[group('cluster')]
+context context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    current="$(kubectl config current-context 2>/dev/null || true)"
+    target='{{ context }}'
+    if [[ -z "${target}" ]]; then
+      target="${current}"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    printf 'current_context: '
+    if [[ -n "${current}" ]]; then
+      printf '%s\n' "${current}"
+    else
+      printf 'unavailable\n'
+    fi
+    printf 'target_context: %s\n\n' "${target}"
+    kubectl --context "${target}" get nodes -o wide
+    printf '\nargocd_applications:\n'
+    if ! kubectl --context "${target}" -n argocd get applications.argoproj.io -o wide; then
+      printf 'ArgoCD applications unavailable\n'
+    fi
+
+# List ArgoCD Applications, or one named Application, in a target context.
+[group('cluster')]
+argocd-apps app='' context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target='{{ context }}'
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    if [[ -n '{{ app }}' ]]; then
+      kubectl --context "${target}" -n argocd get 'application/{{ app }}' -o wide
+    else
+      kubectl --context "${target}" -n argocd get applications.argoproj.io -o wide
+    fi
+
+# List ArgoCD ApplicationSets, or one named ApplicationSet, in a target context.
+[group('cluster')]
+argocd-appsets appset='' context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target='{{ context }}'
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    if [[ -n '{{ appset }}' ]]; then
+      kubectl --context "${target}" -n argocd get 'applicationset/{{ appset }}' -o wide
+    else
+      kubectl --context "${target}" -n argocd get applicationsets.argoproj.io -o wide
+    fi
+
 # Render one top-level app directory with the same Kustomize Helm settings used by CI.
 [group('apps')]
 app-build $app:
@@ -43,9 +108,17 @@ app-build $app:
 
 # Server-side dry-run one top-level app with ArgoCD's field manager.
 [group('apps')]
-app-dry-run $app $context='default':
+app-dry-run $app $context='':
     #!/usr/bin/env bash
     set -euo pipefail
+    target="${context}"
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
     case "${app}" in
       ""|.*|*/*|*[^A-Za-z0-9_-]*)
         echo "ERROR: app must be a top-level directory name under apps/" >&2
@@ -60,13 +133,21 @@ app-dry-run $app $context='default':
     trap 'rm -rf "${dir}/charts"' EXIT
     rm -rf "${dir}/charts"
     kustomize build --enable-helm --helm-api-versions '{{ helm_api_version }}' "${dir}" \
-      | kubectl --context "${context}" apply --server-side --dry-run=server --field-manager=argocd-controller -f -
+      | kubectl --context "${target}" apply --server-side --dry-run=server --field-manager=argocd-controller -f -
 
 # Diff one top-level app against a cluster using ArgoCD's field manager.
 [group('apps')]
-app-diff $app $context='default':
+app-diff $app $context='':
     #!/usr/bin/env bash
     set -euo pipefail
+    target="${context}"
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
     case "${app}" in
       ""|.*|*/*|*[^A-Za-z0-9_-]*)
         echo "ERROR: app must be a top-level directory name under apps/" >&2
@@ -84,7 +165,7 @@ app-diff $app $context='default':
     kustomize build --enable-helm --helm-api-versions '{{ helm_api_version }}' "${dir}" > "${render}"
     set +e
     KUBECTL_EXTERNAL_DIFF="${PWD}/hack/kubectl-git-diff.sh" \
-      kubectl --context "${context}" diff --server-side --field-manager=argocd-controller -f "${render}"
+      kubectl --context "${target}" diff --server-side --field-manager=argocd-controller -f "${render}"
     status="$?"
     set -e
     if [[ "${status}" == 1 ]]; then
@@ -105,197 +186,253 @@ bootstrap-yes repo='.':
 # Server-side dry-run the bootstrap flow against the current kube context.
 [group('bootstrap')]
 bootstrap-dry-run repo='.':
-    ./hack/bootstrap/bootstrap.sh --repo '{{ repo }}' --dry-run
+    ./hack/bootstrap/bootstrap.sh --repo '{{ repo }}' --from-phase bootstrap-crds --dry-run --yes
+
+# Server-side dry-run one bootstrap phase against the current kube context.
+[group('bootstrap')]
+bootstrap-phase phase repo='.':
+    ./hack/bootstrap/bootstrap.sh --repo '{{ repo }}' --only-phase '{{ phase }}' --dry-run --yes
+
+# Show best-effort status for the configured kind cluster.
+[group('kind')]
+kind-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    printf 'kind_clusters:\n'
+    if ! kind get clusters; then
+      printf 'kind clusters unavailable\n'
+    fi
+    printf '\nnodes ({{ kind_context }}):\n'
+    if ! kubectl --context '{{ kind_context }}' get nodes -o wide; then
+      printf 'nodes unavailable\n'
+    fi
+    printf '\nargocd_applications ({{ kind_context }}):\n'
+    if ! kubectl --context '{{ kind_context }}' -n argocd get applications.argoproj.io -o wide; then
+      printf 'ArgoCD applications unavailable\n'
+    fi
+
+# Create the configured kind cluster.
+[group('kind')]
+kind-create:
+    kind create cluster --name '{{ kind_cluster }}' --config hack/bootstrap/kind-three-node.yaml
 
 # Run bootstrap against the configured kind cluster.
-[group('bootstrap-kind')]
-bootstrap-kind:
+[group('kind')]
+kind-bootstrap:
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --yes
-
-# Recreate the configured kind cluster and run bootstrap from scratch.
-[group('bootstrap-kind')]
-bootstrap-kind-fresh: kind-reset
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --yes
-
-# Server-side dry-run bootstrap against an already bootstrapped kind cluster.
-[group('bootstrap-kind')]
-bootstrap-kind-dry-run:
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --from-phase bootstrap-crds --dry-run --yes
 
 # Seed only the 1Password External Secrets credential into kind.
-[group('bootstrap-kind')]
-bootstrap-kind-seed:
+[group('kind')]
+kind-bootstrap-seed:
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --only-phase seed-secret --yes
 
 # Resume kind bootstrap from a specific phase.
-[group('bootstrap-kind')]
-bootstrap-kind-resume phase='bootstrap-crds':
+[group('kind')]
+kind-bootstrap-resume phase='bootstrap-crds':
     ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --from-phase '{{ phase }}' --yes
 
-# Audit a live cluster for bootstrap/takeover state without applying changes.
-[group('bootstrap-live')]
-bootstrap-live-audit context='default':
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --audit-only
+# Server-side dry-run bootstrap against an already bootstrapped kind cluster.
+[group('kind')]
+kind-bootstrap-dry-run:
+    ./hack/bootstrap/bootstrap.sh --kube-context '{{ kind_context }}' --from-phase bootstrap-crds --dry-run --yes
 
-# Server-side dry-run the bootstrap flow against a live cluster.
-[group('bootstrap-live')]
-bootstrap-live-dry-run context='default':
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --from-phase bootstrap-crds --dry-run --yes
-
-# Server-side dry-run one bootstrap phase against a live cluster.
-[group('bootstrap-live')]
-bootstrap-live-phase phase context='default':
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --only-phase '{{ phase }}' --dry-run --yes
+# Delete, recreate, and bootstrap the configured kind cluster.
+[group('kind')]
+kind-fresh: kind-delete kind-create kind-bootstrap
 
 # Render live Ansible inventory and derived vars without changing nodes.
-[group('bootstrap-live')]
-bootstrap-live-ansible-plan:
+[group('ansible')]
+ansible-plan:
     ./hack/bootstrap/ansible/render-inventory.sh --profile live --summary
 
 # Import the existing live K3s server token into 1Password.
-[group('bootstrap-live')]
-bootstrap-ansible-import-token:
+[group('ansible')]
+ansible-import-token:
     ./hack/bootstrap/ansible/import-token.sh
 
 # Run the live Ansible convergence wrapper.
-[group('bootstrap-live')]
-bootstrap-live-ansible:
+[group('ansible')]
+ansible-run:
     ./hack/bootstrap/ansible/run.sh --profile live
 
-# Run the Kubernetes bootstrap phase against the live default context.
-[group('bootstrap-live')]
-bootstrap-live-kube context='default':
-    ./hack/bootstrap/bootstrap.sh --kube-context '{{ context }}' --profile full --yes
-
 # Run live Ansible convergence, then home-ops Kubernetes bootstrap.
-[group('bootstrap-live')]
-bootstrap-live-full:
+[group('ansible')]
+ansible-bootstrap:
     ./hack/bootstrap/ansible/run.sh --profile live --kube-bootstrap
 
 # Show read-only node lifecycle status for a live cluster node.
-[group('node-live')]
-node-live-status node:
+[group('node')]
+node-status node:
     ./hack/bootstrap/nodes/status.sh --profile live --context default '{{ node }}'
 
+# List live cluster nodes.
+[group('node')]
+node-list:
+    kubectl --context default get nodes -o wide
+
+# List non-succeeded pods bound to a live cluster node.
+[group('node')]
+node-pods node:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    kubectl --context default get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
+
 # Show read-only control-plane quorum and embedded-etcd status for a live cluster node.
-[group('node-live')]
-node-live-control-plane-status node:
+[group('node')]
+node-control-plane-status node:
     ./hack/bootstrap/nodes/control-plane-status.sh --profile live --context default '{{ node }}'
 
 # Run read-only control-plane delete preflight for a live cluster node.
-[group('node-live')]
-node-live-control-plane-delete-preflight node:
+[group('node')]
+node-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
 
 # Drain a live worker or control-plane node before deletion or maintenance.
-[group('node-live')]
-node-live-drain node:
+[group('node')]
+node-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile live --context default '{{ node }}'
 
 # Delete a drained live worker or control-plane node after Longhorn state has been evacuated.
-[group('node-live')]
-node-live-delete node:
+[group('node')]
+node-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile live --context default '{{ node }}'
 
 # Evict Longhorn replicas from a drained live node before replacement.
-[group('node-live')]
-node-live-longhorn-evict node:
+[group('node')]
+node-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile live --context default '{{ node }}'
 
 # Refresh a rebuilt live worker's SSH host key in known_hosts.
-[group('node-live')]
-node-live-refresh-ssh-host-key node:
+[group('node')]
+node-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile live '{{ node }}'
 
 # Join a live worker or control-plane node from inventory with a temporary scheduling taint.
-[group('node-live')]
-node-live-join node:
+[group('node')]
+node-join node:
     ./hack/bootstrap/nodes/join.sh --profile live --context default '{{ node }}'
 
 # Remove the temporary live node taint and restore scheduling.
-[group('node-live')]
-node-live-uncordon node:
+[group('node')]
+node-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
 
-# Delete and recreate the configured three-node kind cluster.
-[group('bootstrap-kind')]
-kind-reset:
-    kind delete cluster --name '{{ kind_cluster }}'
-    kind create cluster --name '{{ kind_cluster }}' --config hack/bootstrap/kind-three-node.yaml
-
 # Delete the configured kind cluster.
-[group('bootstrap-kind')]
+[group('kind')]
 kind-delete:
     kind delete cluster --name '{{ kind_cluster }}'
 
+# Show best-effort status for the configured Lima cluster.
+[group('lima')]
+lima-status:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    cluster='{{ lima_cluster }}'
+    printf 'lima_instances (%s):\n' "${cluster}"
+    if command -v limactl >/dev/null 2>&1; then
+      if ! limactl list | awk -v cluster="${cluster}" 'NR == 1 || $1 ~ "^" cluster "-(server|agent)-[0-9]+$"'; then
+        printf 'lima instances unavailable\n'
+      fi
+    else
+      printf 'limactl unavailable\n'
+    fi
+    printf '\nnodes ({{ lima_context }}):\n'
+    if ! kubectl --context '{{ lima_context }}' get nodes -o wide; then
+      printf 'nodes unavailable\n'
+    fi
+    printf '\nargocd_applications ({{ lima_context }}):\n'
+    if ! kubectl --context '{{ lima_context }}' -n argocd get applications.argoproj.io -o wide; then
+      printf 'ArgoCD applications unavailable\n'
+    fi
+
 # Create the configured Lima VMs for a foundation bootstrap test.
-[group('bootstrap-lima')]
-bootstrap-lima-create:
+[group('lima')]
+lima-create:
     ./hack/bootstrap/lima/create.sh
 
-# Create larger Lima VMs for the app bootstrap profile.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-create-apps:
-    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
-
 # Run the selected Ansible backend against the configured Lima VMs.
-[group('bootstrap-lima')]
-bootstrap-lima-ansible:
+[group('lima')]
+lima-ansible:
     ./hack/bootstrap/lima/run-ansible.sh
 
-# Run the selected Ansible backend against the larger Lima app-profile VM shape.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-ansible-apps:
-    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
-
 # Import/update the Lima K3s context in the local kubeconfig and keep its API tunnel running.
-[group('bootstrap-lima')]
-bootstrap-lima-kubecontext:
+[group('lima')]
+lima-context:
     ./hack/bootstrap/lima/kubecontext.sh
 
 # Run home-ops foundation bootstrap against the Lima K3s cluster.
-[group('bootstrap-lima')]
-bootstrap-lima-bootstrap:
+[group('lima')]
+lima-bootstrap:
     ./hack/bootstrap/lima/bootstrap-home-ops.sh
 
-# Run home-ops app bootstrap profile against the Lima K3s cluster.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-bootstrap-apps:
-    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh
-
-# Run Lima app bootstrap with the seed Secret manifest provided on stdin.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-bootstrap-apps-stdin:
-    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
-
 # Run Lima foundation bootstrap with the seed Secret manifest provided on stdin.
-[group('bootstrap-lima')]
-bootstrap-lima-bootstrap-stdin:
+[group('lima')]
+lima-bootstrap-stdin:
     ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
 
 # Validate Cilium BGP APIs and backup-safety invariants in the Lima cluster.
-[group('bootstrap-lima')]
-bootstrap-lima-validate:
+[group('lima')]
+lima-validate:
     ./hack/bootstrap/lima/validate.sh
 
-# Validate app-profile safety invariants in the Lima cluster.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-validate-apps:
-    LIMA_VALIDATE_PROFILE=lima-apps ./hack/bootstrap/lima/validate.sh
-
 # Delete the configured Lima VMs.
-[group('bootstrap-lima')]
-bootstrap-lima-delete:
+[group('lima')]
+lima-delete:
     ./hack/bootstrap/lima/delete.sh
 
 # Recreate Lima VMs, run Ansible, bootstrap home-ops, and validate foundation state.
-[group('bootstrap-lima')]
-bootstrap-lima-fresh: bootstrap-lima-delete bootstrap-lima-create bootstrap-lima-ansible bootstrap-lima-bootstrap bootstrap-lima-validate
+[group('lima')]
+lima-fresh: lima-delete lima-create lima-ansible lima-bootstrap lima-validate
+
+# Show best-effort status for the configured Lima app-profile cluster.
+[group('lima-apps')]
+lima-apps-status: lima-status
+
+# Create larger Lima VMs for the app bootstrap profile.
+[group('lima-apps')]
+lima-apps-create:
+    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
+
+# Run the selected Ansible backend against the larger Lima app-profile VM shape.
+[group('lima-apps')]
+lima-apps-ansible:
+    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
+
+# Run home-ops app bootstrap profile against the Lima K3s cluster.
+[group('lima-apps')]
+lima-apps-bootstrap:
+    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh
+
+# Run Lima app bootstrap with the seed Secret manifest provided on stdin.
+[group('lima-apps')]
+lima-apps-bootstrap-stdin:
+    LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh --seed-secret-stdin
+
+# Validate app-profile safety invariants in the Lima cluster.
+[group('lima-apps')]
+lima-apps-validate:
+    LIMA_VALIDATE_PROFILE=lima-apps ./hack/bootstrap/lima/validate.sh
+
+# Delete the configured Lima app-profile VMs.
+[group('lima-apps')]
+lima-apps-delete: lima-delete
 
 # Show read-only node lifecycle status for a Lima cluster node.
 [group('node-lima')]
 node-lima-status node:
     ./hack/bootstrap/nodes/status.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# List Lima cluster nodes.
+[group('node-lima')]
+node-lima-list:
+    kubectl --context '{{ lima_context }}' get nodes -o wide
+
+# List non-succeeded pods bound to a Lima cluster node.
+[group('node-lima')]
+node-lima-pods node:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    kubectl --context '{{ lima_context }}' get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
 
 # Show read-only control-plane quorum and embedded-etcd status for a Lima cluster node.
 [group('node-lima')]
@@ -338,8 +475,8 @@ node-lima-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Recreate larger Lima VMs, run Ansible, bootstrap app profile, and validate app safety.
-[group('bootstrap-lima-apps')]
-bootstrap-lima-fresh-apps:
+[group('lima-apps')]
+lima-apps-fresh:
     {{ lima_app_env }} ./hack/bootstrap/lima/delete.sh
     {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
     {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh

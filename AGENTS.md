@@ -58,11 +58,11 @@ For bootstrap changes:
 
 ```bash
 just bootstrap-test
-just bootstrap-kind-fresh
-just bootstrap-kind-dry-run
-just bootstrap-live-audit default
-just bootstrap-live-dry-run default
-just bootstrap-live-phase argocd default
+just kind-fresh
+just kind-bootstrap-dry-run
+just bootstrap-audit
+just bootstrap-dry-run
+just bootstrap-phase argocd
 ```
 
 ## ArgoCD Notes
@@ -81,7 +81,7 @@ just bootstrap-live-phase argocd default
 - When Cilium CRDs are present, bootstrap must apply Hubble CA resources and wait for `Application/cilium` plus Hubble server/relay certs before applying `ApplicationSet/k3s-apps`; normal apps should not start until Cilium takeover is complete.
 - Lima foundation bootstrap validation uses `hack/bootstrap/lima/` and `--profile foundation`; it runs the selected Ansible backend, defaults to the in-repo `home-ops` backend, installs only a disposable foundation cluster, uses the server VM IP rather than kube-vip for the cluster join endpoint, imports local context `lima-home-ops-k3s-test` through a persistent SSH tunnel, applies Hubble CA resources before ArgoCD Cilium takeover, keeps Cilium masquerading enabled only for Lima's user-mode network, disables Dragonfly Operator's optional monitoring/dashboard resources in foundation mode, requires foundation Applications to be `Synced` and `Healthy`, and must fail if normal workloads or backup writers such as `powerdns`, `hass`, VolSync, Velero, external-dns, or CNPG backup resources appear.
 - Lima app bootstrap uses `--profile lima-apps`; run it with the app-sized Lima shape of four schedulable workers, each with `4` CPU, `6GiB` memory, and enough disk for Longhorn restore and replacement-eviction testing. The app `just` recipes use `120GiB` disks and preflight requires `100GiB` allocatable ephemeral storage per worker. Lima VM creation installs `open-iscsi` and `nfs-common` so Longhorn block and RWX volumes can mount. It first seeds Gateway wildcard TLS Secrets from 1Password through `ExternalSecret` resources, applies external-snapshotter before VolSync restore workloads, then applies a sanitized `ApplicationSet/k3s-apps` allowlist. Keep render-time safety patches primary and admission policies as fail-closed guardrails. Lima app bootstrap must not create `PushSecret`, ACME `Order`/`Challenge`, VolSync `ReplicationSource`, active CNPG `Cluster.spec.plugins`, CNPG backup resources, Velero backup resources, or Longhorn backup `RecurringJob` objects.
-- `bootstrap-kind-dry-run` is a post-bootstrap validation pass. It is not a clean-cluster first-boot test because server-side dry-run does not persist CRDs for later CR validation.
+- `kind-bootstrap-dry-run` is a post-bootstrap validation pass. It is not a clean-cluster first-boot test because server-side dry-run does not persist CRDs for later CR validation.
 - Live physical-node Ansible orchestration lives under `hack/bootstrap/ansible/`. The default backend is the in-repo `home-ops` Debian-family implementation for this cluster, while the external `../k3s-ansible` checkout remains available only through `BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible` or `--backend k3s-ansible`. Keep site-specific inventory rendering, 1Password token handling, and live confirmation prompts in `home-ops`.
 - Existing-cluster node lifecycle helpers live under `hack/bootstrap/nodes/`. Worker status/drain/delete/join/uncordon are explicit steps. Mutating delete must prevent immediate K3s re-registration before deleting the Kubernetes Node. Control-plane drain/delete must remain gated by the embedded-etcd preflight, Longhorn eviction when Longhorn is installed, fresh K3s etcd snapshot creation, and explicit member removal from a remaining control-plane. Control-plane join/uncordon must verify the old etcd member is absent, move any stale local K3s server DB aside before rejoin, apply a temporary joining taint, and keep the node cordoned until the finalize/uncordon step removes the taint and restores Longhorn scheduling. First-inventory-master replacement depends on stable API access: live uses the stable `default` API endpoint, while Lima retargets the local API tunnel to an alternate Ready control-plane and passes an alternate control-plane InternalIP as the temporary K3s join endpoint.
 - `hack/bootstrap/ansible/inventory/live/` may contain non-secret physical node facts. Do not commit the generated `.out/ansible-*` inventories, kubeconfigs, or any rendered secret values.
