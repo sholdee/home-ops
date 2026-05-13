@@ -20,29 +20,32 @@ apply_crds_from_chart() {
 }
 
 gateway_crds=(
+  backends.gateway.envoyproxy.io
   httproutes.gateway.networking.k8s.io
   backendtlspolicies.gateway.networking.k8s.io
+  gatewayclasses.gateway.networking.k8s.io
+  gateways.gateway.networking.k8s.io
+  grpcroutes.gateway.networking.k8s.io
+  listenersets.gateway.networking.k8s.io
+  referencegrants.gateway.networking.k8s.io
+  tcproutes.gateway.networking.k8s.io
+  tlsroutes.gateway.networking.k8s.io
+  udproutes.gateway.networking.k8s.io
   envoyproxies.gateway.envoyproxy.io
   clienttrafficpolicies.gateway.envoyproxy.io
   backendtrafficpolicies.gateway.envoyproxy.io
+  envoyextensionpolicies.gateway.envoyproxy.io
+  envoypatchpolicies.gateway.envoyproxy.io
+  httproutefilters.gateway.envoyproxy.io
   securitypolicies.gateway.envoyproxy.io
+  xbackendtrafficpolicies.gateway.networking.x-k8s.io
+  xmeshes.gateway.networking.x-k8s.io
 )
-gateway_crds_missing=false
-for gateway_crd in "${gateway_crds[@]}"; do
-  if ! crd_exists "$gateway_crd"; then
-    gateway_crds_missing=true
-    break
-  fi
-done
 
-if [[ "$gateway_crds_missing" == true ]]; then
-  envoy_chart="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.name')"
-  envoy_repo="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.repo')"
-  envoy_version="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.version')"
-  apply_crds_from_chart gateway-api "$envoy_chart" "$envoy_repo" "$envoy_version" envoy-gateway-system
-else
-  log "Gateway API and Envoy Gateway CRDs already present"
-fi
+envoy_chart="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.name')"
+envoy_repo="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.repo')"
+envoy_version="$(chart_value "${REPO_ROOT}/apps/envoy-gateway-system/kustomization.yaml" gateway-helm '.version')"
+apply_crds_from_chart gateway-api "$envoy_chart" "$envoy_repo" "$envoy_version" envoy-gateway-system
 for gateway_crd in "${gateway_crds[@]}"; do
   wait_crd "$gateway_crd"
 done
