@@ -25,6 +25,12 @@ FALLBACK_IMAGE_REGEX = re.compile(
     r"(?:@([A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:[0-9A-Fa-f]{32,}))?"  # group 3: optional @digest
 )
 
+# CRD schemas and chart docs can include these as examples. They are not pullable images.
+PLACEHOLDER_IMAGE_REFERENCES = {
+    "registry/image:tag",
+    "registry/image@sha256:digest",
+}
+
 def is_valid_docker_image(image):
     """Validates whether an image reference conforms to Docker standard."""
     return bool(DOCKER_IMAGE_REGEX.fullmatch(image))
@@ -100,8 +106,52 @@ def extract_images_from_pr_diff():
     print(f"📊 Extracted {len(images)} images from PR diff.")
     return images
 
+def should_ignore_image_reference(image_tag):
+    """Returns true for known non-pullable placeholder image references."""
+    if image_tag in PLACEHOLDER_IMAGE_REFERENCES:
+        print(f"⚠️ Skipping known placeholder image reference: {image_tag}")
+        return True
+
+    return False
+
+def extract_image_from_helm_diff_line(line):
+    """Extracts a Docker image reference from an added Helm diff line."""
+    line = line.strip()
+    if not line.startswith("+ "):
+        return None
+
+    image_tag = None
+
+    match = IMAGE_KEY_REGEX.match(line)
+    if match:
+        image_tag = match.group('image_quoted') or match.group('image')
+    else:
+        match = FALLBACK_IMAGE_REGEX.search(line)
+        if match:
+            repo_image = match.group(1)
+            tag = match.group(2) or ""
+            digest = match.group(3) or ""
+
+            if not tag and not digest:
+                print(f"⚠️ Skipping potential image reference (missing tag/digest): {repo_image}")
+                return None
+
+            image_tag = f"{repo_image}@{digest}" if digest else f"{repo_image}:{tag}"
+
+    if not image_tag:
+        return None
+    if should_ignore_image_reference(image_tag):
+        return None
+
+    parsed_image = parse_docker_image(image_tag)
+    if not parsed_image:
+        print(f"❌ Invalid Docker Image Reference: {image_tag}")
+        return None
+
+    return parsed_image
+
 def extract_images_from_helm_diff():
-    """Extracts unique image updates from Helm diff.txt, prioritizing `+ image:` lines but allowing a stricter fallback match."""
+    """Extracts unique image updates from Helm diff.txt."""
     unique_images = set()  # Using a set to deduplicate images
     diff_txt_path = os.getenv("DIFF_TXT_PATH", "diff.txt")
 
@@ -118,41 +168,18 @@ def extract_images_from_helm_diff():
 
         print(f"🔎 [{i+1}/{len(diff_lines)}] Processing: {repr(line)}")
 
-        image_tag = None  # Initialize variable for image match
+        parsed_image = extract_image_from_helm_diff_line(line)
+        if not parsed_image:
+            continue
 
-        # **Primary Match: `+ image:` lines**
-        match = IMAGE_KEY_REGEX.match(line)
-        if match:
-            image_tag = match.group('image_quoted') or match.group('image')
+        image, tag, digest = parsed_image
+
+        image_entry = (image, tag, digest)
+        if image_entry not in unique_images:
+            print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
+            unique_images.add(image_entry)
         else:
-            # **Fallback Match: Look for valid `repo/image` format with a tag or digest**
-            match = FALLBACK_IMAGE_REGEX.search(line)
-            if match:
-                repo_image = match.group(1)
-                tag = match.group(2) or ""
-                digest = match.group(3) or ""
-
-                if not tag and not digest:
-                    print(f"⚠️ Skipping potential image reference (missing tag/digest): {repo_image}")
-                    continue  # Skip matches that lack a tag/digest
-
-                image_tag = f"{repo_image}@{digest}" if digest else f"{repo_image}:{tag}"
-
-        if image_tag:
-            # Extract components
-            parsed_image = parse_docker_image(image_tag)
-            if not parsed_image:
-                print(f"❌ Invalid Docker Image Reference: {image_tag}")
-                continue
-
-            image, tag, digest = parsed_image
-
-            image_entry = (image, tag, digest)
-            if image_entry not in unique_images:
-                print(f"✅ Found New Image: {image}, Tag: {tag}, Digest: {digest}")
-                unique_images.add(image_entry)
-            else:
-                print(f"ℹ️ Skipped Duplicate Image: {image}, Tag: {tag}, Digest: {digest}")
+            print(f"ℹ️ Skipped Duplicate Image: {image}, Tag: {tag}, Digest: {digest}")
 
     print(f"📊 Extracted {len(unique_images)} unique images.")
     return list(unique_images)  # Convert set back to list before returning
