@@ -354,7 +354,7 @@ bootstrap-audit:
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 [group('bootstrap')]
 bootstrap-test:
-    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/nodes/*.sh
+    shellcheck hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/*.sh hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/nodes/*.sh hack/bootstrap/nodes/lib/*.sh
     hack/bootstrap/tests/offline-parse.sh
     hack/bootstrap/tests/offline-ansible.sh
     hack/bootstrap/tests/offline-nodes.sh
