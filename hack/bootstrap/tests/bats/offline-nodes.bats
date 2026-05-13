@@ -176,6 +176,69 @@ EOF
   assert_file_not_contains "${tmp}/node-control-plane-finalize.args" '--join-ip'
 }
 
+@test "Lima control-plane API handoff retargets away from any target control-plane" {
+  local calls_file
+  calls_file="${tmp}/handoff.calls"
+
+  run env CALLS_FILE="$calls_file" bash -c "
+    source '${ROOT}/hack/bootstrap/nodes/lib.sh'
+    node_alternate_ready_control_plane_inventory_node() { printf '%s\n' k3s-master-0; }
+    node_start_lima_api_tunnel_to_inventory_node() { printf 'tunnel=%s context=%s\n' \"\$1\" \"\$2\" >>\"\${CALLS_FILE}\"; }
+    node_assert_api_reachable() { :; }
+    node_node_json_if_present() { printf '{\"metadata\":{\"name\":\"%s\",\"labels\":{\"node-role.kubernetes.io/control-plane\":\"true\"}},\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\"}]}}' \"\$2\"; }
+    node_assert_kubernetes_control_plane() { :; }
+    node_assert_ready() { :; }
+    node_handoff_control_plane_api_if_needed lima test k3s-master-1 lima-k3s-master-1
+  "
+  assert_success
+  assert_output_contains 'retargeting Lima API tunnel away from k3s-master-1 to k3s-master-0'
+  assert_file_contains "$calls_file" 'tunnel=k3s-master-0 context=test'
+}
+
+@test "control-plane join validates kube-proxy disable drop-in when replacement is enabled" {
+  local rendered_out rendered_inventory
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/no-render" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_kube_proxy_disable_dropin live k3s-master-0"
+  assert_success
+  assert_output_contains 'validating K3s kube-proxy disable drop-in on k3s-master-0'
+
+  rendered_out="${tmp}/rendered"
+  rendered_inventory="${rendered_out}/inventory/live"
+  mkdir -p "${rendered_inventory}/group_vars"
+  cp "${inventory}/hosts.yml" "${rendered_inventory}/hosts.yml"
+  yq -i 'del(.kube_proxy_replacement)' "${inventory}/group_vars/all.yml"
+  cat > "${rendered_inventory}/group_vars/all.yml" <<'EOF'
+---
+ansible_user: ethan
+ansible_ssh_private_key_file: ~/ansiblekey
+kube_proxy_replacement: true
+EOF
+  run env PATH="${tmp}:${PATH}" BOOTSTRAP_ANSIBLE_OUT_DIR="$rendered_out" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_kube_proxy_disable_dropin live k3s-master-0"
+  assert_success
+  assert_output_contains 'validating K3s kube-proxy disable drop-in on k3s-master-0'
+
+  yq -i '.kube_proxy_replacement = true' "${inventory}/group_vars/all.yml"
+  run env PATH="${tmp}:${PATH}" BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/no-render" FAKE_KUBE_PROXY_DROPIN=missing NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_kube_proxy_disable_dropin live k3s-master-0"
+  assert_failure
+  assert_output_contains 'K3s kube-proxy disable drop-in is missing or invalid on k3s-master-0'
+
+  yq -i '.kube_proxy_replacement = false' "${inventory}/group_vars/all.yml"
+  run env PATH="${tmp}:${PATH}" BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/no-render" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_kube_proxy_disable_dropin live k3s-master-0"
+  assert_success
+  assert_output_contains 'kube_proxy_replacement is false; skipping K3s kube-proxy disable drop-in check'
+
+  yq -i 'del(.kube_proxy_replacement)' "${inventory}/group_vars/all.yml"
+  run env PATH="${tmp}:${PATH}" BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/no-render" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_kube_proxy_disable_dropin live k3s-master-0"
+  assert_failure
+  assert_output_contains 'kube_proxy_replacement is missing'
+}
+
 @test "control-plane drain and delete enforce stable API and cleanup semantics" {
   write_control_plane_kubectl
   write_fake_ansible
@@ -366,4 +429,6 @@ EOF
     run "${ROOT}/${script}" --help
     assert_success
   done
+
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/drain.sh" 'node_handoff_control_plane_api_if_needed'
 }

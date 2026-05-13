@@ -72,7 +72,7 @@ kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventor
 inventory_file="$(node_ansible_inventory_file "$profile")"
 preflight_script="${NODE_SCRIPT_DIR}/control-plane-delete-preflight.sh"
 
-node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
+node_handoff_control_plane_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 if [[ -z "$node_json" ]]; then

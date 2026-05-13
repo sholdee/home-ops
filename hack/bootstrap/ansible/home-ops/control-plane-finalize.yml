@@ -12,5 +12,8 @@
     - name: Write K3s token file
       ansible.builtin.import_tasks: tasks/token.yml
 
+    - name: Ensure K3s kube-proxy stays disabled
+      ansible.builtin.import_tasks: tasks/kube-proxy-disable.yml
+
     - name: Render K3s server service without temporary taint
       ansible.builtin.import_tasks: tasks/join-servers.yml

@@ -230,6 +230,9 @@ Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
 Longhorn scheduling readiness, and restores scheduling.
 
+Control-plane joins also install and verify the K3s kube-proxy disable drop-in
+when `kube_proxy_replacement: true`.
+
 ## Secrets
 
 Secret manifests read from 1Password are streamed directly to Kubernetes. They

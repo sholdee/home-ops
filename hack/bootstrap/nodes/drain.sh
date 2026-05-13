@@ -62,6 +62,9 @@ node_require_tool "$NODE_JQ_BIN"
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
 
+if [[ "$inventory_role" == master ]]; then
+  node_handoff_control_plane_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
+fi
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${kubernetes_node_name}"

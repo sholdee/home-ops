@@ -64,7 +64,7 @@ IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_
 node_assert_inventory_control_plane "$inventory_node_name" "$inventory_role"
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
 
-node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
+node_handoff_control_plane_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 if node_has_resource "$context" "node/${kubernetes_node_name}"; then
   node_die "Kubernetes node already exists; drain/delete it before joining: ${kubernetes_node_name}"
@@ -88,6 +88,7 @@ fi
 
 node_log "joining control-plane node ${inventory_node_name} with temporary scheduling taint"
 node_run_control_plane_ansible_action "$profile" "$inventory_node_name" join "$join_ip"
+node_assert_kube_proxy_disable_dropin "$profile" "$inventory_node_name"
 
 node_json="$(node_wait_for_node_json "$context" "$kubernetes_node_name" 600)"
 node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"

@@ -32,6 +32,7 @@ EOF
 ---
 ansible_user: ethan
 ansible_ssh_private_key_file: ~/ansiblekey
+kube_proxy_replacement: true
 EOF
 }
 
@@ -331,6 +332,15 @@ printf '%s | CHANGED | rc=0 >>\n' "$target"
 
 if [[ "$joined_args" == *"ansible.builtin.systemd"* ]]; then
   printf '{"changed": true}\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"90-home-ops-kube-proxy.yaml"* ]]; then
+  if [[ "${FAKE_KUBE_PROXY_DROPIN:-present}" == missing ]]; then
+    printf 'kube_proxy_disable_dropin=missing\n'
+    exit 2
+  fi
+  printf 'kube_proxy_disable_dropin=present\n'
   exit 0
 fi
 

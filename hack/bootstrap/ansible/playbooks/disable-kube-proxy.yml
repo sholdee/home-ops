@@ -5,12 +5,9 @@
   gather_facts: true
   serial: 1
   vars:
-    kube_proxy_config_dir: /etc/rancher/k3s/config.yaml.d
-    kube_proxy_config_file: "{{ kube_proxy_config_dir }}/90-home-ops-kube-proxy.yaml"
-    kube_proxy_config_content: |
-      disable-kube-proxy: true
     bootstrap_first_master: "{{ groups[group_name_master | default('master')][0] }}"
     bootstrap_node_name: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
+    home_ops_kube_proxy_disable_notify: Converge K3s after kube-proxy config
 
   pre_tasks:
     - name: Skip when Cilium kube-proxy replacement is disabled
@@ -32,23 +29,8 @@
       changed_when: false
 
   tasks:
-    - name: Create K3s config drop-in directory
-      ansible.builtin.file:
-        path: "{{ kube_proxy_config_dir }}"
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-
-    - name: Write K3s kube-proxy disable drop-in
-      ansible.builtin.copy:
-        dest: "{{ kube_proxy_config_file }}"
-        content: "{{ kube_proxy_config_content }}"
-        owner: root
-        group: root
-        mode: "0644"
-      register: kube_proxy_config
-      notify: Converge K3s after kube-proxy config
+    - name: Manage K3s kube-proxy disable config
+      ansible.builtin.import_tasks: ../home-ops/tasks/kube-proxy-disable.yml
 
   handlers:
     - name: Restart K3s after kube-proxy config

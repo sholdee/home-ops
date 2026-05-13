@@ -103,7 +103,8 @@ render_home_ops_inventory() {
     "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-join.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-join.yml" \
-    "${ROOT}/hack/bootstrap/ansible/home-ops/worker-finalize.yml"; do
+    "${ROOT}/hack/bootstrap/ansible/home-ops/worker-finalize.yml" \
+    "${ROOT}/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml"; do
     run ansible-playbook --syntax-check -i "${home_ops_out}/inventory/live/hosts.yml" "$playbook"
     assert_success
   done
@@ -177,6 +178,12 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/reset-server-db.yml" 'db-before-rejoin'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" '--join-ip ADDRESS'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/kube-proxy-disable.yml" 'disable-kube-proxy: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" 'tasks/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml" '../home-ops/tasks/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/join-servers.yml" 'home_ops_kube_proxy_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/control-plane-join.sh" 'node_assert_kube_proxy_disable_dropin'
 }
 
 @test "render inventory fails on derived value conflicts" {

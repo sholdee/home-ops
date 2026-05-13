@@ -28,5 +28,8 @@
     - name: Reset stale local K3s server database
       ansible.builtin.import_tasks: tasks/reset-server-db.yml
 
+    - name: Disable K3s kube-proxy before server join
+      ansible.builtin.import_tasks: tasks/kube-proxy-disable.yml
+
     - name: Join K3s server with temporary taint
       ansible.builtin.import_tasks: tasks/join-servers.yml
