@@ -24,6 +24,18 @@ node_assert_api_reachable() {
     node_die "Kubernetes context is not reachable: ${context}"
 }
 
+node_current_context() {
+  "$NODE_KUBECTL_BIN" config current-context
+}
+
+node_assert_current_context() {
+  local context="$1"
+  local current_context
+  current_context="$(node_current_context)"
+  [[ "$current_context" == "$context" ]] ||
+    node_die "active kube context must be ${context}; current context is ${current_context}"
+}
+
 node_wait_for_api_reachable() {
   local context="$1"
   local timeout="${2:-180}"

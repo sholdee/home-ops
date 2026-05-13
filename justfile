@@ -287,35 +287,45 @@ node-control-plane-status node:
 node-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
 
-# Drain a live worker or control-plane node before deletion or maintenance.
+# Plan additive-only live node convergence from inventory.
 [group('node')]
+node-converge-plan:
+    ./hack/bootstrap/nodes/converge.sh --profile live --context default --plan
+
+# Drain a live worker or control-plane node before deletion or maintenance.
+[group('node-mutate')]
 node-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile live --context default '{{ node }}'
 
 # Delete a drained live worker or control-plane node after Longhorn state has been evacuated.
-[group('node')]
+[group('node-mutate')]
 node-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile live --context default '{{ node }}'
 
 # Evict Longhorn replicas from a drained live node before replacement.
-[group('node')]
+[group('node-mutate')]
 node-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile live --context default '{{ node }}'
 
 # Refresh a rebuilt live worker's SSH host key in known_hosts.
-[group('node')]
+[group('node-mutate')]
 node-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile live '{{ node }}'
 
 # Join a live worker or control-plane node from inventory with a temporary scheduling taint.
-[group('node')]
+[group('node-mutate')]
 node-join node:
     ./hack/bootstrap/nodes/join.sh --profile live --context default '{{ node }}'
 
 # Remove the temporary live node taint and restore scheduling.
-[group('node')]
+[group('node-mutate')]
 node-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
+
+# Run prompted additive-only live node convergence from inventory.
+[group('node-mutate')]
+node-converge:
+    ./hack/bootstrap/nodes/converge.sh --profile live --context default
 
 # Delete the configured kind cluster.
 [group('kind')]
@@ -444,35 +454,50 @@ node-lima-control-plane-status node:
 node-lima-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Drain a Lima worker or control-plane node before deletion or maintenance.
+# Plan additive-only Lima node convergence from inventory.
 [group('node-lima')]
+node-lima-converge-plan:
+    ./hack/bootstrap/nodes/converge.sh --profile lima --context '{{ lima_context }}' --plan
+
+# Drain a Lima worker or control-plane node before deletion or maintenance.
+[group('node-lima-mutate')]
 node-lima-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Delete a drained Lima worker or control-plane node after Longhorn state has been evacuated.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-delete node:
     ./hack/bootstrap/nodes/delete.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Evict Longhorn replicas from a drained Lima node before replacement.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Refresh a rebuilt Lima worker's SSH host key in known_hosts.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile lima '{{ node }}'
 
 # Join a Lima worker or control-plane node from inventory with a temporary scheduling taint.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-join node:
     ./hack/bootstrap/nodes/join.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Remove the temporary Lima node taint and restore scheduling.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Run prompted additive-only Lima node convergence from inventory.
+[group('node-lima-mutate')]
+node-lima-converge:
+    ./hack/bootstrap/nodes/converge.sh --profile lima --context '{{ lima_context }}'
+
+# Run non-interactive additive-only Lima node convergence from inventory.
+[group('node-lima-mutate')]
+node-lima-converge-yes:
+    ./hack/bootstrap/nodes/converge.sh --profile lima --context '{{ lima_context }}' --yes
 
 # Recreate larger Lima VMs, run Ansible, bootstrap app profile, and validate app safety.
 [group('lima-apps')]

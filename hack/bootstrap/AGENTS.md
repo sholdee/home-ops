@@ -33,6 +33,8 @@ normal app graph.
   rendering.
 - `nodes/`: existing-cluster node lifecycle commands. Command scripts source
   `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
+  `nodes/converge.sh` is an additive-only planner/orchestrator and must
+  delegate actual joins to `nodes/join.sh`.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
   construction, node lifecycle helpers, and bootstrap library helpers.
 - `tests/helpers/`: BATS fixture and assertion helpers.
@@ -88,6 +90,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
 ## Node Lifecycle Flow
 
 - Worker replacement is explicit: status, drain, delete, join, then uncordon.
+- Inventory expansion may use `node-converge`, but it must stay additive-only:
+  refuse deletes, renames, role changes, unhealthy existing nodes, pending
+  finalization, K3s version drift, unsafe control-plane counts, and any state
+  it cannot prove safe.
 - Control-plane replacement adds stricter gates: preflight, Longhorn eviction
   if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
   embedded-etcd member removal, join with a temporary taint, then finalize and
