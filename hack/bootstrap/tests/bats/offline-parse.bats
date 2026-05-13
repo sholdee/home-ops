@@ -18,10 +18,10 @@ setup_file() {
 }
 
 @test "lima app bootstrap removes active CNPG plugins instead of only disabling WAL archiving" {
-  assert_file_not_contains "$ROOT/hack/bootstrap/phases/wait-argocd.sh" '/spec/plugins/0/isWALArchiver'
-  assert_file_contains "$ROOT/hack/bootstrap/phases/wait-argocd.sh" 'path: /spec/plugins'
-  assert_file_contains "$ROOT/hack/bootstrap/phases/wait-argocd.sh" 'lima-deny-cnpg-active-plugins'
-  assert_file_contains "$ROOT/hack/bootstrap/phases/wait-argocd.sh" 'object.spec.plugins.size() == 0'
+  assert_file_not_contains "$ROOT/hack/bootstrap/lima/apps.sh" '/spec/plugins/0/isWALArchiver'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/apps.sh" 'path: /spec/plugins'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/apps.sh" 'lima-deny-cnpg-active-plugins'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/apps.sh" 'object.spec.plugins.size() == 0'
   assert_file_contains "$ROOT/hack/bootstrap/lima/validate.sh" 'CNPG active Cluster plugin exists'
 }
 
