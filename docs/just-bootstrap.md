@@ -18,6 +18,7 @@ cluster.
 - `jq`
 - `op`
 - `shellcheck`
+- `bats`
 - `ansible-playbook` and `ansible-galaxy` for Ansible-based bootstrap
 - `limactl` for the optional Lima VM bootstrap tests
 - A kubeconfig pointing at the target cluster
@@ -29,6 +30,10 @@ Run this first when validating script changes:
 ```sh
 just bootstrap-test
 ```
+
+`bootstrap-test` runs ShellCheck plus the offline BATS suite under
+`hack/bootstrap/tests/bats/`. Use Lima and live recipes only for validation
+that needs a real Kubernetes API or VM/node state.
 
 ## Local Kind Test
 

@@ -7,6 +7,24 @@ before ArgoCD can take over. Keep bootstrap narrower than steady-state GitOps:
 install only the dependencies needed for takeover, then let ArgoCD reconcile the
 normal app graph.
 
+## Codemap
+
+- `bootstrap.sh`: generic Kubernetes bootstrap runner and phase dispatcher.
+- `lib/`: shared bootstrap runner helpers for logging, Kubernetes commands,
+  rendering, and local run reports.
+- `phases/`: idempotent bootstrap phases sourced by `bootstrap.sh`.
+- `ansible/`: physical-node and Lima K3s convergence wrapper, inventory
+  rendering, and the in-repo `home-ops` Ansible backend.
+- `lima/`: disposable VM harness for foundation and app-profile bootstrap
+  validation.
+- `nodes/`: existing-cluster node lifecycle commands. Command scripts source
+  `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
+- `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
+  construction, node lifecycle helpers, and bootstrap library helpers.
+- `tests/helpers/`: BATS fixture and assertion helpers.
+- `.out/`: disposable local output, reports, rendered non-secret manifests,
+  generated inventories, and Lima runtime state.
+
 ## Safety Rules
 
 - Never write secret manifests from 1Password to disk, reports, logs, or
@@ -52,8 +70,12 @@ normal app graph.
   1Password may hold durable bootstrap secrets such as the K3s token; scripts
   must pass secret values through stdin, environment, or memory and never log
   them.
-- Validate script changes with `just bootstrap-test` and targeted `shellcheck`.
-  For app-profile changes, also use the relevant Lima validation recipe.
+- Validate script changes with `just bootstrap-test`; it runs ShellCheck and
+  the offline BATS suite. For app-profile changes, also use the relevant Lima
+  validation recipe.
+- Add offline regression coverage in `tests/bats/` for Bash helper behavior
+  that can be exercised without a real cluster. Keep Lima and live recipes for
+  behavior that needs VM, Kubernetes, Longhorn, or ArgoCD state.
 - If a long Lima run fails, identify whether it is an ordering problem,
   controller health problem, or workload/runtime problem before widening the
   bootstrap allowlist.

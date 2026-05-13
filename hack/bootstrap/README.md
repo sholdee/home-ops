@@ -10,6 +10,18 @@ It covers two layers:
 For the operator-facing `just` runbook, see
 [`docs/just-bootstrap.md`](../../docs/just-bootstrap.md).
 
+For local script validation, run:
+
+```sh
+just bootstrap-test
+```
+
+This runs ShellCheck plus the offline BATS suite in
+`hack/bootstrap/tests/bats/`. The BATS suite covers parse/render checks,
+Ansible inventory and command construction, node lifecycle helper behavior,
+and bootstrap library safety checks. Use Lima or live recipes only for
+validation that needs real Kubernetes, Longhorn, ArgoCD, or VM/node state.
+
 The Kubernetes runner is intentionally outside normal GitOps app state. It
 seeds the minimum dependencies needed for ArgoCD to take over:
 

@@ -43,11 +43,5 @@ jobs:
       - name: Check bootstrap test wiring
         run: just --dry-run bootstrap-test
 
-      - name: Run bootstrap offline parse test
-        run: hack/bootstrap/tests/offline-parse.sh
-
-      - name: Run bootstrap offline Ansible test
-        run: hack/bootstrap/tests/offline-ansible.sh
-
-      - name: Run bootstrap offline node lifecycle test
-        run: hack/bootstrap/tests/offline-nodes.sh
+      - name: Run bootstrap tests
+        run: just bootstrap-test
