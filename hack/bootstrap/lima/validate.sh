@@ -278,8 +278,8 @@ elif [[ "$profile" == lima-apps ]]; then
   fail_if_crd_instances_exist dnsendpoints.externaldns.k8s.io dnsendpoints.externaldns.k8s.io
   fail_if_json_query_matches "Longhorn backup RecurringJob exists" recurringjobs.longhorn.io \
     '[.items[] | select(.spec.task == "backup")] | length > 0'
-  fail_if_json_query_matches "CNPG WAL archiver is enabled" clusters.postgresql.cnpg.io \
-    '[.items[] | select(any(.spec.plugins[]?; .isWALArchiver == true))] | length > 0'
+  fail_if_json_query_matches "CNPG active Cluster plugin exists" clusters.postgresql.cnpg.io \
+    '[.items[] | select((.spec.plugins // []) | length > 0)] | length > 0'
   wait_lima_apps_pods_clean
 else
   lima_die "unknown validation profile: ${profile}"

@@ -19,8 +19,9 @@ normal app graph.
 - Prefer render-time Kustomize patches for Lima safety. Admission policies are
   fail-closed guardrails, not the primary mutation mechanism.
 - Lima app tests must not create external writers: `PushSecret`, ACME
-  `Order`/`Challenge`, VolSync `ReplicationSource`, CNPG `Backup` or
-  `ScheduledBackup`, Velero backup resources, or Longhorn backup jobs.
+  `Order`/`Challenge`, VolSync `ReplicationSource`, CNPG active
+  `Cluster.spec.plugins`, CNPG `Backup` or `ScheduledBackup`, Velero backup
+  resources, or Longhorn backup jobs.
 
 ## Ordering Invariants
 

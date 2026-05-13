@@ -21,6 +21,16 @@ test "$(yq -r '.helmCharts[] | select(.name == "external-secrets") | .version' "
 test "$(yq -r '.helmCharts[] | select(.name == "gateway-helm") | .version' "$ROOT/apps/envoy-gateway-system/kustomization.yaml")" != "null"
 test "$(yq -r '.helmCharts[] | select(.name == "kube-prometheus-stack") | .version' "$ROOT/apps/monitoring/kustomization.yaml")" != "null"
 
+if grep -q '/spec/plugins/0/isWALArchiver' "$ROOT/hack/bootstrap/phases/wait-argocd.sh"; then
+  echo "lima-apps CNPG restore patches must remove active Cluster plugins instead of only disabling WAL archiving" >&2
+  exit 1
+fi
+
+grep -q 'path: /spec/plugins' "$ROOT/hack/bootstrap/phases/wait-argocd.sh"
+grep -q 'lima-deny-cnpg-active-plugins' "$ROOT/hack/bootstrap/phases/wait-argocd.sh"
+grep -q 'object.spec.plugins.size() == 0' "$ROOT/hack/bootstrap/phases/wait-argocd.sh"
+grep -q 'CNPG active Cluster plugin exists' "$ROOT/hack/bootstrap/lima/validate.sh"
+
 while IFS= read -r file; do
   [[ -n "$file" ]] || continue
   bad_count="$(

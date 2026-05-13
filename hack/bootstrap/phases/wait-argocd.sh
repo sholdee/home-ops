@@ -234,9 +234,8 @@ write_lima_apps_kustomize_patches() {
     kind: Cluster
     name: hass-db2
   patch: |-
-    - op: replace
-      path: /spec/plugins/0/isWALArchiver
-      value: false
+    - op: remove
+      path: /spec/plugins
 - target:
     group: postgresql.cnpg.io
     version: v1
@@ -252,9 +251,8 @@ write_lima_apps_kustomize_patches() {
           owner: powerdns
           secret:
             name: powerdns-db-app-user
-    - op: replace
-      path: /spec/plugins/0/isWALArchiver
-      value: false
+    - op: remove
+      path: /spec/plugins
 EOF
 }
 
@@ -359,7 +357,7 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
 metadata:
-  name: lima-deny-cnpg-wal-archiver
+  name: lima-deny-cnpg-active-plugins
 spec:
   failurePolicy: Fail
   matchConstraints:
@@ -369,15 +367,15 @@ spec:
         operations: ["CREATE", "UPDATE"]
         resources: ["clusters"]
   validations:
-    - expression: "!has(object.spec.plugins) || !object.spec.plugins.exists(p, has(p.isWALArchiver) && p.isWALArchiver == true)"
-      message: "lima-apps bootstrap allows CNPG recovery but forbids WAL archiving"
+    - expression: "!has(object.spec.plugins) || object.spec.plugins.size() == 0"
+      message: "lima-apps bootstrap allows CNPG recovery through externalClusters but forbids active Cluster plugins"
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
 metadata:
-  name: lima-deny-cnpg-wal-archiver
+  name: lima-deny-cnpg-active-plugins
 spec:
-  policyName: lima-deny-cnpg-wal-archiver
+  policyName: lima-deny-cnpg-active-plugins
   validationActions: [Deny]
 ---
 apiVersion: admissionregistration.k8s.io/v1
@@ -410,6 +408,8 @@ apply_lima_apps_safety_policies() {
   local policies
   policies="${TMP_DIR}/lima-apps-safety-policies.yaml"
   write_lima_apps_safety_policies "$policies"
+  kubectl_cmd delete validatingadmissionpolicybinding/lima-deny-cnpg-wal-archiver --ignore-not-found
+  kubectl_cmd delete validatingadmissionpolicy/lima-deny-cnpg-wal-archiver --ignore-not-found
   apply_file "$policies"
   save_render_if_safe lima-apps-safety-policies "$policies"
 }

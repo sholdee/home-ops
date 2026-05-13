@@ -122,11 +122,11 @@ existing `ApplicationSet/k3s-apps` name with a Lima-only allowlist and
 render-time patches. The first app profile includes cert-manager,
 external-secrets, kube-system support resources, Longhorn support resources,
 CNPG, Envoy Gateway, Gateway, `hass`, and `powerdns`. It removes Gateway ACME
-annotations, disables CNPG WAL archiving while keeping recovery configuration,
-deletes backup schedules and VolSync upload sources, and applies Lima-only
-admission policies that deny known external writer resources. VolSync restore
-destinations keep retain storage so the restored snapshot can populate the
-final PVC.
+annotations, removes active CNPG Cluster plugins while keeping externalCluster
+recovery configuration, deletes backup schedules and VolSync upload sources,
+and applies Lima-only admission policies that deny known external writer
+resources. VolSync restore destinations keep retain storage so the restored
+snapshot can populate the final PVC.
 
 By default the disposable foundation shape is one server VM using `4` CPU and
 `6GiB` memory plus two agent VMs using `2` CPU and `3GiB` memory. The app-profile
