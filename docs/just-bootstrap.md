@@ -251,19 +251,21 @@ The first allowlist includes cert-manager, external-secrets, kube-system
 support resources, Longhorn support resources, CNPG, Envoy Gateway, Gateway,
 `hass`, and `powerdns`. The rendered desired state removes Gateway ACME
 annotations, removes `PushSecret` resources, removes VolSync
-`ReplicationSource`, removes CNPG backup schedules, disables CNPG WAL archiving
-while keeping recovery configuration, removes the Longhorn backup
-`RecurringJob`, and removes kube-vip from the disposable Lima cluster. VolSync
-restore destinations keep their retain storage class because the restored
-snapshot must survive long enough to populate the final PVC.
+`ReplicationSource`, removes CNPG backup schedules, removes active CNPG
+Cluster plugins while keeping externalCluster recovery configuration, removes
+the Longhorn backup `RecurringJob`, and removes kube-vip from the disposable
+Lima cluster. VolSync restore destinations keep their retain storage class
+because the restored snapshot must survive long enough to populate the final
+PVC.
 
 The app profile also installs Lima-only `ValidatingAdmissionPolicy` guardrails
 that deny known external writer resources such as `PushSecret`,
 `ClusterPushSecret`, ACME `Order`/`Challenge`, VolSync `ReplicationSource`,
 CNPG backup resources, Velero backup resources, external-dns `DNSEndpoint`, and
-Longhorn backup `RecurringJob`. The render-time patches are the primary safety
-control; admission is there to fail closed if a future manifest reintroduces a
-writer.
+Longhorn backup `RecurringJob`, plus active CNPG Cluster plugins. The
+render-time patches are the primary safety control; admission is there to fail
+closed if a future manifest reintroduces a writer or archive-backed active
+plugin.
 
 ## Real Cluster Bootstrap
 
