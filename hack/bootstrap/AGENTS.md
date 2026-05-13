@@ -27,7 +27,8 @@ normal app graph.
 - `ansible/`: physical-node and Lima K3s convergence wrapper, inventory
   rendering, and the in-repo `home-ops` Ansible backend.
 - `lima/`: disposable VM harness for foundation and app-profile bootstrap
-  validation.
+  validation; `apps.sh` owns Lima app-profile ApplicationSet and safety-policy
+  rendering.
 - `nodes/`: existing-cluster node lifecycle commands. Command scripts source
   `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
