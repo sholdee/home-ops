@@ -7,6 +7,17 @@ before ArgoCD can take over. Keep bootstrap narrower than steady-state GitOps:
 install only the dependencies needed for takeover, then let ArgoCD reconcile the
 normal app graph.
 
+## Start Here
+
+- Read `docs/just-bootstrap.md` for operator-facing workflows and command
+  examples.
+- Use `just --list` or the grouped sections in the root `justfile` for the
+  current command surface. The main groups are bootstrap validation, kind,
+  Lima, live bootstrap, and node lifecycle.
+- Use `rg --files hack/bootstrap` for source inventory. Ignore `.out/` unless
+  you are comparing run reports or generated non-secret manifests from a
+  specific bootstrap attempt.
+
 ## Codemap
 
 - `bootstrap.sh`: generic Kubernetes bootstrap runner and phase dispatcher.
@@ -25,6 +36,36 @@ normal app graph.
 - `.out/`: disposable local output, reports, rendered non-secret manifests,
   generated inventories, and Lima runtime state.
 
+## Profiles and Phases
+
+Profiles:
+
+- `full`: real-cluster bootstrap profile. It installs dependencies needed for
+  ArgoCD takeover, applies ArgoCD, waits for takeover readiness, then audits.
+- `foundation`: Lima foundation profile. It validates K3s, Cilium takeover,
+  core operators, and ArgoCD without applying normal app workloads.
+- `lima-apps`: disposable app-profile validation. It applies a sanitized
+  workload allowlist and fail-closed safety guards so restores can be tested
+  without creating external writers.
+
+Phase order:
+
+1. `preflight`
+2. `seed-secret`
+3. `bootstrap-crds`
+4. `cert-manager`
+5. `external-secrets`
+6. `gateway-cert-seed`
+7. `dragonfly-operator`
+8. `argocd-dependencies`
+9. `argocd`
+10. `wait-argocd`
+11. `takeover-cleanup`
+12. `audit`
+
+Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
+`docs/just-bootstrap.md`.
+
 ## Safety Rules
 
 - Never write secret manifests from 1Password to disk, reports, logs, or
@@ -40,6 +81,16 @@ normal app graph.
   `Order`/`Challenge`, VolSync `ReplicationSource`, CNPG active
   `Cluster.spec.plugins`, CNPG `Backup` or `ScheduledBackup`, Velero backup
   resources, or Longhorn backup jobs.
+
+## Node Lifecycle Flow
+
+- Worker replacement is explicit: status, drain, delete, join, then uncordon.
+- Control-plane replacement adds stricter gates: preflight, Longhorn eviction
+  if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
+  embedded-etcd member removal, join with a temporary taint, then finalize and
+  uncordon.
+- Mutating node lifecycle commands must remain fail-closed. If a helper cannot
+  prove safety, stop and leave the node cordoned rather than guessing.
 
 ## Ordering Invariants
 
@@ -73,6 +124,12 @@ normal app graph.
 - Validate script changes with `just bootstrap-test`; it runs ShellCheck and
   the offline BATS suite. For app-profile changes, also use the relevant Lima
   validation recipe.
+- Validation ladder:
+  `just bootstrap-test` for Bash and offline behavior,
+  `just bootstrap-kind-fresh` for disposable Kubernetes bootstrap behavior,
+  Lima foundation recipes for Cilium and ArgoCD takeover behavior,
+  Lima app recipes for Longhorn, VolSync, CNPG restore, and workload safety,
+  live audit/dry-run recipes for real-cluster field ownership and drift.
 - Add offline regression coverage in `tests/bats/` for Bash helper behavior
   that can be exercised without a real cluster. Keep Lima and live recipes for
   behavior that needs VM, Kubernetes, Longhorn, or ArgoCD state.

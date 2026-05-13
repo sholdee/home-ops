@@ -138,3 +138,32 @@ EOF
   assert_output_contains 'external-secrets=yes'
   assert_output_contains 'argocd=yes'
 }
+
+@test "runbook phase list matches bootstrap phase order" {
+  local bootstrap_lib expected actual
+
+  bootstrap_lib="${tmp}/bootstrap-lib.sh"
+  expected="${tmp}/expected-phases.txt"
+  actual="${tmp}/actual-phases.txt"
+
+  sed '$d' "${ROOT}/hack/bootstrap/bootstrap.sh" |
+    sed "s|^BOOTSTRAP_DIR=.*|BOOTSTRAP_DIR=\"${ROOT}/hack/bootstrap\"|" > "$bootstrap_lib"
+
+  run bash -c "source '${bootstrap_lib}'; printf '%s\n' \"\${PHASES[@]}\""
+  assert_success
+  printf '%s\n' "$output" > "$expected"
+
+  awk '
+    /^## Phases$/ { in_phases = 1; next }
+    /^## / && in_phases { exit }
+    in_phases && /^[0-9]+\. `/ {
+      phase = $0
+      sub(/^[0-9]+\. `/, "", phase)
+      sub(/`.*/, "", phase)
+      print phase
+    }
+  ' "${ROOT}/docs/just-bootstrap.md" > "$actual"
+
+  run diff -u "$expected" "$actual"
+  assert_success
+}
