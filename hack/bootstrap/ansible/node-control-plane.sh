@@ -23,6 +23,7 @@ Options:
   --inventory-source DIR  Source inventory directory for live.
   --inventory-dir DIR     Existing/generated inventory directory.
   --action NAME           Control-plane action: join or finalize.
+  --join-ip ADDRESS       Override the K3s server join endpoint address.
   -h, --help              Show help.
 EOF
 }
@@ -31,6 +32,7 @@ profile="live"
 source_dir=""
 inventory_dir=""
 action=""
+join_ip=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,6 +50,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --action)
       action="$2"
+      shift 2
+      ;;
+    --join-ip)
+      join_ip="$2"
       shift 2
       ;;
     -h|--help)
@@ -129,6 +135,9 @@ if [[ -z "$first_master_join_ip" || "$first_master_join_ip" == "null" ]]; then
 fi
 [[ -n "$first_master_join_ip" && "$first_master_join_ip" != "null" ]] ||
   ansible_die "could not derive control-plane join address for ${first_master}"
+if [[ -n "$join_ip" ]]; then
+  first_master_join_ip="$join_ip"
+fi
 
 if ! NODE_NAME="$node_name" yq -e '.all.children.k3s_cluster.children.master.hosts | has(strenv(NODE_NAME))' "$inventory_file" >/dev/null; then
   ansible_die "target must be in the master inventory group: ${node_name}"

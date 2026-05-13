@@ -176,6 +176,7 @@ grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/template
 grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2"
 grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml"
 grep -q 'db-before-rejoin' "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/reset-server-db.yml"
+grep -q -- '--join-ip ADDRESS' "${ROOT}/hack/bootstrap/ansible/node-control-plane.sh"
 
 conflict_source="${tmp}/conflict-source"
 mkdir -p "${conflict_source}/group_vars"

@@ -63,11 +63,8 @@ node_require_tool ansible
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
 node_assert_inventory_control_plane "$inventory_node_name" "$inventory_role"
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
-first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
-if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-  node_die "control-plane join for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
-fi
 
+node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 if node_has_resource "$context" "node/${kubernetes_node_name}"; then
   node_die "Kubernetes node already exists; drain/delete it before joining: ${kubernetes_node_name}"
@@ -83,8 +80,14 @@ node_cleanup_pods_for_deleted_node "$context" "$kubernetes_node_name"
 node_cleanup_longhorn_deleted_node "$context" "$kubernetes_node_name"
 node_assert_control_plane_etcd_member_absent "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 
+join_ip=""
+if node_is_first_inventory_master "$profile" "$inventory_node_name"; then
+  join_ip="$(node_alternate_ready_control_plane_internal_ip "$profile" "$context" "$kubernetes_node_name")"
+  node_log "using alternate control-plane endpoint ${join_ip} for first-master rejoin"
+fi
+
 node_log "joining control-plane node ${inventory_node_name} with temporary scheduling taint"
-node_run_control_plane_ansible_action "$profile" "$inventory_node_name" join
+node_run_control_plane_ansible_action "$profile" "$inventory_node_name" join "$join_ip"
 
 node_json="$(node_wait_for_node_json "$context" "$kubernetes_node_name" 600)"
 node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
