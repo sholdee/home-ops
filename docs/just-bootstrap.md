@@ -1,14 +1,20 @@
 # Just Bootstrap Runbook
 
-This page documents the `just` recipes for bootstrapping a fresh cluster into
-the minimum state ArgoCD needs before it can take over normal GitOps sync.
+This is the operator-facing runbook for the bootstrap recipes in the root
+`justfile`.
 
-The bootstrap runner lives in `hack/bootstrap/`. It assumes the Ansible wrapper
-or an equivalent process has already produced a working Kubernetes API,
-kubeconfig, and initial Cilium install before this runner is used on the real
-cluster.
+Bootstrap has two jobs:
+
+1. Converge K3s nodes with the Ansible wrapper when needed.
+2. Seed the minimum Kubernetes state ArgoCD needs before it can take over.
+
+The implementation lives under `hack/bootstrap/`. Prefer `just` recipes for
+normal operation; direct scripts are implementation details except for narrow
+debugging cases.
 
 ## Prerequisites
+
+Required for all bootstrap work:
 
 - `just`
 - `kubectl`
@@ -17,365 +23,433 @@ cluster.
 - `yq`
 - `jq`
 - `op`
+
+Required for local validation:
+
 - `shellcheck`
 - `bats`
-- `ansible-playbook` and `ansible-galaxy` for Ansible-based bootstrap
-- `limactl` for the optional Lima VM bootstrap tests
-- A kubeconfig pointing at the target cluster
-- 1Password CLI signed in with access to
-  `op://Kubernetes/op-credentials/op-credentials.yaml`
 
-Run this first when validating script changes:
+Required for Ansible-backed node convergence:
 
-```sh
-just bootstrap-test
+- `ansible-playbook`
+- `ansible-galaxy`
+
+Required for Lima VM tests:
+
+- `limactl`
+
+1Password must have access to:
+
+```text
+op://Kubernetes/op-credentials/op-credentials.yaml
 ```
 
-`bootstrap-test` runs ShellCheck plus the offline BATS suite under
-`hack/bootstrap/tests/bats/`. Use Lima and live recipes only for validation
-that needs a real Kubernetes API or VM/node state.
+## Command Map
 
-## Local Kind Test
-
-Kind recipes use the repo-specific cluster name `home-ops-bootstrap`, which
-creates the kube context `kind-home-ops-bootstrap`. Override it only when needed:
+Start with the recipe list when unsure:
 
 ```sh
-KIND_CLUSTER=my-test-cluster just kind-reset
+just --list
 ```
 
-Create a clean three-node kind cluster:
+Common validation:
+
+| Goal | Recipe |
+| --- | --- |
+| Run pre-commit plus bootstrap tests | `just check` |
+| Run only bootstrap ShellCheck and BATS | `just bootstrap-test` |
+| Audit current kube context | `just bootstrap-audit` |
+| Show current and target cluster status | `just context` |
+| List ArgoCD Applications | `just argocd-apps` |
+| List ArgoCD ApplicationSets | `just argocd-appsets` |
+
+Kind:
+
+| Goal | Recipe |
+| --- | --- |
+| Create the kind cluster | `just kind-create` |
+| Show kind status | `just kind-status` |
+| Bootstrap kind | `just kind-bootstrap` |
+| Recreate and bootstrap kind | `just kind-fresh` |
+| Seed only the 1Password credential | `just kind-bootstrap-seed` |
+| Resume kind from a phase | `just kind-bootstrap-resume bootstrap-crds` |
+| Dry-run after CRDs exist | `just kind-bootstrap-dry-run` |
+| Delete kind | `just kind-delete` |
+
+Lima foundation:
+
+| Goal | Recipe |
+| --- | --- |
+| Create VMs | `just lima-create` |
+| Run Ansible | `just lima-ansible` |
+| Run Kubernetes bootstrap | `just lima-bootstrap` |
+| Validate foundation state | `just lima-validate` |
+| Full fresh flow | `just lima-fresh` |
+| Show Lima status | `just lima-status` |
+| Refresh kube context and API tunnel | `just lima-context` |
+| Delete VMs | `just lima-delete` |
+
+Lima app profile:
+
+| Goal | Recipe |
+| --- | --- |
+| Create app-sized VMs | `just lima-apps-create` |
+| Run Ansible on app-sized VMs | `just lima-apps-ansible` |
+| Run app-profile bootstrap | `just lima-apps-bootstrap` |
+| Validate app-profile safety | `just lima-apps-validate` |
+| Full fresh app flow | `just lima-apps-fresh` |
+
+Ansible and active-context bootstrap:
+
+| Goal | Recipe |
+| --- | --- |
+| Render live Ansible plan | `just ansible-plan` |
+| Import existing K3s token to 1Password | `just ansible-import-token` |
+| Run live Ansible only | `just ansible-run` |
+| Run live Ansible plus Kubernetes bootstrap | `just ansible-bootstrap` |
+| Run Kubernetes bootstrap against the active context | `just bootstrap` |
+| Audit active context state | `just bootstrap-audit` |
+| Dry-run bootstrap against the active context | `just bootstrap-dry-run` |
+| Dry-run one bootstrap phase | `just bootstrap-phase argocd` |
+
+## Validation Ladder
+
+Use the smallest validation that covers the change:
+
+1. `just bootstrap-test` for Bash parsing, rendering, and helper behavior.
+2. `just kind-fresh` for clean Kubernetes bootstrap ordering.
+3. `just kind-bootstrap-dry-run` for server-side validation after CRDs exist.
+4. `just lima-fresh` for Cilium takeover and core operators.
+5. `just lima-apps-fresh` for Longhorn, VolSync, CNPG, and app safety.
+6. `just bootstrap-audit` for active-context read-only inventory.
+7. `just bootstrap-dry-run` for active-context API/admission validation.
+
+Do not run a live non-dry-run bootstrap from an unmerged branch. Use dry-run
+from the branch, then let merged `master` and ArgoCD own steady state.
+
+## Cluster Inspection
+
+Use `context` for a quick read-only look at the target context:
 
 ```sh
-just kind-reset
+just context
+just context lima-home-ops-k3s-test
 ```
 
-Run the bootstrap against kind:
+With no argument, it targets the active kube context. Pass a context name to
+inspect a different target. It prints the current kubeconfig context, the
+target context, nodes, and an ArgoCD Application summary when ArgoCD is
+available.
+
+List ArgoCD Applications or ApplicationSets:
 
 ```sh
-just bootstrap-kind
+just argocd-apps
+just argocd-apps cilium
+just argocd-apps cilium default
+just argocd-apps cilium lima-home-ops-k3s-test
+just argocd-appsets
+just argocd-appsets k3s-apps
+just argocd-appsets k3s-apps default
+just argocd-appsets k3s-apps lima-home-ops-k3s-test
 ```
 
-Recreate kind and then run the bootstrap in one step:
+With no context argument, `argocd-apps`, `argocd-appsets`, `app-dry-run`, and
+`app-diff` target the active kube context. Pass a context name when you want a
+specific cluster.
+
+## Kind Workflow
+
+Kind uses the repo-specific cluster name `home-ops-bootstrap`, which creates
+context `kind-home-ops-bootstrap`.
+
+Override only when needed:
 
 ```sh
-just bootstrap-kind-fresh
+KIND_CLUSTER=my-test-cluster just kind-fresh
 ```
 
-To seed kind separately before resuming the remaining phases:
+Typical clean run:
 
 ```sh
-just bootstrap-kind-seed
-just bootstrap-kind-resume
+just kind-fresh
 ```
 
-After kind has been bootstrapped once and the CRDs exist, run a server-side
-dry-run validation against the local API:
+Check current kind state:
 
 ```sh
-just bootstrap-kind-dry-run
+just kind-status
 ```
 
-Delete the local kind cluster when validation is complete:
+Phase-by-phase run:
 
 ```sh
 just kind-delete
+just kind-create
+just kind-bootstrap-seed
+just kind-bootstrap-resume bootstrap-crds
 ```
 
-Do not use `bootstrap-kind-dry-run` as the first command after `kind-reset`.
-Server-side dry-run validates objects but does not persist CRDs, so later dry-run
-phases cannot validate CRs such as `ClusterSecretStore` or ArgoCD `Application`
-until those CRDs already exist.
+After the first successful bootstrap:
 
-The kind path is intentionally narrower than the real cluster path. If the
-target cluster does not have `ciliumnetworkpolicies.cilium.io`, the bootstrap
-omits the real-cluster `ApplicationSet/k3s-apps`, Cilium applications, and
-Longhorn application. It also omits `crd-schema-publisher` so a local kind test
-does not publish schemas over the live schema index. That keeps kind focused on
-bootstrap dependency ordering instead of trying to run every homelab workload
-without Cilium, Longhorn, and real infrastructure.
+```sh
+just kind-bootstrap-dry-run
+```
 
-If the target cluster already has Cilium CRDs, bootstrap still delays
-`ApplicationSet/k3s-apps`. The ArgoCD phase applies Hubble CA resources and the
-explicit foundation Applications first; the wait phase then waits for
-`Application/cilium` to be `Synced` and `Healthy`, waits for Hubble server and
-relay certificates, restarts Cilium/Hubble when stale takeover certs were
-replaced, and applies `ApplicationSet/k3s-apps` only after that completes.
+Do not use `kind-bootstrap-dry-run` as the first command after `kind-delete`.
+Server-side dry-run validates objects but does not persist CRDs, so later CRs
+cannot validate until their CRDs exist.
 
-## Local Lima Foundation Test
+Kind intentionally omits real-cluster-only resources when Cilium CRDs are
+absent: `ApplicationSet/k3s-apps`, Cilium apps, Longhorn, and
+`crd-schema-publisher`.
 
-The Lima path is a closer end-to-end bootstrap rehearsal for Apple Silicon. It
-creates one K3s server and two K3s agents, runs the selected Ansible backend,
-then runs home-ops bootstrap with `--profile foundation`.
+## Lima Foundation Workflow
+
+The foundation profile is the closer end-to-end rehearsal for a fresh cluster.
+It creates disposable VMs, runs Ansible, imports kubeconfig through an SSH API
+tunnel, and bootstraps with `--profile foundation`.
 
 Defaults:
 
-- Lima cluster prefix: `home-ops-k3s-test`
-- foundation VM shape: one server and two agents
-- Ansible backend: `home-ops` by default, using
-  `hack/bootstrap/ansible/home-ops/`
-- home-ops checkout: the current working tree
-- server VM size: `4` CPU and `6GiB` memory
-- foundation agent VM size: `2` CPU and `3GiB` memory
-- guest storage prerequisites: `open-iscsi` and `nfs-common` are installed on
-  each VM before Ansible runs so Longhorn block and RWX volumes can mount
-- Cilium version: derived from `Application/cilium.spec.source.targetRevision`
-  and rendered into the selected Ansible backend
-- Cilium datapath mode: `netkit`, matching the steady-state ArgoCD values
-- Cilium takeover: Hubble CA resources are applied before ArgoCD Cilium, and
-  stale Hubble cert Secrets from the initial Ansible install are rotated
-- Dragonfly Operator: reconciled through ArgoCD without optional
-  `ServiceMonitor` or `GrafanaDashboard` resources in foundation mode
-- K3s API endpoint: the server VM IP, not kube-vip
-- Local kube context: `lima-home-ops-k3s-test`
+| Setting | Default |
+| --- | --- |
+| Cluster prefix | `home-ops-k3s-test` |
+| Local context | `lima-home-ops-k3s-test` |
+| Server shape | one VM, `4` CPU, `6GiB` memory |
+| Agent shape | two VMs, `2` CPU, `3GiB` memory |
+| Disk | `30GiB` |
+| Master taint | enabled |
+| Ansible backend | `home-ops` |
 
-The shape and size can be overridden with `LIMA_SERVER_COUNT`,
-`LIMA_SERVER_CPUS`, `LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`,
-`LIMA_AGENT_CPUS`, `LIMA_AGENT_MEMORY_GIB`, and `LIMA_K3S_MASTER_TAINT`.
-
-Run the full disposable VM flow:
+Run everything:
 
 ```sh
-just bootstrap-lima-fresh
+just lima-fresh
+```
+
+Or run phase by phase:
+
+```sh
+just lima-create
+just lima-ansible
+just lima-bootstrap
+just lima-validate
+```
+
+The Lima Ansible recipe imports or updates the local kube context and keeps the
+API tunnel running. Refresh only that context and tunnel with:
+
+```sh
+just lima-context
+```
+
+Delete the VMs and recorded tunnel:
+
+```sh
+just lima-delete
+```
+
+Check current Lima state:
+
+```sh
+just lima-status
+```
+
+Useful overrides:
+
+- `LIMA_CLUSTER_NAME`
+- `LIMA_SERVER_COUNT`
+- `LIMA_SERVER_CPUS`
+- `LIMA_SERVER_MEMORY_GIB`
+- `LIMA_AGENT_COUNT`
+- `LIMA_AGENT_CPUS`
+- `LIMA_AGENT_MEMORY_GIB`
+- `LIMA_DISK_GIB`
+- `LIMA_K3S_MASTER_TAINT`
+
+The Lima wrapper installs `open-iscsi` and `nfs-common` before Ansible so
+Longhorn block and RWX volumes can mount.
+
+## Lima App Workflow
+
+The app profile should use the app-sized Lima shape, not the smaller
+foundation shape.
+
+Run the full app-sized flow:
+
+```sh
+just lima-apps-fresh
 ```
 
 Or run it phase by phase:
 
 ```sh
-just bootstrap-lima-create
-just bootstrap-lima-ansible
-just bootstrap-lima-bootstrap
-just bootstrap-lima-validate
+just lima-apps-delete
+just lima-apps-create
+just lima-apps-ansible
+just lima-apps-bootstrap
+just lima-apps-validate
 ```
 
-The external compatibility backend can be tested through the same Lima flow:
-
-```sh
-BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-lima-ansible
-```
-
-`bootstrap-lima-ansible` imports or updates the local kube context and starts a
-persistent SSH tunnel for the K3s API. Re-run this if you only need to refresh
-the context:
-
-```sh
-just bootstrap-lima-kubecontext
-kubectl --context lima-home-ops-k3s-test get nodes
-```
-
-If this agent process is not signed in to 1Password, stream the seed Secret from
-your own shell instead:
-
-```sh
-op read op://Kubernetes/op-credentials/op-credentials.yaml \
-  | just bootstrap-lima-bootstrap-stdin
-```
-
-Use the app-profile variant for the same stdin seed flow:
-
-```sh
-op read op://Kubernetes/op-credentials/op-credentials.yaml \
-  | just bootstrap-lima-bootstrap-apps-stdin
-```
-
-Delete the VMs:
-
-```sh
-just bootstrap-lima-delete
-```
-
-Deleting the Lima VMs also stops the recorded local API tunnel.
-
-Foundation mode always omits the broad `ApplicationSet/k3s-apps`. The Lima
-validation requires the foundation Cilium and Dragonfly Operator Applications to
-be `Synced` and `Healthy`. It also fails if backup-writing or real-workload
-resources appear, including `Application/powerdns`, `Application/hass`, CNPG
-`ScheduledBackup` and `ObjectStore` resources, VolSync `ReplicationSource`,
-Velero `Schedule`, and the external-dns deployment. The real 1Password seed may
-be used because the profile does not create those writers.
-
-The Lima inventory deliberately disables kube-vip while keeping the same
-K3s/Cilium/BGP versions as the real bootstrap path. The live inventory still
-pins kube-vip to `v1.1.2`; Lima's default user-mode networking is not a
-reliable validation target for ARP VIP behavior.
-
-The Lima wrapper also keeps Cilium masquerading enabled when it applies the
-foundation ArgoCD resources. The real cluster disables Cilium masquerading
-because its network can route pod CIDRs; Lima's user-mode network cannot route
-pod CIDRs back to pods, so pod DNS and external egress require masquerading in
-the disposable test cluster.
-
-## Local Lima App Test
-
-After the foundation profile is healthy, run the app profile against the same
-Lima cluster. The app profile is materially heavier than foundation mode and
-defaults to four schedulable worker nodes with `4` CPU, `6GiB` memory,
-and enough disk for Longhorn restore, replica scheduling, and one-node
-replacement testing. The app-specific recipes create `120GiB` VM disks and
-preflight requires at least `100GiB`
-allocatable ephemeral storage per schedulable worker. Use the app-specific
-create/ansible recipes if running phase by phase:
-
-```sh
-just bootstrap-lima-delete
-just bootstrap-lima-create-apps
-just bootstrap-lima-ansible-apps
-```
-
-Then bootstrap and validate:
-
-```sh
-just bootstrap-lima-bootstrap-apps
-just bootstrap-lima-validate-apps
-```
-
-Or recreate the VMs and run the app profile in one step:
-
-```sh
-just bootstrap-lima-fresh-apps
-```
-
-To validate app-level changes from a branch before they merge to `master`, push
-the branch first and point the generated Applications at it:
-
-```sh
-LIMA_APPSET_TARGET_REVISION=feat/my-branch just bootstrap-lima-fresh-apps
-```
-
-The app profile uses `--profile lima-apps`. It is intentionally still scoped:
-it restores Gateway wildcard TLS Secrets from 1Password, waits for
-`gateway/external-wildcard`, `gateway/mgmt-wildcard`, and
-`gateway/guest-wildcard` to contain `tls.crt` and `tls.key`, applies
-external-snapshotter from `apps/kube-system/external-snapshotter`, then applies
-the existing `ApplicationSet/k3s-apps` name with a Lima-only allowlist.
-Validation waits for allowlisted ArgoCD Application sync operations and then
-requires those Applications to become `Synced` and `Healthy`. It then requires
-all non-completed pods to settle to Running and Ready.
-
-The first allowlist includes cert-manager, external-secrets, kube-system
-support resources, Longhorn support resources, CNPG, Envoy Gateway, Gateway,
-`hass`, and `powerdns`. The rendered desired state removes Gateway ACME
-annotations, removes `PushSecret` resources, removes VolSync
-`ReplicationSource`, removes CNPG backup schedules, removes active CNPG
-Cluster plugins while keeping externalCluster recovery configuration, removes
-the Longhorn backup `RecurringJob`, and removes kube-vip from the disposable
-Lima cluster. VolSync restore destinations keep their retain storage class
-because the restored snapshot must survive long enough to populate the final
-PVC.
-
-The app profile also installs Lima-only `ValidatingAdmissionPolicy` guardrails
-that deny known external writer resources such as `PushSecret`,
-`ClusterPushSecret`, ACME `Order`/`Challenge`, VolSync `ReplicationSource`,
-CNPG backup resources, Velero backup resources, external-dns `DNSEndpoint`, and
-Longhorn backup `RecurringJob`, plus active CNPG Cluster plugins. The
-render-time patches are the primary safety control; admission is there to fail
-closed if a future manifest reintroduces a writer or archive-backed active
-plugin.
-
-## Real Cluster Bootstrap
-
-### Live Ansible Wrapper
-
-The physical-node Ansible wrapper lives in `hack/bootstrap/ansible/`. It uses
-the in-repo `home-ops` backend by default and renders site-specific inventory
-and values from home-ops. The external `../k3s-ansible` checkout remains
-available as an explicit compatibility backend with
-`BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible`.
-
-Render the live plan without changing nodes:
-
-```sh
-just bootstrap-live-ansible-plan
-```
-
-Render through the external compatibility backend:
-
-```sh
-BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just bootstrap-live-ansible-plan
-```
-
-This writes non-secret generated inventory under
-`hack/bootstrap/.out/ansible-live/` and prints the target hosts, first
-control-plane node, K3s version, Cilium version/config, kube-vip tag, and API
-endpoint.
-
-The live `k3s_token` is stored in 1Password at:
+The app recipes set:
 
 ```text
-op://Kubernetes/k3s-bootstrap/k3s_token
+LIMA_AGENT_COUNT=4
+LIMA_AGENT_CPUS=4
+LIMA_AGENT_MEMORY_GIB=6
+LIMA_DISK_GIB=120
+LIMA_VALIDATE_APP_WAIT_SECONDS=3600
 ```
 
-For an existing cluster, import the already-running server token explicitly
-before the first wrapper-managed run:
+The app-profile preflight requires at least `100GiB` allocatable ephemeral
+storage per schedulable worker.
+
+To test app manifests from an unmerged branch, push the branch first:
 
 ```sh
-just bootstrap-ansible-import-token
+LIMA_APPSET_TARGET_REVISION=feat/my-branch just lima-apps-fresh
 ```
 
-The import command reads the token from the first control-plane node and writes
-it to 1Password. It does not run Ansible or Kubernetes bootstrap and does not
-log the token.
+The `lima-apps` profile transforms `ApplicationSet/k3s-apps` before ArgoCD
+sees it. It first applies an infrastructure allowlist, waits for those apps,
+then releases the workload allowlist.
 
-Run Ansible convergence only:
+Allowlisted app Applications:
+
+- `cert-manager`
+- `cnpg-system`
+- `envoy-gateway-system`
+- `external-secrets`
+- `gateway`
+- `hass`
+- `kube-system`
+- `longhorn-system`
+- `powerdns`
+
+The Lima validator also expects explicit platform Applications such as
+`cilium` and `dragonfly-operator` to be healthy before app safety checks pass.
+
+The app profile must not create external writers:
+
+- `PushSecret` or `ClusterPushSecret`
+- ACME `Order` or `Challenge`
+- VolSync `ReplicationSource`
+- CNPG `Backup` or `ScheduledBackup`
+- active CNPG `Cluster.spec.plugins`
+- Velero backup resources
+- external-dns `DNSEndpoint`
+- Longhorn backup `RecurringJob`
+
+Render-time patches are the primary safety control. Lima-only
+`ValidatingAdmissionPolicy` resources are fail-closed guardrails.
+
+## Cilium And App Ordering
+
+Bootstrap withholds `ApplicationSet/k3s-apps` until Cilium takeover is ready.
+
+When Cilium CRDs exist, the ArgoCD phase applies Hubble CA resources and the
+explicit Cilium Application first. The wait phase then waits for Cilium sync,
+Hubble server and relay certificates, and Cilium health.
+
+If stale Hubble cert Secrets from the bootstrap install were replaced,
+bootstrap restarts Cilium and Hubble relay so they load the new certs.
+
+Before normal apps are released, bootstrap applies
+`apps/kube-system/external-snapshotter` so VolSync restore workloads have the
+snapshot CRDs and controller.
+
+Lima keeps Cilium masquerading enabled because user-mode networking cannot
+route pod CIDRs back to pods. The live cluster can route pod CIDRs and does not
+need that Lima-only setting.
+
+## Live Bootstrap Workflow
+
+The live wrapper uses the in-repo `home-ops` Ansible backend by default. It
+renders site-specific inventory and values from home-ops before running
+Ansible.
+
+The external `../k3s-ansible` checkout is still available for comparison:
 
 ```sh
-just bootstrap-live-ansible
+BOOTSTRAP_ANSIBLE_BACKEND=k3s-ansible just ansible-plan
 ```
 
-Run the Kubernetes bootstrap only, after K3s already exists:
+Render before mutating nodes:
 
 ```sh
-just bootstrap-live-kube default
+just ansible-plan
 ```
 
-Run both behind one wrapper-level confirmation prompt:
+For an existing cluster, import the already-running server token before the
+first wrapper-managed run:
 
 ```sh
-just bootstrap-live-full
+just ansible-import-token
 ```
 
-The live wrapper derives values that must match GitOps desired state, including
-the K3s version from `apps/system-upgrade`, Cilium Helm values from the explicit
-ArgoCD Application, Cilium BGP resources from `apps/kube-system/cilium`, and
-the kube-vip tag/API VIP from `apps/kube-system/kube-vip`. If the checked-in
-live overrides try to set one of those derived-owned values differently, the
-render fails instead of silently choosing one.
-
-Keep `../k3s-ansible` close to upstream when using the external compatibility
-backend. The wrapper does not require its sample defaults to match the homelab;
-it renders the homelab values as an overlay. The default `home-ops` backend
-does not use the external checkout.
-
-### Node Lifecycle
-
-Node lifecycle helpers live in `hack/bootstrap/nodes/` and are for existing
-clusters, not first-boot bootstrap. Worker lifecycle is intentionally split
-into explicit operator steps. Control-plane nodes support status, read-only
-delete preflight, drain, optional Longhorn eviction, delete, join, and
-uncordon:
+Run Ansible only:
 
 ```sh
-just node-live-status k3s-worker-0
-just node-live-control-plane-status k3s-master-0
-just node-live-control-plane-delete-preflight k3s-master-0
-just node-live-drain k3s-master-1
-just node-live-longhorn-evict k3s-master-1
-just node-live-delete k3s-master-1
-just node-live-refresh-ssh-host-key k3s-master-1
-just node-live-join k3s-master-1
-just node-live-uncordon k3s-master-1
-just node-live-drain k3s-worker-0
-just node-live-longhorn-evict k3s-worker-0
-just node-live-delete k3s-worker-0
-just node-live-refresh-ssh-host-key k3s-worker-0
-just node-live-join k3s-worker-0
-just node-live-uncordon k3s-worker-0
+just ansible-run
 ```
 
-The Lima equivalents use the `node-lima-*` group:
+Run Kubernetes bootstrap only after K3s exists. It targets the active kube
+context:
 
 ```sh
+just bootstrap
+```
+
+Run Ansible and Kubernetes bootstrap together:
+
+```sh
+just ansible-bootstrap
+```
+
+The live wrapper derives values that must match GitOps desired state:
+
+- K3s version from `apps/system-upgrade`.
+- Cilium version and values from the explicit ArgoCD Application.
+- Cilium BGP resources from `apps/kube-system/cilium`.
+- kube-vip tag and API VIP from `apps/kube-system/kube-vip`.
+
+If checked-in live overrides conflict with a derived-owned value, rendering
+fails instead of silently choosing one.
+
+Initial K3s server args leave kube-proxy enabled so Ansible can complete before
+Cilium owns Service routing. The post-Cilium playbook disables kube-proxy when
+the derived Cilium config has `kube_proxy_replacement: true`.
+
+Generated live inventory, vars, kubeconfigs, and run output are written under
+`hack/bootstrap/.out/ansible-live/`.
+
+## Node Lifecycle
+
+Node lifecycle helpers are for existing clusters, not first boot.
+
+Live examples:
+
+```sh
+just node-list
+just node-status k3s-worker-0
+just node-pods k3s-worker-0
+just node-control-plane-status k3s-master-0
+just node-control-plane-delete-preflight k3s-master-0
+just node-drain k3s-worker-0
+just node-longhorn-evict k3s-worker-0
+just node-delete k3s-worker-0
+just node-refresh-ssh-host-key k3s-worker-0
+just node-join k3s-worker-0
+just node-uncordon k3s-worker-0
+```
+
+Lima examples:
+
+```sh
+just node-lima-list
 just node-lima-status home-ops-k3s-test-agent-1
+just node-lima-pods home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
 just node-lima-drain home-ops-k3s-test-server-2
@@ -384,175 +458,99 @@ just node-lima-delete home-ops-k3s-test-server-2
 just node-lima-refresh-ssh-host-key home-ops-k3s-test-server-2
 just node-lima-join home-ops-k3s-test-server-2
 just node-lima-uncordon home-ops-k3s-test-server-2
-just node-lima-drain home-ops-k3s-test-agent-1
-just node-lima-longhorn-evict home-ops-k3s-test-agent-1
-just node-lima-delete home-ops-k3s-test-agent-1
-just node-lima-refresh-ssh-host-key home-ops-k3s-test-agent-1
-just node-lima-join home-ops-k3s-test-agent-1
-just node-lima-uncordon home-ops-k3s-test-agent-1
 ```
 
-Control-plane drain, Longhorn eviction, and delete are guarded by the
-embedded-etcd member preflight.
-The control-plane status command is read-only and exists to validate that future
-procedure: it reports inventory/Ready quorum math and probes the selected server
-for K3s service state, datastore files, etcd listeners, and `etcdctl`
-availability. The home-ops Ansible backend derives the upstream `etcdctl`
-version from the K3s release's embedded Etcd version, verifies the release
-archive checksum, and installs `etcdctl` on control-plane nodes so
-embedded-etcd member inspection is available after node convergence.
-The control-plane delete preflight is also read-only. It queries etcd from an
-alternate Ready control-plane, maps the target node to exactly one etcd member,
-checks quorum math, and prints the future `etcdctl member remove` command
-without running it. Single-server Lima clusters cannot pass that HA preflight
-because there is no alternate etcd member to query.
+For normal maintenance or reboots, use drain and uncordon only.
+`longhorn-evict` is for node replacement.
 
-For normal node maintenance or reboots, run drain and then uncordon. Drain only
-requires ordinary workloads to move and Longhorn volumes to detach from the
-target node. It does not require every Longhorn volume to stay healthy, because
-three-replica volumes on exactly three storage nodes will be temporarily
-degraded while one node is drained.
+Control-plane delete is gated by read-only preflight, quorum checks, Longhorn
+eviction when installed, fresh K3s etcd snapshot creation, and explicit
+embedded-etcd member removal from a remaining control-plane.
 
-The delete step is deliberately conservative. Worker delete stops and disables
-`k3s-node` through Ansible before deleting the Kubernetes `Node` and the K3s
-node-password Secret, so the old node cannot immediately re-register.
-For control-plane nodes, run the same Longhorn eviction helper after drain and
-before delete when Longhorn is installed. Delete requires the node to be
-cordoned and empty, stops and disables `k3s`, rechecks the preflight from a
-remaining control-plane, creates a fresh K3s etcd snapshot, removes the target
-etcd member, then deletes the Kubernetes `Node` and node-password Secret. If
-the target is the first inventory master, live runs require the `default`
-context to use the stable API endpoint; Lima runs retarget the local API tunnel
-to an alternate Ready control-plane before stopping the target and may update
-the Lima kubeconfig context to a different local port if the default tunnel
-port is already occupied. For node replacement, run `node-*-longhorn-evict`
-after drain and before delete. The eviction helper disables Longhorn scheduling
-for the target, requests replica eviction, and fails before mutating anything if
-the remaining eligible storage nodes cannot hold the maximum configured replica
-count. Delete and eviction completion allow stopped stale target-node replica
-records only after the desired healthy replica count exists on other nodes.
-Delete also clears stale pod objects still bound to the removed node and waits
-for the Longhorn node resource to disappear before a same-name join can
-proceed.
+Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
+the node. Uncordon removes the temporary taint, waits for Cilium, checks
+Longhorn scheduling readiness, and restores scheduling.
 
-Join uses the generated home-ops Ansible playbook for the node role and starts
-the K3s service with `node.home-ops.sh/joining=true:NoSchedule`. First-master
-control-plane rejoin passes an alternate Ready control-plane InternalIP as the
-temporary K3s `--server` endpoint so the replacement does not try to join
-through itself. After the node object appears, the helper cordons it while
-Cilium settles. The uncordon helper removes the taint from the rendered K3s
-service and finalizes the server back to the normal stable endpoint, restarts
-the service if needed, removes the live taint, waits for Cilium, verifies
-Longhorn is ready to schedule on the node, uncordons, and then verifies
-Longhorn marks the node schedulable.
+## Live Validation
 
-Review the active context:
+Live bootstrap recipes use the active kube context. Switch to the intended
+context before running them, and inspect it first when in doubt.
+
+Check the live target explicitly when needed:
 
 ```sh
-kubectl config current-context
+just context default
 ```
 
-Dry-run against the current context:
+Run read-only bootstrap inventory against the active context:
+
+```sh
+just bootstrap-audit
+```
+
+Run server-side dry-run against the active context:
 
 ```sh
 just bootstrap-dry-run
 ```
 
-Run with confirmation prompts:
+This starts at `bootstrap-crds`, skips rollout waits, and validates rendered
+resources against the real API server, installed CRDs, admission webhooks, and
+RBAC. It does not prove first-boot timing because the live cluster already has
+CRDs, controllers, namespaces, and secrets.
+
+If the all-in-one dry-run stops on one object, continue coverage phase by
+phase:
 
 ```sh
-just bootstrap
+just bootstrap-phase dragonfly-operator
+just bootstrap-phase argocd-dependencies
+just bootstrap-phase argocd
+just bootstrap-phase wait-argocd
+just bootstrap-phase takeover-cleanup
 ```
 
-Run non-interactively after confirming the context is correct:
-
-```sh
-just bootstrap-yes
-```
-
-Run against an explicit local repo path:
-
-```sh
-just bootstrap /path/to/home-ops
-```
-
-## Live Cluster Validation
-
-Use the `default` context for the live homelab cluster unless kubeconfig has
-been changed deliberately:
-
-```sh
-kubectl --context default get nodes -o wide
-```
-
-Run a read-only inventory of Helm release storage, ArgoCD applications, and core
-deployments:
-
-```sh
-just bootstrap-live-audit default
-```
-
-Run the live API validation without reading the 1Password seed secret and
-without persisting changes:
-
-```sh
-just bootstrap-live-dry-run default
-```
-
-This starts at `bootstrap-crds`, uses server-side dry-run for rendered resources,
-and skips rollout waits. It validates the manifests against the real API server,
-installed CRDs, admission webhooks, and RBAC. It does not prove first-boot timing
-because the real cluster already has CRDs, controllers, namespaces, and secrets.
-Use a clean kind reset for first-boot ordering.
-
-Live dry-run can fail on existing managed-field ownership that does not affect
-the currently synced live cluster. For example, older resources may have fields
-owned by `argocd-controller` through an `Update` operation, and a server-side
-dry-run apply from the bootstrap script may report a conflict on that field. Treat
-that as managed-field drift to investigate, not as a bootstrap ordering failure.
-
-If the all-in-one dry-run stops on one object, continue coverage phase by phase:
-
-```sh
-just bootstrap-live-phase dragonfly-operator default
-just bootstrap-live-phase argocd-dependencies default
-just bootstrap-live-phase argocd default
-just bootstrap-live-phase wait-argocd default
-just bootstrap-live-phase takeover-cleanup default
-```
-
-Do not run a live non-dry-run bootstrap from an unmerged branch. For the live
-cluster, use dry-run from a branch and let merged `master` plus ArgoCD own
-steady-state changes.
+Managed-field conflicts in live dry-run are drift to investigate. They are not
+automatically bootstrap ordering failures.
 
 ## 1Password Seed Secret
 
-The seed phase creates `Secret/external-secrets/op-credentials`. The secret
-manifest is read from 1Password, validated, normalized to Secret `data`, and
-streamed to Kubernetes with server-side apply. It is not written to disk or
-included in the local run report, and the bootstrap removes any old
-`kubectl.kubernetes.io/last-applied-configuration` annotation from the seed
-Secret. This one apply path uses scoped server-side `--force-conflicts` because
-the 1Password item is authoritative for the bootstrap seed Secret and older
-clusters may have created it with client-side apply.
+The seed phase creates `Secret/external-secrets/op-credentials`.
 
-The seed phase first tries `op read`. If that fails and the run is interactive,
-it runs `op signin`, evaluates the returned session export inside the bootstrap
-process without logging it, and then retries the read. Only the Secret manifest
-is written to stdout for the YAML pipeline.
+The manifest is read from 1Password, validated, normalized to Secret `data`,
+and streamed to Kubernetes with server-side apply. It is not written to disk,
+logs, reports, or client-side last-applied annotations.
 
-If the automatic prompt is not appropriate, authenticate first:
+The seed apply uses narrow server-side `--force-conflicts` because the
+1Password item is authoritative and older clusters may have created the Secret
+with client-side apply.
+
+The seed phase tries `op read`. If that fails in an interactive run, it runs
+`op signin`, evaluates the returned session export inside the bootstrap
+process without logging it, and retries.
+
+That interactive fallback is scoped to the bootstrap process. If you want
+later bootstrap runs to avoid another password prompt, run the signin in your
+shell.
+
+If automatic `op` auth is not appropriate, authenticate first:
 
 ```sh
 eval "$(op signin)"
 ```
 
-Then rerun bootstrap. You can also pipe the seed manifest directly to bypass
-all script-managed `op` calls:
+For Lima, you can also pipe the seed manifest to a stdin recipe:
 
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \
-  | ./hack/bootstrap/bootstrap.sh --only-phase seed-secret --seed-secret-stdin --yes
+  | just lima-bootstrap-stdin
+```
+
+For Lima app-profile runs:
+
+```sh
+op read op://Kubernetes/op-credentials/op-credentials.yaml \
+  | just lima-apps-bootstrap-stdin
 ```
 
 Use `--op-account` only when multiple accounts require disambiguation. Prefer
@@ -560,7 +558,7 @@ the shorthand from `op account list`.
 
 ## Phases
 
-The runner logs each phase name and makes every phase idempotent:
+Bootstrap phases run in this order:
 
 1. `preflight`
 2. `seed-secret`
@@ -575,34 +573,40 @@ The runner logs each phase name and makes every phase idempotent:
 11. `takeover-cleanup`
 12. `audit`
 
-Run only one phase when debugging:
+For live phase debugging, use:
 
 ```sh
-./hack/bootstrap/bootstrap.sh --only-phase audit
+just bootstrap-phase argocd
 ```
 
-Start from a later phase:
+For current-context operation, the generic recipes are:
 
 ```sh
-./hack/bootstrap/bootstrap.sh --from-phase argocd --yes
+just bootstrap-dry-run
+just bootstrap
+just bootstrap-yes
 ```
 
 ## Reports
 
-Each run writes non-secret output under `hack/bootstrap/.out/`. The directory is
-gitignored. Use the report when comparing a kind test to a real-cluster run.
+Each run writes non-secret output under `hack/bootstrap/.out/`. The directory
+is gitignored.
+
+Use reports to compare kind, Lima, and live dry-run behavior. Secret manifests
+must never be written there.
 
 ## After Bootstrap
 
-On the real cluster, ArgoCD should own the steady-state sync after bootstrap.
-Check Application status:
+On the real cluster, ArgoCD should own steady-state sync after bootstrap.
 
-```sh
-kubectl -n argocd get applications.argoproj.io
-```
-
-Run the audit phase after takeover cleanup or after manual investigation:
+Start with:
 
 ```sh
 just bootstrap-audit
+```
+
+For direct ArgoCD status inspection:
+
+```sh
+just argocd-apps
 ```

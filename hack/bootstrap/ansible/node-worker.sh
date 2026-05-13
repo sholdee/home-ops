@@ -9,7 +9,7 @@ if [[ "${NODE_WORKER_ANSIBLE_INTERNAL:-}" != true ]]; then
     *" --help "*|*" -h "*)
       ;;
     *)
-      ansible_die "node-worker.sh is an internal helper; use the node-live/node-lima just recipes"
+      ansible_die "node-worker.sh is an internal helper; use the node-* or node-lima-* just recipes"
       ;;
   esac
 fi
