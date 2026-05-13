@@ -190,6 +190,13 @@ EOF
   assert_output_contains 'stopping k3s server on k3s-master-1 before deleted-node cleanup'
   assert_output_contains 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0'
   assert_output_contains 'control-plane delete cleanup complete: k3s-master-1'
+
+  mkdir -p "${tmp}/blocked-control-plane-cleanup-state"
+  touch "${tmp}/blocked-control-plane-cleanup-state/deleted-k3s-master-1"
+  run env PATH="${tmp}:${PATH}" FAKE_KUBECTL_STATE_DIR="${tmp}/blocked-control-plane-cleanup-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
+  assert_failure
+  assert_output_contains 'refusing deleted-node cleanup because etcd still has 1 member(s) for k3s-master-1'
 }
 
 @test "control-plane join/uncordon and etcd membership checks fail closed" {

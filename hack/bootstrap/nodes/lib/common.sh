@@ -35,6 +35,11 @@ node_confirm() {
   [[ "$answer" == "$expected" ]] || node_die "confirmation failed"
 }
 
+node_indent_block() {
+  while IFS= read -r line; do
+    printf '  %s\n' "$line"
+  done
+}
 
 node_contains_line() {
   local needle="$1"
@@ -71,4 +76,30 @@ node_filter_ansible_probe_output() {
     /^\[WARNING\]: / {next}
     {print}
   '
+}
+
+node_run_remote_shell() {
+  local inventory_file="$1"
+  local inventory_node="$2"
+  local remote_script="$3"
+  local output filtered_output
+
+  if output="$(
+    ANSIBLE_HOST_KEY_CHECKING=False \
+    ANSIBLE_PYTHON_INTERPRETER=auto_silent \
+      ansible -i "$inventory_file" "$inventory_node" \
+        --become \
+        -m ansible.builtin.shell \
+        -a "$remote_script" 2>&1
+  )"; then
+    node_filter_ansible_probe_output "$inventory_node" <<<"$output"
+    return 0
+  fi
+
+  filtered_output="$(node_filter_ansible_probe_output "$inventory_node" <<<"$output")"
+  {
+    printf 'remote_probe:\n'
+    node_indent_block <<<"$filtered_output"
+  } >&2
+  return 1
 }
