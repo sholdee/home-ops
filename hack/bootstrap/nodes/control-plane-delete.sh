@@ -249,11 +249,8 @@ node_assert_inventory_control_plane "$inventory_node_name" "$inventory_role"
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
 inventory_file="$(node_ansible_inventory_file "$profile")"
 preflight_script="${NODE_SCRIPT_DIR}/control-plane-delete-preflight.sh"
-first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
-if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-  node_die "control-plane delete for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
-fi
 
+node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 if [[ -z "$node_json" ]]; then
@@ -286,6 +283,9 @@ node_confirm "$yes" "delete control-plane node ${kubernetes_node_name} from ${co
 
 node_log "stopping k3s server on ${inventory_node_name}"
 node_stop_k3s_server "$profile" "$inventory_node_name"
+
+node_log "waiting for Kubernetes API after stopping ${kubernetes_node_name}"
+node_wait_for_api_reachable "$context" 180
 
 node_log "rechecking control-plane delete preflight after stopping ${kubernetes_node_name}"
 post_stop_preflight_output="$("$preflight_script" --profile "$profile" --context "$context" "$node_name")"

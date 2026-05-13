@@ -10,6 +10,7 @@ NODE_KUBECTL_BIN="${NODE_KUBECTL_BIN:-kubectl}"
 NODE_YQ_BIN="${NODE_YQ_BIN:-yq}"
 NODE_JQ_BIN="${NODE_JQ_BIN:-jq}"
 NODE_JOINING_TAINT_KEY="node.home-ops.sh/joining"
+NODE_LIMA_KUBECONFIG_PORT="${NODE_LIMA_KUBECONFIG_PORT:-${LIMA_KUBECONFIG_PORT:-16443}}"
 
 node_die() {
   printf 'ERROR: %s\n' "$*" >&2
@@ -204,6 +205,18 @@ node_inventory_group_names() {
     "$inventory"
 }
 
+node_first_inventory_master() {
+  node_inventory_group_names "$1" master | sed -n '1p'
+}
+
+node_is_first_inventory_master() {
+  local profile="$1"
+  local inventory_node="$2"
+  local first_inventory_master
+  first_inventory_master="$(node_first_inventory_master "$profile")"
+  [[ -n "$first_inventory_master" && "$inventory_node" == "$first_inventory_master" ]]
+}
+
 node_inventory_group_count() {
   local profile="$1"
   local group="$2"
@@ -289,6 +302,85 @@ node_assert_api_reachable() {
   local context="$1"
   node_kubectl "$context" get --raw=/readyz >/dev/null 2>&1 ||
     node_die "Kubernetes context is not reachable: ${context}"
+}
+
+node_wait_for_api_reachable() {
+  local context="$1"
+  local timeout="${2:-180}"
+  local deadline=$((SECONDS + timeout))
+
+  while true; do
+    if (node_assert_api_reachable "$context") >/dev/null 2>&1; then
+      return 0
+    fi
+    ((SECONDS < deadline)) || node_assert_api_reachable "$context"
+    sleep 5
+  done
+}
+
+node_context_cluster_server() {
+  local context="$1"
+  local config_json cluster_name server
+
+  config_json="$("$NODE_KUBECTL_BIN" config view -o json)"
+  # shellcheck disable=SC2016
+  cluster_name="$("$NODE_JQ_BIN" -r --arg context "$context" '
+    (.contexts[]? | select(.name == $context) | .context.cluster) // ""
+  ' <<<"$config_json")"
+  [[ -n "$cluster_name" && "$cluster_name" != "null" ]] ||
+    node_die "could not find kubeconfig context: ${context}"
+  # shellcheck disable=SC2016
+  server="$("$NODE_JQ_BIN" -r --arg cluster "$cluster_name" '
+    (.clusters[]? | select(.name == $cluster) | .cluster.server) // ""
+  ' <<<"$config_json")"
+  [[ -n "$server" && "$server" != "null" ]] ||
+    node_die "could not find kubeconfig server for context: ${context}"
+  printf '%s\n' "$server"
+}
+
+node_url_host() {
+  local url="$1"
+  local host
+
+  host="${url#*://}"
+  host="${host%%/*}"
+  host="${host%%:*}"
+  host="${host#[}"
+  host="${host%]}"
+  printf '%s\n' "$host"
+}
+
+node_assert_live_first_master_api_is_stable() {
+  local profile="$1"
+  local context="$2"
+  local inventory_node="$3"
+  local kubernetes_node="$4"
+  local server server_host target_ansible_host node_json node_internal_ip
+
+  [[ "$profile" == live ]] || return 0
+  node_is_first_inventory_master "$profile" "$inventory_node" || return 0
+
+  server="$(node_context_cluster_server "$context")"
+  server_host="$(node_url_host "$server")"
+  case "$server_host" in
+    localhost|127.*|::1)
+      node_die "live first-master lifecycle requires a stable API endpoint; kubeconfig server is local: ${server}"
+      ;;
+  esac
+
+  target_ansible_host="$(node_inventory_value "$profile" "$inventory_node" ansible_host 2>/dev/null || true)"
+  node_json="$(node_node_json_if_present "$context" "$kubernetes_node")"
+  node_internal_ip=""
+  if [[ -n "$node_json" ]]; then
+    node_internal_ip="$(node_ready_control_plane_internal_ip "$context" "$kubernetes_node")"
+  fi
+
+  if [[ "$server_host" == "$inventory_node" ||
+    "$server_host" == "$kubernetes_node" ||
+    (-n "$target_ansible_host" && "$server_host" == "$target_ansible_host") ||
+    (-n "$node_internal_ip" && "$server_host" == "$node_internal_ip") ]]; then
+    node_die "live first-master lifecycle requires a stable API endpoint; kubeconfig server points at target node ${kubernetes_node}: ${server}"
+  fi
 }
 
 node_node_json_if_present() {
@@ -1835,6 +1927,7 @@ node_run_control_plane_ansible_action() {
   local profile="$1"
   local inventory_node="$2"
   local action="$3"
+  local join_ip="${4:-}"
   local -a args
 
   args=(--profile "$profile" --action "$action")
@@ -1846,6 +1939,9 @@ node_run_control_plane_ansible_action() {
       args+=(--inventory-dir "$NODE_LIMA_INVENTORY_DIR")
       ;;
   esac
+  if [[ -n "$join_ip" ]]; then
+    args+=(--join-ip "$join_ip")
+  fi
 
   NODE_CONTROL_PLANE_ANSIBLE_INTERNAL=true "${BOOTSTRAP_DIR}/ansible/node-control-plane.sh" "${args[@]}" "$inventory_node"
 }
@@ -2006,4 +2102,174 @@ node_ready_control_planes() {
     | select(any(.status.conditions[]?; .type == "Ready" and .status == "True"))
     | .metadata.name
   ' <<<"$nodes_json"
+}
+
+node_ready_control_plane_internal_ip() {
+  local context="$1"
+  local node="$2"
+  local node_json
+
+  node_json="$(node_node_json_if_present "$context" "$node")"
+  [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${node}"
+  "$NODE_JQ_BIN" -r '
+    [
+      .status.addresses[]?
+      | select(.type == "InternalIP")
+      | .address
+    ] | first // ""
+  ' <<<"$node_json"
+}
+
+node_alternate_ready_control_plane_inventory_node() {
+  local profile="$1"
+  local context="$2"
+  local target_kubernetes_node="$3"
+  local allow_inventory_fallback="${4:-false}"
+  local inventory_master probe_kubernetes_node
+  local -a inventory_masters ready_control_planes
+
+  mapfile -t inventory_masters < <(node_inventory_group_names "$profile" master)
+  mapfile -t ready_control_planes < <(node_ready_control_planes "$context")
+
+  for inventory_master in "${inventory_masters[@]}"; do
+    probe_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_master" "$inventory_master")"
+    if [[ "$probe_kubernetes_node" != "$target_kubernetes_node" ]] &&
+      node_contains_line "$probe_kubernetes_node" "${ready_control_planes[@]}"; then
+      printf '%s\n' "$inventory_master"
+      return 0
+    fi
+  done
+
+  if node_bool "$allow_inventory_fallback"; then
+    for inventory_master in "${inventory_masters[@]}"; do
+      probe_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_master" "$inventory_master")"
+      if [[ "$probe_kubernetes_node" != "$target_kubernetes_node" ]]; then
+        printf '%s\n' "$inventory_master"
+        return 0
+      fi
+    done
+  fi
+
+  return 1
+}
+
+node_alternate_ready_control_plane_internal_ip() {
+  local profile="$1"
+  local context="$2"
+  local target_kubernetes_node="$3"
+  local alternate_inventory_node alternate_kubernetes_node alternate_internal_ip
+
+  alternate_inventory_node="$(node_alternate_ready_control_plane_inventory_node "$profile" "$context" "$target_kubernetes_node")" ||
+    node_die "no alternate Ready control-plane node is available for ${target_kubernetes_node}"
+  alternate_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$alternate_inventory_node" "$alternate_inventory_node")"
+  alternate_internal_ip="$(node_ready_control_plane_internal_ip "$context" "$alternate_kubernetes_node")"
+  [[ -n "$alternate_internal_ip" && "$alternate_internal_ip" != "null" ]] ||
+    node_die "could not determine InternalIP for alternate control-plane node: ${alternate_kubernetes_node}"
+  printf '%s\n' "$alternate_internal_ip"
+}
+
+node_lima_out_dir() {
+  printf '%s\n' "$(dirname "$NODE_LIMA_INVENTORY_DIR")"
+}
+
+node_lima_tunnel_pid_file() {
+  printf '%s/apiserver-tunnel.pid\n' "$(node_lima_out_dir)"
+}
+
+node_lima_tunnel_port_open() {
+  local port="$1"
+  command -v nc >/dev/null 2>&1 || return 1
+  nc -z 127.0.0.1 "$port" >/dev/null 2>&1
+}
+
+node_stop_lima_api_tunnel() {
+  local pid_file pid
+  pid_file="$(node_lima_tunnel_pid_file)"
+  [[ -f "$pid_file" ]] || return 0
+  pid="$(<"$pid_file")"
+  if [[ -n "$pid" ]]; then
+    kill "$pid" >/dev/null 2>&1 || true
+  fi
+  rm -f "$pid_file"
+}
+
+node_start_lima_api_tunnel_to_inventory_node() {
+  local inventory_node="$1"
+  local context="$2"
+  local ssh_config pid_file pid port candidate_port cluster_name
+
+  node_require_tool ssh
+  node_require_tool nc
+  node_require_tool "$NODE_KUBECTL_BIN"
+  node_require_tool "$NODE_JQ_BIN"
+  ssh_config="${HOME}/.lima/${inventory_node}/ssh.config"
+  [[ -f "$ssh_config" ]] || node_die "missing Lima SSH config for ${inventory_node}: ${ssh_config}"
+  pid_file="$(node_lima_tunnel_pid_file)"
+
+  node_stop_lima_api_tunnel
+  port=""
+  for candidate_port in $(seq "$NODE_LIMA_KUBECONFIG_PORT" $((NODE_LIMA_KUBECONFIG_PORT + 20))); do
+    if ! node_lima_tunnel_port_open "$candidate_port"; then
+      port="$candidate_port"
+      break
+    fi
+  done
+  [[ -n "$port" ]] || node_die "could not find an available local port for Lima API handoff"
+
+  mkdir -p "$(node_lima_out_dir)"
+  ssh -F "$ssh_config" -N \
+    -L "127.0.0.1:${port}:127.0.0.1:6443" \
+    "lima-${inventory_node}" &
+  pid="$!"
+  printf '%s\n' "$pid" > "$pid_file"
+  for _ in $(seq 1 30); do
+    if node_lima_tunnel_port_open "$port"; then
+      # shellcheck disable=SC2016
+      cluster_name="$("$NODE_KUBECTL_BIN" config view -o json |
+        "$NODE_JQ_BIN" -r --arg context "$context" '
+          (.contexts[]? | select(.name == $context) | .context.cluster) // $context
+        ')"
+      "$NODE_KUBECTL_BIN" config set-cluster "$cluster_name" \
+        --server="https://127.0.0.1:${port}" \
+        --insecure-skip-tls-verify=true >/dev/null
+      "$NODE_KUBECTL_BIN" config unset "clusters.${cluster_name}.certificate-authority-data" >/dev/null 2>&1 || true
+      printf '%s\n' "$pid"
+      return 0
+    fi
+    sleep 1
+  done
+  kill "$pid" >/dev/null 2>&1 || true
+  rm -f "$pid_file"
+  node_die "timed out waiting for Lima API tunnel through ${inventory_node}"
+}
+
+node_handoff_first_master_api_if_needed() {
+  local profile="$1"
+  local context="$2"
+  local inventory_node="$3"
+  local kubernetes_node="$4"
+  local alternate_inventory_node alternate_kubernetes_node alternate_node_json
+
+  node_is_first_inventory_master "$profile" "$inventory_node" || return 0
+
+  case "$profile" in
+    lima)
+      alternate_inventory_node="$(node_alternate_ready_control_plane_inventory_node "$profile" "$context" "$kubernetes_node" true)" ||
+        node_die "no alternate inventory control-plane is available for API handoff"
+      alternate_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$alternate_inventory_node" "$alternate_inventory_node")"
+      node_log "retargeting Lima API tunnel from first master ${inventory_node} to ${alternate_inventory_node}"
+      node_start_lima_api_tunnel_to_inventory_node "$alternate_inventory_node" "$context" >/dev/null
+      node_assert_api_reachable "$context"
+      alternate_node_json="$(node_node_json_if_present "$context" "$alternate_kubernetes_node")"
+      [[ -n "$alternate_node_json" ]] ||
+        node_die "Lima API tunnel handoff did not reach alternate control-plane node: ${alternate_kubernetes_node}"
+      node_assert_kubernetes_control_plane "$alternate_node_json" "$alternate_kubernetes_node"
+      node_assert_ready "$alternate_node_json" "$alternate_kubernetes_node"
+      ;;
+    live)
+      node_assert_live_first_master_api_is_stable "$profile" "$context" "$inventory_node" "$kubernetes_node"
+      node_log "first inventory master selected; live context must remain reachable through the stable API endpoint"
+      node_assert_api_reachable "$context"
+      ;;
+  esac
 }

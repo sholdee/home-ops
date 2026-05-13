@@ -61,8 +61,8 @@ node_require_tool "$NODE_JQ_BIN"
 
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
-first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
 
+node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${kubernetes_node_name}"
@@ -70,9 +70,6 @@ node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 case "$inventory_role" in
   master)
     node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
-    if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-      node_die "Longhorn eviction for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
-    fi
     node_log "running control-plane delete preflight before Longhorn eviction"
     "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/control-plane-delete-preflight.sh" \
       --profile "$profile" \

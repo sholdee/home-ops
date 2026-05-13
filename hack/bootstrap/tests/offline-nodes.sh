@@ -133,6 +133,27 @@ if [[ "${1:-}" == "--context" ]]; then
   shift 2
 fi
 
+if [[ "${1:-}" == "config" && "${2:-}" == "view" ]]; then
+  server="${FAKE_CLUSTER_SERVER:-https://192.168.99.77:6443}"
+  cat <<JSON
+{
+  "contexts": [
+    {
+      "name": "test",
+      "context": {"cluster": "test-cluster"}
+    }
+  ],
+  "clusters": [
+    {
+      "name": "test-cluster",
+      "cluster": {"server": "${server}"}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
 if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
   printf 'ok\n'
   exit 0
@@ -246,6 +267,27 @@ if [[ "${1:-}" == "--context" ]]; then
   shift 2
 fi
 
+if [[ "${1:-}" == "config" && "${2:-}" == "view" ]]; then
+  server="${FAKE_CLUSTER_SERVER:-https://192.168.99.77:6443}"
+  cat <<JSON
+{
+  "contexts": [
+    {
+      "name": "test",
+      "context": {"cluster": "test-cluster"}
+    }
+  ],
+  "clusters": [
+    {
+      "name": "test-cluster",
+      "cluster": {"server": "${server}"}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
 state_dir="${FAKE_KUBECTL_STATE_DIR:-}"
 
 node_is_deleted() {
@@ -263,7 +305,9 @@ if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
     printf 'Error from server (NotFound): nodes "%s" not found\n' "$node_name" >&2
     exit 1
   fi
-  sed "s/__NODE_NAME__/${node_name}/g" <<'JSON'
+  node_index="${node_name##*-}"
+  node_ip="192.168.99.1${node_index}"
+  sed -e "s/__NODE_NAME__/${node_name}/g" -e "s/__NODE_IP__/${node_ip}/g" <<'JSON'
 {
   "metadata": {
     "name": "__NODE_NAME__",
@@ -273,6 +317,9 @@ if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
     "unschedulable": true
   },
   "status": {
+    "addresses": [
+      {"type": "InternalIP", "address": "__NODE_IP__"}
+    ],
     "conditions": [
       {"type": "Ready", "status": "True"}
     ]
@@ -465,6 +512,35 @@ grep -q '^preflight_result: pass$' <<<"$control_plane_preflight_output"
 grep -q '  id: c9e409fd1205cc0a$' <<<"$control_plane_preflight_output"
 grep -q 'member remove c9e409fd1205cc0a' <<<"$control_plane_preflight_output"
 
+alternate_join_ip="$(
+  PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_alternate_ready_control_plane_internal_ip live test k3s-master-0"
+)"
+test "$alternate_join_ip" = "192.168.99.11"
+
+fake_bootstrap="${tmp}/fake-bootstrap"
+mkdir -p "${fake_bootstrap}/ansible"
+cat > "${fake_bootstrap}/ansible/node-control-plane.sh" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >"${FAKE_NODE_CONTROL_PLANE_ARGS:?}"
+test "${NODE_CONTROL_PLANE_ANSIBLE_INTERNAL:-}" = true
+EOF
+chmod +x "${fake_bootstrap}/ansible/node-control-plane.sh"
+FAKE_NODE_CONTROL_PLANE_ARGS="${tmp}/node-control-plane.args" \
+NODE_LIVE_INVENTORY_DIR="$inventory" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; BOOTSTRAP_DIR='${fake_bootstrap}'; node_run_control_plane_ansible_action live k3s-master-0 join 192.168.99.11"
+grep -q -- '--join-ip 192.168.99.11' "${tmp}/node-control-plane.args"
+FAKE_NODE_CONTROL_PLANE_ARGS="${tmp}/node-control-plane-finalize.args" \
+NODE_LIVE_INVENTORY_DIR="$inventory" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; BOOTSTRAP_DIR='${fake_bootstrap}'; node_run_control_plane_ansible_action live k3s-master-0 finalize"
+if grep -q -- '--join-ip' "${tmp}/node-control-plane-finalize.args"; then
+  echo "finalize action should render the stable endpoint, not a temporary join IP" >&2
+  exit 1
+fi
+
 control_plane_drain_output="$(
   PATH="${tmp}:${PATH}" \
   NODE_LIVE_INVENTORY_DIR="$inventory" \
@@ -476,14 +552,33 @@ grep -q 'preflight_result: pass' <<<"$control_plane_drain_output"
 grep -q 'drain complete: k3s-master-0' <<<"$control_plane_drain_output"
 
 if PATH="${tmp}:${PATH}" \
+  FAKE_CLUSTER_SERVER=https://192.168.99.10:6443 \
   NODE_LIVE_INVENTORY_DIR="$inventory" \
   NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
   "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0 \
-  2>"${tmp}/first-master-delete.err"; then
-  echo "expected first inventory master delete to be refused" >&2
+  2>"${tmp}/first-master-direct-api.err"; then
+  echo "expected first inventory master delete to reject target-node API endpoint" >&2
   exit 1
 fi
-grep -q 'first inventory master is deferred' "${tmp}/first-master-delete.err"
+grep -q 'live first-master lifecycle requires a stable API endpoint' "${tmp}/first-master-direct-api.err" || {
+  cat "${tmp}/first-master-direct-api.err" >&2
+  exit 1
+}
+
+mkdir -p "${tmp}/first-control-plane-state"
+first_control_plane_delete_output="$(
+  PATH="${tmp}:${PATH}" \
+  FAKE_KUBECTL_STATE_DIR="${tmp}/first-control-plane-state" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0
+)"
+
+grep -q 'first inventory master selected; live context must remain reachable through the stable API endpoint' <<<"$first_control_plane_delete_output"
+grep -q 'snapshot_name=pre-remove-k3s-master-0-' <<<"$first_control_plane_delete_output"
+grep -q 'Member c9e409fd1205cc0a removed from cluster' <<<"$first_control_plane_delete_output"
+grep -q 'node "k3s-master-0" deleted' <<<"$first_control_plane_delete_output"
+grep -q 'control-plane delete complete: k3s-master-0' <<<"$first_control_plane_delete_output"
 
 mkdir -p "${tmp}/control-plane-state"
 control_plane_delete_output="$(
@@ -517,20 +612,21 @@ if PATH="${tmp}:${PATH}" \
   NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
   "${ROOT}/hack/bootstrap/nodes/control-plane-join.sh" --profile live --context test --yes k3s-master-0 \
   2>"${tmp}/first-master-join.err"; then
-  echo "expected first inventory master join to be refused" >&2
+  echo "expected first inventory master join to fail because the node already exists" >&2
   exit 1
 fi
-grep -q 'first inventory master is deferred' "${tmp}/first-master-join.err"
+grep -q 'Kubernetes node already exists' "${tmp}/first-master-join.err"
 
 if PATH="${tmp}:${PATH}" \
+  FAKE_KUBECTL_STATE_DIR="${tmp}/first-control-plane-state" \
   NODE_LIVE_INVENTORY_DIR="$inventory" \
   NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
   "${ROOT}/hack/bootstrap/nodes/control-plane-uncordon.sh" --profile live --context test --yes k3s-master-0 \
   2>"${tmp}/first-master-uncordon.err"; then
-  echo "expected first inventory master uncordon to be refused" >&2
+  echo "expected first inventory master uncordon to fail because the node is absent" >&2
   exit 1
 fi
-grep -q 'first inventory master is deferred' "${tmp}/first-master-uncordon.err"
+grep -q 'Kubernetes node is absent' "${tmp}/first-master-uncordon.err"
 
 absent_member_output="$(
   PATH="${tmp}:${PATH}" \
@@ -727,10 +823,10 @@ if PATH="${tmp}:${PATH}" \
   NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
   "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --profile live --context test --yes k3s-master-0 \
   2>"${tmp}/first-master-longhorn-evict.err"; then
-  echo "expected first inventory master Longhorn eviction to be refused" >&2
+  echo "expected first inventory master Longhorn eviction to fail when Longhorn is absent" >&2
   exit 1
 fi
-grep -q 'first inventory master is deferred' "${tmp}/first-master-longhorn-evict.err"
+grep -q 'Longhorn is not installed in test' "${tmp}/first-master-longhorn-evict.err"
 
 if PATH="${tmp}:${PATH}" \
   NODE_LIVE_INVENTORY_DIR="$inventory" \

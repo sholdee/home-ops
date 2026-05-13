@@ -207,7 +207,7 @@ node-live-longhorn-evict node:
 node-live-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile live '{{ node }}'
 
-# Join a live worker or non-first control-plane node from inventory with a temporary scheduling taint.
+# Join a live worker or control-plane node from inventory with a temporary scheduling taint.
 [group('node-live')]
 node-live-join node:
     ./hack/bootstrap/nodes/join.sh --profile live --context default '{{ node }}'
@@ -327,7 +327,7 @@ node-lima-longhorn-evict node:
 node-lima-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile lima '{{ node }}'
 
-# Join a Lima worker or non-first control-plane node from inventory with a temporary scheduling taint.
+# Join a Lima worker or control-plane node from inventory with a temporary scheduling taint.
 [group('node-lima')]
 node-lima-join node:
     ./hack/bootstrap/nodes/join.sh --profile lima --context '{{ lima_context }}' '{{ node }}'

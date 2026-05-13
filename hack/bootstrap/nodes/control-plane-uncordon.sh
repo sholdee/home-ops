@@ -63,11 +63,8 @@ node_require_tool ansible
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
 node_assert_inventory_control_plane "$inventory_node_name" "$inventory_role"
 kubernetes_node_name="$(node_expected_kubernetes_node_name "$profile" "$inventory_node_name" "$node_name")"
-first_inventory_master="$(node_inventory_group_names "$profile" master | sed -n '1p')"
-if [[ "$inventory_node_name" == "$first_inventory_master" ]]; then
-  node_die "control-plane uncordon for the first inventory master is deferred until API context handoff is implemented: ${inventory_node_name}"
-fi
 
+node_handoff_first_master_api_if_needed "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 node_assert_api_reachable "$context"
 node_json="$(node_node_json_if_present "$context" "$kubernetes_node_name")"
 [[ -n "$node_json" ]] || node_die "Kubernetes node is absent: ${kubernetes_node_name}"
