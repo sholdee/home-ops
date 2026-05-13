@@ -5,8 +5,9 @@ node_assert_control_plane_etcd_member_absent() {
   local context="$2"
   local inventory_node_name="$3"
   local kubernetes_node_name="$4"
+  local absent_message_prefix="${5:-etcd still has}"
   local inventory_file target_ansible_host probe_inventory_node probe_kubernetes_node remote_member_list
-  local remote_output filtered_remote_output member_lines member_line
+  local filtered_remote_output member_lines member_line
   local _member_id _member_status member_name member_peer_urls member_client_urls _member_is_learner _
   local matched_member_count=0
   local -a inventory_masters ready_control_planes
@@ -58,29 +59,13 @@ printf 'etcd_member_simple_end\n'
 EOF
 
   node_log "verifying ${kubernetes_node_name} is absent from etcd membership using ${probe_inventory_node}"
-  if remote_output="$(
-    ANSIBLE_HOST_KEY_CHECKING=False \
-    ANSIBLE_PYTHON_INTERPRETER=auto_silent \
-      ansible -i "$inventory_file" "$probe_inventory_node" \
-        --become \
-        -m ansible.builtin.shell \
-        -a "$remote_member_list" 2>&1
-  )"; then
-    filtered_remote_output="$(node_filter_ansible_probe_output "$probe_inventory_node" <<<"$remote_output")"
-  else
-    filtered_remote_output="$(node_filter_ansible_probe_output "$probe_inventory_node" <<<"$remote_output")"
-    printf 'remote_probe:\n'
-    while IFS= read -r line; do
-      printf '  %s\n' "$line"
-    done <<<"$filtered_remote_output"
+  if ! filtered_remote_output="$(node_run_remote_shell "$inventory_file" "$probe_inventory_node" "$remote_member_list")"; then
     node_die "failed to verify etcd membership from ${probe_inventory_node}"
   fi
 
   if grep -q '^member_list_error=' <<<"$filtered_remote_output"; then
     printf 'remote_probe:\n'
-    while IFS= read -r line; do
-      printf '  %s\n' "$line"
-    done <<<"$filtered_remote_output"
+    node_indent_block <<<"$filtered_remote_output"
     node_die "etcd member-list probe reported an error"
   fi
 
@@ -106,6 +91,7 @@ EOF
     fi
   done <<<"$member_lines"
 
-  ((matched_member_count == 0)) ||
-    node_die "etcd still has ${matched_member_count} member(s) for ${kubernetes_node_name}"
+  if ((matched_member_count != 0)); then
+    node_die "${absent_message_prefix} ${matched_member_count} member(s) for ${kubernetes_node_name}"
+  fi
 }
