@@ -1,24 +1,10 @@
-#!/usr/bin/env bash
-set -euo pipefail
+# shellcheck shell=bash
+# shellcheck disable=SC2154
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-
-require() {
-  command -v "$1" >/dev/null 2>&1 || {
-    echo "missing tool: $1" >&2
-    exit 1
-  }
-}
-
-require yq
-require jq
-
-tmp="$(mktemp -d)"
-trap 'rm -rf "$tmp"' EXIT
-
-inventory="${tmp}/inventory/live"
-mkdir -p "${inventory}/group_vars"
-cat > "${inventory}/hosts.yml" <<'EOF'
+create_node_inventory() {
+  inventory="${tmp}/inventory/live"
+  mkdir -p "${inventory}/group_vars"
+  cat > "${inventory}/hosts.yml" <<'EOF'
 ---
 all:
   children:
@@ -42,90 +28,16 @@ all:
               k3s_role: agent
 EOF
 
-cat > "${inventory}/group_vars/all.yml" <<'EOF'
+  cat > "${inventory}/group_vars/all.yml" <<'EOF'
 ---
 ansible_user: ethan
 ansible_ssh_private_key_file: ~/ansiblekey
 EOF
+}
 
-role_master="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_role live k3s-master-0"
-)"
-test "$role_master" = "master"
-
-role_worker="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_role live k3s-worker-0"
-)"
-test "$role_worker" = "node"
-
-role_absent="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_role live k3s-worker-9"
-)"
-test "$role_absent" = "absent"
-
-worker_host="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_value live k3s-worker-0 ansible_host"
-)"
-test "$worker_host" = "192.168.99.20"
-
-expanded_key="$(
-  HOME=/tmp/home \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_effective_ssh_key live k3s-worker-0"
-)"
-test "$expanded_key" = "/tmp/home/ansiblekey"
-
-resolved_worker="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_resolve_inventory_node live k3s-worker-0"
-)"
-test "$resolved_worker" = "$(printf 'k3s-worker-0\tnode')"
-
-master_count="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_inventory_group_count live master"
-)"
-test "$master_count" = "3"
-
-quorum_size="$(
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_etcd_quorum_size 3"
-)"
-test "$quorum_size" = "2"
-
-expected_lima_node="$(
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_expected_kubernetes_node_name lima home-ops-k3s-test-agent-1 home-ops-k3s-test-agent-1"
-)"
-test "$expected_lima_node" = "lima-home-ops-k3s-test-agent-1"
-
-live_context="$(bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_context_for_profile live")"
-test "$live_context" = "default"
-
-lima_context="$(
-  LIMA_CLUSTER_NAME=test-cluster \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_context_for_profile lima"
-)"
-test "$lima_context" = "lima-test-cluster"
-
-exact_joining_taint="$(
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_joining_taint_from_node_json" <<'JSON'
-{"spec":{"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"NoSchedule"}]}}
-JSON
-)"
-test "$exact_joining_taint" = "present"
-
-invalid_joining_taint="$(
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_joining_taint_from_node_json" <<'JSON'
-{"spec":{"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"PreferNoSchedule"}]}}
-JSON
-)"
-test "$invalid_joining_taint" = "invalid"
-
-fake_kubectl="${tmp}/kubectl"
-cat > "$fake_kubectl" <<'EOF'
+write_worker_status_kubectl() {
+  fake_kubectl="${tmp}/kubectl"
+  cat > "$fake_kubectl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -241,25 +153,12 @@ fi
 printf 'unexpected fake kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
-chmod +x "$fake_kubectl"
+  chmod +x "$fake_kubectl"
+}
 
-status_output="$(
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/status.sh" --profile live --context test k3s-worker-0
-)"
-
-grep -q '^inventory_role: node$' <<<"$status_output"
-grep -q '^kubernetes_role: node$' <<<"$status_output"
-grep -q '^ready: Ready$' <<<"$status_output"
-grep -q '^schedulable: cordoned$' <<<"$status_output"
-grep -q '^joining_taint: present$' <<<"$status_output"
-grep -q 'default/workload phase=Running owner=ReplicaSet' <<<"$status_output"
-grep -q 'cilium-one phase=Running ready=1/1' <<<"$status_output"
-grep -q 'installed: false' <<<"$status_output"
-
-fake_control_plane_kubectl="${tmp}/kubectl-control-plane"
-cat > "$fake_control_plane_kubectl" <<'EOF'
+write_control_plane_kubectl() {
+  fake_control_plane_kubectl="${tmp}/kubectl-control-plane"
+  cat > "$fake_control_plane_kubectl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -397,10 +296,12 @@ fi
 printf 'unexpected fake control-plane kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
-chmod +x "$fake_control_plane_kubectl"
+  chmod +x "$fake_control_plane_kubectl"
+}
 
-fake_ansible="${tmp}/ansible"
-cat > "$fake_ansible" <<'EOF'
+write_fake_ansible() {
+  fake_ansible="${tmp}/ansible"
+  cat > "$fake_ansible" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 target=""
@@ -483,173 +384,12 @@ printf 'etcd_endpoint_status_begin\n'
 printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9, 123, 123, \n'
 printf 'etcd_endpoint_status_end\n'
 EOF
-chmod +x "$fake_ansible"
-
-control_plane_output="$(
-  PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --profile live --context test k3s-master-0
-)"
-
-grep -q '^inventory_control_planes: k3s-master-0,k3s-master-1,k3s-master-2$' <<<"$control_plane_output"
-grep -q '^inventory_control_plane_count: 3$' <<<"$control_plane_output"
-grep -q '^ready_control_plane_count: 3$' <<<"$control_plane_output"
-grep -q '^etcd_quorum_size_from_inventory: 2$' <<<"$control_plane_output"
-grep -q 'embedded_etcd_data=present' <<<"$control_plane_output"
-
-control_plane_preflight_output="$(
-  PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --profile live --context test k3s-master-0
-)"
-
-grep -q '^probe_inventory_node: k3s-master-1$' <<<"$control_plane_preflight_output"
-grep -q '^etcd_member_count: 3$' <<<"$control_plane_preflight_output"
-grep -q '^post_remove_member_count: 2$' <<<"$control_plane_preflight_output"
-grep -q '^preflight_result: pass$' <<<"$control_plane_preflight_output"
-grep -q '  id: c9e409fd1205cc0a$' <<<"$control_plane_preflight_output"
-grep -q 'member remove c9e409fd1205cc0a' <<<"$control_plane_preflight_output"
-
-alternate_join_ip="$(
-  PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_alternate_ready_control_plane_internal_ip live test k3s-master-0"
-)"
-test "$alternate_join_ip" = "192.168.99.11"
-
-fake_bootstrap="${tmp}/fake-bootstrap"
-mkdir -p "${fake_bootstrap}/ansible"
-cat > "${fake_bootstrap}/ansible/node-control-plane.sh" <<'EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-printf '%s\n' "$*" >"${FAKE_NODE_CONTROL_PLANE_ARGS:?}"
-test "${NODE_CONTROL_PLANE_ANSIBLE_INTERNAL:-}" = true
-EOF
-chmod +x "${fake_bootstrap}/ansible/node-control-plane.sh"
-FAKE_NODE_CONTROL_PLANE_ARGS="${tmp}/node-control-plane.args" \
-NODE_LIVE_INVENTORY_DIR="$inventory" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; BOOTSTRAP_DIR='${fake_bootstrap}'; node_run_control_plane_ansible_action live k3s-master-0 join 192.168.99.11"
-grep -q -- '--join-ip 192.168.99.11' "${tmp}/node-control-plane.args"
-FAKE_NODE_CONTROL_PLANE_ARGS="${tmp}/node-control-plane-finalize.args" \
-NODE_LIVE_INVENTORY_DIR="$inventory" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; BOOTSTRAP_DIR='${fake_bootstrap}'; node_run_control_plane_ansible_action live k3s-master-0 finalize"
-if grep -q -- '--join-ip' "${tmp}/node-control-plane-finalize.args"; then
-  echo "finalize action should render the stable endpoint, not a temporary join IP" >&2
-  exit 1
-fi
-
-control_plane_drain_output="$(
-  PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/drain.sh" --profile live --context test --yes k3s-master-0
-)"
-
-grep -q 'preflight_result: pass' <<<"$control_plane_drain_output"
-grep -q 'drain complete: k3s-master-0' <<<"$control_plane_drain_output"
-
-if PATH="${tmp}:${PATH}" \
-  FAKE_CLUSTER_SERVER=https://192.168.99.10:6443 \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0 \
-  2>"${tmp}/first-master-direct-api.err"; then
-  echo "expected first inventory master delete to reject target-node API endpoint" >&2
-  exit 1
-fi
-grep -q 'live first-master lifecycle requires a stable API endpoint' "${tmp}/first-master-direct-api.err" || {
-  cat "${tmp}/first-master-direct-api.err" >&2
-  exit 1
+  chmod +x "$fake_ansible"
 }
 
-mkdir -p "${tmp}/first-control-plane-state"
-first_control_plane_delete_output="$(
-  PATH="${tmp}:${PATH}" \
-  FAKE_KUBECTL_STATE_DIR="${tmp}/first-control-plane-state" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0
-)"
-
-grep -q 'first inventory master selected; live context must remain reachable through the stable API endpoint' <<<"$first_control_plane_delete_output"
-grep -q 'snapshot_name=pre-remove-k3s-master-0-' <<<"$first_control_plane_delete_output"
-grep -q 'Member c9e409fd1205cc0a removed from cluster' <<<"$first_control_plane_delete_output"
-grep -q 'node "k3s-master-0" deleted' <<<"$first_control_plane_delete_output"
-grep -q 'control-plane delete complete: k3s-master-0' <<<"$first_control_plane_delete_output"
-
-mkdir -p "${tmp}/control-plane-state"
-control_plane_delete_output="$(
-  PATH="${tmp}:${PATH}" \
-  FAKE_KUBECTL_STATE_DIR="${tmp}/control-plane-state" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
-)"
-
-grep -q 'snapshot_name=pre-remove-k3s-master-1-' <<<"$control_plane_delete_output"
-grep -q 'Member 70594c7c481c118 removed from cluster' <<<"$control_plane_delete_output"
-grep -q 'node "k3s-master-1" deleted' <<<"$control_plane_delete_output"
-grep -q 'control-plane delete complete: k3s-master-1' <<<"$control_plane_delete_output"
-
-control_plane_cleanup_output="$(
-  PATH="${tmp}:${PATH}" \
-  FAKE_KUBECTL_STATE_DIR="${tmp}/control-plane-state" \
-  FAKE_ETCD_ABSENT_MEMBER_ID=70594c7c481c118 \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
-)"
-
-grep -q 'stopping k3s server on k3s-master-1 before deleted-node cleanup' <<<"$control_plane_cleanup_output"
-grep -q 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0' <<<"$control_plane_cleanup_output"
-grep -q 'control-plane delete cleanup complete: k3s-master-1' <<<"$control_plane_cleanup_output"
-
-if PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  "${ROOT}/hack/bootstrap/nodes/control-plane-join.sh" --profile live --context test --yes k3s-master-0 \
-  2>"${tmp}/first-master-join.err"; then
-  echo "expected first inventory master join to fail because the node already exists" >&2
-  exit 1
-fi
-grep -q 'Kubernetes node already exists' "${tmp}/first-master-join.err"
-
-if PATH="${tmp}:${PATH}" \
-  FAKE_KUBECTL_STATE_DIR="${tmp}/first-control-plane-state" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  "${ROOT}/hack/bootstrap/nodes/control-plane-uncordon.sh" --profile live --context test --yes k3s-master-0 \
-  2>"${tmp}/first-master-uncordon.err"; then
-  echo "expected first inventory master uncordon to fail because the node is absent" >&2
-  exit 1
-fi
-grep -q 'Kubernetes node is absent' "${tmp}/first-master-uncordon.err"
-
-absent_member_output="$(
-  PATH="${tmp}:${PATH}" \
-  FAKE_ETCD_ABSENT_MEMBER_ID=70594c7c481c118 \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_control_plane_etcd_member_absent live test k3s-master-1 k3s-master-1"
-)"
-grep -q 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0' <<<"$absent_member_output"
-
-if PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_control_plane_etcd_member_absent live test k3s-master-1 k3s-master-1" \
-  >"${tmp}/present-member.out" \
-  2>"${tmp}/present-member.err"; then
-  echo "expected present etcd member to block control-plane join" >&2
-  exit 1
-fi
-grep -q 'etcd still has 1 member(s) for k3s-master-1' "${tmp}/present-member.err"
-
-fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
-cat > "$fake_longhorn_kubectl" <<'EOF'
+write_deleted_node_longhorn_kubectl() {
+  fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
+  cat > "$fake_longhorn_kubectl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -793,67 +533,12 @@ fi
 printf 'unexpected fake Longhorn kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
-chmod +x "$fake_longhorn_kubectl"
+  chmod +x "$fake_longhorn_kubectl"
+}
 
-mkdir -p "${tmp}/longhorn-state"
-longhorn_cleanup_output="$(
-  FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" \
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_longhorn_deleted_node test deleted-node 1"
-)"
-grep -q 'deleting safe stale Longhorn replica stale-replica' <<<"$longhorn_cleanup_output"
-grep -q 'replica.longhorn.io "stale-replica" deleted' <<<"$longhorn_cleanup_output"
-grep -q 'node.longhorn.io "deleted-node" deleted' <<<"$longhorn_cleanup_output"
-
-if FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" \
-  FAKE_LONGHORN_MODE=blockers \
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test deleted-node" \
-  >"${tmp}/longhorn-blockers.out" \
-  2>"${tmp}/longhorn-blockers.err"; then
-  echo "expected Longhorn target-node blockers to fail delete safety" >&2
-  exit 1
-fi
-grep -q 'reason=volume-still-targets-node' "${tmp}/longhorn-blockers.err"
-grep -q 'reason=engine-still-targets-node' "${tmp}/longhorn-blockers.err"
-grep -q 'volume-b-e-0.*owner=deleted-node.*reason=engine-still-targets-node' "${tmp}/longhorn-blockers.err"
-
-if PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --profile live --context test --yes k3s-master-0 \
-  2>"${tmp}/first-master-longhorn-evict.err"; then
-  echo "expected first inventory master Longhorn eviction to fail when Longhorn is absent" >&2
-  exit 1
-fi
-grep -q 'Longhorn is not installed in test' "${tmp}/first-master-longhorn-evict.err"
-
-if PATH="${tmp}:${PATH}" \
-  NODE_LIVE_INVENTORY_DIR="$inventory" \
-  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
-  "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --profile live --context test --yes k3s-master-2 \
-  >"${tmp}/control-plane-longhorn-evict.out" \
-  2>"${tmp}/control-plane-longhorn-evict.err"; then
-  echo "expected control-plane Longhorn eviction to fail when Longhorn is absent" >&2
-  exit 1
-fi
-grep -q 'Longhorn is not installed in test' "${tmp}/control-plane-longhorn-evict.err"
-
-"${ROOT}/hack/bootstrap/nodes/drain.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/control-plane-delete.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/control-plane-join.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/control-plane-uncordon.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/uncordon.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/nodes/refresh-ssh-host-key.sh" --help >/dev/null
-"${ROOT}/hack/bootstrap/ansible/node-control-plane.sh" --help >/dev/null
-
-fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
-cat > "$fake_longhorn_kubectl" <<'EOF'
+write_eviction_longhorn_kubectl() {
+  fake_longhorn_kubectl="${tmp}/kubectl-longhorn-eviction"
+  cat > "$fake_longhorn_kubectl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -952,56 +637,14 @@ fi
 printf 'unexpected fake Longhorn kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
-chmod +x "$fake_longhorn_kubectl"
+  chmod +x "$fake_longhorn_kubectl"
+}
 
-if NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_eviction_feasible test k3s-worker-0" \
-  2>"${tmp}/longhorn-evict.err"; then
-  echo "expected Longhorn eviction feasibility to fail for 3 replicas on 2 remaining nodes" >&2
-  exit 1
-fi
-grep -q 'max volume replicas=3, eligible storage nodes after removing target=2' "${tmp}/longhorn-evict.err"
-
-longhorn_node_report="$(
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_node_report test k3s-worker-0"
-)"
-grep -q 'allowScheduling=false evictionRequested=true' <<<"$longhorn_node_report"
-
-longhorn_scheduling_problem="$(
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_scheduling_problem test k3s-worker-0"
-)"
-test -z "$longhorn_scheduling_problem"
-
-longhorn_replica_delete_blockers="$(
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_replica_delete_blockers test k3s-worker-0"
-)"
-test -z "$longhorn_replica_delete_blockers"
-
-NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test k3s-worker-0"
-
-if LONGHORN_REPLICA_CASE=insufficient \
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test k3s-worker-0" \
-  2>"${tmp}/longhorn-delete.err"; then
-  echo "expected Longhorn delete readiness to fail without enough healthy replicas elsewhere" >&2
-  exit 1
-fi
-grep -q 'reason=insufficient-healthy-replicas-elsewhere' "${tmp}/longhorn-delete.err"
-
-restore_scheduling_output="$(
-  NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"
-)"
-grep -q 'node.longhorn.io/k3s-worker-0 patched' <<<"$restore_scheduling_output"
-
-fake_stale_pods_kubectl="${tmp}/kubectl-stale-pods"
-stale_pods_state="${tmp}/stale-pods-present"
-touch "$stale_pods_state"
-cat > "$fake_stale_pods_kubectl" <<'EOF'
+write_stale_pods_kubectl() {
+  fake_stale_pods_kubectl="${tmp}/kubectl-stale-pods"
+  stale_pods_state="${tmp}/stale-pods-present"
+  touch "$stale_pods_state"
+  cat > "$fake_stale_pods_kubectl" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -1060,11 +703,5 @@ fi
 printf 'unexpected fake stale-pods kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
-chmod +x "$fake_stale_pods_kubectl"
-
-STALE_PODS_STATE="$stale_pods_state" \
-NODE_KUBECTL_BIN="$fake_stale_pods_kubectl" \
-  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_pods_for_deleted_node test k3s-worker-0"
-test ! -e "$stale_pods_state"
-
-echo "offline node lifecycle test passed"
+  chmod +x "$fake_stale_pods_kubectl"
+}
