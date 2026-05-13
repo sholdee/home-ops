@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/nodes/lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 usage() {
@@ -184,6 +184,6 @@ if [[ "$k8s_role" == control-plane ]]; then
   printf '\netcd:\n'
   printf '  status: deferred\n'
   printf '  note: use control-plane-status for embedded-etcd member introspection\n'
-  ready_control_planes="$(node_ready_control_planes "$context" | paste -sd ',' -)"
-  printf '  ready_control_planes: %s\n' "${ready_control_planes:-none}"
+  ready_control_plane_list="$(node_ready_control_planes "$context" | paste -sd ',' -)"
+  printf '  ready_control_planes: %s\n' "${ready_control_plane_list:-none}"
 fi

@@ -2,13 +2,13 @@
 set -euo pipefail
 
 BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/lib/common.sh
 source "${BOOTSTRAP_DIR}/lib/common.sh"
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/lib/k8s.sh
 source "${BOOTSTRAP_DIR}/lib/k8s.sh"
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/lib/render.sh
 source "${BOOTSTRAP_DIR}/lib/render.sh"
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/lib/reports.sh
 source "${BOOTSTRAP_DIR}/lib/reports.sh"
 
 PHASES=(

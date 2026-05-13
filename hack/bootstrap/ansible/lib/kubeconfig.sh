@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# shellcheck disable=SC2154
 
 ansible_prepare_kubeconfig() {
   local profile="$1"
