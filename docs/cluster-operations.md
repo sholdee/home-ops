@@ -1,7 +1,7 @@
-# Just Bootstrap Runbook
+# Cluster Operations Runbook
 
-This is the operator-facing runbook for the bootstrap recipes in the root
-`justfile`.
+This is the operator-facing runbook for bootstrap, validation, and node
+lifecycle recipes in the root `justfile`.
 
 Bootstrap has two jobs:
 

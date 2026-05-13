@@ -22,7 +22,7 @@ Key files:
 - `apps/argocd/manifests/apps.yaml`: explicit ArgoCD Application CRs
 - `apps/argocd/manifests/repos.yaml`: Helm repo credentials; add entries for new Application CR repos
 - `apps/monitoring/grafana/`: Grafana Operator instance, datasources, HTTPRoute, ExternalSecret, dashboards, and CNPG database
-- `docs/just-bootstrap.md`: `just` runbook for kind and live bootstrap validation
+- `docs/cluster-operations.md`: operator runbook for bootstrap, validation, and node lifecycle
 - `docs/howto-templates.md`: templates for apps, Helm, VolSync, secrets, routes, and Cilium policies
 - `hack/bootstrap/AGENTS.md`: bootstrap-specific safety and ordering rules
 - `justfile`: bootstrap and validation recipes
