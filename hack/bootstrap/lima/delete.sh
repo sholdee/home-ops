@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/lima/lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 lima_require_common_tools
 
-lima_stop_tunnel
+lima_stop_tunnel ""
 
 deleted_any=false
 for _ in $(seq 1 5); do

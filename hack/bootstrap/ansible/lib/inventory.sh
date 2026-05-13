@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# shellcheck disable=SC2154
 
 ansible_home_ops_cilium_tag() {
   local version

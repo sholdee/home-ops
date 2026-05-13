@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# shellcheck disable=SC1091
+# shellcheck source=hack/bootstrap/ansible/lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 if [[ "${NODE_CONTROL_PLANE_ANSIBLE_INTERNAL:-}" != true ]]; then

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck shell=bash
-# shellcheck disable=SC2154
 
 ansible_inventory_dir() {
   local profile="${1:-$BOOTSTRAP_ANSIBLE_PROFILE}"
