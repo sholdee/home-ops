@@ -33,7 +33,157 @@ EOF
 ansible_user: ethan
 ansible_ssh_private_key_file: ~/ansiblekey
 kube_proxy_replacement: true
+k3s_version: v1.35.4+k3s1
 EOF
+}
+
+add_inventory_worker() {
+  local name="$1"
+  local address="$2"
+  NODE_NAME="$name" NODE_ADDRESS="$address" yq -i '
+    .all.children.k3s_cluster.children.node.hosts[strenv(NODE_NAME)] = {
+      "ansible_host": strenv(NODE_ADDRESS),
+      "k3s_role": "agent"
+    }
+  ' "${inventory}/hosts.yml"
+}
+
+add_inventory_master() {
+  local name="$1"
+  local address="$2"
+  NODE_NAME="$name" NODE_ADDRESS="$address" yq -i '
+    .all.children.k3s_cluster.children.master.hosts[strenv(NODE_NAME)] = {
+      "ansible_host": strenv(NODE_ADDRESS),
+      "k3s_role": "server"
+    }
+  ' "${inventory}/hosts.yml"
+}
+
+write_converge_nodes_json() {
+  local file="$1"
+  shift
+  printf '{"items":[' > "$file"
+  local first=true
+  local node name role ready schedulable taint version role_labels spec_fields
+  for spec in "$@"; do
+    IFS=: read -r name role ready schedulable taint version <<<"$spec"
+    if [[ "$first" == true ]]; then
+      first=false
+    else
+      printf ',' >> "$file"
+    fi
+    if [[ "$role" == master ]]; then
+      role_labels='"node-role.kubernetes.io/control-plane":"true"'
+    else
+      role_labels=''
+    fi
+    spec_fields=''
+    if [[ "$schedulable" == cordoned ]]; then
+      spec_fields='"unschedulable":true'
+    fi
+    case "$taint" in
+      present)
+        taints='"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"NoSchedule"}]'
+        ;;
+      invalid)
+        taints='"taints":[{"key":"node.home-ops.sh/joining","value":"true","effect":"PreferNoSchedule"}]'
+        ;;
+      *)
+        taints=''
+        ;;
+    esac
+    if [[ -n "$taints" ]]; then
+      if [[ -n "$spec_fields" ]]; then
+        spec_fields="${spec_fields},${taints}"
+      else
+        spec_fields="$taints"
+      fi
+    fi
+    node="$(cat <<JSON
+{
+  "metadata": {
+    "name": "${name}",
+    "labels": {${role_labels}}
+  },
+  "spec": {${spec_fields}},
+  "status": {
+    "conditions": [{"type": "Ready", "status": "${ready}"}],
+    "nodeInfo": {"kubeletVersion": "${version:-v1.35.4+k3s1}"}
+  }
+}
+JSON
+)"
+    printf '%s' "$node" >> "$file"
+  done
+  printf ']}\n' >> "$file"
+}
+
+write_default_converge_nodes_json() {
+  write_converge_nodes_json "$1" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+}
+
+write_converge_kubectl() {
+  fake_converge_kubectl="${tmp}/kubectl-converge"
+  cat > "$fake_converge_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+if [[ "${1:-}" == "config" && "${2:-}" == "current-context" ]]; then
+  printf '%s\n' "${FAKE_CURRENT_CONTEXT:-test}"
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "nodes" ]]; then
+  cat "${FAKE_CONVERGE_NODES_JSON:?}"
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  if [[ "${FAKE_LONGHORN_INSTALLED:-false}" == true ]]; then
+    printf '{"metadata":{"name":"volumes.longhorn.io"}}\n'
+    exit 0
+  fi
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == nodes.longhorn.io/* ]]; then
+  node="${4#nodes.longhorn.io/}"
+  allow=true
+  if [[ "${FAKE_LONGHORN_DISABLED_NODE:-}" == "$node" ]]; then
+    allow=false
+  fi
+  printf '{"metadata":{"name":"%s"},"spec":{"allowScheduling":%s},"status":{"conditions":[{"type":"Ready","status":"True"},{"type":"Schedulable","status":"True"}]}}\n' "$node" "$allow"
+  exit 0
+fi
+
+printf 'unexpected fake converge kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_converge_kubectl"
+}
+
+write_fake_join_script() {
+  fake_join_script="${tmp}/join.sh"
+  cat > "$fake_join_script" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*" >>"${FAKE_JOIN_CALLS:?}"
+EOF
+  chmod +x "$fake_join_script"
 }
 
 write_worker_status_kubectl() {

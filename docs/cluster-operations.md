@@ -112,6 +112,19 @@ Ansible and active-context bootstrap:
 | Dry-run bootstrap against the active context | `just bootstrap-dry-run` |
 | Dry-run one bootstrap phase | `just bootstrap-phase argocd` |
 
+Node lifecycle:
+
+| Goal | Recipe |
+| --- | --- |
+| List live nodes | `just node-list` |
+| Plan additive-only live node joins | `just node-converge-plan` |
+| Join missing live inventory nodes after confirmation | `just node-converge` |
+| Join one explicit live node | `just node-join <node>` |
+| Finalize and uncordon one live node | `just node-uncordon <node>` |
+| Plan additive-only Lima node joins | `just node-lima-converge-plan` |
+| Join missing Lima inventory nodes after confirmation | `just node-lima-converge` |
+| Join missing Lima inventory nodes without prompting | `just node-lima-converge-yes` |
+
 ## Validation Ladder
 
 Use the smallest validation that covers the change:
@@ -436,6 +449,7 @@ just node-status k3s-worker-0
 just node-pods k3s-worker-0
 just node-control-plane-status k3s-master-0
 just node-control-plane-delete-preflight k3s-master-0
+just node-converge-plan
 just node-drain k3s-worker-0
 just node-longhorn-evict k3s-worker-0
 just node-delete k3s-worker-0
@@ -452,6 +466,7 @@ just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-pods home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
+just node-lima-converge-plan
 just node-lima-drain home-ops-k3s-test-server-2
 just node-lima-longhorn-evict home-ops-k3s-test-server-2
 just node-lima-delete home-ops-k3s-test-server-2
@@ -462,6 +477,14 @@ just node-lima-uncordon home-ops-k3s-test-server-2
 
 For normal maintenance or reboots, use drain and uncordon only.
 `longhorn-evict` is for node replacement.
+
+`node-converge` is additive-only convenience after inventory edits. It joins
+fresh inventory nodes that are absent from Kubernetes, refuses deletes,
+renames, role changes, unhealthy existing nodes, pending cordon/taint
+finalization, K3s version drift, and unsafe control-plane counts. It joins
+workers sequentially, may join at most one control-plane node, delegates to the
+same `node-join` lifecycle path, and leaves all joined nodes cordoned until
+you explicitly run the printed `node-uncordon` commands.
 
 Control-plane delete is gated by read-only preflight, quorum checks, Longhorn
 eviction when installed, fresh K3s etcd snapshot creation, and explicit

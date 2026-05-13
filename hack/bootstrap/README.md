@@ -43,6 +43,7 @@ Do not commit `.out/`.
 | Show Lima status | `just lima-status` |
 | Run larger Lima app-profile bootstrap | `just lima-apps-fresh` |
 | Render live Ansible inventory and vars | `just ansible-plan` |
+| Plan additive-only live node joins | `just node-converge-plan` |
 | Audit active bootstrap/takeover state | `just bootstrap-audit` |
 | Dry-run Kubernetes bootstrap on the active context | `just bootstrap-dry-run` |
 | Run live Ansible plus Kubernetes bootstrap | `just ansible-bootstrap` |
@@ -211,6 +212,8 @@ explicit.
 | Pods bound to node | `just node-pods <node>` | `just node-lima-pods <node>` |
 | Control-plane status | `just node-control-plane-status <node>` | `just node-lima-control-plane-status <node>` |
 | Control-plane delete preflight | `just node-control-plane-delete-preflight <node>` | `just node-lima-control-plane-delete-preflight <node>` |
+| Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
+| Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
 | Evict Longhorn replicas | `just node-longhorn-evict <node>` | `just node-lima-longhorn-evict <node>` |
 | Delete | `just node-delete <node>` | `just node-lima-delete <node>` |
@@ -229,6 +232,10 @@ explicit embedded-etcd member removal from a remaining control-plane.
 Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
 Longhorn scheduling readiness, and restores scheduling.
+
+Converge is additive-only. It joins fresh inventory nodes that are absent from
+Kubernetes, refuses ambiguous drift or pending finalization, delegates mutation
+to `node-join`, and never uncordons automatically.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when `kube_proxy_replacement: true`.

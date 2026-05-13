@@ -183,12 +183,19 @@ lima_tunnel_port_open() {
   nc -z 127.0.0.1 "$LIMA_KUBECONFIG_PORT" >/dev/null 2>&1
 }
 
-lima_tunnel_pid_alive() {
-  local pid pid_file
+lima_tunnel_listener_pid() {
+  local port="$1"
+  lsof -nP -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1 || true
+}
+
+lima_tunnel_pid_matches_listener() {
+  local listener_pid pid pid_file
   pid_file="$(lima_tunnel_pid_file)"
   [[ -f "$pid_file" ]] || return 1
   pid="$(<"$pid_file")"
   [[ "$pid" =~ ^[0-9]+$ ]] || return 1
+  listener_pid="$(lima_tunnel_listener_pid "$LIMA_KUBECONFIG_PORT")"
+  [[ -n "$listener_pid" && "$pid" == "$listener_pid" ]] || return 1
   kill -0 "$pid" >/dev/null 2>&1
 }
 
@@ -226,8 +233,9 @@ lima_existing_apiserver_tunnel_valid() {
 
 lima_start_apiserver_tunnel() {
   local pid pid_file ssh_config
+  lima_require_tool lsof
   pid_file="$(lima_tunnel_pid_file)"
-  if lima_tunnel_pid_alive && lima_tunnel_port_open; then
+  if lima_tunnel_pid_matches_listener && lima_tunnel_port_open; then
     cat "$pid_file"
     return 0
   fi
@@ -236,7 +244,11 @@ lima_start_apiserver_tunnel() {
   fi
   if lima_tunnel_port_open; then
     if lima_existing_apiserver_tunnel_valid; then
+      pid="$(lima_tunnel_listener_pid "$LIMA_KUBECONFIG_PORT")"
+      [[ -n "$pid" ]] || lima_die "could not identify verified Lima API tunnel PID on 127.0.0.1:${LIMA_KUBECONFIG_PORT}"
+      printf '%s\n' "$pid" > "$pid_file"
       lima_log "using verified existing API tunnel on 127.0.0.1:${LIMA_KUBECONFIG_PORT}"
+      printf '%s\n' "$pid"
       return 0
     fi
     lima_die "port 127.0.0.1:${LIMA_KUBECONFIG_PORT} is already in use and is not a verified Lima API tunnel"
@@ -244,19 +256,23 @@ lima_start_apiserver_tunnel() {
   ssh_config="$(lima_ssh_config_file "$LIMA_SERVER_NAME")"
   [[ -f "$ssh_config" ]] || lima_die "missing Lima SSH config for ${LIMA_SERVER_NAME}: ${ssh_config}"
   mkdir -p "$LIMA_OUT_DIR"
-  ssh -F "$ssh_config" -N \
+  ssh -F "$ssh_config" -S none -fN \
+    -o ControlMaster=no \
+    -o ExitOnForwardFailure=yes \
     -L "127.0.0.1:${LIMA_KUBECONFIG_PORT}:127.0.0.1:6443" \
-    "lima-${LIMA_SERVER_NAME}" &
-  pid="$!"
-  printf '%s\n' "$pid" > "$pid_file"
+    "lima-${LIMA_SERVER_NAME}"
   for _ in $(seq 1 30); do
     if lima_tunnel_port_open; then
+      pid="$(lima_tunnel_listener_pid "$LIMA_KUBECONFIG_PORT")"
+      [[ -n "$pid" ]] || lima_die "could not identify Lima API tunnel PID on 127.0.0.1:${LIMA_KUBECONFIG_PORT}"
+      printf '%s\n' "$pid" > "$pid_file"
       printf '%s\n' "$pid"
       return 0
     fi
     sleep 1
   done
-  kill "$pid" >/dev/null 2>&1 || true
+  pid="$(lima_tunnel_listener_pid "$LIMA_KUBECONFIG_PORT")"
+  [[ -z "$pid" ]] || kill "$pid" >/dev/null 2>&1 || true
   lima_die "timed out waiting for API server tunnel on 127.0.0.1:${LIMA_KUBECONFIG_PORT}"
 }
 

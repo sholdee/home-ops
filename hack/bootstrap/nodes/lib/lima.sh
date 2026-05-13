@@ -14,6 +14,11 @@ node_lima_tunnel_port_open() {
   nc -z 127.0.0.1 "$port" >/dev/null 2>&1
 }
 
+node_lima_tunnel_listener_pid() {
+  local port="$1"
+  lsof -nP -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | head -n 1 || true
+}
+
 node_stop_lima_api_tunnel() {
   local pid_file pid
   pid_file="$(node_lima_tunnel_pid_file)"
@@ -32,6 +37,7 @@ node_start_lima_api_tunnel_to_inventory_node() {
 
   node_require_tool ssh
   node_require_tool nc
+  node_require_tool lsof
   node_require_tool "$NODE_KUBECTL_BIN"
   node_require_tool "$NODE_JQ_BIN"
   ssh_config="${HOME}/.lima/${inventory_node}/ssh.config"
@@ -49,13 +55,16 @@ node_start_lima_api_tunnel_to_inventory_node() {
   [[ -n "$port" ]] || node_die "could not find an available local port for Lima API handoff"
 
   mkdir -p "$(node_lima_out_dir)"
-  ssh -F "$ssh_config" -N \
+  ssh -F "$ssh_config" -S none -fN \
+    -o ControlMaster=no \
+    -o ExitOnForwardFailure=yes \
     -L "127.0.0.1:${port}:127.0.0.1:6443" \
-    "lima-${inventory_node}" &
-  pid="$!"
-  printf '%s\n' "$pid" > "$pid_file"
+    "lima-${inventory_node}"
   for _ in $(seq 1 30); do
     if node_lima_tunnel_port_open "$port"; then
+      pid="$(node_lima_tunnel_listener_pid "$port")"
+      [[ -n "$pid" ]] || node_die "could not identify Lima API tunnel PID on 127.0.0.1:${port}"
+      printf '%s\n' "$pid" > "$pid_file"
       # shellcheck disable=SC2016
       cluster_name="$("$NODE_KUBECTL_BIN" config view -o json |
         "$NODE_JQ_BIN" -r --arg context "$context" '
@@ -70,7 +79,8 @@ node_start_lima_api_tunnel_to_inventory_node() {
     fi
     sleep 1
   done
-  kill "$pid" >/dev/null 2>&1 || true
+  pid="$(node_lima_tunnel_listener_pid "$port")"
+  [[ -z "$pid" ]] || kill "$pid" >/dev/null 2>&1 || true
   rm -f "$pid_file"
   node_die "timed out waiting for Lima API tunnel through ${inventory_node}"
 }

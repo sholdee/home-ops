@@ -11,6 +11,7 @@ setup_file() {
 
 setup() {
   tmp="$BATS_TEST_TMPDIR"
+  export BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/ansible-out"
   create_node_inventory
 }
 
@@ -195,6 +196,56 @@ EOF
   assert_file_contains "$calls_file" 'tunnel=k3s-master-0 context=test'
 }
 
+@test "Lima API tunnels disable SSH multiplexing" {
+  assert_file_contains "$ROOT/hack/bootstrap/lima/lib.sh" '-S none'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/lib.sh" '-fN'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/lib.sh" '-o ControlMaster=no'
+  assert_file_contains "$ROOT/hack/bootstrap/lima/lib.sh" '-o ExitOnForwardFailure=yes'
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/lib/lima.sh" '-S none'
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/lib/lima.sh" '-fN'
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/lib/lima.sh" '-o ControlMaster=no'
+  assert_file_contains "$ROOT/hack/bootstrap/nodes/lib/lima.sh" '-o ExitOnForwardFailure=yes'
+}
+
+@test "Lima API tunnel pidfile must match listener PID" {
+  run env LIMA_OUT_DIR="${tmp}/lima-out" LIMA_KUBECONFIG_PORT=16443 bash -c "
+    source '${ROOT}/hack/bootstrap/lima/lib.sh'
+    mkdir -p \"\${LIMA_OUT_DIR}\"
+    printf '%s\n' \"\$\$\" >\"\$(lima_tunnel_pid_file)\"
+    lima_tunnel_listener_pid() { printf '%s\n' \"\$\$\"; }
+    lima_tunnel_pid_matches_listener
+  "
+  assert_success
+
+  run env LIMA_OUT_DIR="${tmp}/lima-out" LIMA_KUBECONFIG_PORT=16443 bash -c "
+    source '${ROOT}/hack/bootstrap/lima/lib.sh'
+    mkdir -p \"\${LIMA_OUT_DIR}\"
+    printf '%s\n' \"\$\$\" >\"\$(lima_tunnel_pid_file)\"
+    lima_tunnel_listener_pid() { printf '%s\n' 999999; }
+    lima_tunnel_pid_matches_listener
+  "
+  assert_failure
+}
+
+@test "verified existing Lima API tunnel refreshes stale pidfile" {
+  run env LIMA_OUT_DIR="${tmp}/lima-out" LIMA_KUBECONFIG_PORT=16443 bash -c "
+    source '${ROOT}/hack/bootstrap/lima/lib.sh'
+    mkdir -p \"\${LIMA_OUT_DIR}\"
+    printf '%s\n' 111 >\"\$(lima_tunnel_pid_file)\"
+    lima_require_tool() { :; }
+    lima_tunnel_pid_matches_listener() { return 1; }
+    lima_tunnel_port_open() { return 0; }
+    lima_existing_apiserver_tunnel_valid() { return 0; }
+    lima_tunnel_listener_pid() { printf '%s\n' 4242; }
+    lima_start_apiserver_tunnel
+    printf 'pidfile=%s\n' \"\$(cat \"\$(lima_tunnel_pid_file)\")\"
+  "
+  assert_success
+  assert_output_contains 'using verified existing API tunnel on 127.0.0.1:16443'
+  assert_output_contains '4242'
+  assert_output_contains 'pidfile=4242'
+}
+
 @test "control-plane join validates kube-proxy disable drop-in when replacement is enabled" {
   local rendered_out rendered_inventory
   write_fake_ansible
@@ -315,6 +366,216 @@ EOF
   assert_output_contains 'etcd still has 1 member(s) for k3s-master-1'
 }
 
+@test "node converge plans no-op inventory and emits JSON shape" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  write_default_converge_nodes_json "$nodes_json"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan --output json
+  assert_success
+  printf '%s\n' "$output" > "${tmp}/converge-plan.json"
+
+  run jq -r '.profile' "${tmp}/converge-plan.json"
+  assert_success
+  [[ "$output" == "live" ]]
+
+  run jq -r '.join_order | length' "${tmp}/converge-plan.json"
+  assert_success
+  [[ "$output" == "0" ]]
+
+  run jq -r '.blockers | length' "${tmp}/converge-plan.json"
+  assert_success
+  [[ "$output" == "0" ]]
+}
+
+@test "node converge joins missing workers sequentially through existing join script" {
+  local nodes_json calls_file
+  nodes_json="${tmp}/nodes.json"
+  calls_file="${tmp}/join.calls"
+  add_inventory_worker k3s-worker-1 192.168.99.21
+  add_inventory_worker k3s-worker-2 192.168.99.22
+  write_default_converge_nodes_json "$nodes_json"
+  write_converge_kubectl
+  write_fake_ansible
+  write_fake_join_script
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" NODE_JOIN_SCRIPT="$fake_join_script" FAKE_CONVERGE_NODES_JSON="$nodes_json" FAKE_JOIN_CALLS="$calls_file" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --yes
+  assert_success
+  assert_output_contains 'join_order:'
+  assert_output_contains 'k3s-worker-1'
+  assert_output_contains 'k3s-worker-2'
+  assert_output_contains 'just node-uncordon k3s-worker-1'
+  assert_file_contains "$calls_file" '--profile live --context test --yes k3s-worker-1'
+  assert_file_contains "$calls_file" '--profile live --context test --yes k3s-worker-2'
+}
+
+@test "node converge plans one control-plane repair from even to odd count" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  add_inventory_master k3s-master-3 192.168.99.13
+  add_inventory_master k3s-master-4 192.168.99.14
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-3:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan --output json
+  assert_success
+  printf '%s\n' "$output" > "${tmp}/converge-cp-plan.json"
+
+  run jq -r '.join_order | join(",")' "${tmp}/converge-cp-plan.json"
+  assert_success
+  [[ "$output" == "k3s-master-4" ]]
+}
+
+@test "node converge refuses unsafe control-plane additions" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  add_inventory_master k3s-master-3 192.168.99.13
+  add_inventory_master k3s-master-4 192.168.99.14
+  write_default_converge_nodes_json "$nodes_json"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'control-plane converge supports exactly one missing control-plane'
+
+  create_node_inventory
+  add_inventory_master k3s-master-3 192.168.99.13
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'desired control-plane count must be odd'
+}
+
+@test "node converge refuses unsafe control-plane counts even for worker-only plans" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  add_inventory_worker k3s-worker-1 192.168.99.21
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'current Kubernetes control-plane count must be odd; current=2'
+
+  add_inventory_master k3s-master-3 192.168.99.13
+  write_default_converge_nodes_json "$nodes_json"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'desired control-plane count must be odd; desired=4'
+}
+
+@test "node converge refuses duplicate inventory roles" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  add_inventory_worker k3s-master-1 192.168.99.11
+  write_default_converge_nodes_json "$nodes_json"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'node appears in both master and node inventory groups: k3s-master-1'
+  assert_output_contains 'duplicate expected Kubernetes node name in inventory: k3s-master-1'
+}
+
+@test "node converge strict preflight blocks drift and pending finalization" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  write_converge_kubectl
+  write_fake_ansible
+
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:master:True:schedulable:absent:v1.35.4+k3s1"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'role drift for k3s-worker-0'
+
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:False:schedulable:absent:v1.35.4+k3s1"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'Kubernetes node is not Ready: k3s-worker-0'
+
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:cordoned:present:v1.35.4+k3s1"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'Kubernetes node is cordoned or pending finalization: k3s-worker-0'
+  assert_output_contains 'Kubernetes node still has temporary joining taint: k3s-worker-0'
+
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:schedulable:absent:v1.35.3+k3s1"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'K3s version drift for k3s-worker-0'
+
+  write_default_converge_nodes_json "$nodes_json"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" FAKE_LONGHORN_INSTALLED=true FAKE_LONGHORN_DISABLED_NODE=k3s-worker-0 \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'Longhorn scheduling is disabled for existing node: k3s-worker-0'
+}
+
+@test "node converge blocks unknown Kubernetes nodes and active context mismatch" {
+  local nodes_json
+  nodes_json="${tmp}/nodes.json"
+  write_converge_nodes_json "$nodes_json" \
+    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-stray-0:node:True:schedulable:absent:v1.35.4+k3s1"
+  write_converge_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
+  assert_failure
+  assert_output_contains 'Kubernetes node is not present in inventory: k3s-stray-0'
+
+  write_default_converge_nodes_json "$nodes_json"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" FAKE_CURRENT_CONTEXT=other \
+    "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --yes
+  assert_failure
+  assert_output_contains 'active kube context must be test'
+}
+
 @test "Longhorn deleted-node cleanup deletes only safe stale state and reports blockers" {
   write_deleted_node_longhorn_kubectl
   mkdir -p "${tmp}/longhorn-state"
@@ -424,6 +685,7 @@ EOF
     hack/bootstrap/nodes/longhorn-evict.sh \
     hack/bootstrap/nodes/join.sh \
     hack/bootstrap/nodes/uncordon.sh \
+    hack/bootstrap/nodes/converge.sh \
     hack/bootstrap/nodes/refresh-ssh-host-key.sh \
     hack/bootstrap/ansible/node-control-plane.sh; do
     run "${ROOT}/${script}" --help
@@ -431,4 +693,8 @@ EOF
   done
 
   assert_file_contains "$ROOT/hack/bootstrap/nodes/drain.sh" 'node_handoff_control_plane_api_if_needed'
+  assert_file_contains "$ROOT/justfile" "[group('node-mutate')]"
+  assert_file_contains "$ROOT/justfile" "node-converge:"
+  assert_file_not_contains "$ROOT/justfile" "node-converge-yes:"
+  assert_file_contains "$ROOT/justfile" "node-lima-converge-yes:"
 }
