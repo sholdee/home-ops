@@ -16,27 +16,10 @@ Options:
 EOF
 }
 
-parse_preflight_scalar() {
-  local key="$1"
-  awk -v key="$key" '
-    index($0, key ": ") == 1 {
-      sub("^[^:]+: ", "")
-      print
-      exit
-    }
-  '
-}
-
-parse_preflight_target_member_id() {
-  awk '
-    $0 == "target_etcd_member:" {inside = 1; next}
-    inside && /^  id: / {
-      sub(/^  id: /, "")
-      print
-      exit
-    }
-    inside && NF == 0 {inside = 0}
-  '
+preflight_json_field() {
+  local json="$1"
+  local filter="$2"
+  "$NODE_JQ_BIN" -er "$filter" <<<"$json"
 }
 
 profile=live
@@ -113,12 +96,13 @@ node_assert_no_ordinary_pods "$context" "$kubernetes_node_name"
 node_assert_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
 
 node_log "running control-plane delete preflight before mutation"
-preflight_output="$("$preflight_script" --profile "$profile" --context "$context" "$node_name")"
-printf '%s\n' "$preflight_output"
+preflight_json="$("$preflight_script" --profile "$profile" --context "$context" --output json "$node_name")"
+preflight_human_output="$(preflight_json_field "$preflight_json" '.human_output')"
+printf '%s\n' "$preflight_human_output"
 
-probe_inventory_node="$(parse_preflight_scalar probe_inventory_node <<<"$preflight_output")"
-target_member_id="$(parse_preflight_target_member_id <<<"$preflight_output")"
-member_count="$(parse_preflight_scalar etcd_member_count <<<"$preflight_output")"
+probe_inventory_node="$(preflight_json_field "$preflight_json" '.probe_inventory_node')"
+target_member_id="$(preflight_json_field "$preflight_json" '.target_etcd_member.id')"
+member_count="$(preflight_json_field "$preflight_json" '.etcd_member_count | tostring')"
 [[ -n "$probe_inventory_node" ]] || node_die "could not parse preflight probe node"
 [[ "$target_member_id" =~ ^[0-9a-f]+$ ]] || node_die "could not parse target etcd member id"
 [[ "$member_count" =~ ^[0-9]+$ ]] || node_die "could not parse etcd member count"
@@ -132,12 +116,13 @@ node_log "waiting for Kubernetes API after stopping ${kubernetes_node_name}"
 node_wait_for_api_reachable "$context" 180
 
 node_log "rechecking control-plane delete preflight after stopping ${kubernetes_node_name}"
-post_stop_preflight_output="$("$preflight_script" --profile "$profile" --context "$context" "$node_name")"
-printf '%s\n' "$post_stop_preflight_output"
+post_stop_preflight_json="$("$preflight_script" --profile "$profile" --context "$context" --output json "$node_name")"
+post_stop_preflight_human_output="$(preflight_json_field "$post_stop_preflight_json" '.human_output')"
+printf '%s\n' "$post_stop_preflight_human_output"
 
-probe_inventory_node="$(parse_preflight_scalar probe_inventory_node <<<"$post_stop_preflight_output")"
-target_member_id="$(parse_preflight_target_member_id <<<"$post_stop_preflight_output")"
-member_count="$(parse_preflight_scalar etcd_member_count <<<"$post_stop_preflight_output")"
+probe_inventory_node="$(preflight_json_field "$post_stop_preflight_json" '.probe_inventory_node')"
+target_member_id="$(preflight_json_field "$post_stop_preflight_json" '.target_etcd_member.id')"
+member_count="$(preflight_json_field "$post_stop_preflight_json" '.etcd_member_count | tostring')"
 [[ -n "$probe_inventory_node" ]] || node_die "could not parse post-stop preflight probe node"
 [[ "$target_member_id" =~ ^[0-9a-f]+$ ]] || node_die "could not parse post-stop target etcd member id"
 [[ "$member_count" =~ ^[0-9]+$ ]] || node_die "could not parse post-stop etcd member count"

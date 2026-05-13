@@ -122,6 +122,32 @@ JSON
   assert_output_contains 'member remove c9e409fd1205cc0a'
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --profile live --context test --output json k3s-master-0
+  assert_success
+  printf '%s\n' "$output" > "${tmp}/control-plane-delete-preflight.json"
+
+  run jq -r '.probe_inventory_node' "${tmp}/control-plane-delete-preflight.json"
+  assert_success
+  [[ "$output" == "k3s-master-1" ]]
+
+  run jq -r '.target_etcd_member.id' "${tmp}/control-plane-delete-preflight.json"
+  assert_success
+  [[ "$output" == "c9e409fd1205cc0a" ]]
+
+  run jq -r '.remaining_ready_control_planes_after_target_stop' "${tmp}/control-plane-delete-preflight.json"
+  assert_success
+  [[ "$output" == "2" ]]
+
+  run jq -r '.planned_member_remove.command' "${tmp}/control-plane-delete-preflight.json"
+  assert_success
+  assert_output_contains 'member remove c9e409fd1205cc0a'
+
+  run jq -r '.human_output' "${tmp}/control-plane-delete-preflight.json"
+  assert_success
+  assert_output_contains 'probe_inventory_node: k3s-master-1'
+  assert_output_contains 'member remove c9e409fd1205cc0a'
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_alternate_ready_control_plane_internal_ip live test k3s-master-0"
   assert_success
   [[ "$output" == "192.168.99.11" ]]

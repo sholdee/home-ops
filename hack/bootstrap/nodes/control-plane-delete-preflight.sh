@@ -11,6 +11,7 @@ Usage: hack/bootstrap/nodes/control-plane-delete-preflight.sh [options] NODE
 Options:
   --profile NAME   Node lifecycle profile: live or lima. Defaults to live.
   --context NAME   Kubernetes context. Defaults to the profile context.
+  --output FORMAT  Output format: text or json. Defaults to text.
   -h, --help       Show help.
 EOF
 }
@@ -22,6 +23,120 @@ join_csv() {
   fi
   local IFS=,
   printf '%s\n' "$*"
+}
+
+json_array() {
+  if (($# == 0)); then
+    printf '[]\n'
+    return
+  fi
+  printf '%s\n' "$@" | "$NODE_JQ_BIN" -R . | "$NODE_JQ_BIN" -s .
+}
+
+emit_text_preflight() {
+  printf 'profile: %s\n' "$profile"
+  printf 'context: %s\n' "$context"
+  printf 'inventory: %s\n' "$inventory_file"
+  printf 'target_inventory_node: %s\n' "$inventory_node_name"
+  printf 'target_kubernetes_node: %s\n' "$kubernetes_node_name"
+  printf 'target_ansible_host: %s\n' "${target_ansible_host:-unknown}"
+  printf 'target_ready: %s\n' "$target_ready"
+  printf 'probe_inventory_node: %s\n' "$probe_inventory_node"
+  printf 'inventory_control_planes: %s\n' "$(join_csv "${inventory_masters[@]}")"
+  printf 'ready_control_planes: %s\n' "$(join_csv "${ready_control_planes[@]}")"
+  printf 'etcd_members: %s\n' "$(join_csv "${all_member_names[@]}")"
+  printf 'etcd_member_count: %s\n' "$member_count"
+  printf 'etcd_current_quorum_size: %s\n' "$current_quorum_size"
+  printf 'post_remove_member_count: %s\n' "$post_remove_member_count"
+  printf 'post_remove_quorum_size: %s\n' "$post_remove_quorum_size"
+  printf 'remaining_ready_control_planes_after_target_stop: %s\n' "$remaining_ready_control_planes"
+
+  printf '\ntarget_etcd_member:\n'
+  printf '  id: %s\n' "$target_member_id"
+  printf '  name: %s\n' "$target_member_name"
+  printf '  status: %s\n' "$target_member_status"
+  printf '  peer_urls: %s\n' "$target_member_peer_urls"
+  printf '  client_urls: %s\n' "$target_member_client_urls"
+  printf '  is_learner: %s\n' "$target_member_is_learner"
+
+  printf '\netcd_endpoint_status:\n'
+  indent_block <<<"$endpoint_status"
+
+  printf '\nplanned_member_remove:\n'
+  printf '  run_on_inventory_node: %s\n' "$probe_inventory_node"
+  printf '  command: %s\n' "$planned_member_remove_command"
+
+  printf '\npreflight_result: pass\n'
+}
+
+emit_json_preflight() {
+  local human_output inventory_masters_json ready_control_planes_json etcd_members_json
+  human_output="$(emit_text_preflight)"
+  inventory_masters_json="$(json_array "${inventory_masters[@]}")"
+  ready_control_planes_json="$(json_array "${ready_control_planes[@]}")"
+  etcd_members_json="$(json_array "${all_member_names[@]}")"
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -n \
+    --arg human_output "$human_output" \
+    --arg profile "$profile" \
+    --arg context "$context" \
+    --arg inventory "$inventory_file" \
+    --arg target_inventory_node "$inventory_node_name" \
+    --arg target_kubernetes_node "$kubernetes_node_name" \
+    --arg target_ansible_host "${target_ansible_host:-unknown}" \
+    --argjson target_ready "$target_ready" \
+    --arg probe_inventory_node "$probe_inventory_node" \
+    --argjson inventory_control_planes "$inventory_masters_json" \
+    --argjson ready_control_planes "$ready_control_planes_json" \
+    --argjson etcd_members "$etcd_members_json" \
+    --argjson etcd_member_count "$member_count" \
+    --argjson etcd_current_quorum_size "$current_quorum_size" \
+    --argjson post_remove_member_count "$post_remove_member_count" \
+    --argjson post_remove_quorum_size "$post_remove_quorum_size" \
+    --argjson remaining_ready_control_planes_after_target_stop "$remaining_ready_control_planes" \
+    --arg target_member_id "$target_member_id" \
+    --arg target_member_name "$target_member_name" \
+    --arg target_member_status "$target_member_status" \
+    --arg target_member_peer_urls "$target_member_peer_urls" \
+    --arg target_member_client_urls "$target_member_client_urls" \
+    --arg target_member_is_learner "$target_member_is_learner" \
+    --arg etcd_endpoint_status "$endpoint_status" \
+    --arg planned_member_remove_run_on_inventory_node "$probe_inventory_node" \
+    --arg planned_member_remove_command "$planned_member_remove_command" \
+    '{
+      human_output: $human_output,
+      profile: $profile,
+      context: $context,
+      inventory: $inventory,
+      target_inventory_node: $target_inventory_node,
+      target_kubernetes_node: $target_kubernetes_node,
+      target_ansible_host: $target_ansible_host,
+      target_ready: $target_ready,
+      probe_inventory_node: $probe_inventory_node,
+      inventory_control_planes: $inventory_control_planes,
+      ready_control_planes: $ready_control_planes,
+      etcd_members: $etcd_members,
+      etcd_member_count: $etcd_member_count,
+      etcd_current_quorum_size: $etcd_current_quorum_size,
+      post_remove_member_count: $post_remove_member_count,
+      post_remove_quorum_size: $post_remove_quorum_size,
+      remaining_ready_control_planes_after_target_stop: $remaining_ready_control_planes_after_target_stop,
+      target_etcd_member: {
+        id: $target_member_id,
+        name: $target_member_name,
+        status: $target_member_status,
+        peer_urls: $target_member_peer_urls,
+        client_urls: $target_member_client_urls,
+        is_learner: $target_member_is_learner
+      },
+      etcd_endpoint_status: $etcd_endpoint_status,
+      planned_member_remove: {
+        run_on_inventory_node: $planned_member_remove_run_on_inventory_node,
+        command: $planned_member_remove_command
+      },
+      preflight_result: "pass"
+    }'
 }
 
 contains_line() {
@@ -69,6 +184,7 @@ extract_block() {
 
 profile=live
 context=""
+output_format=text
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -78,6 +194,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --context)
       context="$2"
+      shift 2
+      ;;
+    --output)
+      output_format="$2"
       shift 2
       ;;
     -h|--help)
@@ -99,6 +219,13 @@ done
 
 [[ -n "${node_name:-}" ]] || node_die "NODE is required"
 node_validate_profile "$profile"
+case "$output_format" in
+  text|json)
+    ;;
+  *)
+    node_die "unsupported output format: ${output_format}"
+    ;;
+esac
 context="${context:-$(node_context_for_profile "$profile")}"
 
 node_require_tool "$NODE_KUBECTL_BIN"
@@ -274,36 +401,13 @@ fi
 ((remaining_ready_control_planes >= post_remove_quorum_size)) ||
   node_die "removing ${kubernetes_node_name} would leave ${remaining_ready_control_planes} Ready control-planes; post-remove quorum is ${post_remove_quorum_size}"
 
-printf 'profile: %s\n' "$profile"
-printf 'context: %s\n' "$context"
-printf 'inventory: %s\n' "$inventory_file"
-printf 'target_inventory_node: %s\n' "$inventory_node_name"
-printf 'target_kubernetes_node: %s\n' "$kubernetes_node_name"
-printf 'target_ansible_host: %s\n' "${target_ansible_host:-unknown}"
-printf 'target_ready: %s\n' "$target_ready"
-printf 'probe_inventory_node: %s\n' "$probe_inventory_node"
-printf 'inventory_control_planes: %s\n' "$(join_csv "${inventory_masters[@]}")"
-printf 'ready_control_planes: %s\n' "$(join_csv "${ready_control_planes[@]}")"
-printf 'etcd_members: %s\n' "$(join_csv "${all_member_names[@]}")"
-printf 'etcd_member_count: %s\n' "$member_count"
-printf 'etcd_current_quorum_size: %s\n' "$current_quorum_size"
-printf 'post_remove_member_count: %s\n' "$post_remove_member_count"
-printf 'post_remove_quorum_size: %s\n' "$post_remove_quorum_size"
-printf 'remaining_ready_control_planes_after_target_stop: %s\n' "$remaining_ready_control_planes"
+planned_member_remove_command="/usr/local/bin/etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt --key=/var/lib/rancher/k3s/server/tls/etcd/client.key member remove ${target_member_id}"
 
-printf '\ntarget_etcd_member:\n'
-printf '  id: %s\n' "$target_member_id"
-printf '  name: %s\n' "$target_member_name"
-printf '  status: %s\n' "$target_member_status"
-printf '  peer_urls: %s\n' "$target_member_peer_urls"
-printf '  client_urls: %s\n' "$target_member_client_urls"
-printf '  is_learner: %s\n' "$target_member_is_learner"
-
-printf '\netcd_endpoint_status:\n'
-indent_block <<<"$endpoint_status"
-
-printf '\nplanned_member_remove:\n'
-printf '  run_on_inventory_node: %s\n' "$probe_inventory_node"
-printf '  command: /usr/local/bin/etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt --key=/var/lib/rancher/k3s/server/tls/etcd/client.key member remove %s\n' "$target_member_id"
-
-printf '\npreflight_result: pass\n'
+case "$output_format" in
+  text)
+    emit_text_preflight
+    ;;
+  json)
+    emit_json_preflight
+    ;;
+esac
