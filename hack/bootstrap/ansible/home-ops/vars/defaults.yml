@@ -68,3 +68,49 @@ home_ops_node_taints: []
 cilium_iface: auto
 cilium_export_pod_cidr: "false"
 cilium_extra_values_files: []
+
+home_ops_rpi_reporter_enabled: false
+home_ops_rpi_reporter_repo: https://github.com/ironsheep/RPi-Reporter-MQTT2HA-Daemon.git
+home_ops_rpi_reporter_version: 4951bc918c4d889467c3386794d9e0730add4ed6
+home_ops_rpi_reporter_path: /opt/RPi-Reporter-MQTT2HA-Daemon
+home_ops_rpi_reporter_service_name: isp-rpi-reporter
+home_ops_rpi_reporter_daemon_user: daemon
+home_ops_rpi_reporter_daemon_group: daemon
+home_ops_rpi_reporter_update_existing: false
+home_ops_rpi_reporter_apply_retain_patch: true
+home_ops_rpi_reporter_manage_config: false
+home_ops_rpi_reporter_restart_on_change: false
+home_ops_rpi_reporter_daemon_enabled: true
+home_ops_rpi_reporter_interval_in_minutes: 5
+home_ops_rpi_reporter_fallback_domain: local
+home_ops_rpi_reporter_mqtt_base_topic: homeassistant
+home_ops_rpi_reporter_mqtt_discovery_prefix: homeassistant
+home_ops_rpi_reporter_mqtt_hostname: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME') }}"
+home_ops_rpi_reporter_mqtt_keepalive: 60
+home_ops_rpi_reporter_mqtt_password: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_PASSWORD') }}"
+home_ops_rpi_reporter_mqtt_port: 1883
+home_ops_rpi_reporter_mqtt_sensor_name: "{{ inventory_hostname }}"
+home_ops_rpi_reporter_mqtt_tls: false
+home_ops_rpi_reporter_mqtt_username: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_USERNAME') }}"
+home_ops_rpi_reporter_commands: {}
+
+home_ops_nut_client_enabled: false
+home_ops_nut_client_manage_config: false
+home_ops_nut_client_restart_on_change: false
+home_ops_nut_client_service_name: nut-monitor
+home_ops_nut_mode: netclient
+home_ops_nut_monitor_system: "{{ lookup('ansible.builtin.env', 'HOME_OPS_NUT_MONITOR_SYSTEM') }}"
+home_ops_nut_monitor_user: "{{ lookup('ansible.builtin.env', 'HOME_OPS_NUT_MONITOR_USER') }}"
+home_ops_nut_monitor_password: "{{ lookup('ansible.builtin.env', 'HOME_OPS_NUT_MONITOR_PASSWORD') }}"
+home_ops_nut_monitor_power_value: 1
+home_ops_nut_monitor_type: slave
+home_ops_nut_deadtime: 15
+home_ops_nut_finaldelay: 5
+home_ops_nut_hostsync: 15
+home_ops_nut_minsupplies: 1
+home_ops_nut_nocommwarntime: 300
+home_ops_nut_pollfreq: 5
+home_ops_nut_pollfreqalert: 5
+home_ops_nut_powerdownflag: /etc/killpower
+home_ops_nut_rbwarntime: 43200
+home_ops_nut_shutdowncmd: /sbin/shutdown -h +0

@@ -1,0 +1,154 @@
+---
+- name: Install RPi reporter prerequisites
+  ansible.builtin.package:
+    name:
+      - git
+      - python3-pip
+      - python3-venv
+    state: present
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Check RPi reporter checkout
+  ansible.builtin.stat:
+    path: "{{ home_ops_rpi_reporter_path }}"
+  register: home_ops_rpi_reporter_path_stat
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Check RPi reporter git metadata
+  ansible.builtin.stat:
+    path: "{{ home_ops_rpi_reporter_path }}/.git"
+  register: home_ops_rpi_reporter_git_stat
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_path_stat.stat.exists
+
+- name: Refuse to manage a non-git RPi reporter path
+  ansible.builtin.fail:
+    msg: >-
+      {{ home_ops_rpi_reporter_path }} exists but is not a git checkout;
+      refusing to overwrite it.
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_path_stat.stat.exists
+    - not home_ops_rpi_reporter_git_stat.stat.exists
+
+- name: Clone RPi reporter when missing
+  ansible.builtin.git:
+    repo: "{{ home_ops_rpi_reporter_repo }}"
+    dest: "{{ home_ops_rpi_reporter_path }}"
+    version: "{{ home_ops_rpi_reporter_version }}"
+    update: false
+  register: home_ops_rpi_reporter_clone
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - not home_ops_rpi_reporter_path_stat.stat.exists
+
+- name: Refuse to update an existing RPi reporter checkout
+  ansible.builtin.fail:
+    msg: >-
+      Existing RPi reporter checkout updates are intentionally disabled.
+      Preserve the live checkout or rebuild the node so this role performs a
+      fresh pinned clone.
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_path_stat.stat.exists
+    - home_ops_rpi_reporter_update_existing | bool
+
+- name: Preserve retained MQTT discovery payloads
+  ansible.builtin.replace:
+    path: "{{ home_ops_rpi_reporter_path }}/ISP-RPi-mqtt-daemon.py"
+    regexp: "retain=False"
+    replace: "retain=True"
+  register: home_ops_rpi_reporter_retain_patch
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_apply_retain_patch | bool
+
+- name: Create RPi reporter virtual environment
+  ansible.builtin.command:
+    cmd: python3 -m venv "{{ home_ops_rpi_reporter_path }}/venv"
+    creates: "{{ home_ops_rpi_reporter_path }}/venv/bin/python3"
+  register: home_ops_rpi_reporter_venv
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Install RPi reporter Python requirements
+  ansible.builtin.pip:
+    requirements: "{{ home_ops_rpi_reporter_path }}/requirements.txt"
+    virtualenv: "{{ home_ops_rpi_reporter_path }}/venv"
+    virtualenv_command: python3 -m venv
+  register: home_ops_rpi_reporter_pip
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Check RPi reporter config
+  ansible.builtin.stat:
+    path: "{{ home_ops_rpi_reporter_path }}/config.ini"
+  register: home_ops_rpi_reporter_config_stat
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Decide whether to render RPi reporter config
+  ansible.builtin.set_fact:
+    home_ops_rpi_reporter_render_config: >-
+      {{ home_ops_rpi_reporter_manage_config | bool
+      or not home_ops_rpi_reporter_config_stat.stat.exists }}
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Validate RPi reporter MQTT secret inputs
+  ansible.builtin.assert:
+    that:
+      - home_ops_rpi_reporter_mqtt_hostname | length > 0
+      - home_ops_rpi_reporter_mqtt_username | length > 0
+      - home_ops_rpi_reporter_mqtt_password | length > 0
+    fail_msg: >-
+      Missing RPi reporter MQTT settings. Preserve an existing config.ini or
+      provide HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME,
+      HOME_OPS_RPI_REPORTER_MQTT_USERNAME, and
+      HOME_OPS_RPI_REPORTER_MQTT_PASSWORD.
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_render_config | bool
+
+- name: Render RPi reporter config when missing or managed
+  ansible.builtin.template:
+    src: rpi-reporter-config.ini.j2
+    dest: "{{ home_ops_rpi_reporter_path }}/config.ini"
+    owner: root
+    group: "{{ home_ops_rpi_reporter_daemon_group }}"
+    mode: "0640"
+  register: home_ops_rpi_reporter_config
+  no_log: true
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_rpi_reporter_render_config | bool
+
+- name: Install RPi reporter systemd unit
+  ansible.builtin.template:
+    src: isp-rpi-reporter.service.j2
+    dest: "{{ systemd_dir }}/{{ home_ops_rpi_reporter_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: home_ops_rpi_reporter_unit
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Decide whether to restart RPi reporter
+  ansible.builtin.set_fact:
+    home_ops_rpi_reporter_restart_needed: >-
+      {{ home_ops_rpi_reporter_clone.changed | default(false)
+      or home_ops_rpi_reporter_retain_patch.changed | default(false)
+      or home_ops_rpi_reporter_venv.changed | default(false)
+      or home_ops_rpi_reporter_pip.changed | default(false)
+      or home_ops_rpi_reporter_config.changed | default(false)
+      or home_ops_rpi_reporter_unit.changed | default(false) }}
+  when: home_ops_rpi_reporter_enabled | bool
+
+- name: Enable and start RPi reporter
+  ansible.builtin.systemd:
+    name: "{{ home_ops_rpi_reporter_service_name }}.service"
+    enabled: true
+    daemon_reload: "{{ home_ops_rpi_reporter_unit.changed | default(false) }}"
+    state: >-
+      {{ 'restarted'
+      if (home_ops_rpi_reporter_restart_needed | bool
+      and home_ops_rpi_reporter_restart_on_change | bool)
+      else 'started' }}
+  when: home_ops_rpi_reporter_enabled | bool

@@ -33,3 +33,9 @@
 
     - name: Join K3s server with temporary taint
       ansible.builtin.import_tasks: tasks/join-servers.yml
+
+    - name: Apply RPi reporter host service
+      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
+
+    - name: Apply NUT client host service
+      ansible.builtin.import_tasks: tasks/nut-client.yml

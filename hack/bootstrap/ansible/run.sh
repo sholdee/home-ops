@@ -141,6 +141,9 @@ if [[ "$profile" == live ]]; then
   ansible_require_tool op
   ansible_require_tool openssl
   ansible_require_tool ssh
+  if ! ansible_bool "$skip_site" && [[ "$BOOTSTRAP_ANSIBLE_BACKEND" == home-ops ]]; then
+    ansible_require_host_service_env all
+  fi
   ansible_confirm_live_run "$yes" "$inventory_dir" "$kube_bootstrap"
   K3S_TOKEN="$(ansible_prepare_live_token "$inventory_dir")"
   export K3S_TOKEN
