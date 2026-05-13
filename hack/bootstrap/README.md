@@ -265,9 +265,9 @@ endpoint before making changes.
 
 `hack/bootstrap/nodes/` contains existing-cluster node lifecycle helpers. The
 worker path is split into explicit status, drain, optional Longhorn eviction,
-delete, join, and uncordon steps. Control-plane nodes support status,
-read-only delete preflight, drain, and delete; control-plane join and uncordon
-remain deferred:
+delete, join, and uncordon steps. Non-first control-plane nodes also support
+status, read-only delete preflight, drain, optional Longhorn eviction, delete,
+join, and uncordon:
 
 ```sh
 just node-live-status k3s-worker-0
@@ -282,43 +282,47 @@ just node-live-delete k3s-worker-0
 just node-live-refresh-ssh-host-key k3s-worker-0
 just node-live-join k3s-worker-0
 just node-live-uncordon k3s-worker-0
+just node-live-refresh-ssh-host-key k3s-master-1
+just node-live-join k3s-master-1
+just node-live-uncordon k3s-master-1
 just node-lima-status home-ops-k3s-test-agent-1
 just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
 just node-lima-drain home-ops-k3s-test-server-2
 just node-lima-longhorn-evict home-ops-k3s-test-server-2
 just node-lima-delete home-ops-k3s-test-server-2
+just node-lima-refresh-ssh-host-key home-ops-k3s-test-server-2
+just node-lima-join home-ops-k3s-test-server-2
+just node-lima-uncordon home-ops-k3s-test-server-2
 ```
 
-Control-plane join and uncordon mutations are intentionally refused until the
-replacement path is proven. The control-plane status helper is
-read-only: it checks the inventory control-plane set, Ready control-plane nodes,
-quorum math, K3s service state, local datastore indicators, etcd listeners, and
-whether `etcdctl` is available for member inspection. The home-ops Ansible
-backend derives the upstream `etcdctl` version from the K3s release's embedded
-Etcd version, verifies the release archive checksum, and installs `etcdctl` on
-control-plane nodes so this probe can list members once embedded etcd is
-present. The control-plane delete preflight is also read-only: it must query
-etcd from an alternate Ready control-plane, match the target Kubernetes node to
-exactly one etcd member, check quorum math, and print the future
-`etcdctl member remove` command without running it. Single-server Lima clusters
-cannot pass that HA preflight because there is no alternate etcd member to
-query. Control-plane delete currently refuses the first inventory master until
-API context handoff and control-plane rejoin are implemented. For other
-control-plane nodes, run the same Longhorn eviction helper after drain and
-before delete when Longhorn is installed. Delete requires the target to be
-cordoned and empty, stops/disables `k3s`, rechecks the preflight from a
-remaining control-plane, creates a fresh K3s etcd snapshot, removes the target
-etcd member, then deletes the Kubernetes Node and node-password Secret. Worker
-delete stops and disables `k3s-node` before deleting the Kubernetes Node and
-node-password Secret. If
-Longhorn is installed, delete also requires Longhorn scheduling to be disabled
-for the target node, no attached volumes on the target node, and no active or
-unsafe target-node replica state. Stopped stale replica records are allowed only
-when Longhorn already has the desired healthy replica count on other nodes.
-Delete then clears stale pod objects still bound to the deleted node and waits
-for the Longhorn node resource to disappear before the same node name can be
-joined again.
+The control-plane status helper is read-only: it checks the inventory
+control-plane set, Ready control-plane nodes, quorum math, K3s service state,
+local datastore indicators, etcd listeners, and whether `etcdctl` is available
+for member inspection. The home-ops Ansible backend derives the upstream
+`etcdctl` version from the K3s release's embedded Etcd version, verifies the
+release archive checksum, and installs `etcdctl` on control-plane nodes so this
+probe can list members once embedded etcd is present. The control-plane delete
+preflight is also read-only: it must query etcd from an alternate Ready
+control-plane, match the target Kubernetes node to exactly one etcd member,
+check quorum math, and print the future `etcdctl member remove` command without
+running it. Single-server Lima clusters cannot pass that HA preflight because
+there is no alternate etcd member to query.
+
+First-inventory-master delete, join, and uncordon are refused until API context handoff is
+implemented. For other control-plane nodes, run the same Longhorn eviction
+helper after drain and before delete when Longhorn is installed. Delete requires
+the target to be cordoned and empty, stops/disables `k3s`, rechecks the
+preflight from a remaining control-plane, creates a fresh K3s etcd snapshot,
+removes the target etcd member, then deletes the Kubernetes Node and
+node-password Secret. Worker delete stops and disables `k3s-node` before
+deleting the Kubernetes Node and node-password Secret. If Longhorn is installed,
+delete also requires Longhorn scheduling to be disabled for the target node, no
+attached volumes on the target node, and no active or unsafe target-node replica
+state. Stopped stale replica records are allowed only when Longhorn already has
+the desired healthy replica count on other nodes. Delete then clears stale pod
+objects still bound to the deleted node and waits for the Longhorn node resource
+to disappear before the same node name can be joined again.
 
 For normal maintenance or reboot work, use `drain` and `uncordon` only. The
 drain helper allows the expected temporary Longhorn degraded state after
@@ -327,11 +331,14 @@ across exactly three storage nodes. The `longhorn-evict` helper is only for
 node replacement; it fails before mutating Longhorn if the remaining storage
 nodes cannot hold the maximum configured replica count.
 
-Worker join starts the agent with
-`node.home-ops.sh/joining=true:NoSchedule`, then cordons the node. The uncordon
-helper removes that taint from the rendered agent service and live Node, waits
-for Cilium, verifies Longhorn is ready to schedule on the node, uncordons, and
-then verifies Longhorn marks the node schedulable.
+Join starts the K3s service with
+`node.home-ops.sh/joining=true:NoSchedule`, then cordons the node. Control-plane
+join also verifies the old etcd member is absent and moves any stale local K3s
+server DB aside before starting `k3s`; this is required when reusing a
+previously deleted control-plane node name. The uncordon helper removes the
+joining taint from the rendered service and live Node, waits for Cilium,
+verifies Longhorn is ready to schedule on the node, uncordons, and then
+verifies Longhorn marks the node schedulable.
 
 If more than one 1Password account is configured and the default account is
 wrong, pin the account explicitly:

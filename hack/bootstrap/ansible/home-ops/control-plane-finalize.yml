@@ -1,0 +1,16 @@
+---
+- name: Remove the temporary home-ops control-plane joining taint from K3s service args
+  hosts: master
+  gather_facts: true
+  become: true
+  vars:
+    home_ops_node_taints: []
+  tasks:
+    - name: Run control-plane preflight checks
+      ansible.builtin.import_tasks: tasks/preflight.yml
+
+    - name: Write K3s token file
+      ansible.builtin.import_tasks: tasks/token.yml
+
+    - name: Render K3s server service without temporary taint
+      ansible.builtin.import_tasks: tasks/join-servers.yml

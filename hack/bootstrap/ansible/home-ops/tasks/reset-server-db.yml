@@ -1,0 +1,14 @@
+---
+- name: Check K3s server database directory
+  ansible.builtin.stat:
+    path: "{{ home_ops_k3s_runtime_dir }}/db"
+  register: home_ops_k3s_server_db
+
+- name: Move stale K3s server database aside before rejoin
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ home_ops_k3s_runtime_dir }}/db"
+      - "{{ home_ops_k3s_runtime_dir }}/db-before-rejoin-{{ ansible_facts.date_time.iso8601_basic_short }}"
+  when: home_ops_k3s_server_db.stat.exists
+  changed_when: true

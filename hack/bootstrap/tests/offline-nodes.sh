@@ -512,6 +512,46 @@ grep -q 'stopping k3s server on k3s-master-1 before deleted-node cleanup' <<<"$c
 grep -q 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0' <<<"$control_plane_cleanup_output"
 grep -q 'control-plane delete cleanup complete: k3s-master-1' <<<"$control_plane_cleanup_output"
 
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  "${ROOT}/hack/bootstrap/nodes/control-plane-join.sh" --profile live --context test --yes k3s-master-0 \
+  2>"${tmp}/first-master-join.err"; then
+  echo "expected first inventory master join to be refused" >&2
+  exit 1
+fi
+grep -q 'first inventory master is deferred' "${tmp}/first-master-join.err"
+
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  "${ROOT}/hack/bootstrap/nodes/control-plane-uncordon.sh" --profile live --context test --yes k3s-master-0 \
+  2>"${tmp}/first-master-uncordon.err"; then
+  echo "expected first inventory master uncordon to be refused" >&2
+  exit 1
+fi
+grep -q 'first inventory master is deferred' "${tmp}/first-master-uncordon.err"
+
+absent_member_output="$(
+  PATH="${tmp}:${PATH}" \
+  FAKE_ETCD_ABSENT_MEMBER_ID=70594c7c481c118 \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_control_plane_etcd_member_absent live test k3s-master-1 k3s-master-1"
+)"
+grep -q 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0' <<<"$absent_member_output"
+
+if PATH="${tmp}:${PATH}" \
+  NODE_LIVE_INVENTORY_DIR="$inventory" \
+  NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_control_plane_etcd_member_absent live test k3s-master-1 k3s-master-1" \
+  >"${tmp}/present-member.out" \
+  2>"${tmp}/present-member.err"; then
+  echo "expected present etcd member to block control-plane join" >&2
+  exit 1
+fi
+grep -q 'etcd still has 1 member(s) for k3s-master-1' "${tmp}/present-member.err"
+
 fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
 cat > "$fake_longhorn_kubectl" <<'EOF'
 #!/usr/bin/env bash
@@ -707,11 +747,14 @@ grep -q 'Longhorn is not installed in test' "${tmp}/control-plane-longhorn-evict
 "${ROOT}/hack/bootstrap/nodes/control-plane-status.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/control-plane-delete-preflight.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/control-plane-delete.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/control-plane-join.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/nodes/control-plane-uncordon.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/delete.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/longhorn-evict.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/join.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/uncordon.sh" --help >/dev/null
 "${ROOT}/hack/bootstrap/nodes/refresh-ssh-host-key.sh" --help >/dev/null
+"${ROOT}/hack/bootstrap/ansible/node-control-plane.sh" --help >/dev/null
 
 fake_longhorn_kubectl="${tmp}/kubectl-longhorn"
 cat > "$fake_longhorn_kubectl" <<'EOF'

@@ -104,6 +104,8 @@ test "$default_backend" = "home-ops"
 if command -v ansible-playbook >/dev/null 2>&1; then
   for playbook in \
     "${ROOT}/hack/bootstrap/ansible/home-ops/site.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-join.yml" \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-join.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-finalize.yml"; do
     ansible-playbook --syntax-check \
@@ -139,9 +141,41 @@ EOF
     echo "rendered K3s agent service joined taint args to the next unit key" >&2
     exit 1
   fi
+
+  render_server_playbook="${tmp}/render-server-service.yml"
+  rendered_server_service="${tmp}/k3s.service"
+  cat > "$render_server_playbook" <<EOF
+---
+- name: Render K3s server service template
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+    home_ops_k3s_binary_path: /usr/local/bin/k3s
+    home_ops_k3s_exec_args: "--server https://example.invalid:6443 --token-file /token"
+    home_ops_node_taints:
+      - node.home-ops.sh/joining=true:NoSchedule
+  tasks:
+    - name: Render server service
+      ansible.builtin.template:
+        src: ${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2
+        dest: ${rendered_server_service}
+        mode: "0644"
+EOF
+  ansible-playbook -i localhost, "$render_server_playbook" >/dev/null
+  grep -q -- '--node-taint node.home-ops.sh/joining=true:NoSchedule' "$rendered_server_service"
+  grep -q '^KillMode=process$' "$rendered_server_service"
+  if grep -q -- 'NoScheduleKillMode' "$rendered_server_service"; then
+    echo "rendered K3s server service joined taint args to the next unit key" >&2
+    exit 1
+  fi
 fi
 
 grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2"
+grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2"
+grep -q 'home_ops_node_taints' "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml"
+grep -q 'db-before-rejoin' "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/reset-server-db.yml"
 
 conflict_source="${tmp}/conflict-source"
 mkdir -p "${conflict_source}/group_vars"
