@@ -471,6 +471,9 @@ Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
 Longhorn scheduling readiness, and restores scheduling.
 
+Control-plane joins also install and verify the K3s kube-proxy disable drop-in
+when the derived Cilium config has `kube_proxy_replacement: true`.
+
 ## Live Validation
 
 Live bootstrap recipes use the active kube context. Switch to the intended

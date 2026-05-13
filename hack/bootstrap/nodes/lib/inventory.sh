@@ -199,7 +199,7 @@ node_group_var() {
   local group_vars
   group_vars="$(node_group_vars_file "$profile")"
   [[ -f "$group_vars" ]] || return 1
-  "$NODE_YQ_BIN" -r ".${key} // \"\"" "$group_vars"
+  "$NODE_YQ_BIN" -r ".${key}" "$group_vars"
 }
 
 node_effective_ansible_user() {

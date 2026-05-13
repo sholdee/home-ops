@@ -75,21 +75,19 @@ node_start_lima_api_tunnel_to_inventory_node() {
   node_die "timed out waiting for Lima API tunnel through ${inventory_node}"
 }
 
-node_handoff_first_master_api_if_needed() {
+node_handoff_control_plane_api_if_needed() {
   local profile="$1"
   local context="$2"
   local inventory_node="$3"
   local kubernetes_node="$4"
   local alternate_inventory_node alternate_kubernetes_node alternate_node_json
 
-  node_is_first_inventory_master "$profile" "$inventory_node" || return 0
-
   case "$profile" in
     lima)
       alternate_inventory_node="$(node_alternate_ready_control_plane_inventory_node "$profile" "$context" "$kubernetes_node" true)" ||
         node_die "no alternate inventory control-plane is available for API handoff"
       alternate_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$alternate_inventory_node" "$alternate_inventory_node")"
-      node_log "retargeting Lima API tunnel from first master ${inventory_node} to ${alternate_inventory_node}"
+      node_log "retargeting Lima API tunnel away from ${inventory_node} to ${alternate_inventory_node}"
       node_start_lima_api_tunnel_to_inventory_node "$alternate_inventory_node" "$context" >/dev/null
       node_assert_api_reachable "$context"
       alternate_node_json="$(node_node_json_if_present "$context" "$alternate_kubernetes_node")"
@@ -99,6 +97,7 @@ node_handoff_first_master_api_if_needed() {
       node_assert_ready "$alternate_node_json" "$alternate_kubernetes_node"
       ;;
     live)
+      node_is_first_inventory_master "$profile" "$inventory_node" || return 0
       node_assert_live_first_master_api_is_stable "$profile" "$context" "$inventory_node" "$kubernetes_node"
       node_log "first inventory master selected; live context must remain reachable through the stable API endpoint"
       node_assert_api_reachable "$context"

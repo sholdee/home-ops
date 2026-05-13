@@ -1,0 +1,27 @@
+---
+- name: Verify kube-proxy replacement setting is defined
+  ansible.builtin.assert:
+    that:
+      - kube_proxy_replacement is defined
+    fail_msg: "kube_proxy_replacement must be defined before managing K3s kube-proxy config"
+
+- name: Create K3s config drop-in directory for kube-proxy disable
+  ansible.builtin.file:
+    path: "{{ home_ops_k3s_config_dir | default('/etc/rancher/k3s') }}/config.yaml.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: kube_proxy_replacement | bool
+
+- name: Write K3s kube-proxy disable drop-in
+  ansible.builtin.copy:
+    dest: "{{ home_ops_k3s_config_dir | default('/etc/rancher/k3s') }}/config.yaml.d/90-home-ops-kube-proxy.yaml"
+    content: |
+      disable-kube-proxy: true
+    owner: root
+    group: root
+    mode: "0644"
+  register: home_ops_kube_proxy_config
+  notify: "{{ home_ops_kube_proxy_disable_notify | default(omit) }}"
+  when: kube_proxy_replacement | bool
