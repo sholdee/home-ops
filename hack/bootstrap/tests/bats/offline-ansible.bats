@@ -165,6 +165,9 @@ EOF
 }
 
 @test "static Ansible lifecycle invariants are present" {
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/inventory.sh\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/token.sh\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/playbooks.sh\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/run.sh" 'ansible_disable_kube_proxy_after_cilium'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'api.github.com/repos/k3s-io/k3s/releases/tags'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'home_ops_embedded_etcd_version'

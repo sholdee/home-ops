@@ -25,7 +25,9 @@ normal app graph.
   rendering, and local run reports.
 - `phases/`: idempotent bootstrap phases sourced by `bootstrap.sh`.
 - `ansible/`: physical-node and Lima K3s convergence wrapper, inventory
-  rendering, and the in-repo `home-ops` Ansible backend.
+  rendering, token/kubeconfig handling, and the in-repo `home-ops` Ansible
+  backend. Public scripts source `ansible/lib.sh`; implementation modules live
+  under `ansible/lib/`.
 - `lima/`: disposable VM harness for foundation and app-profile bootstrap
   validation; `apps.sh` owns Lima app-profile ApplicationSet and safety-policy
   rendering.
