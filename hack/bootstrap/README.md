@@ -11,7 +11,7 @@ just --list
 ```
 
 For the longer operator runbook, see
-[`docs/just-bootstrap.md`](../../docs/just-bootstrap.md).
+[`docs/cluster-operations.md`](../../docs/cluster-operations.md).
 
 ## What Lives Here
 

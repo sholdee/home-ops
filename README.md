@@ -63,18 +63,18 @@ All checks feed into a single required status gate for branch protection and aut
 📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
 ```
 
-### Bootstrap 🚀
+### Cluster Bootstrap & Lifecycle 🚀
 
-Bootstrap is intentionally smaller than steady-state GitOps. The supported
-path uses `hack/bootstrap/ansible/` with the in-repo `home-ops` backend by
-default, deriving K3s/Cilium/BGP/kube-vip values from GitOps manifests and
-loading the K3s token from 1Password. The external `../k3s-ansible` checkout is
-available as an explicit compatibility backend.
+This repository owns the operational path for building and maintaining the
+cluster, not just steady-state GitOps manifests. The bootstrap framework under
+`hack/bootstrap/` can converge K3s nodes, install the minimal dependencies
+needed for ArgoCD takeover, validate bootstrap flows in kind and Lima, and run
+safe worker/control-plane node lifecycle operations.
 
-After K3s and Cilium are ready, the Kubernetes bootstrap runner seeds only the
-dependencies ArgoCD needs to take over. See
-[docs/just-bootstrap.md](docs/just-bootstrap.md) for live commands, Lima/kind
-validation, dry-run checks, and safety notes.
+Bootstrap stays narrower than steady-state GitOps: it prepares the cluster only
+until ArgoCD can reconcile the normal app graph. See
+[hack/bootstrap/README.md](hack/bootstrap/README.md) for the framework overview
+and linked operator runbooks.
 
 ### ArgoCD Project Structure 🏗️
 

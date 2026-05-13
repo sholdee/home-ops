@@ -9,7 +9,7 @@ normal app graph.
 
 ## Start Here
 
-- Read `docs/just-bootstrap.md` for operator-facing workflows and command
+- Read `docs/cluster-operations.md` for operator-facing workflows and command
   examples.
 - Use `just --list` or the grouped sections in the root `justfile` for the
   current command surface. The main groups are bootstrap validation, kind,
@@ -67,7 +67,7 @@ Phase order:
 12. `audit`
 
 Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
-`docs/just-bootstrap.md`.
+`docs/cluster-operations.md`.
 
 ## Safety Rules
 

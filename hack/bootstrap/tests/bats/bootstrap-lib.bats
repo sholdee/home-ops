@@ -162,7 +162,7 @@ EOF
       sub(/`.*/, "", phase)
       print phase
     }
-  ' "${ROOT}/docs/just-bootstrap.md" > "$actual"
+  ' "${ROOT}/docs/cluster-operations.md" > "$actual"
 
   run diff -u "$expected" "$actual"
   assert_success

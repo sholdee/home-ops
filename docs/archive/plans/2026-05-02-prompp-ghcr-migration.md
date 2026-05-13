@@ -101,10 +101,10 @@ AGENTS.md
 prompp-testbuild-migration
 ```
 
-`git status --short` should include only this plan before the manifest edit:
+`git status --short` should include only this archived plan before the manifest edit:
 
 ```text
-?? docs/superpowers/
+?? docs/archive/plans/2026-05-02-prompp-ghcr-migration.md
 ```
 
 - [x] **Step 2: Confirm the current rendered Prometheus image, version, and storage**
@@ -397,7 +397,7 @@ pre-commit run --files apps/monitoring/values.yaml
 
 Expected: all hooks pass.
 
-Execution note, 2026-05-02: `pre-commit run --files apps/monitoring/values.yaml docs/superpowers/plans/2026-05-02-prompp-ghcr-migration.md` passed after rerunning with network access for the Helm-backed `kustomize build` hook.
+Execution note, 2026-05-02: `pre-commit run --files apps/monitoring/values.yaml docs/archive/plans/2026-05-02-prompp-ghcr-migration.md` passed after rerunning with network access for the Helm-backed `kustomize build` hook.
 
 - [x] **Step 5: Commit the migration change**
 
@@ -595,7 +595,7 @@ pre-commit run --files apps/monitoring/values.yaml
 
 Expected: all hooks pass.
 
-Execution note, 2026-05-02: final render showed the pinned Prom++ image, `version: v3.11.3`, and `initContainers: null`; the ArgoCD-style server-side dry-run completed; `pre-commit run --files apps/monitoring/values.yaml docs/superpowers/plans/2026-05-02-prompp-ghcr-migration.md` passed.
+Execution note, 2026-05-02: final render showed the pinned Prom++ image, `version: v3.11.3`, and `initContainers: null`; the ArgoCD-style server-side dry-run completed; `pre-commit run --files apps/monitoring/values.yaml docs/archive/plans/2026-05-02-prompp-ghcr-migration.md` passed.
 
 - [x] **Step 5: Commit the cleanup change**
 
