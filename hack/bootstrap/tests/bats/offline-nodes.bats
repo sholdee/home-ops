@@ -257,6 +257,16 @@ EOF
   mkdir -p "${tmp}/longhorn-state"
 
   run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_replica_delete_blockers test deleted-node"
+  assert_success
+  [[ -z "$output" ]]
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_safe_stale_replicas_for_deleted_node test deleted-node"
+  assert_success
+  [[ "$output" == "stale-replica" ]]
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_longhorn_deleted_node test deleted-node 1"
   assert_success
   assert_output_contains 'deleting safe stale Longhorn replica stale-replica'
@@ -317,6 +327,11 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test k3s-worker-0"
   assert_failure
   assert_output_contains 'reason=insufficient-healthy-replicas-elsewhere'
+
+  run env LONGHORN_REPLICA_CASE=insufficient NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_safe_stale_replicas_for_deleted_node test k3s-worker-0"
+  assert_success
+  [[ -z "$output" ]]
 
   run env NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"

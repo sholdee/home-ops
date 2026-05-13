@@ -305,10 +305,68 @@ node_longhorn_replicas_on_node() {
   ' <<<"$replicas_json"
 }
 
+node_longhorn_replica_delete_safety_jq() {
+  cat <<'EOF'
+($volumes[0].items // []) as $volume_items |
+def node_id:
+  (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
+def volume_name:
+  (.spec.volumeName // .metadata.labels.longhornvolume // "");
+def replica_state:
+  (.status.currentState // .status.state // "unknown");
+def desire_state:
+  (.spec.desireState // "");
+def failed_at:
+  (.spec.failedAt // .status.failedAt // "");
+def healthy_at:
+  (.spec.healthyAt // .status.healthyAt // "");
+def healthy_replica:
+  failed_at == "" and
+  healthy_at != "" and
+  (replica_state == "running" or replica_state == "stopped");
+def running_replica:
+  replica_state == "running" or
+  (.status.started // false) == true or
+  ((.status.instanceManagerName // "") != "");
+def volume_by_name($name):
+  first($volume_items[]? | select(.metadata.name == $name)) // null;
+def target_node_replica_delete_safety:
+  (.items // []) as $all_replicas |
+  $all_replicas[]
+  | select(node_id == $node)
+  | (volume_name) as $volume_name
+  | (volume_by_name($volume_name)) as $volume
+  | ($volume.spec.numberOfReplicas // 1 | tonumber? // 1) as $desired_replicas
+  | ([ $all_replicas[]
+      | select(volume_name == $volume_name)
+      | select(node_id != $node)
+      | select(healthy_replica)
+    ] | length) as $healthy_elsewhere
+  | {
+      name: (.metadata.name // "unknown"),
+      volume: $volume_name,
+      state: replica_state,
+      desireState: desire_state,
+      failedAt: failed_at,
+      healthyElsewhere: $healthy_elsewhere,
+      desiredReplicas: $desired_replicas,
+      volumeFound: ($volume != null),
+      running: running_replica,
+      safeToDelete: (
+        ($volume != null) and
+        (running_replica | not) and
+        replica_state == "stopped" and
+        desire_state == "stopped" and
+        $healthy_elsewhere >= $desired_replicas
+      )
+    };
+EOF
+}
+
 node_longhorn_replica_delete_blockers() {
   local context="$1"
   local node="$2"
-  local replicas_json volumes_json
+  local replicas_json volumes_json jq_defs jq_filter
 
   replicas_json="$(node_get_json "$context" -n longhorn-system replicas.longhorn.io 2>/dev/null || true)"
   [[ -n "$replicas_json" ]] || {
@@ -326,54 +384,9 @@ node_longhorn_replica_delete_blockers() {
   # may keep it around temporarily after rebuilding healthy copies elsewhere.
   # For node replacement it is only safe to ignore when the desired healthy
   # replica count is already present on other nodes.
-  # shellcheck disable=SC2016
-  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") '
-    ($volumes[0].items // []) as $volume_items |
-    def node_id:
-      (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
-    def volume_name:
-      (.spec.volumeName // .metadata.labels.longhornvolume // "");
-    def replica_state:
-      (.status.currentState // .status.state // "unknown");
-    def desire_state:
-      (.spec.desireState // "");
-    def failed_at:
-      (.spec.failedAt // .status.failedAt // "");
-    def healthy_at:
-      (.spec.healthyAt // .status.healthyAt // "");
-    def healthy_replica:
-      failed_at == "" and
-      healthy_at != "" and
-      (replica_state == "running" or replica_state == "stopped");
-    def running_replica:
-      replica_state == "running" or
-      (.status.started // false) == true or
-      ((.status.instanceManagerName // "") != "");
-    def volume_by_name($name):
-      first($volume_items[]? | select(.metadata.name == $name)) // null;
-    (.items // []) as $all_replicas |
-    $all_replicas[]
-    | select(node_id == $node)
-    | . as $replica
-    | (volume_name) as $volume_name
-    | (volume_by_name($volume_name)) as $volume
-    | ($volume.spec.numberOfReplicas // 1 | tonumber? // 1) as $desired_replicas
-    | ([ $all_replicas[]
-        | select(volume_name == $volume_name)
-        | select(node_id != $node)
-        | select(healthy_replica)
-      ] | length) as $healthy_elsewhere
-    | {
-        name: (.metadata.name // "unknown"),
-        volume: $volume_name,
-        state: replica_state,
-        desireState: desire_state,
-        failedAt: failed_at,
-        healthyElsewhere: $healthy_elsewhere,
-        desiredReplicas: $desired_replicas,
-        volumeFound: ($volume != null),
-        running: running_replica
-      }
+  jq_defs="$(node_longhorn_replica_delete_safety_jq)"
+  jq_filter="$(printf '%s\n%s\n' "$jq_defs" '
+    target_node_replica_delete_safety
     | if (.volumeFound | not) then
         "\(.name) volume=\(.volume) state=\(.state) desired=\(.desireState) failedAt=\(.failedAt) reason=volume-not-found"
       elif .running then
@@ -385,7 +398,8 @@ node_longhorn_replica_delete_blockers() {
       else
         empty
       end
-  ' <<<"$replicas_json"
+  ')"
+  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") "$jq_filter" <<<"$replicas_json"
 }
 
 node_longhorn_engine_delete_blockers() {
@@ -421,7 +435,7 @@ node_longhorn_engine_delete_blockers() {
 node_longhorn_safe_stale_replicas_for_deleted_node() {
   local context="$1"
   local node="$2"
-  local replicas_json volumes_json
+  local replicas_json volumes_json jq_defs jq_filter
 
   replicas_json="$(node_get_json "$context" -n longhorn-system replicas.longhorn.io 2>/dev/null || true)"
   [[ -n "$replicas_json" ]] || {
@@ -435,52 +449,14 @@ node_longhorn_safe_stale_replicas_for_deleted_node() {
     return 0
   }
 
-  # Keep this predicate in lockstep with node_longhorn_replica_delete_blockers.
   # These replicas are safe to delete only after the Kubernetes node is gone.
-  # shellcheck disable=SC2016
-  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") '
-    ($volumes[0].items // []) as $volume_items |
-    def node_id:
-      (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
-    def volume_name:
-      (.spec.volumeName // .metadata.labels.longhornvolume // "");
-    def replica_state:
-      (.status.currentState // .status.state // "unknown");
-    def desire_state:
-      (.spec.desireState // "");
-    def failed_at:
-      (.spec.failedAt // .status.failedAt // "");
-    def healthy_at:
-      (.spec.healthyAt // .status.healthyAt // "");
-    def healthy_replica:
-      failed_at == "" and
-      healthy_at != "" and
-      (replica_state == "running" or replica_state == "stopped");
-    def running_replica:
-      replica_state == "running" or
-      (.status.started // false) == true or
-      ((.status.instanceManagerName // "") != "");
-    def volume_by_name($name):
-      first($volume_items[]? | select(.metadata.name == $name)) // null;
-    (.items // []) as $all_replicas |
-    $all_replicas[]
-    | select(node_id == $node)
-    | . as $replica
-    | (volume_name) as $volume_name
-    | (volume_by_name($volume_name)) as $volume
-    | ($volume.spec.numberOfReplicas // 1 | tonumber? // 1) as $desired_replicas
-    | ([ $all_replicas[]
-        | select(volume_name == $volume_name)
-        | select(node_id != $node)
-        | select(healthy_replica)
-      ] | length) as $healthy_elsewhere
-    | select($volume != null)
-    | select(running_replica | not)
-    | select(replica_state == "stopped")
-    | select(desire_state == "stopped")
-    | select($healthy_elsewhere >= $desired_replicas)
-    | .metadata.name
-  ' <<<"$replicas_json"
+  jq_defs="$(node_longhorn_replica_delete_safety_jq)"
+  jq_filter="$(printf '%s\n%s\n' "$jq_defs" '
+    target_node_replica_delete_safety
+    | select(.safeToDelete)
+    | .name
+  ')"
+  "$NODE_JQ_BIN" -r --arg node "$node" --slurpfile volumes <(printf '%s\n' "$volumes_json") "$jq_filter" <<<"$replicas_json"
 }
 
 node_longhorn_max_replica_count() {
