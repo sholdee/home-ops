@@ -7,35 +7,26 @@
     home_ops_node_taints:
       - node.home-ops.sh/joining=true:NoSchedule
   tasks:
-    - name: Run control-plane preflight checks
-      ansible.builtin.import_tasks: tasks/preflight.yml
-
-    - name: Install required Debian-family packages
-      ansible.builtin.import_tasks: tasks/packages-debian.yml
-
-    - name: Configure kernel prerequisites
-      ansible.builtin.import_tasks: tasks/kernel.yml
+    - name: Prepare control-plane host prerequisites
+      ansible.builtin.import_tasks: tasks/node-prep/main.yml
 
     - name: Install K3s binary
-      ansible.builtin.import_tasks: tasks/download-k3s.yml
+      ansible.builtin.import_tasks: tasks/k3s/download.yml
 
     - name: Write K3s token file
-      ansible.builtin.import_tasks: tasks/token.yml
+      ansible.builtin.import_tasks: tasks/k3s/token.yml
 
     - name: Install etcdctl
-      ansible.builtin.import_tasks: tasks/etcdctl.yml
+      ansible.builtin.import_tasks: tasks/k3s/etcdctl.yml
 
     - name: Reset stale local K3s server database
-      ansible.builtin.import_tasks: tasks/reset-server-db.yml
+      ansible.builtin.import_tasks: tasks/k3s/reset-server-db.yml
 
     - name: Disable K3s kube-proxy before server join
-      ansible.builtin.import_tasks: tasks/kube-proxy-disable.yml
+      ansible.builtin.import_tasks: tasks/k3s/kube-proxy-disable.yml
 
     - name: Join K3s server with temporary taint
-      ansible.builtin.import_tasks: tasks/join-servers.yml
+      ansible.builtin.import_tasks: tasks/k3s/join-servers.yml
 
-    - name: Apply RPi reporter host service
-      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
-
-    - name: Apply NUT client host service
-      ansible.builtin.import_tasks: tasks/nut-client.yml
+    - name: Apply host services
+      ansible.builtin.import_tasks: tasks/host-services/main.yml

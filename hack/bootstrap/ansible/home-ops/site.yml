@@ -4,20 +4,14 @@
   gather_facts: true
   become: true
   tasks:
-    - name: Run preflight checks
-      ansible.builtin.import_tasks: tasks/preflight.yml
-
-    - name: Install required Debian-family packages
-      ansible.builtin.import_tasks: tasks/packages-debian.yml
-
-    - name: Configure kernel prerequisites
-      ansible.builtin.import_tasks: tasks/kernel.yml
+    - name: Prepare K3s node host prerequisites
+      ansible.builtin.import_tasks: tasks/node-prep/main.yml
 
     - name: Install K3s binary
-      ansible.builtin.import_tasks: tasks/download-k3s.yml
+      ansible.builtin.import_tasks: tasks/k3s/download.yml
 
     - name: Write K3s token file
-      ansible.builtin.import_tasks: tasks/token.yml
+      ansible.builtin.import_tasks: tasks/k3s/token.yml
 
 - name: Install home-ops control-plane tools
   hosts: master
@@ -25,7 +19,7 @@
   become: true
   tasks:
     - name: Install etcdctl
-      ansible.builtin.import_tasks: tasks/etcdctl.yml
+      ansible.builtin.import_tasks: tasks/k3s/etcdctl.yml
       tags:
         - etcdctl
 
@@ -35,10 +29,10 @@
   become: true
   tasks:
     - name: Render kube-vip bootstrap manifests
-      ansible.builtin.import_tasks: tasks/kube-vip.yml
+      ansible.builtin.import_tasks: tasks/network/kube-vip.yml
 
     - name: Start first K3s server
-      ansible.builtin.import_tasks: tasks/first-server.yml
+      ansible.builtin.import_tasks: tasks/k3s/first-server.yml
 
 - name: Join remaining home-ops control-plane nodes
   hosts: master[1:]
@@ -46,7 +40,7 @@
   become: true
   tasks:
     - name: Join K3s servers
-      ansible.builtin.import_tasks: tasks/join-servers.yml
+      ansible.builtin.import_tasks: tasks/k3s/join-servers.yml
 
 - name: Join home-ops worker nodes
   hosts: node
@@ -54,7 +48,7 @@
   become: true
   tasks:
     - name: Join K3s agents
-      ansible.builtin.import_tasks: tasks/join-agents.yml
+      ansible.builtin.import_tasks: tasks/k3s/join-agents.yml
 
 - name: Install bootstrap Cilium
   hosts: master[0]
@@ -62,7 +56,7 @@
   become: true
   tasks:
     - name: Install bootstrap Cilium
-      ansible.builtin.import_tasks: tasks/cilium.yml
+      ansible.builtin.import_tasks: tasks/network/cilium.yml
 
 - name: Fetch home-ops kubeconfig
   hosts: master[0]
@@ -70,20 +64,12 @@
   become: true
   tasks:
     - name: Prepare and fetch kubeconfig
-      ansible.builtin.import_tasks: tasks/kubeconfig.yml
+      ansible.builtin.import_tasks: tasks/k3s/kubeconfig.yml
 
-- name: Converge RPi reporter host service
+- name: Converge home-ops host services
   hosts: k3s_cluster
   gather_facts: true
   become: true
   tasks:
-    - name: Apply RPi reporter host service
-      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
-
-- name: Converge NUT client host service
-  hosts: master
-  gather_facts: true
-  become: true
-  tasks:
-    - name: Apply NUT client host service
-      ansible.builtin.import_tasks: tasks/nut-client.yml
+    - name: Apply host services
+      ansible.builtin.import_tasks: tasks/host-services/main.yml

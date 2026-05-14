@@ -1,0 +1,44 @@
+---
+- name: Read current boot ID
+  ansible.builtin.command: cat /proc/sys/kernel/random/boot_id
+  register: home_ops_node_prep_boot_id
+  changed_when: false
+  check_mode: false
+
+- name: Ensure node-prep state directory exists
+  ansible.builtin.file:
+    path: "{{ home_ops_node_prep_reboot_marker | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check node-prep reboot marker
+  ansible.builtin.stat:
+    path: "{{ home_ops_node_prep_reboot_marker }}"
+  register: home_ops_node_prep_reboot_marker_stat
+
+- name: Read node-prep reboot marker
+  ansible.builtin.slurp:
+    src: "{{ home_ops_node_prep_reboot_marker }}"
+  register: home_ops_node_prep_reboot_marker_content
+  when: home_ops_node_prep_reboot_marker_stat.stat.exists
+
+- name: Clear stale node-prep reboot marker after reboot
+  ansible.builtin.file:
+    path: "{{ home_ops_node_prep_reboot_marker }}"
+    state: absent
+  when:
+    - home_ops_node_prep_reboot_marker_stat.stat.exists
+    - >-
+      (home_ops_node_prep_reboot_marker_content.content | b64decode | trim) !=
+      (home_ops_node_prep_boot_id.stdout | trim)
+
+- name: Preserve node-prep reboot requirement before reboot
+  ansible.builtin.set_fact:
+    home_ops_node_prep_reboot_required: true
+  when:
+    - home_ops_node_prep_reboot_marker_stat.stat.exists
+    - >-
+      (home_ops_node_prep_reboot_marker_content.content | b64decode | trim) ==
+      (home_ops_node_prep_boot_id.stdout | trim)

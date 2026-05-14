@@ -434,6 +434,12 @@ Initial K3s server args leave kube-proxy enabled so Ansible can complete before
 Cilium owns Service routing. The post-Cilium playbook disables kube-proxy when
 the derived Cilium config has `kube_proxy_replacement: true`.
 
+The Ansible node-prep phase also manages host prerequisites such as Raspberry
+Pi boot flags, swap, CPU governor, and fsnotify sysctls. Fresh nodes may reboot
+automatically before they join K3s. Existing K3s nodes do not auto-reboot; if a
+boot-level change is required, drain and reboot that node through the node
+lifecycle flow, then rerun Ansible.
+
 Generated live inventory, vars, kubeconfigs, and run output are written under
 `hack/bootstrap/.out/ansible-live/`.
 

@@ -45,11 +45,22 @@
 - name: Gather service facts
   ansible.builtin.service_facts:
 
+- name: Set installed K3s service facts
+  ansible.builtin.set_fact:
+    home_ops_k3s_server_installed: "{{ (home_ops_k3s_server_service_name ~ '.service') in ansible_facts.services }}"
+    home_ops_k3s_agent_installed: "{{ (home_ops_k3s_agent_service_name ~ '.service') in ansible_facts.services }}"
+    home_ops_k3s_installed: >-
+      {{
+        (home_ops_k3s_server_service_name ~ '.service') in ansible_facts.services or
+        (home_ops_k3s_agent_service_name ~ '.service') in ansible_facts.services
+      }}
+
 - name: Read installed K3s version
   ansible.builtin.command: "{{ home_ops_k3s_binary_path }} --version"
   register: home_ops_k3s_version_cmd
   failed_when: false
   changed_when: false
+  check_mode: false
 
 - name: Set installed K3s version fact
   ansible.builtin.set_fact:
@@ -77,11 +88,11 @@
     msg: "server host {{ inventory_hostname }} has {{ home_ops_k3s_agent_service_name }} service state"
   when:
     - inventory_hostname in groups[group_name_master]
-    - (home_ops_k3s_agent_service_name ~ '.service') in ansible_facts.services
+    - home_ops_k3s_agent_installed | bool
 
 - name: Fail when an agent host already has a server service
   ansible.builtin.fail:
     msg: "agent host {{ inventory_hostname }} has {{ home_ops_k3s_server_service_name }} service state"
   when:
     - inventory_hostname in (groups[group_name_node] | default([]))
-    - (home_ops_k3s_server_service_name ~ '.service') in ansible_facts.services
+    - home_ops_k3s_server_installed | bool

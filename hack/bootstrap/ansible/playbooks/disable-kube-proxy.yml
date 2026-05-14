@@ -30,7 +30,7 @@
 
   tasks:
     - name: Manage K3s kube-proxy disable config
-      ansible.builtin.import_tasks: ../home-ops/tasks/kube-proxy-disable.yml
+      ansible.builtin.import_tasks: ../home-ops/tasks/k3s/kube-proxy-disable.yml
 
   handlers:
     - name: Restart K3s after kube-proxy config

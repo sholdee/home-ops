@@ -1,0 +1,29 @@
+---
+- name: Verify ansible_host is an IPv4 address
+  ansible.builtin.assert:
+    that:
+      - ansible_host is defined
+      - ansible_host is match('^([0-9]{1,3}\.){3}[0-9]{1,3}$')
+    fail_msg: >-
+      home-ops live inventory expects ansible_host to be the node IPv4 address
+      used by K3s. {{ inventory_hostname }} has ansible_host={{ ansible_host | default('unset') }}.
+  when: home_ops_validate_ansible_host_ip | bool
+
+- name: Verify ansible_host exists on the node
+  ansible.builtin.assert:
+    that:
+      - ansible_host in ansible_facts.all_ipv4_addresses
+    fail_msg: >-
+      Inventory ansible_host {{ ansible_host }} is not assigned to a non-loopback
+      interface on {{ inventory_hostname }}. Fix inventory before joining K3s.
+  when: home_ops_validate_ansible_host_ip | bool
+
+- name: Verify K3s node IP follows ansible_host
+  ansible.builtin.assert:
+    that:
+      - k3s_node_ip == ansible_host
+    fail_msg: >-
+      k3s_node_ip must match ansible_host for home-ops live nodes.
+      {{ inventory_hostname }} has k3s_node_ip={{ k3s_node_ip | default('unset') }}
+      and ansible_host={{ ansible_host }}.
+  when: home_ops_validate_ansible_host_ip | bool

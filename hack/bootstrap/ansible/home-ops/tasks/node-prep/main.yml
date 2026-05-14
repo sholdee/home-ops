@@ -1,0 +1,70 @@
+---
+- name: Run preflight checks
+  ansible.builtin.import_tasks: preflight.yml
+
+- name: Validate inventory node IP
+  ansible.builtin.import_tasks: node-ip.yml
+
+- name: Load node-prep reboot marker
+  ansible.builtin.import_tasks: reboot-marker.yml
+
+- name: Install required Debian-family packages
+  ansible.builtin.import_tasks: packages-debian.yml
+
+- name: Configure kernel prerequisites
+  ansible.builtin.import_tasks: kernel.yml
+
+- name: Detect Raspberry Pi host
+  ansible.builtin.import_tasks: raspberry-pi.yml
+
+- name: Configure Raspberry Pi boot command line
+  ansible.builtin.import_tasks: boot-cmdline.yml
+  when: home_ops_raspberry_pi | default(false) | bool
+
+- name: Configure Raspberry Pi firmware config
+  ansible.builtin.import_tasks: raspberry-pi-config.yml
+  when: home_ops_raspberry_pi | default(false) | bool
+
+- name: Disable swap
+  ansible.builtin.import_tasks: swap.yml
+
+- name: Configure node sysctls
+  ansible.builtin.import_tasks: sysctl.yml
+
+- name: Configure CPU governor
+  ansible.builtin.import_tasks: cpu-governor.yml
+
+- name: Persist node-prep reboot marker
+  ansible.builtin.copy:
+    dest: "{{ home_ops_node_prep_reboot_marker }}"
+    owner: root
+    group: root
+    mode: "0644"
+    content: "{{ home_ops_node_prep_boot_id.stdout | trim }}\n"
+  when: home_ops_node_prep_reboot_required | default(false) | bool
+
+- name: Reboot fresh node after boot configuration changes
+  ansible.builtin.reboot:
+    msg: "Rebooting to apply home-ops node-prep boot configuration"
+    reboot_timeout: 600
+  when:
+    - home_ops_node_prep_reboot_required | default(false) | bool
+    - home_ops_node_prep_auto_reboot | bool
+
+- name: Clear node-prep reboot marker after automatic reboot
+  ansible.builtin.file:
+    path: "{{ home_ops_node_prep_reboot_marker }}"
+    state: absent
+  when:
+    - home_ops_node_prep_reboot_required | default(false) | bool
+    - home_ops_node_prep_auto_reboot | bool
+
+- name: Stop when existing K3s node needs a manual lifecycle reboot
+  ansible.builtin.fail:
+    msg: >-
+      Node-prep changed boot-level settings on {{ inventory_hostname }}.
+      Drain and reboot this existing K3s node through the node lifecycle flow,
+      then rerun Ansible after it returns Ready.
+  when:
+    - home_ops_node_prep_reboot_required | default(false) | bool
+    - not (home_ops_node_prep_auto_reboot | bool)

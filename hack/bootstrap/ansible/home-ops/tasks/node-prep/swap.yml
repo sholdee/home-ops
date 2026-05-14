@@ -1,0 +1,55 @@
+---
+- name: Check active swap devices
+  ansible.builtin.command: swapon --show --noheadings
+  register: home_ops_active_swap
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Turn off active swap
+  ansible.builtin.command: swapoff -a
+  changed_when: true
+  when: home_ops_active_swap.stdout | length > 0
+
+- name: Check for dphys-swapfile command
+  ansible.builtin.stat:
+    path: /usr/sbin/dphys-swapfile
+  register: home_ops_dphys_swapfile
+
+- name: Stop dphys-swapfile service
+  ansible.builtin.systemd:
+    name: dphys-swapfile
+    state: stopped
+    enabled: false
+  failed_when: false
+  when: home_ops_dphys_swapfile.stat.exists
+
+- name: Disable dphys-swapfile swap
+  ansible.builtin.command: dphys-swapfile swapoff
+  failed_when: false
+  changed_when: false
+  when: home_ops_dphys_swapfile.stat.exists
+
+- name: Uninstall dphys-swapfile swap file
+  ansible.builtin.command: dphys-swapfile uninstall
+  failed_when: false
+  changed_when: false
+  when: home_ops_dphys_swapfile.stat.exists
+
+- name: Purge dphys-swapfile package
+  ansible.builtin.apt:
+    name: dphys-swapfile
+    state: absent
+    purge: true
+
+- name: Verify no swap remains active
+  ansible.builtin.command: awk 'NR > 1 { print }' /proc/swaps
+  register: home_ops_remaining_swap
+  changed_when: false
+  check_mode: false
+
+- name: Fail when swap remains active
+  ansible.builtin.assert:
+    that:
+      - home_ops_remaining_swap.stdout | length == 0
+    fail_msg: "Swap remains active on {{ inventory_hostname }}: {{ home_ops_remaining_swap.stdout }}"
