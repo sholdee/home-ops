@@ -568,7 +568,9 @@ reachable from the initramfs network path.
 
 `node-reimage-apply` reads the recorded serve state, calls the existing stage
 and tryboot reboot primitives, waits for SSH to go down and return, and
-refreshes `known_hosts`. It does not join or uncordon the node.
+refreshes `known_hosts`. It also waits for the generated image firstboot
+marker so SSH returning on the old OS or before firstboot completion is not
+treated as success. It does not join or uncordon the node.
 
 `node-reimage-stage` requires image metadata with schema
 `home-ops.node-image/v1`, matching `node`, `hostname`, `ansibleHost`,
@@ -596,6 +598,12 @@ needed, and CA certificates when present. `--payload-dir` can still supply a
 local `initramfs.img` and `cmdline.txt` pair. Staging writes the payload,
 manifest, and `/boot/firmware/tryboot.txt`; the separate reboot command uses
 the Raspberry Pi one-shot `0 tryboot` flag.
+
+Network reimage destroys any `local-path` data on that node. Replicated
+controllers should recover from healthy peers, but a stale local-path PVC may
+need a narrow operator cleanup after the node rejoins. For CNPG, verify the
+failed instance is not primary and the cluster has healthy peers before
+deleting only the failed pod/PVC so the operator can rebuild a fresh replica.
 
 ## Live Validation
 

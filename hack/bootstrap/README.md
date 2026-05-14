@@ -294,9 +294,11 @@ On macOS the build runs in the persistent `home-ops-rpi-image-builder` Lima VM;
 on Linux it can run directly. `node-reimage-serve` hosts the recorded artifact
 from an explicit healthy inventory node, `node-reimage-apply` stages and
 tryboot-reboots the deleted node from recorded serve state, and
-`node-reimage-cleanup` removes the node-specific remote hosting directory. By
-default the payload is built on the target from its current Raspberry Pi
-initramfs, so it keeps the matching kernel modules and boot-network tooling.
+waits for SSH plus the generated-image firstboot marker before reporting
+success. `node-reimage-cleanup` removes the node-specific remote hosting
+directory. By default the payload is built on the target from its current
+Raspberry Pi initramfs, so it keeps the matching kernel modules and
+boot-network tooling.
 
 ## Secrets
 

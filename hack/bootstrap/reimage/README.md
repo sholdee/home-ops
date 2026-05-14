@@ -26,23 +26,19 @@ before rewriting the disk falls back to the normal boot path on the next boot.
 
 ## Verified Flow
 
-This flow was live-tested on `k3s-worker-0` on May 14, 2026. The node was
+This flow was live-tested on `k3s-worker-1` on May 14, 2026. The node was
 drained, Longhorn-evacuated, deleted from Kubernetes, reimaged over the
-network to Raspberry Pi OS Trixie, SSH host-key refreshed, and then prepared
-again with `just ansible-host-services k3s-worker-0`.
+network to Raspberry Pi OS Trixie, joined back to the cluster, uncordoned, and
+cleaned up with `node-reimage-cleanup`.
 
-The verified image was hosted from `k3s-master-0` so the worker could fetch it
-on the cluster VLAN:
-
-```sh
-image_url=http://192.168.99.10:18080/home-ops-k3s-worker-0.img.xz
-image_sha=3145bac1147525a500a545245f57fe72f55731e9f7a037ae62bd687595c4acbb
-```
+The verified image was built with `node-reimage-build`, hosted from
+`k3s-master-0` with `node-reimage-serve`, and fetched by the staged initramfs
+from the cluster VLAN.
 
 The server log showed the full image fetch:
 
 ```text
-"GET /home-ops-k3s-worker-0.img.xz HTTP/1.1" 200 -
+"GET /home-ops-k3s-worker-1.img.zst HTTP/1.1" 200 -
 ```
 
 Post-boot checks confirmed the fresh OS and expanded root filesystem:
@@ -109,8 +105,9 @@ just node-reimage-apply k3s-worker-0
 ```
 
 `node-reimage-apply` calls the existing stage and reboot primitives, waits for
-SSH to go down and return, then refreshes the host key. Ping can return before
-SSH is ready.
+SSH to go down and return, refreshes the host key, and waits for
+`/var/lib/home-ops/firstboot-complete`. Ping can return before SSH is ready,
+and SSH can return before firstboot has finished.
 
 Keep the image server running until the reimaging node has fetched the full
 image. The server log is recorded in `state/serve.json`.
@@ -149,6 +146,12 @@ just ansible-host-services k3s-worker-0
 replacement path on optional host-service setup. Run host services separately
 after the node is schedulable when you want the reporter or Actions runner
 installed.
+
+Network reimage destroys `local-path` data that existed on the old OS. If a
+replicated controller leaves a pod bound to a stale local-path PVC, verify the
+instance is non-primary and the cluster has healthy peers before deleting only
+that failed pod/PVC. In the verified run, CNPG rebuilt the affected Grafana
+replica as a new instance after the stale local-path PVC was removed.
 
 ## Implementation Notes
 
