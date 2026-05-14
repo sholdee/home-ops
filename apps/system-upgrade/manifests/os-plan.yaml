@@ -3,21 +3,21 @@
 apiVersion: upgrade.cattle.io/v1
 kind: Plan
 metadata:
-  name: raspios-bookworm
+  name: raspios-trixie
   namespace: system-upgrade
   labels:
-    os-upgrade: raspios-bookworm
+    os-upgrade: raspios-trixie
 spec:
   concurrency: 1
   exclusive: true
   jobActiveDeadlineSecs: 7200
   postCompleteDelay: "5m"
-  version: bookworm-2026-05-09
+  version: trixie-2026-05-14
   nodeSelector:
     matchExpressions:
-      - key: plan.upgrade.cattle.io/raspios-bookworm
+      - key: plan.upgrade.cattle.io/raspios-trixie
         operator: Exists
-      - key: plan.upgrade.cattle.io/raspios-bookworm
+      - key: plan.upgrade.cattle.io/raspios-trixie
         operator: NotIn
         values:
           - "disabled"
@@ -25,7 +25,7 @@ spec:
   serviceAccountName: system-upgrade
   secrets:
     - name: raspios-upgrade-script
-      path: /host/run/system-upgrade/secrets/raspios-bookworm
+      path: /host/run/system-upgrade/secrets/raspios-trixie
       ignoreUpdates: true
   tolerations:
     - key: CriticalAddonsOnly
@@ -46,6 +46,6 @@ spec:
     force: true
     skipWaitForDeleteTimeout: 180
   upgrade:
-    image: debian:bookworm-slim@sha256:67b30a61dc87758f0caf819646104f29ecbda97d920aaf5edc834128ac8493d3
+    image: debian:trixie-slim@sha256:109e2c65005bf160609e4ba6acf7783752f8502ad218e298253428690b9eaa4b
     command: ["chroot", "/host"]
-    args: ["sh", "/run/system-upgrade/secrets/raspios-bookworm/upgrade.sh"]
+    args: ["sh", "/run/system-upgrade/secrets/raspios-trixie/upgrade.sh"]

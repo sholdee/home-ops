@@ -2,7 +2,7 @@
 set -eu
 
 marker_dir="/var/lib/rancher/system-upgrade/reboot"
-marker="${marker_dir}/raspios-bookworm"
+marker="${marker_dir}/raspios-trixie"
 boot_id="$(cat /proc/sys/kernel/random/boot_id)"
 
 mkdir -p "${marker_dir}"
