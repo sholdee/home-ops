@@ -7,23 +7,17 @@
     home_ops_node_taints:
       - node.home-ops.sh/joining=true:NoSchedule
   tasks:
-    - name: Run worker preflight checks
-      ansible.builtin.import_tasks: tasks/preflight.yml
-
-    - name: Install required Debian-family packages
-      ansible.builtin.import_tasks: tasks/packages-debian.yml
-
-    - name: Configure kernel prerequisites
-      ansible.builtin.import_tasks: tasks/kernel.yml
+    - name: Prepare worker host prerequisites
+      ansible.builtin.import_tasks: tasks/node-prep/main.yml
 
     - name: Install K3s binary
-      ansible.builtin.import_tasks: tasks/download-k3s.yml
+      ansible.builtin.import_tasks: tasks/k3s/download.yml
 
     - name: Write K3s token file
-      ansible.builtin.import_tasks: tasks/token.yml
+      ansible.builtin.import_tasks: tasks/k3s/token.yml
 
     - name: Join K3s agent with temporary taint
-      ansible.builtin.import_tasks: tasks/join-agents.yml
+      ansible.builtin.import_tasks: tasks/k3s/join-agents.yml
 
-    - name: Apply RPi reporter host service
-      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
+    - name: Apply host services
+      ansible.builtin.import_tasks: tasks/host-services/main.yml

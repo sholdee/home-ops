@@ -1,0 +1,17 @@
+---
+- name: Load required kernel modules
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop:
+    - br_netfilter
+    - overlay
+  changed_when: false
+
+- name: Persist required kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/home-ops-k3s.conf
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      br_netfilter
+      overlay

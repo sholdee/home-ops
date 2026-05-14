@@ -23,6 +23,9 @@ repos:
         args:
           - "--offline"
           - "hack/bootstrap/ansible/home-ops/site.yml"
+          - "hack/bootstrap/ansible/home-ops/host-services.yml"
+          - "hack/bootstrap/ansible/home-ops/control-plane-finalize.yml"
+          - "hack/bootstrap/ansible/home-ops/control-plane-join.yml"
           - "hack/bootstrap/ansible/home-ops/worker-finalize.yml"
           - "hack/bootstrap/ansible/home-ops/worker-join.yml"
           - "hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml"

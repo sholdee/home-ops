@@ -7,13 +7,16 @@
     home_ops_node_taints: []
   tasks:
     - name: Run control-plane preflight checks
-      ansible.builtin.import_tasks: tasks/preflight.yml
+      ansible.builtin.import_tasks: tasks/node-prep/preflight.yml
+
+    - name: Validate inventory node IP
+      ansible.builtin.import_tasks: tasks/node-prep/node-ip.yml
 
     - name: Write K3s token file
-      ansible.builtin.import_tasks: tasks/token.yml
+      ansible.builtin.import_tasks: tasks/k3s/token.yml
 
     - name: Ensure K3s kube-proxy stays disabled
-      ansible.builtin.import_tasks: tasks/kube-proxy-disable.yml
+      ansible.builtin.import_tasks: tasks/k3s/kube-proxy-disable.yml
 
     - name: Render K3s server service without temporary taint
-      ansible.builtin.import_tasks: tasks/join-servers.yml
+      ansible.builtin.import_tasks: tasks/k3s/join-servers.yml

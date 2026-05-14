@@ -1,0 +1,22 @@
+---
+- name: Test for Raspberry Pi device-tree model
+  ansible.builtin.command: grep -a -E "Raspberry Pi" /proc/device-tree/model
+  register: home_ops_rpi_device_tree_model
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Test for Raspberry Pi CPU info
+  ansible.builtin.command: grep -E "Raspberry Pi|BCM2708|BCM2709|BCM2835|BCM2836|BCM2711|BCM2712" /proc/cpuinfo
+  register: home_ops_rpi_cpuinfo
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Set Raspberry Pi detection fact
+  ansible.builtin.set_fact:
+    home_ops_raspberry_pi: >-
+      {{
+        home_ops_rpi_device_tree_model.rc == 0 or
+        home_ops_rpi_cpuinfo.rc == 0
+      }}

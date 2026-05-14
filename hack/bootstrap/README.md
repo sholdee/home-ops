@@ -200,6 +200,12 @@ Cilium owns Service routing. After Cilium is ready, the wrapper runs the
 post-Cilium playbook that disables kube-proxy when the derived Cilium config
 has `kube_proxy_replacement: true`.
 
+The in-repo backend owns node-prep prerequisites before K3s install or join:
+Raspberry Pi boot/config flags, swap disablement, CPU governor, fsnotify
+sysctls, and base kernel modules. Fresh nodes may reboot automatically before
+joining K3s. Existing K3s nodes stop with a reboot-required message instead of
+rebooting themselves; use the node lifecycle drain/reboot/uncordon flow.
+
 ## Node Lifecycle
 
 Node lifecycle commands operate on an existing cluster and are intentionally

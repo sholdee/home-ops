@@ -1,0 +1,54 @@
+---
+- name: Install CPU governor helper
+  ansible.builtin.copy:
+    dest: /usr/local/sbin/home-ops-cpu-governor
+    owner: root
+    group: root
+    mode: "0755"
+    content: |
+      #!/bin/sh
+      set -eu
+      governor="${1:-performance}"
+      found=0
+      unsupported=0
+
+      for path in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
+        [ -e "$path" ] || continue
+        found=1
+        available="$(dirname "$path")/scaling_available_governors"
+        if [ -f "$available" ] && ! grep -qw "$governor" "$available"; then
+          echo "CPU governor $governor is not available for $(dirname "$path")" >&2
+          unsupported=1
+          continue
+        fi
+        echo "$governor" > "$path"
+      done
+
+      [ "$found" -eq 0 ] && exit 0
+      [ "$unsupported" -eq 0 ]
+
+- name: Install CPU governor service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/home-ops-cpu-governor.service
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Set home-ops CPU governor
+      After=sysinit.target
+
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/home-ops-cpu-governor {{ home_ops_cpu_governor }}
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and run CPU governor service
+  ansible.builtin.systemd:
+    name: home-ops-cpu-governor
+    daemon_reload: true
+    enabled: true
+    state: started
+  when: not ansible_check_mode

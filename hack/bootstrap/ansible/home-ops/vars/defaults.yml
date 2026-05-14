@@ -50,6 +50,29 @@ retry_count: 45
 home_ops_first_master: "{{ groups[group_name_master][0] }}"
 home_ops_first_master_join_ip: "{{ hostvars[home_ops_first_master].k3s_node_ip | string | split(',') | first }}"
 home_ops_node_name: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
+home_ops_validate_ansible_host_ip: false
+home_ops_node_prep_auto_reboot: "{{ not (home_ops_k3s_installed | default(false) | bool) }}"
+home_ops_node_prep_reboot_marker: /var/lib/home-ops/node-prep-reboot-required
+home_ops_raspberry_pi_cmdline_args:
+  - cgroup_enable=cpuset
+  - cgroup_memory=1
+  - cgroup_enable=memory
+  - nvme_core.default_ps_max_latency_us=0
+  - pcie_aspm=off
+  - pcie_port_pm=off
+home_ops_raspberry_pi_config_block: |
+  dtparam=pciex1
+  dtparam=nvme
+  dtparam=pciex1_gen=3
+  dtoverlay=cma,cma-96
+  dtparam=audio=off
+  dtoverlay=disable-wifi
+  dtoverlay=disable-bt
+  arm_boost=1
+home_ops_cpu_governor: performance
+home_ops_fsnotify_max_user_instances: 1024
+home_ops_fsnotify_max_user_watches: 524288
+home_ops_fsnotify_max_queued_events: 65536
 
 home_ops_first_server_args: >-
   {{ '--cluster-init' if (groups[group_name_master] | length) > 1 else '' }}

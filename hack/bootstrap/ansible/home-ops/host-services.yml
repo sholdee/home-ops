@@ -1,16 +1,8 @@
 ---
-- name: Converge RPi reporter host service
+- name: Converge home-ops host services
   hosts: k3s_cluster
   gather_facts: true
   become: true
   tasks:
-    - name: Apply RPi reporter host service
-      ansible.builtin.import_tasks: tasks/rpi-reporter.yml
-
-- name: Converge NUT client host service
-  hosts: master
-  gather_facts: true
-  become: true
-  tasks:
-    - name: Apply NUT client host service
-      ansible.builtin.import_tasks: tasks/nut-client.yml
+    - name: Apply host services
+      ansible.builtin.import_tasks: tasks/host-services/main.yml

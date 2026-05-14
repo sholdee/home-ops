@@ -7,17 +7,18 @@ system_timezone: America/Chicago
 proxmox_lxc_configure: false
 custom_registries: false
 
-cilium_iface: eth0
+cilium_iface: auto
 kube_vip_iface: eth0
 kube_vip_enabled: true
 kube_vip_arp: true
 kube_vip_bgp: false
 k3s_master_taint: false
+home_ops_validate_ansible_host_ip: true
 
 home_ops_rpi_reporter_enabled: true
 home_ops_nut_client_enabled: true
 
-k3s_node_ip: "{{ ansible_facts[cilium_iface]['ipv4']['address'] }}"
+k3s_node_ip: "{{ ansible_host }}"
 extra_args: >-
   --node-ip={{ k3s_node_ip }}
 extra_server_args: >-

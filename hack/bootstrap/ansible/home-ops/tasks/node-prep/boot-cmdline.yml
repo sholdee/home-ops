@@ -1,0 +1,41 @@
+---
+- name: Check Raspberry Pi firmware cmdline path
+  ansible.builtin.stat:
+    path: /boot/firmware/cmdline.txt
+  register: home_ops_firmware_cmdline
+
+- name: Check Raspberry Pi legacy cmdline path
+  ansible.builtin.stat:
+    path: /boot/cmdline.txt
+  register: home_ops_legacy_cmdline
+
+- name: Select Raspberry Pi cmdline path
+  ansible.builtin.set_fact:
+    home_ops_boot_cmdline_path: >-
+      {{
+        home_ops_firmware_cmdline.stat.exists |
+        ternary('/boot/firmware/cmdline.txt',
+          home_ops_legacy_cmdline.stat.exists | ternary('/boot/cmdline.txt', ''))
+      }}
+
+- name: Fail when Raspberry Pi cmdline file is missing
+  ansible.builtin.fail:
+    msg: "Raspberry Pi host {{ inventory_hostname }} has no /boot/firmware/cmdline.txt or /boot/cmdline.txt"
+  when: home_ops_boot_cmdline_path | length == 0
+
+- name: Ensure Raspberry Pi boot command line args are present
+  ansible.builtin.lineinfile:
+    path: "{{ home_ops_boot_cmdline_path }}"
+    regexp: "^(?!.*(?:^|\\s){{ item | regex_escape }}(?:\\s|$))(.*)$"
+    line: '\1 {{ item }}'
+    backrefs: true
+  loop: "{{ home_ops_raspberry_pi_cmdline_args }}"
+  register: home_ops_boot_cmdline_args_result
+
+- name: Mark reboot required after cmdline changes
+  ansible.builtin.set_fact:
+    home_ops_node_prep_reboot_required: >-
+      {{
+        home_ops_node_prep_reboot_required | default(false) | bool or
+        home_ops_boot_cmdline_args_result.changed
+      }}

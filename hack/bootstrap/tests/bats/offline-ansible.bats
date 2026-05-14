@@ -78,6 +78,12 @@ render_home_ops_inventory() {
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_nut_client_restart_on_change' "$home_ops_vars")" == "false" ]]
+  [[ "$(yq -r '.cilium_iface' "$home_ops_vars")" == "auto" ]]
+  [[ "$(yq -r '.k3s_node_ip' "$home_ops_vars")" == "{{ ansible_host }}" ]]
+  [[ "$(yq -r '.home_ops_validate_ansible_host_ip' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_fsnotify_max_user_instances' "$home_ops_vars")" == "1024" ]]
+  [[ "$(yq -r '.home_ops_fsnotify_max_user_watches' "$home_ops_vars")" == "524288" ]]
+  [[ "$(yq -r '.home_ops_fsnotify_max_queued_events' "$home_ops_vars")" == "65536" ]]
   assert_file_not_contains "$home_ops_vars" 'sample-token'
 
   local raw_kubeconfig default_lima_inventory default_backend
@@ -185,28 +191,35 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/node-worker.sh" 'ansible_require_host_service_env node'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" 'ansible_require_host_service_env master'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" "ansible_require_host_service_env \"\$node_role\""
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'api.github.com/repos/k3s-io/k3s/releases/tags'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'home_ops_embedded_etcd_version'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/etcdctl.yml" 'home_ops_etcdctl_version_effective'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/etcdctl.yml" 'api.github.com/repos/k3s-io/k3s/releases/tags'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/etcdctl.yml" 'home_ops_embedded_etcd_version'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/etcdctl.yml" 'home_ops_etcdctl_version_effective'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_node_taints'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/reset-server-db.yml" 'db-before-rejoin'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'boot-cmdline.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'pcie_port_pm=off'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/raspberry-pi-config.yml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/sysctl.yml" 'fs.inotify.max_user_watches'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/swap.yml" 'dphys-swapfile'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/cpu-governor.yml" 'home-ops-cpu-governor'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/cilium-values.yaml.j2" "cilium_iface != 'auto'"
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/reset-server-db.yml" 'db-before-rejoin'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" '--join-ip ADDRESS'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/kube-proxy-disable.yml" 'disable-kube-proxy: true'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/kube-proxy-disable.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" 'tasks/kube-proxy-disable.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml" '../home-ops/tasks/kube-proxy-disable.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/join-servers.yml" 'home_ops_kube_proxy_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/kube-proxy-disable.yml" 'disable-kube-proxy: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/k3s/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" 'tasks/k3s/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml" '../home-ops/tasks/k3s/kube-proxy-disable.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml" 'home_ops_kube_proxy_config.changed'
   assert_file_contains "$ROOT/hack/bootstrap/nodes/control-plane-join.sh" 'node_assert_kube_proxy_disable_dropin'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" 'home-ops/host-services.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'home_ops_rpi_reporter_update_existing'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'fresh pinned clone'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/rpi-reporter.yml" 'no_log: true'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/nut-client.yml" 'nut-client'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/nut-client.yml" 'no_log: true'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/nut-client.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/rpi-reporter.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/rpi-reporter.yml" 'home_ops_rpi_reporter_update_existing'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/rpi-reporter.yml" 'fresh pinned clone'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/rpi-reporter.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/nut-client.yml" 'nut-client'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/nut-client.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/host-services/main.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/host-services/main.yml'
 }
 
 @test "host service secret helper loads missing values from 1Password fields" {

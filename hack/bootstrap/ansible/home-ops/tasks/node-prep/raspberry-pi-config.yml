@@ -1,0 +1,54 @@
+---
+- name: Check Raspberry Pi firmware config path
+  ansible.builtin.stat:
+    path: /boot/firmware/config.txt
+  register: home_ops_firmware_config
+
+- name: Fail when Raspberry Pi firmware config is missing
+  ansible.builtin.fail:
+    msg: "Raspberry Pi host {{ inventory_hostname }} has no /boot/firmware/config.txt"
+  when: not home_ops_firmware_config.stat.exists
+
+- name: Check for existing home-ops Raspberry Pi config block
+  ansible.builtin.command: >-
+    grep -F "# BEGIN ANSIBLE MANAGED BLOCK home-ops raspberry pi config"
+    /boot/firmware/config.txt
+  register: home_ops_rpi_config_block_marker
+  failed_when: false
+  changed_when: false
+  check_mode: false
+
+- name: Remove pre-existing active Raspberry Pi config lines before first block insert
+  ansible.builtin.lineinfile:
+    path: /boot/firmware/config.txt
+    regexp: >-
+      ^\s*(dtparam=(pciex1|nvme|pciex1_gen|audio)(=.*)?|dtoverlay=(cma(,.*)?|disable-wifi|disable-bt)|arm_boost=.*)\s*$
+    state: absent
+  register: home_ops_rpi_config_duplicate_cleanup
+  when: home_ops_rpi_config_block_marker.rc != 0
+
+- name: Ensure global Raspberry Pi config section exists
+  ansible.builtin.lineinfile:
+    path: /boot/firmware/config.txt
+    regexp: '^\[all\]$'
+    line: '[all]'
+    insertafter: EOF
+  register: home_ops_rpi_config_all_section
+
+- name: Manage home-ops Raspberry Pi config block
+  ansible.builtin.blockinfile:
+    path: /boot/firmware/config.txt
+    marker: "# {mark} ANSIBLE MANAGED BLOCK home-ops raspberry pi config"
+    insertafter: '^\[all\]$'
+    block: "{{ home_ops_raspberry_pi_config_block }}"
+  register: home_ops_rpi_config_block
+
+- name: Mark reboot required after Raspberry Pi config changes
+  ansible.builtin.set_fact:
+    home_ops_node_prep_reboot_required: >-
+      {{
+        home_ops_node_prep_reboot_required | default(false) | bool or
+        home_ops_rpi_config_duplicate_cleanup.changed | default(false) or
+        home_ops_rpi_config_all_section.changed or
+        home_ops_rpi_config_block.changed
+      }}
