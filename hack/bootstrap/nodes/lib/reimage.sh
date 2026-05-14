@@ -482,7 +482,7 @@ fi
 download_path=/tmp/home-ops-reimage.img
 rm -f "$download_path"
 wget -O "$download_path" "$IMAGE_URL" || die "image download failed"
-actual_sha="$(busybox sha256sum "$download_path" | awk '{print tolower($1)}')"
+actual_sha="$(sha256sum "$download_path" | awk '{print tolower($1)}')"
 [ "$actual_sha" = "$IMAGE_SHA256" ] || die "image SHA256 mismatch"
 
 case "$IMAGE_URL" in
