@@ -396,6 +396,7 @@ if ! grep -qw 'home_ops_reimage=1' /proc/cmdline; then
   exit 0
 fi
 
+. /scripts/functions
 . /home-ops-reimage/reimage.env
 
 b64_decode() {
@@ -463,9 +464,15 @@ actual_disk_serial="$(trim_file "$target_sys/device/serial")"
 
 if [ -n "$NET_VLAN_ID" ]; then
   wait_until "network interface $NET_PARENT_IFACE" 60 path_exists "/sys/class/net/$NET_PARENT_IFACE"
-  if [ -f "/usr/lib/modules/$KERNEL_VERSION/kernel/net/8021q/8021q.ko" ]; then
-    insmod "/usr/lib/modules/$KERNEL_VERSION/kernel/net/8021q/8021q.ko" 2>/dev/null || true
-  fi
+  for module_path in \
+    "/usr/lib/modules/$KERNEL_VERSION/kernel/net/llc/llc.ko" \
+    "/usr/lib/modules/$KERNEL_VERSION/kernel/net/802/stp.ko" \
+    "/usr/lib/modules/$KERNEL_VERSION/kernel/net/802/garp.ko" \
+    "/usr/lib/modules/$KERNEL_VERSION/kernel/net/8021q/8021q.ko"; do
+    if [ -f "$module_path" ]; then
+      insmod "$module_path" 2>/dev/null || true
+    fi
+  done
   ip link set "$NET_PARENT_IFACE" up
   ip link add link "$NET_PARENT_IFACE" name "$NET_IFACE" type vlan id "$NET_VLAN_ID" 2>/dev/null || true
 fi
@@ -482,7 +489,7 @@ fi
 download_path=/tmp/home-ops-reimage.img
 rm -f "$download_path"
 wget -O "$download_path" "$IMAGE_URL" || die "image download failed"
-actual_sha="$(sha256sum "$download_path" | awk '{print tolower($1)}')"
+actual_sha="$(busybox sha256sum "$download_path" | awk '{print tolower($1)}')"
 [ "$actual_sha" = "$IMAGE_SHA256" ] || die "image SHA256 mismatch"
 
 case "$IMAGE_URL" in
@@ -491,6 +498,9 @@ case "$IMAGE_URL" in
     ;;
   *.gz)
     gunzip -c "$download_path" > "$TARGET_DISK" || die "image write failed"
+    ;;
+  *.zst)
+    zstdcat "$download_path" > "$TARGET_DISK" || die "image write failed"
     ;;
   *)
     cat "$download_path" > "$TARGET_DISK" || die "image write failed"
@@ -555,6 +565,7 @@ require_tool awk
 require_tool base64
 require_tool cpio
 require_tool sed
+require_tool unmkinitramfs
 require_tool xzcat
 require_tool zstd
 require_tool zstdcat
@@ -627,7 +638,7 @@ trap cleanup EXIT
 
 (
   cd "\$tmp_dir"
-  zstdcat "\$source_initramfs" | cpio -id --quiet
+  unmkinitramfs "\$source_initramfs" "\$tmp_dir" >/dev/null
 
   initramfs_has_command() {
     command_name="\$1"
@@ -653,12 +664,14 @@ trap cleanup EXIT
     }
   }
 
-  install_8021q_module() {
-    module_dest="usr/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko"
+  install_kernel_module() {
+    module_rel_path="\$1"
+    module_dest="usr/lib/modules/\$kernel_version/\$module_rel_path"
     module_src=''
-    module_src="\$(find usr lib -path '*/8021q.ko' -o -path '*/8021q.ko.xz' -o -path '*/8021q.ko.zst' 2>/dev/null | sed -n '1p' || true)"
+    module_name="\${module_rel_path##*/}"
+    module_src="\$(find usr lib -path "*/\$module_name" -o -path "*/\$module_name.xz" -o -path "*/\$module_name.zst" 2>/dev/null | sed -n '1p' || true)"
     if [ -z "\$module_src" ]; then
-      module_src="\$(find "/lib/modules/\$kernel_version" -path '*/8021q.ko' -o -path '*/8021q.ko.xz' -o -path '*/8021q.ko.zst' 2>/dev/null | sed -n '1p' || true)"
+      module_src="\$(find "/lib/modules/\$kernel_version" -path "*/\$module_name" -o -path "*/\$module_name.xz" -o -path "*/\$module_name.zst" 2>/dev/null | sed -n '1p' || true)"
     fi
     [ -n "\$module_src" ] || return 1
     [ "\$module_src" = "\$module_dest" ] && return 0
@@ -679,17 +692,28 @@ trap cleanup EXIT
     esac
   }
 
-  for command_name in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sha256sum sleep sync tr udevadm wget xzcat; do
+  install_8021q_modules() {
+    install_kernel_module kernel/net/llc/llc.ko &&
+      install_kernel_module kernel/net/802/stp.ko &&
+      install_kernel_module kernel/net/802/garp.ko &&
+      install_kernel_module kernel/net/8021q/8021q.ko
+  }
+
+  runtime_commands='awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat'
+  if [ -n "\$net_vlan_id" ]; then
+    runtime_commands="\$runtime_commands insmod"
+  fi
+
+  for command_name in \$runtime_commands; do
     require_initramfs_command "\$command_name"
   done
   if [ -n "\$net_vlan_id" ]; then
-    require_initramfs_command insmod
-    install_8021q_module || {
+    install_8021q_modules || {
       printf 'missing_initramfs_module=8021q\n'
       exit 2
     }
   else
-    install_8021q_module || true
+    install_8021q_modules || true
   fi
 
   install -d -m 0755 scripts/local-top home-ops-reimage
@@ -697,8 +721,8 @@ trap cleanup EXIT
   cp "\$stage_dir/reimage.env" home-ops-reimage/reimage.env
   printf '%s' "\$runtime_b64" | base64 -d > scripts/local-top/home-ops-reimage
   chmod 0755 scripts/local-top/home-ops-reimage
-  if [ -f scripts/local-top/ORDER ] && ! grep -Fxq home-ops-reimage scripts/local-top/ORDER; then
-    printf '%s\n' home-ops-reimage >> scripts/local-top/ORDER
+  if [ -f scripts/local-top/ORDER ] && ! grep -Fxq '/scripts/local-top/home-ops-reimage "\$@"' scripts/local-top/ORDER; then
+    printf '%s\n' '/scripts/local-top/home-ops-reimage "\$@"' >> scripts/local-top/ORDER
   fi
   if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
     install -d -m 0755 etc/ssl/certs

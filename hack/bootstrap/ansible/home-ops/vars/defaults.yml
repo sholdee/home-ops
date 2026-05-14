@@ -33,6 +33,14 @@ home_ops_k3s_manifests_dir: /var/lib/rancher/k3s/server/manifests
 home_ops_k3s_runtime_dir: /var/lib/rancher/k3s/server
 home_ops_k3s_config_dir: /etc/rancher/k3s
 home_ops_k3s_token_file: /etc/rancher/k3s/home-ops-token
+home_ops_k3s_registries_file: "{{ home_ops_k3s_config_dir }}/registries.yaml"
+home_ops_k3s_registry_mirrors:
+  docker.io:
+  ecr-public.aws.com:
+  ghcr.io:
+  oci.external-secrets.io:
+  quay.io:
+  registry.k8s.io:
 home_ops_remote_kubeconfig: /tmp/home-ops-kubeconfig
 home_ops_cilium_values_file: /tmp/home-ops-cilium-values.yaml
 home_ops_cilium_checksum_file: /var/lib/rancher/k3s/server/home-ops-cilium-bootstrap.sha256
@@ -54,6 +62,9 @@ home_ops_node_name: "{{ ansible_facts.hostname | default(inventory_hostname) }}"
 home_ops_validate_ansible_host_ip: false
 home_ops_node_prep_auto_reboot: "{{ not (home_ops_k3s_installed | default(false) | bool) }}"
 home_ops_node_prep_reboot_marker: /var/lib/home-ops/node-prep-reboot-required
+home_ops_min_rootfs_size_bytes: 8589934592
+home_ops_min_rootfs_available_bytes: 268435456
+home_ops_min_apt_cache_available_bytes: 268435456
 home_ops_raspberry_pi_cmdline_args:
   - cgroup_enable=cpuset
   - cgroup_memory=1
@@ -105,16 +116,16 @@ home_ops_rpi_reporter_apply_retain_patch: true
 home_ops_rpi_reporter_manage_config: false
 home_ops_rpi_reporter_restart_on_change: false
 home_ops_rpi_reporter_daemon_enabled: true
-home_ops_rpi_reporter_interval_in_minutes: 5
-home_ops_rpi_reporter_fallback_domain: local
-home_ops_rpi_reporter_mqtt_base_topic: homeassistant
+home_ops_rpi_reporter_interval_in_minutes: 2
+home_ops_rpi_reporter_fallback_domain: home
+home_ops_rpi_reporter_mqtt_base_topic: home/nodes
 home_ops_rpi_reporter_mqtt_discovery_prefix: homeassistant
 home_ops_rpi_reporter_mqtt_hostname: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME') }}"
-home_ops_rpi_reporter_mqtt_keepalive: 60
+home_ops_rpi_reporter_mqtt_keepalive: 20
 home_ops_rpi_reporter_mqtt_password: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_PASSWORD') }}"
-home_ops_rpi_reporter_mqtt_port: 1883
+home_ops_rpi_reporter_mqtt_port: 8883
 home_ops_rpi_reporter_mqtt_sensor_name: "{{ inventory_hostname }}"
-home_ops_rpi_reporter_mqtt_tls: false
+home_ops_rpi_reporter_mqtt_tls: true
 home_ops_rpi_reporter_mqtt_username: "{{ lookup('ansible.builtin.env', 'HOME_OPS_RPI_REPORTER_MQTT_USERNAME') }}"
 home_ops_rpi_reporter_commands: {}
 

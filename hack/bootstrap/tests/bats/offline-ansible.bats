@@ -46,6 +46,21 @@ render_home_ops_inventory() {
   home_ops_vars="${home_ops_out}/inventory/live/group_vars/all.yml"
 }
 
+assert_file_contains_before() {
+  local file="$1"
+  local before="$2"
+  local after="$3"
+  if ! awk -v before="$before" -v after="$after" '
+    index($0, before) && !before_line { before_line = NR }
+    index($0, after) && !after_line { after_line = NR }
+    END { exit !(before_line && after_line && before_line < after_line) }
+  ' "$file"; then
+    printf 'expected %s to contain %s before %s\n' "$file" "$before" "$after" >&2
+    sed -n '1,120p' "$file" >&2 || true
+    return 1
+  fi
+}
+
 @test "k3s-ansible backend render derives home-ops live vars without preserving sample token" {
   render_k3s_ansible_inventory
 
@@ -82,6 +97,12 @@ render_home_ops_inventory() {
   [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_interval_in_minutes' "$home_ops_vars")" == "2" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_fallback_domain' "$home_ops_vars")" == "home" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_mqtt_base_topic' "$home_ops_vars")" == "home/nodes" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_mqtt_keepalive' "$home_ops_vars")" == "20" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_mqtt_port' "$home_ops_vars")" == "8883" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_mqtt_tls' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_nut_client_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.cilium_iface' "$home_ops_vars")" == "auto" ]]
   [[ "$(yq -r '.k3s_node_ip' "$home_ops_vars")" == "{{ ansible_host }}" ]]
@@ -182,6 +203,32 @@ EOF
   assert_file_not_contains "$rendered_server_service" 'NoScheduleKillMode'
 }
 
+@test "home-ops backend wires K3s registry mirrors before K3s start and join" {
+  local defaults expected_mirrors actual_mirrors playbook
+  defaults="${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml"
+  expected_mirrors="docker.io,ecr-public.aws.com,ghcr.io,oci.external-secrets.io,quay.io,registry.k8s.io"
+  actual_mirrors="$(yq -r '.home_ops_k3s_registry_mirrors | keys | sort | join(",")' "$defaults")"
+
+  [[ "$(yq -r '.home_ops_k3s_registries_file' "$defaults")" == '{{ home_ops_k3s_config_dir }}/registries.yaml' ]]
+  [[ "$actual_mirrors" == "$expected_mirrors" ]]
+
+  for playbook in site control-plane-join control-plane-finalize worker-join worker-finalize; do
+    assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/${playbook}.yml" 'tasks/k3s/registries.yml'
+  done
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/site.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/first-server.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/site.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-servers.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/site.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-agents.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-servers.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-servers.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-agents.yml'
+  assert_file_contains_before "$ROOT/hack/bootstrap/ansible/home-ops/worker-finalize.yml" 'tasks/k3s/registries.yml' 'tasks/k3s/join-agents.yml'
+
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'templates/registries.yaml.j2'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'home_ops_k3s_registries_file'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'mirrors:'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'home_ops_k3s_registry_mirrors'
+}
+
 @test "static Ansible lifecycle invariants are present" {
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/inventory.sh\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib.sh" "source \"\${ANSIBLE_BOOTSTRAP_DIR}/lib/op.sh\""
@@ -202,6 +249,14 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/k3s-agent.service.j2" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_node_taints'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'firstboot.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/firstboot.yml" '/usr/local/sbin/home-ops-firstboot'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/firstboot.yml" '/var/lib/home-ops/firstboot-complete'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'package-space.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/package-space.yml" 'df -B1 --output=size,avail /'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/package-space.yml" 'df -B1 --output=avail /var/cache/apt'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/package-space.yml" 'home_ops_min_rootfs_size_bytes'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/package-space.yml" 'firstboot root filesystem growth did not run'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'boot-cmdline.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" '../node-prep/raspberry-pi.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" 'home_ops_raspberry_pi | default(false) | bool'
@@ -288,6 +343,42 @@ EOF
   [[ "$output" == "mqtt.example.invalid:ups@example.invalid" ]]
   assert_output_not_contains 'reporter-secret'
   assert_output_not_contains 'nut-secret'
+}
+
+@test "host service secret helper reads host-services item once for node fields" {
+  local fake_op calls
+  fake_op="${tmp}/op"
+  calls="${tmp}/op-calls"
+  cat > "$fake_op" <<'EOF'
+#!/usr/bin/env bash
+printf '%s %s %s\n' "${1:-}" "${2:-}" "${3:-}" >>"$OP_CALLS"
+if [[ "$1" == whoami ]]; then
+  exit 0
+fi
+[[ "$1" == item && "$2" == get && "$3" == host-services ]] || exit 2
+cat <<'JSON'
+{
+  "fields": [
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "value": "mqtt.example.invalid"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "value": "reporter-user"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "label": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "value": "reporter-secret"},
+    {"id": "HOME_OPS_GITHUB_APP_ID", "label": "HOME_OPS_GITHUB_APP_ID", "value": "12345"},
+    {"id": "HOME_OPS_GITHUB_APP_INSTALLATION_ID", "label": "HOME_OPS_GITHUB_APP_INSTALLATION_ID", "value": "987"},
+    {"id": "HOME_OPS_GITHUB_APP_PRIVATE_KEY", "label": "HOME_OPS_GITHUB_APP_PRIVATE_KEY", "value": "private-key"}
+  ]
+}
+JSON
+EOF
+  chmod +x "$fake_op"
+
+  run env PATH="${tmp}:/usr/bin:/bin" OP_CALLS="$calls" HOME_OPS_GITHUB_RUNNER_ACCESS_TOKEN="already-minted" \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_require_host_service_env node; ansible_require_host_service_env node; printf '%s:%s\n' \"\$HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME\" \"\$HOME_OPS_GITHUB_APP_INSTALLATION_ID\""
+
+  assert_success
+  [[ "$output" == "mqtt.example.invalid:987" ]]
+  [[ "$(grep -c '^item get host-services$' "$calls")" == "1" ]]
+  assert_output_not_contains 'reporter-secret'
+  assert_output_not_contains 'private-key'
 }
 
 @test "host service secret helper signs in once in the parent shell before reading fields" {

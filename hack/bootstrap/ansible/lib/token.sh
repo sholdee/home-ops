@@ -139,6 +139,11 @@ ansible_generate_token() {
 ansible_prepare_live_token() {
   local inventory_dir="$1"
   local op_token remote_token
+
+  if command -v op >/dev/null 2>&1; then
+    ansible_op_signin_if_needed
+  fi
+
   op_token="$(ansible_read_token_from_op || true)"
   remote_token="$(ansible_read_remote_token_if_exists "$inventory_dir")"
 

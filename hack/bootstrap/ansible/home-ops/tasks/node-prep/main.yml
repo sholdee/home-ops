@@ -8,6 +8,12 @@
 - name: Load node-prep reboot marker
   ansible.builtin.import_tasks: reboot-marker.yml
 
+- name: Wait for generated-image firstboot
+  ansible.builtin.import_tasks: firstboot.yml
+
+- name: Verify package installation space
+  ansible.builtin.import_tasks: package-space.yml
+
 - name: Install required Debian-family packages
   ansible.builtin.import_tasks: packages-debian.yml
 

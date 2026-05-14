@@ -511,10 +511,7 @@ node_longhorn_scheduling_problem() {
   local longhorn_node_json
 
   longhorn_node_json="$(node_get_json "$context" -n longhorn-system "nodes.longhorn.io/${node}" 2>/dev/null || true)"
-  [[ -n "$longhorn_node_json" ]] || {
-    printf 'Longhorn node resource not readable: %s\n' "$node"
-    return 0
-  }
+  [[ -n "$longhorn_node_json" ]] || return 0
 
   "$NODE_JQ_BIN" -r '
     def allow_scheduling:
@@ -712,6 +709,11 @@ node_assert_longhorn_eviction_feasible() {
 node_request_longhorn_eviction() {
   local context="$1"
   local node="$2"
+
+  if ! node_has_resource "$context" -n longhorn-system "nodes.longhorn.io/${node}"; then
+    node_log "Longhorn node resource is absent for ${node}; no eviction request needed"
+    return 0
+  fi
 
   node_kubectl "$context" -n longhorn-system patch "nodes.longhorn.io/${node}" \
     --type=merge \

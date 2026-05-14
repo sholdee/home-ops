@@ -20,15 +20,28 @@ node_stop_k3s_agent() {
   local profile="$1"
   local inventory_node="$2"
   local inventory_file
+  local stop_script
 
   inventory_file="$(node_ansible_inventory_file "$profile")"
+  # shellcheck disable=SC2016
+  stop_script='
+set -eu
+for service_name in k3s-node k3s-agent; do
+  if systemctl list-unit-files "${service_name}.service" --no-legend | grep -q "^${service_name}.service"; then
+    systemctl disable --now "${service_name}"
+    exit 0
+  fi
+done
+echo "could not find k3s agent service: expected k3s-node or k3s-agent" >&2
+exit 1
+'
   node_require_tool ansible
   ANSIBLE_HOST_KEY_CHECKING=False ansible \
     -i "$inventory_file" \
     "$inventory_node" \
     --become \
-    -m ansible.builtin.systemd \
-    -a "name=k3s-node enabled=false state=stopped"
+    -m ansible.builtin.shell \
+    -a "$stop_script"
 }
 
 node_stop_k3s_server() {

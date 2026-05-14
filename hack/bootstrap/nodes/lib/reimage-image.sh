@@ -240,9 +240,42 @@ mmdebstrap:
       cat > \$1/usr/local/sbin/home-ops-firstboot <<'EOSCRIPT'
       #!/usr/bin/env bash
       set -euo pipefail
+
+      grow_rootfs() {
+        local root_source root_dev root_disk root_partnum root_disk_path
+        local disk_size root_end free_after
+
+        root_source="\$(findmnt -no SOURCE /)"
+        root_dev="\$(readlink -f "\$root_source")"
+        root_disk="\$(lsblk -no PKNAME "\$root_dev" | sed -n '1p')"
+        root_partnum="\$(lsblk -no PARTN "\$root_dev" | sed -n '1p')"
+        [[ -n "\$root_disk" && -n "\$root_partnum" ]] || return 0
+        root_disk_path="/dev/\${root_disk}"
+        command -v parted >/dev/null 2>&1 || return 0
+        command -v resize2fs >/dev/null 2>&1 || return 0
+
+        disk_size="\$(
+          parted -m "\$root_disk_path" unit B print |
+            awk -F: -v disk="\$root_disk_path" '\$1 == disk {gsub(/B$/, "", \$2); print \$2; exit}'
+        )"
+        root_end="\$(
+          parted -m "\$root_disk_path" unit B print |
+            awk -F: -v part="\$root_partnum" '\$1 == part {gsub(/B$/, "", \$3); print \$3; exit}'
+        )"
+        [[ -n "\$disk_size" && -n "\$root_end" ]] || return 0
+        free_after=\$((disk_size - root_end))
+        ((free_after > 1073741824)) || return 0
+
+        printf 'Yes\n' | parted ---pretend-input-tty "\$root_disk_path" resizepart "\$root_partnum" 100%
+        partprobe "\$root_disk_path" 2>/dev/null || true
+        resize2fs "\$root_dev"
+      }
+
       hostnamectl set-hostname '${hostname}'
       timedatectl set-timezone '${timezone}' || true
       systemctl disable --now dphys-swapfile 2>/dev/null || true
+      grow_rootfs
+      update-initramfs -u -k all
       EOSCRIPT
       chmod 0755 \$1/usr/local/sbin/home-ops-firstboot
     - |
@@ -265,14 +298,18 @@ mmdebstrap:
       ln -sf /etc/systemd/system/home-ops-firstboot.service \$1/etc/systemd/system/multi-user.target.wants/home-ops-firstboot.service
   packages:
     - bash
+    - busybox-static
     - ca-certificates
     - curl
+    - e2fsprogs
     - git
+    - initramfs-tools
     - iproute2
     - iptables
     - jq
     - nfs-common
     - open-iscsi
+    - parted
     - python3
     - socat
     - xz-utils

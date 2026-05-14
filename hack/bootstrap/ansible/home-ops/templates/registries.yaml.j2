@@ -1,0 +1,5 @@
+# Ansible managed by home-ops.
+mirrors:
+{% for registry in home_ops_k3s_registry_mirrors %}
+  {{ registry }}:
+{% endfor %}

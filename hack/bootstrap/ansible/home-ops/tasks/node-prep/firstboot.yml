@@ -1,0 +1,12 @@
+---
+- name: Check for generated-image firstboot script
+  ansible.builtin.stat:
+    path: /usr/local/sbin/home-ops-firstboot
+  register: home_ops_firstboot_script
+
+- name: Wait for generated-image firstboot to complete
+  ansible.builtin.wait_for:
+    path: /var/lib/home-ops/firstboot-complete
+    state: present
+    timeout: 300
+  when: home_ops_firstboot_script.stat.exists | bool

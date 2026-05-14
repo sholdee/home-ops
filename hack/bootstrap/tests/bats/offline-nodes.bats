@@ -254,6 +254,14 @@ EOF
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtparam=pciex1'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtoverlay=disable-wifi'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'grow_rootfs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'parted ---pretend-input-tty'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'resize2fs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'update-initramfs -u -k all'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'firstboot-complete'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'busybox-static'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'e2fsprogs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'initramfs-tools'
   assert_file_not_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'NetworkManager'
   assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
 }
@@ -346,6 +354,15 @@ EOF
   assert_output_contains 'reimage staged for k3s-worker-0'
 }
 
+@test "node reimage tryboot config uses the known-good include shape" {
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_tryboot_config /boot/firmware/home-ops-reimage"
+
+  assert_success
+  assert_output_contains 'include config.txt'
+  assert_output_contains 'initramfs home-ops-reimage/initramfs.img followkernel'
+  assert_output_contains 'cmdline=home-ops-reimage/cmdline.txt'
+}
+
 @test "node reimage stage defaults to building payload from target initramfs" {
   local sha metadata
   sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -395,13 +412,37 @@ true'"
   assert_success
   assert_output_contains "target_disk_b64="
   assert_output_contains "missing_initramfs_command="
-  assert_output_contains "sha256sum"
+  assert_output_contains "require_tool unmkinitramfs"
+  assert_output_contains "unmkinitramfs \"\$source_initramfs\" \"\$tmp_dir\""
+  assert_output_contains "KERNEL_VERSION_B64=\$(b64_value"
   assert_output_contains "missing_initramfs_module=8021q"
-  assert_output_contains "8021q.ko.zst"
-  assert_output_not_contains "busybox sha256sum"
-  assert_output_not_contains ". /scripts/functions"
+  assert_output_contains "llc.ko"
+  assert_output_contains "stp.ko"
+  assert_output_contains "garp.ko"
+  assert_output_contains "kernel/net/8021q/8021q.ko"
+  assert_output_contains "runtime_commands=\"\$runtime_commands insmod\""
+  assert_output_contains '/scripts/local-top/home-ops-reimage "$@"'
+  assert_output_contains "for command_name in \$runtime_commands"
+  assert_output_not_contains "install_busybox_commands"
+  assert_output_not_contains "missing_busybox_applet="
+  assert_output_not_contains "vconfig"
+  assert_output_not_contains "beacon "
   assert_output_not_contains "require_tool jq"
   assert_output_not_contains "| jq "
+}
+
+@test "node reimage runtime script loads VLAN kernel module dependencies" {
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_runtime_script"
+  assert_success
+  assert_output_contains 'kernel/net/llc/llc.ko'
+  assert_output_contains 'kernel/net/802/stp.ko'
+  assert_output_contains 'kernel/net/802/garp.ko'
+  assert_output_contains 'kernel/net/8021q/8021q.ko'
+  assert_output_contains "busybox sha256sum"
+  assert_output_contains ". /scripts/functions"
+  assert_output_contains "zstdcat \"\$download_path\""
+  assert_output_not_contains "vconfig add"
+  assert_output_not_contains 'beacon '
 }
 
 @test "node reimage reboot requires deleted node unless forced and schedules tryboot" {
@@ -968,6 +1009,15 @@ EOF
   assert_output_contains 'reason=volume-still-targets-node'
   assert_output_contains 'reason=engine-still-targets-node'
   assert_output_matches 'volume-b-e-0.*owner=deleted-node.*reason=engine-still-targets-node'
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_scheduling_problem test missing-node"
+  assert_success
+  [[ -z "$output" ]]
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test missing-node"
+  assert_success
 }
 
 @test "Longhorn eviction helper fails clearly when Longhorn is absent" {
@@ -1026,6 +1076,11 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"
   assert_success
   assert_output_contains 'node.longhorn.io/k3s-worker-0 patched'
+
+  run env NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_request_longhorn_eviction test missing-node"
+  assert_success
+  assert_output_contains 'Longhorn node resource is absent for missing-node; no eviction request needed'
 }
 
 @test "stale pods bound to deleted nodes are force deleted" {

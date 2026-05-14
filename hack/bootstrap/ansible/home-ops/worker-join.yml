@@ -16,6 +16,9 @@
     - name: Write K3s token file
       ansible.builtin.import_tasks: tasks/k3s/token.yml
 
+    - name: Write K3s registry mirror config
+      ansible.builtin.import_tasks: tasks/k3s/registries.yml
+
     - name: Join K3s agent with temporary taint
       ansible.builtin.import_tasks: tasks/k3s/join-agents.yml
 

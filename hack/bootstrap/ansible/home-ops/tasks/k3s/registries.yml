@@ -1,0 +1,16 @@
+---
+- name: Ensure K3s config directory exists for registries
+  ansible.builtin.file:
+    path: "{{ home_ops_k3s_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Write K3s registry mirror config
+  ansible.builtin.template:
+    src: templates/registries.yaml.j2
+    dest: "{{ home_ops_k3s_registries_file }}"
+    owner: root
+    group: root
+    mode: "0644"
