@@ -24,7 +24,9 @@
     state: >-
       {{
         'restarted'
-        if home_ops_k3s_server_service.changed or (home_ops_kube_proxy_config.changed | default(false))
+        if home_ops_k3s_server_service.changed
+        or (home_ops_kube_proxy_config.changed | default(false))
+        or (home_ops_k3s_registries_config.changed | default(false))
         else 'started'
       }}
 

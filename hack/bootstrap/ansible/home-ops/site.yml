@@ -13,6 +13,9 @@
     - name: Write K3s token file
       ansible.builtin.import_tasks: tasks/k3s/token.yml
 
+    - name: Write K3s registry mirror config
+      ansible.builtin.import_tasks: tasks/k3s/registries.yml
+
 - name: Install home-ops control-plane tools
   hosts: master
   gather_facts: true

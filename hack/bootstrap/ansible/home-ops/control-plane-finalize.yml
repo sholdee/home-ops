@@ -15,6 +15,9 @@
     - name: Write K3s token file
       ansible.builtin.import_tasks: tasks/k3s/token.yml
 
+    - name: Write K3s registry mirror config
+      ansible.builtin.import_tasks: tasks/k3s/registries.yml
+
     - name: Ensure K3s kube-proxy stays disabled
       ansible.builtin.import_tasks: tasks/k3s/kube-proxy-disable.yml
 

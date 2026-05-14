@@ -103,9 +103,6 @@ case "$profile" in
     ansible_require_tool ssh
     K3S_TOKEN="$(ansible_prepare_live_token "$inventory_dir")"
     export K3S_TOKEN
-    if [[ "$action" == join ]]; then
-      ansible_require_host_service_env node
-    fi
     ;;
   lima)
     inventory_dir="${inventory_dir:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME:-home-ops-k3s-test}/inventory}"

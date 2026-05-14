@@ -53,7 +53,19 @@ node_require_tool ssh-keygen
 node_require_tool ssh-keyscan
 
 IFS=$'\t' read -r inventory_node_name inventory_role < <(node_resolve_inventory_node "$profile" "$node_name")
-node_assert_inventory_worker "$inventory_node_name" "$inventory_role"
+case "$inventory_role" in
+  master|node)
+    ;;
+  absent)
+    node_die "node is not present in ${profile} inventory: ${node_name}"
+    ;;
+  conflict)
+    node_die "node is present in multiple ${profile} inventory groups: ${node_name}"
+    ;;
+  *)
+    node_die "could not resolve inventory role for node: ${node_name}"
+    ;;
+esac
 
 ansible_host="$(node_inventory_value "$profile" "$inventory_node_name" ansible_host 2>/dev/null || true)"
 target="${ansible_host:-$inventory_node_name}"

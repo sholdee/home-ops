@@ -1,0 +1,30 @@
+---
+- name: Check root filesystem space
+  ansible.builtin.command: df -B1 --output=size,avail /
+  register: home_ops_rootfs_space
+  changed_when: false
+
+- name: Check apt cache filesystem space
+  ansible.builtin.command: df -B1 --output=avail /var/cache/apt
+  register: home_ops_apt_cache_space
+  changed_when: false
+
+- name: Set package space facts
+  ansible.builtin.set_fact:
+    home_ops_rootfs_size_bytes: "{{ home_ops_rootfs_space.stdout_lines[-1].split()[0] | int }}"
+    home_ops_rootfs_available_bytes: "{{ home_ops_rootfs_space.stdout_lines[-1].split()[1] | int }}"
+    home_ops_apt_cache_available_bytes: "{{ home_ops_apt_cache_space.stdout_lines[-1].split()[0] | int }}"
+
+- name: Verify enough filesystem space for package installation
+  ansible.builtin.assert:
+    that:
+      - home_ops_rootfs_size_bytes | int >= home_ops_min_rootfs_size_bytes | int
+      - home_ops_rootfs_available_bytes | int >= home_ops_min_rootfs_available_bytes | int
+      - home_ops_apt_cache_available_bytes | int >= home_ops_min_apt_cache_available_bytes | int
+    fail_msg: >-
+      Not enough filesystem space to install bootstrap packages on {{ inventory_hostname }}.
+      root size={{ home_ops_rootfs_size_bytes }} bytes,
+      root available={{ home_ops_rootfs_available_bytes }} bytes,
+      apt cache available={{ home_ops_apt_cache_available_bytes }} bytes.
+      For freshly imaged Raspberry Pi nodes, this usually means the generated image
+      firstboot root filesystem growth did not run; reimage with a fixed image before joining.

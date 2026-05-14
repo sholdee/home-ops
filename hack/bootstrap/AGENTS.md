@@ -34,7 +34,9 @@ normal app graph.
 - `nodes/`: existing-cluster node lifecycle commands. Command scripts source
   `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
   `nodes/converge.sh` is an additive-only planner/orchestrator and must
-  delegate actual joins to `nodes/join.sh`.
+  delegate actual joins to `nodes/join.sh`. Raspberry Pi reimage build, serve,
+  apply, and cleanup helpers are phase-based primitives; they must keep
+  drain/delete/join/uncordon as explicit lifecycle gates.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
   construction, node lifecycle helpers, and bootstrap library helpers.
 - `tests/helpers/`: BATS fixture and assertion helpers.
@@ -98,6 +100,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
   embedded-etcd member removal, join with a temporary taint, then finalize and
   uncordon.
+- Raspberry Pi network reimage is post-delete only by default. Keep the
+  deleted-node check, Pi serial check, disk serial check, image metadata check,
+  and staged-payload check fail-closed; `--force` may skip only the Kubernetes
+  node-existence check for disaster recovery.
 - Mutating node lifecycle commands must remain fail-closed. If a helper cannot
   prove safety, stop and leave the node cordoned rather than guessing.
 

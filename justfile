@@ -303,6 +303,26 @@ node-control-plane-status node:
 node-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
 
+# Discover Raspberry Pi and target-disk identity needed before network reimage.
+[group('node-reimage')]
+node-reimage-plan node:
+    ./hack/bootstrap/nodes/reimage-plan.sh --profile live --context default '{{ node }}'
+
+# Render image metadata JSON expected by network reimage staging.
+[group('node-reimage-primitive')]
+node-reimage-metadata node image_url sha256:
+    @./hack/bootstrap/nodes/reimage-metadata.sh --profile live '{{ node }}' '{{ image_url }}' '{{ sha256 }}'
+
+# Render a per-node rpi-image-gen source tree for a Raspberry Pi OS image.
+[group('node-reimage-primitive')]
+node-reimage-image-source node +args='':
+    ./hack/bootstrap/nodes/reimage-image-source.sh --profile live '{{ node }}' {{ args }}
+
+# Build a per-node Raspberry Pi OS image through the supported reimage builder.
+[group('node-reimage')]
+node-reimage-build node +args='':
+    ./hack/bootstrap/nodes/reimage-build.sh --profile live '{{ node }}' {{ args }}
+
 # Plan additive-only live node convergence from inventory.
 [group('node')]
 node-converge-plan:
@@ -328,7 +348,7 @@ node-delete node:
 node-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile live --context default '{{ node }}'
 
-# Refresh a rebuilt live worker's SSH host key in known_hosts.
+# Refresh a rebuilt live inventory host's SSH host key in known_hosts.
 [group('node-mutate')]
 node-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile live '{{ node }}'
@@ -342,6 +362,31 @@ node-join node:
 [group('node-mutate')]
 node-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
+
+# Stage a one-shot Raspberry Pi network reimage payload for a deleted live node.
+[group('node-reimage-primitive')]
+node-reimage-stage node image_url sha256 +args='':
+    ./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default '{{ node }}' '{{ image_url }}' '{{ sha256 }}' {{ args }}
+
+# Reboot a staged live node into one-shot Raspberry Pi tryboot reimage mode.
+[group('node-reimage-primitive')]
+node-reimage-reboot node +args='':
+    ./hack/bootstrap/nodes/reimage-reboot.sh --profile live --context default '{{ node }}' {{ args }}
+
+# Serve a recorded reimage artifact from a healthy live inventory host.
+[group('node-reimage')]
+node-reimage-serve node host +args='':
+    ./hack/bootstrap/nodes/reimage-serve.sh --profile live '{{ node }}' '{{ host }}' {{ args }}
+
+# Stage, tryboot reboot, wait for SSH, and refresh host key from recorded serve state.
+[group('node-reimage')]
+node-reimage-apply node +args='':
+    ./hack/bootstrap/nodes/reimage-apply.sh --profile live --context default '{{ node }}' {{ args }}
+
+# Stop the recorded node-specific image server and remove remote temp files.
+[group('node-reimage')]
+node-reimage-cleanup node +args='':
+    ./hack/bootstrap/nodes/reimage-cleanup.sh --profile live '{{ node }}' {{ args }}
 
 # Run prompted additive-only live node convergence from inventory.
 [group('node-mutate')]
@@ -505,7 +550,7 @@ node-lima-delete node:
 node-lima-longhorn-evict node:
     ./hack/bootstrap/nodes/longhorn-evict.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
-# Refresh a rebuilt Lima worker's SSH host key in known_hosts.
+# Refresh a rebuilt Lima inventory host's SSH host key in known_hosts.
 [group('node-lima-mutate')]
 node-lima-refresh-ssh-host-key node:
     ./hack/bootstrap/nodes/refresh-ssh-host-key.sh --profile lima '{{ node }}'

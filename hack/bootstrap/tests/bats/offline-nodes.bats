@@ -118,6 +118,47 @@ EOF
   assert_output_contains "./hack/bootstrap/nodes/cmd.sh --profile lima 'home-ops-k3s-test-agent-1' -- 'set -e; cd /tmp; pwd'"
 }
 
+@test "node reimage just recipes expose build, serve, apply, and primitive commands" {
+  local sha
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  run just --dry-run node-reimage-plan k3s-worker-0
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-plan.sh --profile live --context default 'k3s-worker-0'"
+
+  run just --dry-run node-reimage-metadata k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-metadata.sh --profile live 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}'"
+
+  run just --dry-run node-reimage-image-source k3s-worker-0 --ssh-public-key /tmp/ansiblekey.pub
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-image-source.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
+
+  run just --dry-run node-reimage-build k3s-worker-0 --ssh-public-key /tmp/ansiblekey.pub
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-build.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
+
+  run just --dry-run node-reimage-stage k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha" --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}' --force"
+
+  run just --dry-run node-reimage-reboot k3s-worker-0 --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-reboot.sh --profile live --context default 'k3s-worker-0' --force"
+
+  run just --dry-run node-reimage-serve k3s-worker-0 k3s-master-0 --port 18081
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-serve.sh --profile live 'k3s-worker-0' 'k3s-master-0' --port 18081"
+
+  run just --dry-run node-reimage-apply k3s-worker-0 --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-apply.sh --profile live --context default 'k3s-worker-0' --force"
+
+  run just --dry-run node-reimage-cleanup k3s-worker-0 --yes
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-cleanup.sh --profile live 'k3s-worker-0' --yes"
+}
+
 @test "node cmd helper tolerates an accidental extra separator before the remote command" {
   local fake_ssh capture
   fake_ssh="${tmp}/ssh"
@@ -153,6 +194,655 @@ EOF
       --profile live k3s-worker-9 -- true
   assert_failure
   assert_output_contains 'node is not present in live inventory'
+}
+
+@test "node reimage plan discovers Pi and disk identity without mutating state" {
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-plan.sh" --profile live --context test k3s-worker-0
+  assert_success
+  assert_output_contains 'inventory_node: k3s-worker-0'
+  assert_output_contains 'kubernetes_node_state: unknown'
+  assert_output_contains 'home_ops_reimage_pi_serial: missing'
+  assert_output_contains 'raspberry_pi=true'
+  assert_output_contains 'disk_serial=nvme-deadbeef'
+  assert_output_contains 'next_inventory_values:'
+  assert_output_contains 'home_ops_reimage_pi_serial: 10000000deadbeef'
+  assert_output_contains 'home_ops_reimage_disk_serial: nvme-deadbeef'
+}
+
+@test "node reimage metadata renders stage-compatible image metadata" {
+  local sha
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-metadata.sh" \
+      --profile live k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  printf '%s\n' "$output" >"${tmp}/metadata.json"
+
+  run jq -r '.schemaVersion' "${tmp}/metadata.json"
+  assert_success
+  [[ "$output" == "home-ops.node-image/v1" ]]
+
+  run jq -r '.node, .hostname, .ansibleHost, .imageUrl, .sha256, .arch' "${tmp}/metadata.json"
+  assert_success
+  assert_output_contains 'k3s-worker-0'
+  assert_output_contains '192.168.99.20'
+  assert_output_contains 'https://images.example/k3s-worker-0.img.xz'
+  assert_output_contains "$sha"
+  assert_output_contains 'arm64'
+}
+
+@test "node reimage image source renders rpi-image-gen config and first-boot layer" {
+  local output_dir public_key
+  output_dir="${tmp}/image-source"
+  public_key="${tmp}/ansiblekey.pub"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live \
+      --output-dir "$output_dir" \
+      --ssh-public-key "$public_key" \
+      k3s-worker-0
+  assert_success
+  assert_output_contains "source_dir=${output_dir}"
+  assert_output_contains 'base_layer=trixie-minbase'
+  assert_output_contains 'network_interface=eth0'
+  assert_output_contains 'network_gateway=192.168.99.1'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'layer: rpi5'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'base: trixie-minbase'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'custom: home-ops-node-bootstrap'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'hostname: k3s-worker-0'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'user1: ethan'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'user1sudo: nopasswd'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'pubkey_user1: ssh-ed25519'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'rpi-user-credentials,systemd-net-min,openssh-server'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Name=eth0'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Address=192.168.99.20/24'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Gateway=192.168.99.1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'DNS=192.168.99.1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'cgroup_enable=cpuset'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'nvme_core.default_ps_max_latency_us=0'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'pcie_aspm=off'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtparam=pciex1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtoverlay=disable-wifi'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'grow_rootfs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'parted ---pretend-input-tty'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'resize2fs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'update-initramfs -u -k all'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'firstboot-complete'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'busybox-static'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'e2fsprogs'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'initramfs-tools'
+  assert_file_not_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'NetworkManager'
+  assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
+}
+
+@test "node reimage image source derives public key from inventory private key" {
+  local fake_ssh_keygen output_dir test_home
+  output_dir="${tmp}/image-source-derived"
+  test_home="${tmp}/home"
+  fake_ssh_keygen="${tmp}/ssh-keygen"
+  mkdir -p "$test_home"
+  touch "${test_home}/ansiblekey"
+cat >"$fake_ssh_keygen" <<'EOF'
+#!/usr/bin/env bash
+[[ "$1" == "-y" && "$2" == "-f" && "$3" == */ansiblekey && "$4" == "-P" && "$5" == "" ]] || exit 2
+printf '%s\n' 'ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
+EOF
+  chmod +x "$fake_ssh_keygen"
+
+  run env HOME="$test_home" PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live \
+      --output-dir "$output_dir" \
+      k3s-worker-0
+  assert_success
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'pubkey_user1: ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
+}
+
+@test "node reimage build records artifact state from a local builder" {
+  local fake_rpi public_key state artifact
+  fake_rpi="${tmp}/rpi-image-gen"
+  public_key="${tmp}/ansiblekey.pub"
+  mkdir -p "$fake_rpi"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  cat > "${fake_rpi}/rpi-image-gen" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+source_dir=''
+build_dir=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -S)
+      source_dir="$2"
+      shift 2
+      ;;
+    -B)
+      build_dir="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+test -f "${source_dir}/config/home-ops-node.yaml"
+mkdir -p "${build_dir}/image-home-ops-k3s-worker-0"
+printf 'fake image\n' > "${build_dir}/image-home-ops-k3s-worker-0/home-ops-k3s-worker-0.img.xz"
+EOF
+  chmod +x "${fake_rpi}/rpi-image-gen"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" NODE_REIMAGE_BUILDER_MODE=local \
+    "${ROOT}/hack/bootstrap/nodes/reimage-build.sh" \
+      --profile live \
+      --rpi-image-gen-dir "$fake_rpi" \
+      --ssh-public-key "$public_key" \
+      k3s-worker-0
+  assert_success
+  assert_output_contains 'artifact='
+  assert_output_contains 'sha256='
+  assert_output_contains 'build_state='
+
+  state="${tmp}/reimage-out/live/k3s-worker-0/state/build.json"
+  artifact="${tmp}/reimage-out/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz"
+  [[ -f "$state" ]]
+  [[ -f "$artifact" ]]
+  run jq -r '.schemaVersion, .builderMode, .imageName, .artifactPath' "$state"
+  assert_success
+  assert_output_contains 'home-ops.node-reimage-build/v1'
+  assert_output_contains 'local'
+  assert_output_contains 'home-ops-k3s-worker-0'
+  assert_output_contains "$artifact"
+}
+
+@test "node reimage lima builder writes to guest-local workroot and copies artifacts back" {
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" '/var/tmp/home-ops-reimage-build/'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'for suffix in img.zst img.xz img.gz img'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'limactl copy --tty=false'
+}
+
+@test "node reimage serve records URL and metadata for a built artifact" {
+  local node_dir state artifact sha
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  printf 'fake image\n' > "$artifact"
+  sha="$(shasum -a 256 "$artifact" | awk '{print $1}')"
+  jq -n \
+    --arg artifact "$artifact" \
+    --arg sha "$sha" \
+    '{schemaVersion:"home-ops.node-reimage-build/v1", artifactPath:$artifact, sha256:$sha}' \
+    > "${node_dir}/state/build.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh" \
+      --profile live \
+      --port 18081 \
+      --yes \
+      k3s-worker-0 \
+      k3s-master-0
+  assert_success
+  assert_output_contains 'image_url=http://192.168.99.10:18081/home-ops-k3s-worker-0.img.xz'
+  assert_output_contains "sha256=${sha}"
+  assert_output_contains 'serve_state='
+
+  state="${node_dir}/state/serve.json"
+  [[ -f "$state" ]]
+  [[ -f "${artifact}.metadata.json" ]]
+  run jq -r '.schemaVersion, .hostNode, .imageUrl, .metadataPath' "$state"
+  assert_success
+  assert_output_contains 'home-ops.node-reimage-serve/v1'
+  assert_output_contains 'k3s-master-0'
+  assert_output_contains 'http://192.168.99.10:18081/home-ops-k3s-worker-0.img.xz'
+  assert_output_contains "${artifact}.metadata.json"
+}
+
+@test "node reimage serve refuses a stale artifact hash" {
+  local node_dir artifact
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  printf 'changed image\n' > "$artifact"
+  jq -n \
+    --arg artifact "$artifact" \
+    '{schemaVersion:"home-ops.node-reimage-build/v1", artifactPath:$artifact, sha256:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' \
+    > "${node_dir}/state/build.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh" \
+      --profile live \
+      --port 18081 \
+      --yes \
+      k3s-worker-0 \
+      k3s-master-0
+  assert_failure
+  assert_output_contains 'recorded image SHA does not match artifact'
+}
+
+@test "node reimage serve stops an old HTTP server before resetting remote files" {
+  run awk '
+    /if \[ -f \$\{remote_dir_q\}\/http.pid \]/ {pid_check = NR}
+    /rm -rf \$\{remote_dir_q\}/ {reset_dir = NR}
+    END {exit !(pid_check > 0 && reset_dir > 0 && pid_check < reset_dir)}
+  ' "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh"
+  assert_success
+}
+
+@test "node reimage stage refuses to run before the Kubernetes node is deleted" {
+  local sha payload metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  payload="${tmp}/payload"
+  metadata="${tmp}/metadata.json"
+  mkdir -p "$payload"
+  printf 'initramfs\n' >"${payload}/initramfs.img"
+  printf 'cmdline\n' >"${payload}/cmdline.txt"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --payload-dir "$payload" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_failure
+  assert_output_contains 'Kubernetes node still exists'
+}
+
+@test "node reimage stage validates identity metadata and stages tryboot payload" {
+  local sha payload metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  payload="${tmp}/payload"
+  metadata="${tmp}/metadata.json"
+  mkdir -p "$payload"
+  printf 'initramfs\n' >"${payload}/initramfs.img"
+  printf 'cmdline\n' >"${payload}/cmdline.txt"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" FAKE_REIMAGE_NODE_ABSENT=true \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --payload-dir "$payload" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains 'probing k3s-worker-0 identity and target disk'
+  assert_output_contains 'validating image metadata'
+  assert_output_contains 'staging reimage manifest and tryboot payload on k3s-worker-0'
+  assert_output_contains 'reimage staged for k3s-worker-0'
+}
+
+@test "node reimage tryboot config uses the known-good include shape" {
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_tryboot_config /boot/firmware/home-ops-reimage"
+
+  assert_success
+  assert_output_contains 'include config.txt'
+  assert_output_contains 'initramfs home-ops-reimage/initramfs.img followkernel'
+  assert_output_contains 'cmdline=home-ops-reimage/cmdline.txt'
+}
+
+@test "node reimage stage defaults to building payload from target initramfs" {
+  local sha metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  metadata="${tmp}/metadata.json"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_REIMAGE_PAYLOAD_DIR="" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" FAKE_REIMAGE_NODE_ABSENT=true FAKE_REIMAGE_REMOTE_PAYLOAD=true \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains 'building reimage initramfs payload on k3s-worker-0'
+  assert_output_contains 'remote_payload=built'
+  assert_output_contains 'net_iface=eth0.99'
+  assert_output_contains 'reimage staged for k3s-worker-0'
+}
+
+@test "node reimage target-built payload script does not require jq on target" {
+  local manifest
+  manifest="${tmp}/manifest.json"
+  cat > "$manifest" <<'EOF'
+{
+  "schemaVersion": "home-ops.node-reimage-stage/v1",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "imageSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "targetDisk": "/dev/nvme0n1",
+  "targetDiskSerial": "nvme-deadbeef",
+  "raspberryPiSerial": "10000000deadbeef"
+}
+EOF
+
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; manifest=\$(cat '${manifest}'); node_reimage_build_remote_payload_script /boot/firmware/home-ops-reimage \"\${manifest}\" '#!/bin/sh
+true'"
+  assert_success
+  assert_output_contains "target_disk_b64="
+  assert_output_contains "missing_initramfs_command="
+  assert_output_contains "require_tool find"
+  assert_output_contains "require_tool unmkinitramfs"
+  assert_output_contains "unmkinitramfs \"\$source_initramfs\" \"\$tmp_dir\""
+  assert_output_contains "initramfs_root=\"\$tmp_dir/main\""
+  assert_output_contains "unsupported_initramfs_extra_content="
+  assert_output_contains "cd \"\$initramfs_root\""
+  assert_output_contains "KERNEL_VERSION_B64=\$(b64_value"
+  assert_output_contains "missing_initramfs_module=8021q"
+  assert_output_contains "llc.ko"
+  assert_output_contains "stp.ko"
+  assert_output_contains "garp.ko"
+  assert_output_contains "kernel/net/8021q/8021q.ko"
+  assert_output_contains "runtime_commands=\"\$runtime_commands insmod\""
+  assert_output_contains "runtime_commands=\"\$runtime_commands zstdcat\""
+  assert_output_contains '/scripts/local-top/home-ops-reimage "$@"'
+  assert_output_contains "for command_name in \$runtime_commands"
+  assert_output_not_contains "install_busybox_commands"
+  assert_output_not_contains "missing_busybox_applet="
+  assert_output_not_contains "vconfig"
+  assert_output_not_contains "beacon "
+  assert_output_not_contains "require_tool jq"
+  assert_output_not_contains "| jq "
+}
+
+@test "node reimage target-built payload script supports main-root initramfs extraction" {
+  local manifest script stage source_initramfs source_cmdline
+  manifest="${tmp}/manifest.json"
+  script="${tmp}/payload.sh"
+  stage="${tmp}/stage"
+  source_initramfs="${tmp}/source-initramfs"
+  printf 'fake initramfs\n' > "$source_initramfs"
+  source_cmdline="${tmp}/cmdline.txt"
+  printf 'root=/dev/nvme0n1p2 rw home_ops_reimage=1\n' > "$source_cmdline"
+  cat > "$manifest" <<'EOF'
+{
+  "schemaVersion": "home-ops.node-reimage-stage/v1",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "imageSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "targetDisk": "/dev/nvme0n1",
+  "targetDiskSerial": "nvme-deadbeef",
+  "raspberryPiSerial": "10000000deadbeef"
+}
+EOF
+
+  cat > "${tmp}/unmkinitramfs" <<'EOF'
+#!/usr/bin/env bash
+dest="$2"
+mkdir -p "${dest}/main/bin" "${dest}/main/scripts/local-top" "${dest}/early"
+for cmd in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat; do
+  printf '#!/bin/sh\nexit 0\n' > "${dest}/main/bin/${cmd}"
+  chmod +x "${dest}/main/bin/${cmd}"
+done
+if [[ "${FAKE_UNMKINITRAMFS_EXTRA:-}" == true ]]; then
+  printf 'early data\n' > "${dest}/early/boot-critical"
+fi
+EOF
+  cat > "${tmp}/ip" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  "-o -4 route show default")
+    printf 'default via 192.0.2.1 dev eth0\n'
+    ;;
+  "-o -4 addr show dev eth0 scope global")
+    printf '2: eth0 inet 192.0.2.20/24 brd 192.0.2.255 scope global eth0\n'
+    ;;
+esac
+EOF
+  cat > "${tmp}/nmcli" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  cat > "${tmp}/cpio" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/zstd" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/uname" <<'EOF'
+#!/usr/bin/env bash
+printf '6.18.0-test\n'
+EOF
+  cat > "${tmp}/xzcat" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/zstdcat" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/sync" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${tmp}/unmkinitramfs" "${tmp}/ip" "${tmp}/nmcli" "${tmp}/cpio" "${tmp}/zstd" "${tmp}/uname" "${tmp}/xzcat" "${tmp}/zstdcat" "${tmp}/sync"
+
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; manifest=\$(cat '${manifest}'); node_reimage_build_remote_payload_script '${stage}' \"\${manifest}\" '#!/bin/sh
+true'" > "$script"
+
+  run env PATH="${tmp}:${PATH}" HOME_OPS_REIMAGE_SOURCE_INITRAMFS="$source_initramfs" HOME_OPS_REIMAGE_SOURCE_CMDLINE="$source_cmdline" sh "$script"
+  assert_success
+  assert_output_contains "remote_payload=built"
+  assert_output_contains "source_initramfs=${source_initramfs}"
+  [[ -f "${stage}/initramfs.img" ]]
+  run cat "${stage}/cmdline.txt"
+  assert_success
+  [[ "$output" == "root=/dev/nvme0n1p2 rw home_ops_reimage=1" ]]
+
+  rm -rf "$stage"
+  run env PATH="${tmp}:${PATH}" HOME_OPS_REIMAGE_SOURCE_INITRAMFS="$source_initramfs" HOME_OPS_REIMAGE_SOURCE_CMDLINE="$source_cmdline" FAKE_UNMKINITRAMFS_EXTRA=true sh "$script"
+  assert_failure
+  assert_output_contains "unsupported_initramfs_extra_content=early"
+}
+
+@test "node reimage runtime script loads VLAN kernel module dependencies" {
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_runtime_script"
+  assert_success
+  assert_output_contains 'kernel/net/llc/llc.ko'
+  assert_output_contains 'kernel/net/802/stp.ko'
+  assert_output_contains 'kernel/net/802/garp.ko'
+  assert_output_contains 'kernel/net/8021q/8021q.ko'
+  assert_output_contains "busybox sha256sum"
+  assert_output_not_contains ". /scripts/functions"
+  assert_output_contains "zstdcat \"\$download_path\""
+  assert_output_not_contains "vconfig add"
+  assert_output_not_contains 'beacon '
+}
+
+@test "node reimage reboot requires deleted node unless forced and schedules tryboot" {
+  write_reimage_kubectl
+  write_fake_ansible
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" '--reboot-argument="0 tryboot"'
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'Kubernetes node still exists'
+
+  mkdir -p "${tmp}/reimage-reboot-state"
+  run env PATH="${tmp}:${PATH}" FAKE_REBOOT_STATE_DIR="${tmp}/reimage-reboot-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'force enabled; skipping Kubernetes node-absent check'
+  assert_output_contains 'tryboot reboot scheduled: k3s-worker-0'
+  [[ -f "${tmp}/reimage-reboot-state/tryboot-rebooted-k3s-worker-0" ]]
+}
+
+@test "node reimage reboot rejects stale staged manifest identity" {
+  write_reimage_kubectl
+  write_fake_ansible
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+
+  run env PATH="${tmp}:${PATH}" FAKE_REIMAGE_STAGED_DISK_SERIAL=stale-disk NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'staged reimage manifest targetDiskSerial mismatch'
+}
+
+@test "node reimage apply uses recorded serve state and refreshes host key" {
+  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ssh
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  metadata="${artifact}.metadata.json"
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  printf 'fake image\n' > "$artifact"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "http://192.168.99.10:18080/home-ops-k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  jq -n \
+    --arg imageUrl "http://192.168.99.10:18080/home-ops-k3s-worker-0.img.xz" \
+    --arg metadata "$metadata" \
+    --arg sha "$sha" \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", imageUrl:$imageUrl, metadataPath:$metadata, sha256:$sha}' \
+    > "${node_dir}/state/serve.json"
+  calls="${tmp}/apply-calls"
+  fake_stage="${tmp}/stage"
+  fake_reboot="${tmp}/reboot"
+  fake_refresh="${tmp}/refresh"
+  fake_nc="${tmp}/nc"
+  fake_ssh="${tmp}/ssh"
+  cat > "$fake_stage" <<'EOF'
+#!/usr/bin/env bash
+printf 'stage %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_reboot" <<'EOF'
+#!/usr/bin/env bash
+printf 'reboot %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_refresh" <<'EOF'
+#!/usr/bin/env bash
+printf 'refresh %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_nc" <<'EOF'
+#!/usr/bin/env bash
+count_file="${NC_COUNT_FILE:?}"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+if ((count == 1)); then
+  exit 1
+fi
+exit 0
+EOF
+  cat > "$fake_ssh" <<'EOF'
+#!/usr/bin/env bash
+printf 'ssh %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ssh"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'apply_state='
+  assert_output_contains 'verifying generated image boot marker'
+  assert_output_contains 'next=just node-join k3s-worker-0 && just node-uncordon k3s-worker-0'
+  assert_file_contains "$calls" 'stage --profile live --context test --metadata-file'
+  assert_file_contains "$calls" 'reboot --profile live --context test --yes --force k3s-worker-0'
+  assert_file_contains "$calls" 'refresh --profile live --yes k3s-worker-0'
+  assert_file_contains "$calls" 'ssh -o BatchMode=yes'
+  [[ -f "${node_dir}/state/apply.json" ]]
+}
+
+@test "node reimage generated-image verification waits for firstboot marker" {
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    FAKE_REIMAGE_FIRSTBOOT_COMPLETE=false NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS=0 \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_verify_generated_image_booted live k3s-worker-0"
+  assert_failure
+  assert_output_contains 'timed out waiting for generated image firstboot marker'
+  assert_output_contains 'missing_firstboot_marker=/var/lib/home-ops/firstboot-complete'
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_verify_generated_image_booted live k3s-worker-0"
+  assert_success
+}
+
+@test "node reimage cleanup removes recorded serve state" {
+  local node_dir
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  jq -n \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", hostNode:"k3s-master-0", remoteDir:"/tmp/home-ops-reimage/k3s-worker-0"}' \
+    > "${node_dir}/state/serve.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-cleanup.sh" --profile live --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'cleanup_state='
+  [[ -f "${node_dir}/state/cleanup.json" ]]
+  [[ -f "${node_dir}/state/serve.cleaned.json" ]]
+  [[ ! -f "${node_dir}/state/serve.json" ]]
+}
+
+@test "node reimage cleanup refuses unsafe state remote dir" {
+  local node_dir
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  jq -n \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", hostNode:"k3s-master-0", remoteDir:"/tmp/home-ops-reimage/k3s-master-0"}' \
+    > "${node_dir}/state/serve.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-cleanup.sh" --profile live --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'unsafe reimage remote dir in state'
 }
 
 @test "worker status command reports inventory, Kubernetes, Cilium, and Longhorn absence" {
@@ -689,6 +1379,15 @@ EOF
   assert_output_contains 'reason=volume-still-targets-node'
   assert_output_contains 'reason=engine-still-targets-node'
   assert_output_matches 'volume-b-e-0.*owner=deleted-node.*reason=engine-still-targets-node'
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_longhorn_scheduling_problem test missing-node"
+  assert_success
+  [[ -z "$output" ]]
+
+  run env FAKE_KUBECTL_STATE_DIR="${tmp}/longhorn-state" NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_empty_for_delete test missing-node"
+  assert_success
 }
 
 @test "Longhorn eviction helper fails clearly when Longhorn is absent" {
@@ -747,6 +1446,11 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_restore_longhorn_scheduling test k3s-worker-0"
   assert_success
   assert_output_contains 'node.longhorn.io/k3s-worker-0 patched'
+
+  run env NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_request_longhorn_eviction test missing-node"
+  assert_success
+  assert_output_contains 'Longhorn node resource is absent for missing-node; no eviction request needed'
 }
 
 @test "stale pods bound to deleted nodes are force deleted" {
@@ -773,6 +1477,11 @@ EOF
     hack/bootstrap/nodes/join.sh \
     hack/bootstrap/nodes/uncordon.sh \
     hack/bootstrap/nodes/converge.sh \
+    hack/bootstrap/nodes/reimage-metadata.sh \
+    hack/bootstrap/nodes/reimage-image-source.sh \
+    hack/bootstrap/nodes/reimage-plan.sh \
+    hack/bootstrap/nodes/reimage-stage.sh \
+    hack/bootstrap/nodes/reimage-reboot.sh \
     hack/bootstrap/nodes/refresh-ssh-host-key.sh \
     hack/bootstrap/ansible/node-control-plane.sh; do
     run "${ROOT}/${script}" --help

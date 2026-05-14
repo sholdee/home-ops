@@ -194,17 +194,22 @@ ansible_load_host_service_secrets_from_op() {
   ansible_bool "$needs_op" || return
 
   command -v op >/dev/null 2>&1 || return 0
-  ansible_op_signin_if_needed
-  if [[ -n "$BOOTSTRAP_ANSIBLE_OP_ACCOUNT" ]]; then
-    op_args=(--account "$BOOTSTRAP_ANSIBLE_OP_ACCOUNT")
-  fi
+  if [[ -n "${BOOTSTRAP_ANSIBLE_HOST_SERVICES_ITEM_JSON:-}" ]]; then
+    item_json="$BOOTSTRAP_ANSIBLE_HOST_SERVICES_ITEM_JSON"
+  else
+    ansible_op_signin_if_needed
+    if [[ -n "$BOOTSTRAP_ANSIBLE_OP_ACCOUNT" ]]; then
+      op_args=(--account "$BOOTSTRAP_ANSIBLE_OP_ACCOUNT")
+    fi
 
-  item_json="$(
-    op item get "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM" \
-      --vault "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_VAULT" \
-      --format json \
-      "${op_args[@]}" 2>/dev/null || true
-  )"
+    item_json="$(
+      op item get "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM" \
+        --vault "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_VAULT" \
+        --format json \
+        "${op_args[@]}" 2>/dev/null || true
+    )"
+    BOOTSTRAP_ANSIBLE_HOST_SERVICES_ITEM_JSON="$item_json"
+  fi
   [[ -n "$item_json" ]] || return 0
 
   while IFS= read -r var; do

@@ -200,15 +200,21 @@ Cilium owns Service routing. After Cilium is ready, the wrapper runs the
 post-Cilium playbook that disables kube-proxy when the derived Cilium config
 has `kube_proxy_replacement: true`.
 
+The in-repo backend enables the K3s embedded registry mirror by default and
+writes `registries.yaml` mirrors for the registries used by this cluster. Nodes
+must be able to reach peer nodes on TCP `5001` for Spegel image sharing and
+the API endpoint on TCP `6443`. A `registries.yaml` change restarts the
+affected K3s server or agent so the mirror config is actually loaded.
+
 The in-repo backend owns node-prep prerequisites before K3s install or join:
 Raspberry Pi boot/config flags, swap disablement, CPU governor, fsnotify
 sysctls, and base kernel modules. Fresh nodes may reboot automatically before
 joining K3s. Existing K3s nodes stop with a reboot-required message instead of
 rebooting themselves; use the node lifecycle drain/reboot/uncordon flow.
 
-It also converges host services: RPi MQTT reporter on all nodes, NUT client on
-control-plane nodes, and a GitHub Actions runner on workers for ARM64 image
-verification. Host-service secrets are loaded from
+Full Ansible runs also converge host services: RPi MQTT reporter on all nodes,
+NUT client on control-plane nodes, and a GitHub Actions runner on workers for
+ARM64 image verification. Host-service secrets are loaded from
 `op://Kubernetes/host-services`; new worker runner registration mints a
 short-lived GitHub App installation token from the
 `HOME_OPS_GITHUB_APP_ID`, `HOME_OPS_GITHUB_APP_INSTALLATION_ID`, and
@@ -220,6 +226,11 @@ changing the app permission, update or reinstall the app installation so the
 installation grants the new permission. The runner uses a dedicated
 `github-runner` user and a narrow `home-ops-crictl` sudo wrapper for image
 pull/inspect checks.
+
+Single-node join/finalize recipes keep Kubernetes convergence separate from
+optional host services. After a replacement node is joined and uncordoned, run
+`just ansible-host-services <node>` when you want to converge the reporter,
+NUT client, or Actions runner explicitly.
 
 ## Node Lifecycle
 
@@ -233,6 +244,10 @@ explicit.
 | Pods bound to node | `just node-pods <node>` | `just node-lima-pods <node>` |
 | Control-plane status | `just node-control-plane-status <node>` | `just node-lima-control-plane-status <node>` |
 | Control-plane delete preflight | `just node-control-plane-delete-preflight <node>` | `just node-lima-control-plane-delete-preflight <node>` |
+| Discover network reimage identity | `just node-reimage-plan <node>` | n/a |
+| Render network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a |
+| Render network reimage OS source | `just node-reimage-image-source <node>` | n/a |
+| Build network reimage OS artifact | `just node-reimage-build <node>` | n/a |
 | Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
 | Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
@@ -242,6 +257,11 @@ explicit.
 | Refresh SSH host key | `just node-refresh-ssh-host-key <node>` | `just node-lima-refresh-ssh-host-key <node>` |
 | Join from inventory | `just node-join <node>` | `just node-lima-join <node>` |
 | Remove joining taint and uncordon | `just node-uncordon <node>` | `just node-lima-uncordon <node>` |
+| Serve recorded reimage artifact | `just node-reimage-serve <node> <host>` | n/a |
+| Apply recorded reimage | `just node-reimage-apply <node>` | n/a |
+| Clean up image server | `just node-reimage-cleanup <node>` | n/a |
+| Stage network reimage | `just node-reimage-stage <node> <image-url> <sha256>` | n/a |
+| Reboot into one-shot reimage | `just node-reimage-reboot <node>` | n/a |
 
 For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if
@@ -261,6 +281,24 @@ to `node-join`, and never uncordons automatically.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when `kube_proxy_replacement: true`.
+
+Network reimage is for Raspberry Pi nodes that have already passed the normal
+delete lifecycle. `node-reimage-stage` refuses to run while the Kubernetes Node
+still exists, unless `--force` is passed for disaster recovery. It verifies the
+inventory node, Raspberry Pi serial, target disk serial, image metadata, and
+payload files before writing `tryboot.txt` plus staged files under
+`/boot/firmware/home-ops-reimage`. Use `node-reimage-plan` first to discover
+the serial values that must be stored in inventory, and
+`node-reimage-build` to render and build the replacement Raspberry Pi OS image.
+On macOS the build runs in the persistent `home-ops-rpi-image-builder` Lima VM;
+on Linux it can run directly. `node-reimage-serve` hosts the recorded artifact
+from an explicit healthy inventory node, `node-reimage-apply` stages and
+tryboot-reboots the deleted node from recorded serve state, and
+waits for SSH plus the generated-image firstboot marker before reporting
+success. `node-reimage-cleanup` removes the node-specific remote hosting
+directory. By default the payload is built on the target from its current
+Raspberry Pi initramfs, so it keeps the matching kernel modules and
+boot-network tooling.
 
 ## Secrets
 
