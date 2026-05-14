@@ -49,6 +49,13 @@ done
 
 [[ -n "$input_node" ]] || node_die "NODE is required"
 [[ $# -gt 0 ]] || node_die "remote command is required after --"
+if [[ "${1:-}" == "--" ]]; then
+  shift
+fi
+if [[ $# -eq 1 && "${1:-}" == "-- "* ]]; then
+  set -- "${1#-- }"
+fi
+[[ $# -gt 0 ]] || node_die "remote command is required after --"
 
 node_validate_profile "$profile"
 node_require_tool "$NODE_YQ_BIN"

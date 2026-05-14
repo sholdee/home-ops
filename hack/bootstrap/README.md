@@ -206,6 +206,21 @@ sysctls, and base kernel modules. Fresh nodes may reboot automatically before
 joining K3s. Existing K3s nodes stop with a reboot-required message instead of
 rebooting themselves; use the node lifecycle drain/reboot/uncordon flow.
 
+It also converges host services: RPi MQTT reporter on all nodes, NUT client on
+control-plane nodes, and a GitHub Actions runner on workers for ARM64 image
+verification. Host-service secrets are loaded from
+`op://Kubernetes/host-services`; new worker runner registration mints a
+short-lived GitHub App installation token from the
+`HOME_OPS_GITHUB_APP_ID`, `HOME_OPS_GITHUB_APP_INSTALLATION_ID`, and
+`HOME_OPS_GITHUB_APP_PRIVATE_KEY` fields. Store
+`HOME_OPS_GITHUB_APP_PRIVATE_KEY` as base64-encoded full PEM key data so it fits
+cleanly in a 1Password field. The app installation needs repository
+Administration permission set to read/write for `sholdee/home-ops`. After
+changing the app permission, update or reinstall the app installation so the
+installation grants the new permission. The runner uses a dedicated
+`github-runner` user and a narrow `home-ops-crictl` sudo wrapper for image
+pull/inspect checks.
+
 ## Node Lifecycle
 
 Node lifecycle commands operate on an existing cluster and are intentionally

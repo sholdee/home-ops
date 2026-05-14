@@ -17,6 +17,7 @@ home_ops_validate_ansible_host_ip: true
 
 home_ops_rpi_reporter_enabled: true
 home_ops_nut_client_enabled: true
+home_ops_github_runner_enabled: true
 
 k3s_node_ip: "{{ ansible_host }}"
 extra_args: >-

@@ -21,6 +21,7 @@ home_ops_debian_packages:
   - curl
   - iproute2
   - iptables
+  - jq
   - nfs-common
   - open-iscsi
   - socat
@@ -137,3 +138,38 @@ home_ops_nut_pollfreqalert: 5
 home_ops_nut_powerdownflag: /etc/killpower
 home_ops_nut_rbwarntime: 43200
 home_ops_nut_shutdowncmd: /sbin/shutdown -h +0
+
+home_ops_github_runner_enabled: false
+home_ops_github_runner_repo_owner: sholdee
+home_ops_github_runner_repo_name: home-ops
+home_ops_github_runner_url: "https://github.com/{{ home_ops_github_runner_repo_owner }}/{{ home_ops_github_runner_repo_name }}"
+home_ops_github_runner_api_url: https://api.github.com
+home_ops_github_runner_api_version: "2022-11-28"
+home_ops_github_runner_access_token: "{{ lookup('ansible.builtin.env', 'HOME_OPS_GITHUB_RUNNER_ACCESS_TOKEN') }}"
+home_ops_github_runner_version: 2.334.0
+home_ops_github_runner_checksums:
+  arm64: f44255bd3e80160eb25f71bc83d06ea025f6908748807a584687b3184759f7e4
+  x64: 048024cd2c848eb6f14d5646d56c13a4def2ae7ee3ad12122bee960c56f3d271
+home_ops_github_runner_install_dir: /opt/actions-runner
+home_ops_github_runner_home: /var/lib/github-runner
+home_ops_github_runner_user: github-runner
+home_ops_github_runner_group: "{{ home_ops_github_runner_user }}"
+home_ops_github_runner_name: "{{ inventory_hostname }}"
+home_ops_github_runner_service_name: "actions.runner.{{ home_ops_github_runner_repo_owner }}-{{ home_ops_github_runner_repo_name }}.{{ home_ops_github_runner_name }}.service"
+home_ops_github_runner_service_file: "{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}"
+home_ops_github_runner_work_dir: _work
+home_ops_github_runner_labels:
+  - home-ops
+  - k3s
+  - image-pull
+home_ops_github_runner_packages:
+  - git
+  - gzip
+  - jq
+  - python3
+  - sudo
+  - tar
+home_ops_github_runner_crictl_wrapper_path: /usr/local/bin/home-ops-crictl
+home_ops_github_runner_crictl_runtime_endpoint: unix:///run/k3s/containerd/containerd.sock
+home_ops_github_runner_crictl_timeout: 30
+home_ops_github_runner_sudoers_file: /etc/sudoers.d/home-ops-github-runner

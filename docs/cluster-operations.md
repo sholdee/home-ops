@@ -441,6 +441,20 @@ automatically before they join K3s. Existing K3s nodes do not auto-reboot; if a
 boot-level change is required, drain and reboot that node through the node
 lifecycle flow, then rerun Ansible.
 
+Host services are part of the same Ansible backend. All nodes get the RPi MQTT
+reporter, control-plane nodes get the NUT client, and worker nodes get a
+repository-scoped GitHub Actions runner for ARM64 image-pull verification.
+Runner configuration mints a short-lived GitHub App installation token from
+`HOME_OPS_GITHUB_APP_ID`, `HOME_OPS_GITHUB_APP_INSTALLATION_ID`, and
+`HOME_OPS_GITHUB_APP_PRIVATE_KEY` fields on `op://Kubernetes/host-services`.
+Store `HOME_OPS_GITHUB_APP_PRIVATE_KEY` as base64-encoded full PEM key data so
+it fits cleanly in a 1Password field. The app installation needs repository
+Administration permission set to read/write for `sholdee/home-ops`. After
+changing the app permission, update or reinstall the app installation so the
+installation grants the new permission. The runner installer is pinned and
+checksum-verified; the installed runner keeps GitHub's normal runner
+auto-update behavior.
+
 Generated live inventory, vars, kubeconfigs, and run output are written under
 `hack/bootstrap/.out/ansible-live/`.
 

@@ -291,7 +291,7 @@ node-pods node:
 # Run one SSH command against a live inventory node without implicit sudo.
 [group('node')]
 node-cmd node +command:
-    ./hack/bootstrap/nodes/cmd.sh --profile live '{{ node }}' -- {{ command }}
+    ./hack/bootstrap/nodes/cmd.sh --profile live '{{ node }}' -- {{ quote(command) }}
 
 # Show read-only control-plane quorum and embedded-etcd status for a live cluster node.
 [group('node')]
@@ -468,7 +468,7 @@ node-lima-pods node:
 # Run one SSH command against a Lima inventory node without implicit sudo.
 [group('node-lima')]
 node-lima-cmd node +command:
-    ./hack/bootstrap/nodes/cmd.sh --profile lima '{{ node }}' -- {{ command }}
+    ./hack/bootstrap/nodes/cmd.sh --profile lima '{{ node }}' -- {{ quote(command) }}
 
 # Show read-only control-plane quorum and embedded-etcd status for a Lima cluster node.
 [group('node-lima')]
