@@ -546,10 +546,11 @@ recovery when the API is unavailable.
 under `hack/bootstrap/.out/reimage/` from inventory. The rendered config uses
 the inventory hostname, Ansible user, `ansible_host` static IP, public SSH key
 derived from the inventory SSH key, passwordless sudo for the Ansible user, and
-a small first-boot systemd-networkd/systemd layer. It defaults to the
-`trixie-minbase` base layer; pass `--base-layer`, `--interface`, `--prefix`,
-`--gateway`, `--dns`, or `--ssh-public-key` when the defaults do not match the
-target node.
+a small first-boot systemd-networkd/systemd layer. The layer also seeds the
+same Raspberry Pi cmdline and firmware config defaults that Ansible later
+enforces. It defaults to the `trixie-minbase` base layer; pass `--base-layer`,
+`--interface`, `--prefix`, `--gateway`, `--dns`, or `--ssh-public-key` when the
+defaults do not match the target node.
 
 By default staging builds the payload on the target from the current Raspberry
 Pi initramfs, injects the reimage hook, manifest, network env, VLAN module when

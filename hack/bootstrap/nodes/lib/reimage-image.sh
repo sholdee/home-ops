@@ -195,6 +195,46 @@ mmdebstrap:
       IPv6AcceptRA=no
       LinkLocalAddressing=no
       EONET
+    - |
+      cmdline_file=\$1/boot/firmware/cmdline.txt
+      if [ -f "\$cmdline_file" ]; then
+        cmdline="\$(cat "\$cmdline_file")"
+        for arg in \
+          cgroup_enable=cpuset \
+          cgroup_memory=1 \
+          cgroup_enable=memory \
+          nvme_core.default_ps_max_latency_us=0 \
+          pcie_aspm=off \
+          pcie_port_pm=off; do
+          case " \$cmdline " in
+            *" \$arg "*)
+              ;;
+            *)
+              cmdline="\${cmdline} \${arg}"
+              ;;
+          esac
+        done
+        printf '%s\n' "\$cmdline" > "\$cmdline_file"
+      fi
+    - |
+      config_file=\$1/boot/firmware/config.txt
+      if [ -f "\$config_file" ]; then
+        sed -i -E '/^[[:space:]]*(dtparam=(pciex1|nvme|pciex1_gen|audio)(=.*)?|dtoverlay=(cma(,.*)?|disable-wifi|disable-bt)|arm_boost=.*)[[:space:]]*$/d' "\$config_file"
+        cat >> "\$config_file" <<'EOCONFIG'
+
+      [all]
+      # BEGIN ANSIBLE MANAGED BLOCK home-ops raspberry pi config
+      dtparam=pciex1
+      dtparam=nvme
+      dtparam=pciex1_gen=3
+      dtoverlay=cma,cma-96
+      dtparam=audio=off
+      dtoverlay=disable-wifi
+      dtoverlay=disable-bt
+      arm_boost=1
+      # END ANSIBLE MANAGED BLOCK home-ops raspberry pi config
+      EOCONFIG
+      fi
     - install -d -m 0755 \$1/etc/systemd/system/multi-user.target.wants \$1/usr/local/sbin
     - |
       cat > \$1/usr/local/sbin/home-ops-firstboot <<'EOSCRIPT'
@@ -229,10 +269,12 @@ mmdebstrap:
     - curl
     - git
     - iproute2
+    - iptables
     - jq
     - nfs-common
     - open-iscsi
     - python3
+    - socat
     - xz-utils
     - zstd
 EOF

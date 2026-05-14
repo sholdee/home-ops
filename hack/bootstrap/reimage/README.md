@@ -4,7 +4,7 @@
 for the replacement OS image. It uses inventory for hostname, Ansible user,
 static IP, and the SSH public key derived from the inventory private key, and
 renders a small first-boot layer for systemd-networkd, passwordless sudo, SSH,
-and basic packages.
+Raspberry Pi boot defaults, and basic packages.
 
 `node-reimage-stage` builds the destructive reimage payload on the target node
 by default. It unpacks the node's current Raspberry Pi initramfs, injects a

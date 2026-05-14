@@ -248,6 +248,12 @@ EOF
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Address=192.168.99.20/24'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Gateway=192.168.99.1'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'DNS=192.168.99.1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'cgroup_enable=cpuset'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'nvme_core.default_ps_max_latency_us=0'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'pcie_aspm=off'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtparam=pciex1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtoverlay=disable-wifi'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
   assert_file_not_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'NetworkManager'
   assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
 }
