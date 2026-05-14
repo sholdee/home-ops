@@ -89,6 +89,7 @@ assert_file_contains_before() {
   [[ "$(yq -r '.k3s_token' "$home_ops_vars")" == "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}" ]]
   [[ "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" == "" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_enabled' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_rpi_reporter_supplementary_groups | join(",")' "$home_ops_vars")" == "video" ]]
   [[ "$(yq -r '.home_ops_nut_client_enabled' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_github_runner_enabled' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_github_runner_version' "$home_ops_vars")" == "2.334.0" ]]
@@ -204,6 +205,32 @@ EOF
   assert_file_contains "$rendered_server_service" '--node-taint node.home-ops.sh/joining=true:NoSchedule'
   assert_file_contains "$rendered_server_service" 'KillMode=process'
   assert_file_not_contains "$rendered_server_service" 'NoScheduleKillMode'
+
+  local render_rpi_reporter_playbook rendered_rpi_reporter_service
+  render_rpi_reporter_playbook="${tmp}/render-rpi-reporter-service.yml"
+  rendered_rpi_reporter_service="${tmp}/isp-rpi-reporter.service"
+  cat > "$render_rpi_reporter_playbook" <<EOF
+---
+- name: Render RPi reporter service template
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Render RPi reporter service
+      ansible.builtin.template:
+        src: ${ROOT}/hack/bootstrap/ansible/home-ops/templates/isp-rpi-reporter.service.j2
+        dest: ${rendered_rpi_reporter_service}
+        mode: "0644"
+EOF
+  run ansible-playbook -i localhost, "$render_rpi_reporter_playbook"
+  assert_success
+  assert_file_contains "$rendered_rpi_reporter_service" 'User=daemon'
+  assert_file_contains "$rendered_rpi_reporter_service" 'Group=daemon'
+  assert_file_contains "$rendered_rpi_reporter_service" 'SupplementaryGroups=video'
 
   local render_crictl_playbook rendered_crictl_wrapper
   render_crictl_playbook="${tmp}/render-crictl-wrapper.yml"

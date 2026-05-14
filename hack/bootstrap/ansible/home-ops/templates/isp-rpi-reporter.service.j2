@@ -8,6 +8,9 @@ Requires=network.target
 Type=notify
 User={{ home_ops_rpi_reporter_daemon_user }}
 Group={{ home_ops_rpi_reporter_daemon_group }}
+{% if home_ops_rpi_reporter_supplementary_groups | length > 0 %}
+SupplementaryGroups={{ home_ops_rpi_reporter_supplementary_groups | join(' ') }}
+{% endif %}
 WorkingDirectory={{ home_ops_rpi_reporter_path }}/
 ExecStart={{ home_ops_rpi_reporter_path }}/venv/bin/python3 -u {{ home_ops_rpi_reporter_path }}/ISP-RPi-mqtt-daemon.py
 StandardOutput=null

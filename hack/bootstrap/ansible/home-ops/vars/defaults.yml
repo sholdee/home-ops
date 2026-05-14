@@ -114,6 +114,8 @@ home_ops_rpi_reporter_path: /opt/RPi-Reporter-MQTT2HA-Daemon
 home_ops_rpi_reporter_service_name: isp-rpi-reporter
 home_ops_rpi_reporter_daemon_user: daemon
 home_ops_rpi_reporter_daemon_group: daemon
+home_ops_rpi_reporter_supplementary_groups:
+  - video
 home_ops_rpi_reporter_update_existing: false
 home_ops_rpi_reporter_apply_retain_patch: true
 home_ops_rpi_reporter_manage_config: false
