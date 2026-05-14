@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
 
           month="$(date -u +%Y-%m)"
-          version="bookworm-$(date -u +%Y-%m-%d)"
+          version="trixie-$(date -u +%Y-%m-%d)"
           branch="chore/os-updates-${month}"
           title="chore: trigger os updates for ${month}"
 
@@ -77,7 +77,7 @@ jobs:
           path = Path("apps/system-upgrade/manifests/os-plan.yaml")
           version = os.environ["VERSION"]
           text = path.read_text()
-          pattern = re.compile(r"^  version: bookworm-\d{4}-\d{2}-\d{2}$", re.MULTILINE)
+          pattern = re.compile(r"^  version: trixie-\d{4}-\d{2}-\d{2}$", re.MULTILINE)
           replacement = f"  version: {version}"
           updated, count = pattern.subn(replacement, text, count=1)
 
@@ -118,7 +118,7 @@ jobs:
           - bump the Raspberry Pi OS update trigger to \`${VERSION}\`
 
           ## Rollout
-          Merging this PR starts the opt-in System Upgrade Controller rollout for nodes selected by \`plan.upgrade.cattle.io/raspios-bookworm\`.
+          Merging this PR starts the opt-in System Upgrade Controller rollout for nodes selected by \`plan.upgrade.cattle.io/raspios-trixie\`.
           EOF
 
           pr_number="$(gh pr list \
