@@ -95,6 +95,7 @@ assert_file_contains_before() {
   [[ "$(yq -r '.home_ops_github_runner_user' "$home_ops_vars")" == "github-runner" ]]
   [[ "$(yq -r '.home_ops_github_runner_service_name' "$home_ops_vars")" == 'actions.runner.{{ home_ops_github_runner_repo_owner }}-{{ home_ops_github_runner_repo_name }}.{{ home_ops_github_runner_name }}.service' ]]
   [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
+  [[ "$(yq -r '.home_ops_github_runner_crictl_timeout' "$home_ops_vars")" == "30s" ]]
   [[ "$(yq -r '.home_ops_k3s_embedded_registry' "$home_ops_vars")" == "true" ]]
   assert_file_contains "$home_ops_vars" '--embedded-registry'
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
@@ -203,6 +204,31 @@ EOF
   assert_file_contains "$rendered_server_service" '--node-taint node.home-ops.sh/joining=true:NoSchedule'
   assert_file_contains "$rendered_server_service" 'KillMode=process'
   assert_file_not_contains "$rendered_server_service" 'NoScheduleKillMode'
+
+  local render_crictl_playbook rendered_crictl_wrapper
+  render_crictl_playbook="${tmp}/render-crictl-wrapper.yml"
+  rendered_crictl_wrapper="${tmp}/home-ops-crictl"
+  cat > "$render_crictl_playbook" <<EOF
+---
+- name: Render GitHub runner crictl wrapper
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - ${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+  tasks:
+    - name: Render crictl wrapper
+      ansible.builtin.template:
+        src: ${ROOT}/hack/bootstrap/ansible/home-ops/templates/home-ops-crictl.j2
+        dest: ${rendered_crictl_wrapper}
+        mode: "0755"
+EOF
+  run ansible-playbook -i localhost, "$render_crictl_playbook"
+  assert_success
+  assert_file_contains "$rendered_crictl_wrapper" 'timeout=30s'
+  assert_file_contains "$rendered_crictl_wrapper" "--timeout \"\$timeout\""
 }
 
 @test "home-ops backend wires K3s registry mirrors before K3s start and join" {
