@@ -185,7 +185,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
         run: |
-          python .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
+          python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
 
       - name: Attempt to Pull Extracted Images and Verify Platform
         id: pull_helm_images

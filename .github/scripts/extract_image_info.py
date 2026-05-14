@@ -2,6 +2,7 @@ import os
 import re
 import sys
 import json
+from urllib import error, request
 
 # Regex derived from output of distribution/reference Go module: fmt.Printf("%q\n", reference.ReferenceRegexp)
 DOCKER_IMAGE_REGEX = re.compile(
@@ -46,26 +47,35 @@ def parse_docker_image(image):
 
 def extract_images_from_pr_diff():
     """Extracts container image updates from PR files with validation."""
-    import requests
-
     pr_number = os.environ['PR_NUMBER']
     repo = os.environ['GITHUB_REPOSITORY']
-    token = os.environ['GITHUB_TOKEN']
+    token = os.environ.get('GITHUB_TOKEN', '')
     diff_url = f'https://api.github.com/repos/{repo}/pulls/{pr_number}/files'
 
     headers = {
-        'Authorization': f'token {token}',
-        'Accept': 'application/vnd.github.v3+json'
+        'Accept': 'application/vnd.github.v3+json',
+        'User-Agent': 'home-ops-image-extractor',
     }
+    if token:
+        headers['Authorization'] = f'token {token}'
 
     print(f"📡 Fetching PR diff from: {diff_url}")
-    response = requests.get(diff_url, headers=headers)
-
-    if response.status_code != 200:
-        print(f"❌ Failed to fetch PR diff: {response.status_code} - {response.text}")
+    req = request.Request(diff_url, headers=headers)
+    try:
+        with request.urlopen(req, timeout=30) as response:
+            response_body = response.read().decode('utf-8')
+            files = json.loads(response_body)
+    except error.HTTPError as exc:
+        response_body = exc.read().decode('utf-8', errors='replace')
+        print(f"❌ Failed to fetch PR diff: {exc.code} - {response_body}")
+        return []
+    except error.URLError as exc:
+        print(f"❌ Failed to fetch PR diff: {exc}")
+        return []
+    except json.JSONDecodeError as exc:
+        print(f"❌ Failed to parse PR diff response: {exc}")
         return []
 
-    files = response.json()
     print(f"📂 Loaded {len(files)} files from PR.")
 
     images = []
