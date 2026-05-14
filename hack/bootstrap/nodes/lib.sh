@@ -11,6 +11,7 @@ NODE_YQ_BIN="${NODE_YQ_BIN:-yq}"
 NODE_JQ_BIN="${NODE_JQ_BIN:-jq}"
 NODE_JOINING_TAINT_KEY="node.home-ops.sh/joining"
 NODE_LIMA_KUBECONFIG_PORT="${NODE_LIMA_KUBECONFIG_PORT:-${LIMA_KUBECONFIG_PORT:-16443}}"
+NODE_REIMAGE_PAYLOAD_DIR="${NODE_REIMAGE_PAYLOAD_DIR:-${BOOTSTRAP_DIR}/reimage/payload}"
 
 NODE_LIB_DIR="${NODE_SCRIPT_DIR}/lib"
 
@@ -34,3 +35,5 @@ source "${NODE_LIB_DIR}/ansible.sh"
 source "${NODE_LIB_DIR}/wait.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/lima.sh
 source "${NODE_LIB_DIR}/lima.sh"
+# shellcheck source=hack/bootstrap/nodes/lib/reimage.sh
+source "${NODE_LIB_DIR}/reimage.sh"

@@ -119,9 +119,13 @@ Node lifecycle:
 | List live nodes | `just node-list` |
 | Plan additive-only live node joins | `just node-converge-plan` |
 | Join missing live inventory nodes after confirmation | `just node-converge` |
+| Discover live node network reimage identity | `just node-reimage-plan <node>` |
+| Render live node network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` |
 | Reboot a drained live node | `just node-reboot <node>` |
 | Join one explicit live node | `just node-join <node>` |
 | Finalize and uncordon one live node | `just node-uncordon <node>` |
+| Stage live node network reimage | `just node-reimage-stage <node> <image-url> <sha256>` |
+| Reboot into staged network reimage | `just node-reimage-reboot <node>` |
 | Plan additive-only Lima node joins | `just node-lima-converge-plan` |
 | Join missing Lima inventory nodes after confirmation | `just node-lima-converge` |
 | Join missing Lima inventory nodes without prompting | `just node-lima-converge-yes` |
@@ -478,6 +482,7 @@ just node-delete k3s-worker-0
 just node-refresh-ssh-host-key k3s-worker-0
 just node-join k3s-worker-0
 just node-uncordon k3s-worker-0
+just node-reimage-plan k3s-worker-0
 ```
 
 Lima examples:
@@ -519,6 +524,26 @@ Longhorn scheduling readiness, and restores scheduling.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when the derived Cilium config has `kube_proxy_replacement: true`.
+
+### Network Reimage
+
+Network reimage is a post-delete flow for Raspberry Pi nodes. The normal path
+is drain, Longhorn eviction when needed, `node-delete`, `node-reimage-stage`,
+`node-reimage-reboot`, SSH host-key refresh, `node-join`, and `node-uncordon`.
+
+`node-reimage-stage` requires image metadata with schema
+`home-ops.node-image/v1`, matching `node`, `hostname`, `ansibleHost`,
+`imageUrl`, `sha256`, and `arch`. It also requires
+`home_ops_reimage_pi_serial` and `home_ops_reimage_disk_serial` in inventory;
+use `node-reimage-plan` to discover those values. Render the sidecar metadata
+with `just node-reimage-metadata <node> <image-url> <sha256> >
+<image-name>.metadata.json`. By default staging fails if the Kubernetes Node
+still exists. `--force` skips only that deleted-node check for disaster
+recovery when the API is unavailable.
+
+The reimage payload directory must contain `initramfs.img` and `cmdline.txt`.
+Staging writes the payload, manifest, and `/boot/firmware/tryboot.txt`; the
+separate reboot command uses the Raspberry Pi one-shot `0 tryboot` flag.
 
 ## Live Validation
 

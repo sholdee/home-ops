@@ -118,6 +118,27 @@ EOF
   assert_output_contains "./hack/bootstrap/nodes/cmd.sh --profile lima 'home-ops-k3s-test-agent-1' -- 'set -e; cd /tmp; pwd'"
 }
 
+@test "node reimage just recipes expose plan, stage, and tryboot reboot commands" {
+  local sha
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  run just --dry-run node-reimage-plan k3s-worker-0
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-plan.sh --profile live --context default 'k3s-worker-0'"
+
+  run just --dry-run node-reimage-metadata k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-metadata.sh --profile live 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}'"
+
+  run just --dry-run node-reimage-stage k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha" --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}' --force"
+
+  run just --dry-run node-reimage-reboot k3s-worker-0 --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-reboot.sh --profile live --context default 'k3s-worker-0' --force"
+}
+
 @test "node cmd helper tolerates an accidental extra separator before the remote command" {
   local fake_ssh capture
   fake_ssh="${tmp}/ssh"
@@ -153,6 +174,140 @@ EOF
       --profile live k3s-worker-9 -- true
   assert_failure
   assert_output_contains 'node is not present in live inventory'
+}
+
+@test "node reimage plan discovers Pi and disk identity without mutating state" {
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-plan.sh" --profile live --context test k3s-worker-0
+  assert_success
+  assert_output_contains 'inventory_node: k3s-worker-0'
+  assert_output_contains 'kubernetes_node_state: unknown'
+  assert_output_contains 'home_ops_reimage_pi_serial: missing'
+  assert_output_contains 'raspberry_pi=true'
+  assert_output_contains 'disk_serial=nvme-deadbeef'
+  assert_output_contains 'next_inventory_values:'
+  assert_output_contains 'home_ops_reimage_pi_serial: 10000000deadbeef'
+  assert_output_contains 'home_ops_reimage_disk_serial: nvme-deadbeef'
+}
+
+@test "node reimage metadata renders stage-compatible image metadata" {
+  local sha
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-metadata.sh" \
+      --profile live k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  printf '%s\n' "$output" >"${tmp}/metadata.json"
+
+  run jq -r '.schemaVersion' "${tmp}/metadata.json"
+  assert_success
+  [[ "$output" == "home-ops.node-image/v1" ]]
+
+  run jq -r '.node, .hostname, .ansibleHost, .imageUrl, .sha256, .arch' "${tmp}/metadata.json"
+  assert_success
+  assert_output_contains 'k3s-worker-0'
+  assert_output_contains '192.168.99.20'
+  assert_output_contains 'https://images.example/k3s-worker-0.img.xz'
+  assert_output_contains "$sha"
+  assert_output_contains 'arm64'
+}
+
+@test "node reimage stage refuses to run before the Kubernetes node is deleted" {
+  local sha payload metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  payload="${tmp}/payload"
+  metadata="${tmp}/metadata.json"
+  mkdir -p "$payload"
+  printf 'initramfs\n' >"${payload}/initramfs.img"
+  printf 'cmdline\n' >"${payload}/cmdline.txt"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --payload-dir "$payload" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_failure
+  assert_output_contains 'Kubernetes node still exists'
+}
+
+@test "node reimage stage validates identity metadata and stages tryboot payload" {
+  local sha payload metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  payload="${tmp}/payload"
+  metadata="${tmp}/metadata.json"
+  mkdir -p "$payload"
+  printf 'initramfs\n' >"${payload}/initramfs.img"
+  printf 'cmdline\n' >"${payload}/cmdline.txt"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" FAKE_REIMAGE_NODE_ABSENT=true \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --payload-dir "$payload" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains 'probing k3s-worker-0 identity and target disk'
+  assert_output_contains 'validating image metadata'
+  assert_output_contains 'staging reimage manifest and tryboot payload on k3s-worker-0'
+  assert_output_contains 'reimage staged for k3s-worker-0'
+}
+
+@test "node reimage reboot requires deleted node unless forced and schedules tryboot" {
+  write_reimage_kubectl
+  write_fake_ansible
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'Kubernetes node still exists'
+
+  mkdir -p "${tmp}/reimage-reboot-state"
+  run env PATH="${tmp}:${PATH}" FAKE_REBOOT_STATE_DIR="${tmp}/reimage-reboot-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'force enabled; skipping Kubernetes node-absent check'
+  assert_output_contains 'tryboot reboot scheduled: k3s-worker-0'
+  [[ -f "${tmp}/reimage-reboot-state/tryboot-rebooted-k3s-worker-0" ]]
+}
+
+@test "node reimage reboot rejects stale staged manifest identity" {
+  write_reimage_kubectl
+  write_fake_ansible
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+
+  run env PATH="${tmp}:${PATH}" FAKE_REIMAGE_STAGED_DISK_SERIAL=stale-disk NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'staged reimage manifest targetDiskSerial mismatch'
 }
 
 @test "worker status command reports inventory, Kubernetes, Cilium, and Longhorn absence" {
@@ -773,6 +928,10 @@ EOF
     hack/bootstrap/nodes/join.sh \
     hack/bootstrap/nodes/uncordon.sh \
     hack/bootstrap/nodes/converge.sh \
+    hack/bootstrap/nodes/reimage-metadata.sh \
+    hack/bootstrap/nodes/reimage-plan.sh \
+    hack/bootstrap/nodes/reimage-stage.sh \
+    hack/bootstrap/nodes/reimage-reboot.sh \
     hack/bootstrap/nodes/refresh-ssh-host-key.sh \
     hack/bootstrap/ansible/node-control-plane.sh; do
     run "${ROOT}/${script}" --help

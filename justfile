@@ -303,6 +303,16 @@ node-control-plane-status node:
 node-control-plane-delete-preflight node:
     ./hack/bootstrap/nodes/control-plane-delete-preflight.sh --profile live --context default '{{ node }}'
 
+# Discover Raspberry Pi and target-disk identity needed before network reimage.
+[group('node')]
+node-reimage-plan node:
+    ./hack/bootstrap/nodes/reimage-plan.sh --profile live --context default '{{ node }}'
+
+# Render image metadata JSON expected by network reimage staging.
+[group('node')]
+node-reimage-metadata node image_url sha256:
+    @./hack/bootstrap/nodes/reimage-metadata.sh --profile live '{{ node }}' '{{ image_url }}' '{{ sha256 }}'
+
 # Plan additive-only live node convergence from inventory.
 [group('node')]
 node-converge-plan:
@@ -342,6 +352,16 @@ node-join node:
 [group('node-mutate')]
 node-uncordon node:
     ./hack/bootstrap/nodes/uncordon.sh --profile live --context default '{{ node }}'
+
+# Stage a one-shot Raspberry Pi network reimage payload for a deleted live node.
+[group('node-mutate')]
+node-reimage-stage node image_url sha256 +args='':
+    ./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default '{{ node }}' '{{ image_url }}' '{{ sha256 }}' {{ args }}
+
+# Reboot a staged live node into one-shot Raspberry Pi tryboot reimage mode.
+[group('node-mutate')]
+node-reimage-reboot node +args='':
+    ./hack/bootstrap/nodes/reimage-reboot.sh --profile live --context default '{{ node }}' {{ args }}
 
 # Run prompted additive-only live node convergence from inventory.
 [group('node-mutate')]

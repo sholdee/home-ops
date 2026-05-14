@@ -233,6 +233,8 @@ explicit.
 | Pods bound to node | `just node-pods <node>` | `just node-lima-pods <node>` |
 | Control-plane status | `just node-control-plane-status <node>` | `just node-lima-control-plane-status <node>` |
 | Control-plane delete preflight | `just node-control-plane-delete-preflight <node>` | `just node-lima-control-plane-delete-preflight <node>` |
+| Discover network reimage identity | `just node-reimage-plan <node>` | n/a |
+| Render network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a |
 | Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
 | Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
@@ -242,6 +244,8 @@ explicit.
 | Refresh SSH host key | `just node-refresh-ssh-host-key <node>` | `just node-lima-refresh-ssh-host-key <node>` |
 | Join from inventory | `just node-join <node>` | `just node-lima-join <node>` |
 | Remove joining taint and uncordon | `just node-uncordon <node>` | `just node-lima-uncordon <node>` |
+| Stage network reimage | `just node-reimage-stage <node> <image-url> <sha256>` | n/a |
+| Reboot into one-shot reimage | `just node-reimage-reboot <node>` | n/a |
 
 For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if
@@ -261,6 +265,15 @@ to `node-join`, and never uncordons automatically.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when `kube_proxy_replacement: true`.
+
+Network reimage is for Raspberry Pi nodes that have already passed the normal
+delete lifecycle. `node-reimage-stage` refuses to run while the Kubernetes Node
+still exists, unless `--force` is passed for disaster recovery. It verifies the
+inventory node, Raspberry Pi serial, target disk serial, image metadata, and
+payload files before writing `tryboot.txt` plus staged files under
+`/boot/firmware/home-ops-reimage`. Use `node-reimage-plan` first to discover
+the serial values that must be stored in inventory, and
+`node-reimage-metadata` to render the image metadata sidecar.
 
 ## Secrets
 

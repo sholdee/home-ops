@@ -48,6 +48,22 @@ add_inventory_worker() {
   ' "${inventory}/hosts.yml"
 }
 
+add_reimage_identity() {
+  local name="$1"
+  local pi_serial="$2"
+  local disk_serial="$3"
+  local disk_path="${4:-/dev/nvme0n1}"
+  local group=node
+  if NODE_NAME="$name" yq -e '.all.children.k3s_cluster.children.master.hosts[strenv(NODE_NAME)] != null' "${inventory}/hosts.yml" >/dev/null; then
+    group=master
+  fi
+  NODE_NAME="$name" PI_SERIAL="$pi_serial" DISK_SERIAL="$disk_serial" DISK_PATH="$disk_path" GROUP="$group" yq -i '
+    .all.children.k3s_cluster.children[strenv(GROUP)].hosts[strenv(NODE_NAME)].home_ops_reimage_pi_serial = strenv(PI_SERIAL) |
+    .all.children.k3s_cluster.children[strenv(GROUP)].hosts[strenv(NODE_NAME)].home_ops_reimage_disk_serial = strenv(DISK_SERIAL) |
+    .all.children.k3s_cluster.children[strenv(GROUP)].hosts[strenv(NODE_NAME)].home_ops_reimage_disk_path = strenv(DISK_PATH)
+  ' "${inventory}/hosts.yml"
+}
+
 add_inventory_master() {
   local name="$1"
   local address="$2"
@@ -485,6 +501,64 @@ if [[ "$joined_args" == *"ansible.builtin.systemd"* ]]; then
   exit 0
 fi
 
+if [[ "$joined_args" == *"ansible.builtin.copy"* ]]; then
+  printf '{"changed": true}\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"disk_path="* && "$joined_args" == *"raspberry_pi"* ]]; then
+  printf 'hostname=%s\n' "$target"
+  printf 'pi_model=%s\n' "${FAKE_REIMAGE_PI_MODEL:-Raspberry Pi 5 Model B Rev 1.0}"
+  printf 'raspberry_pi=%s\n' "${FAKE_REIMAGE_IS_PI:-true}"
+  printf 'pi_serial=%s\n' "${FAKE_REIMAGE_PI_SERIAL:-10000000deadbeef}"
+  printf 'mac_addresses=%s\n' "${FAKE_REIMAGE_MACS:-dc:a6:32:00:00:01}"
+  printf 'disk_present=%s\n' "${FAKE_REIMAGE_DISK_PRESENT:-true}"
+  printf 'disk_path=%s\n' "${FAKE_REIMAGE_DISK_PATH:-/dev/nvme0n1}"
+  printf 'disk_model=%s\n' "${FAKE_REIMAGE_DISK_MODEL:-Samsung SSD}"
+  printf 'disk_serial=%s\n' "${FAKE_REIMAGE_DISK_SERIAL:-nvme-deadbeef}"
+  printf 'disk_size_bytes=%s\n' "${FAKE_REIMAGE_DISK_SIZE:-500107862016}"
+  printf 'boot_firmware_mounted=%s\n' "${FAKE_REIMAGE_BOOT_MOUNTED:-true}"
+  exit 0
+fi
+
+if [[ "$joined_args" == *"reimage_stage=present"* ]]; then
+  printf 'manifest_begin\n'
+  staged_inventory_node="${FAKE_REIMAGE_STAGED_INVENTORY_NODE:-k3s-worker-0}"
+  staged_kubernetes_node="${FAKE_REIMAGE_STAGED_KUBERNETES_NODE:-k3s-worker-0}"
+  staged_target_disk="${FAKE_REIMAGE_STAGED_TARGET_DISK:-/dev/nvme0n1}"
+  staged_target_disk_serial="${FAKE_REIMAGE_STAGED_DISK_SERIAL:-nvme-deadbeef}"
+  staged_pi_serial="${FAKE_REIMAGE_STAGED_PI_SERIAL:-10000000deadbeef}"
+  staged_stage_dir="${FAKE_REIMAGE_STAGED_STAGE_DIR:-/boot/firmware/home-ops-reimage}"
+  cat <<JSON
+{
+  "schemaVersion": "home-ops.node-reimage-stage/v1",
+  "inventoryNode": "${staged_inventory_node}",
+  "kubernetesNode": "${staged_kubernetes_node}",
+  "targetDisk": "${staged_target_disk}",
+  "targetDiskSerial": "${staged_target_disk_serial}",
+  "raspberryPiSerial": "${staged_pi_serial}",
+  "stageDir": "${staged_stage_dir}"
+}
+JSON
+  printf 'manifest_end\n'
+  printf 'reimage_stage=present\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"manifest.json"* || "$joined_args" == *"tryboot.txt"* ]]; then
+  printf 'staged_file=true\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"0 tryboot"* ]]; then
+  if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
+    mkdir -p "$FAKE_REBOOT_STATE_DIR"
+    touch "${FAKE_REBOOT_STATE_DIR}/tryboot-rebooted-${target}"
+  fi
+  printf 'tryboot_reboot_scheduled=true\n'
+  exit 0
+fi
+
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
@@ -554,6 +628,37 @@ printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9,
 printf 'etcd_endpoint_status_end\n'
 EOF
   chmod +x "$fake_ansible"
+}
+
+write_reimage_kubectl() {
+  fake_reimage_kubectl="${tmp}/kubectl-reimage"
+  cat > "$fake_reimage_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-(worker|master)-[0-9]+$ ]]; then
+  node_name="${2#node/}"
+  if [[ "${FAKE_REIMAGE_NODE_ABSENT:-false}" == true ]]; then
+    printf 'Error from server (NotFound): nodes "%s" not found\n' "$node_name" >&2
+    exit 1
+  fi
+  printf '{"metadata":{"name":"%s","labels":{}},"status":{"conditions":[{"type":"Ready","status":"True"}]}}\n' "$node_name"
+  exit 0
+fi
+
+printf 'unexpected fake reimage kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_reimage_kubectl"
 }
 
 write_reboot_kubectl() {

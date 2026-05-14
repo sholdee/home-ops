@@ -98,6 +98,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
   embedded-etcd member removal, join with a temporary taint, then finalize and
   uncordon.
+- Raspberry Pi network reimage is post-delete only by default. Keep the
+  deleted-node check, Pi serial check, disk serial check, image metadata check,
+  and staged-payload check fail-closed; `--force` may skip only the Kubernetes
+  node-existence check for disaster recovery.
 - Mutating node lifecycle commands must remain fail-closed. If a helper cannot
   prove safety, stop and leave the node cordoned rather than guessing.
 
