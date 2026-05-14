@@ -185,5 +185,5 @@ home_ops_github_runner_packages:
   - tar
 home_ops_github_runner_crictl_wrapper_path: /usr/local/bin/home-ops-crictl
 home_ops_github_runner_crictl_runtime_endpoint: unix:///run/k3s/containerd/containerd.sock
-home_ops_github_runner_crictl_timeout: 30
+home_ops_github_runner_crictl_timeout: 30s
 home_ops_github_runner_sudoers_file: /etc/sudoers.d/home-ops-github-runner
