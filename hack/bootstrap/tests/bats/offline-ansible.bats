@@ -75,6 +75,11 @@ render_home_ops_inventory() {
   [[ "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" == "" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_enabled' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_nut_client_enabled' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_github_runner_enabled' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_github_runner_version' "$home_ops_vars")" == "2.334.0" ]]
+  [[ "$(yq -r '.home_ops_github_runner_user' "$home_ops_vars")" == "github-runner" ]]
+  [[ "$(yq -r '.home_ops_github_runner_service_name' "$home_ops_vars")" == 'actions.runner.{{ home_ops_github_runner_repo_owner }}-{{ home_ops_github_runner_repo_name }}.{{ home_ops_github_runner_name }}.service' ]]
+  [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_nut_client_restart_on_change' "$home_ops_vars")" == "false" ]]
@@ -218,6 +223,35 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/rpi-reporter.yml" 'no_log: true'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/nut-client.yml" 'nut-client'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/nut-client.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" 'github-actions-runner.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'actions/runners/registration-token'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'bin/installdependencies.sh'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'checksum: "sha256:{{ home_ops_github_runner_checksum }}"'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'home_ops_github_runner_registration_token.json.token'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" '- sudo'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" '- "{{ home_ops_github_runner_user }}"'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'home_ops_github_runner_sudoers_file'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'home_ops_github_runner_service_file'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'Uninstall the legacy runner service first'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'no_log: true'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/github-actions-runner.yml" 'home-ops-crictl.j2'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/home-ops-crictl.j2" 'unsupported home-ops-crictl command'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'HOME_OPS_GITHUB_APP_ID'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'HOME_OPS_GITHUB_APP_INSTALLATION_ID'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'HOME_OPS_GITHUB_APP_PRIVATE_KEY'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" "op item get \"\$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'ansible_github_app_installation_access_token'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'permissions: {administration: "write"}'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" "mktemp \"\${TMPDIR:-/tmp}/home-ops-github-app-key.XXXXXX\""
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'openssl base64 -d -A'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'HOME_OPS_GITHUB_APP_PRIVATE_KEY is not valid base64-encoded PEM private key data'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'could not create GitHub App JWT for host services'
+  assert_file_contains "$ROOT/.github/workflows/pull-image.yml" 'runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]'
+  assert_file_contains "$ROOT/.github/workflows/helm-diff.yml" 'runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]'
+  assert_file_contains "$ROOT/.github/workflows/pull-image.yml" 'sudo /usr/local/bin/home-ops-crictl pull'
+  assert_file_contains "$ROOT/.github/workflows/helm-diff.yml" 'sudo /usr/local/bin/home-ops-crictl pull'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_github_runner_access_token'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/inventory/live/group_vars/all.yml" 'home_ops_github_runner_enabled: true'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/host-services/main.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/host-services/main.yml'
 }
@@ -225,35 +259,24 @@ EOF
 @test "host service secret helper loads missing values from 1Password fields" {
   local fake_op
   fake_op="${tmp}/op"
-  cat > "$fake_op" <<'EOF'
+cat > "$fake_op" <<'EOF'
 #!/usr/bin/env bash
 if [[ "$1" == whoami ]]; then
   exit 0
 fi
-[[ "$1" == read && "$2" == -n ]] || exit 2
-case "$3" in
-  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME)
-    printf 'mqtt.example.invalid'
-    ;;
-  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_USERNAME)
-    printf 'reporter-user'
-    ;;
-  op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_PASSWORD)
-    printf 'reporter-secret'
-    ;;
-  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_SYSTEM)
-    printf 'ups@example.invalid'
-    ;;
-  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_USER)
-    printf 'nut-user'
-    ;;
-  op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_PASSWORD)
-    printf 'nut-secret'
-    ;;
-  *)
-    exit 1
-    ;;
-esac
+[[ "$1" == item && "$2" == get && "$3" == host-services ]] || exit 2
+cat <<'JSON'
+{
+  "fields": [
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "value": "mqtt.example.invalid"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "value": "reporter-user"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "label": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "value": "reporter-secret"},
+    {"id": "HOME_OPS_NUT_MONITOR_SYSTEM", "label": "HOME_OPS_NUT_MONITOR_SYSTEM", "value": "ups@example.invalid"},
+    {"id": "HOME_OPS_NUT_MONITOR_USER", "label": "HOME_OPS_NUT_MONITOR_USER", "value": "nut-user"},
+    {"id": "HOME_OPS_NUT_MONITOR_PASSWORD", "label": "HOME_OPS_NUT_MONITOR_PASSWORD", "value": "nut-secret"}
+  ]
+}
+JSON
 EOF
   chmod +x "$fake_op"
 
@@ -279,32 +302,21 @@ case "$1" in
   signin)
     printf 'export OP_SESSION_FAKE=1\n'
     ;;
-  read)
+  item)
     [[ "${OP_SESSION_FAKE:-}" == "1" ]] || exit 1
-    [[ "$2" == -n ]] || exit 2
-    case "$3" in
-      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME)
-        printf 'mqtt.example.invalid'
-        ;;
-      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_USERNAME)
-        printf 'reporter-user'
-        ;;
-      op://Kubernetes/host-services/HOME_OPS_RPI_REPORTER_MQTT_PASSWORD)
-        printf 'reporter-secret'
-        ;;
-      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_SYSTEM)
-        printf 'ups@example.invalid'
-        ;;
-      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_USER)
-        printf 'nut-user'
-        ;;
-      op://Kubernetes/host-services/HOME_OPS_NUT_MONITOR_PASSWORD)
-        printf 'nut-secret'
-        ;;
-      *)
-        exit 1
-        ;;
-    esac
+    [[ "$2" == get && "$3" == host-services ]] || exit 2
+    cat <<'JSON'
+{
+  "fields": [
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "value": "mqtt.example.invalid"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "value": "reporter-user"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "label": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "value": "reporter-secret"},
+    {"id": "HOME_OPS_NUT_MONITOR_SYSTEM", "label": "HOME_OPS_NUT_MONITOR_SYSTEM", "value": "ups@example.invalid"},
+    {"id": "HOME_OPS_NUT_MONITOR_USER", "label": "HOME_OPS_NUT_MONITOR_USER", "value": "nut-user"},
+    {"id": "HOME_OPS_NUT_MONITOR_PASSWORD", "label": "HOME_OPS_NUT_MONITOR_PASSWORD", "value": "nut-secret"}
+  ]
+}
+JSON
     ;;
   *)
     exit 2
@@ -318,8 +330,54 @@ EOF
   assert_success
   assert_output_contains 'mqtt.example.invalid:ups@example.invalid'
   [[ "$(grep -c '^signin$' "$calls")" == "1" ]]
+  [[ "$(grep -c '^item$' "$calls")" == "1" ]]
   assert_output_not_contains 'reporter-secret'
   assert_output_not_contains 'nut-secret'
+}
+
+@test "host service secret helper mints GitHub App token for worker runner registration" {
+  command -v openssl >/dev/null 2>&1 || skip "openssl not installed"
+
+  local fake_op fake_curl curl_args private_key
+  fake_op="${tmp}/op"
+  fake_curl="${tmp}/curl"
+  curl_args="${tmp}/curl-args"
+  private_key="$(openssl genrsa 2048 2>/dev/null | openssl base64 -A)"
+cat > "$fake_op" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$1" == whoami ]]; then
+  exit 0
+fi
+[[ "$1" == item && "$2" == get && "$3" == host-services ]] || exit 2
+cat <<JSON
+{
+  "fields": [
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME", "value": "mqtt.example.invalid"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "label": "HOME_OPS_RPI_REPORTER_MQTT_USERNAME", "value": "reporter-user"},
+    {"id": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "label": "HOME_OPS_RPI_REPORTER_MQTT_PASSWORD", "value": "reporter-secret"},
+    {"id": "HOME_OPS_GITHUB_APP_ID", "label": "HOME_OPS_GITHUB_APP_ID", "value": "12345"},
+    {"id": "HOME_OPS_GITHUB_APP_INSTALLATION_ID", "label": "HOME_OPS_GITHUB_APP_INSTALLATION_ID", "value": "987"},
+    {"id": "HOME_OPS_GITHUB_APP_PRIVATE_KEY", "label": "HOME_OPS_GITHUB_APP_PRIVATE_KEY", "value": "${TEST_GITHUB_APP_PRIVATE_KEY}"}
+  ]
+}
+JSON
+EOF
+cat > "$fake_curl" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$CURL_ARGS"
+printf '{"token":"installation-token","expires_at":"2026-05-14T05:00:00Z"}\n201'
+EOF
+  chmod +x "$fake_op" "$fake_curl"
+
+  run env PATH="${tmp}:${PATH}" CURL_ARGS="$curl_args" TEST_GITHUB_APP_PRIVATE_KEY="$private_key" \
+    bash -c "source '${ROOT}/hack/bootstrap/ansible/lib.sh'; ansible_require_host_service_env node; printf '%s:%s\n' \"\$HOME_OPS_GITHUB_RUNNER_ACCESS_TOKEN\" \"\$HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME\""
+  assert_success
+  assert_output_contains 'installation-token:mqtt.example.invalid'
+  assert_output_not_contains 'reporter-secret'
+  assert_file_contains "$curl_args" '/app/installations/987/access_tokens'
+  assert_file_contains "$curl_args" 'Authorization: Bearer '
+  assert_file_contains "$curl_args" '"repositories":["home-ops"]'
+  assert_file_contains "$curl_args" '"administration":"write"'
 }
 
 @test "host service secret helper fails before playbooks when values are missing" {
@@ -328,6 +386,9 @@ EOF
   assert_failure
   assert_output_contains 'missing host service secret environment values for node'
   assert_output_contains 'HOME_OPS_RPI_REPORTER_MQTT_PASSWORD'
+  assert_output_contains 'HOME_OPS_GITHUB_APP_ID'
+  assert_output_contains 'HOME_OPS_GITHUB_APP_INSTALLATION_ID'
+  assert_output_contains 'HOME_OPS_GITHUB_APP_PRIVATE_KEY'
   assert_output_contains 'op://Kubernetes/host-services'
 }
 

@@ -5,3 +5,7 @@
 - name: Apply NUT client host service on control-plane nodes
   ansible.builtin.import_tasks: nut-client.yml
   when: inventory_hostname in groups[group_name_master]
+
+- name: Apply GitHub Actions runner host service on worker nodes
+  ansible.builtin.import_tasks: github-actions-runner.yml
+  when: inventory_hostname in groups[group_name_node]

@@ -108,6 +108,45 @@ EOF
   assert_file_contains "$capture" 'isp-rpi-reporter.service'
 }
 
+@test "node cmd just recipes quote shell metacharacters for the remote command" {
+  run just --dry-run node-cmd k3s-worker-0 'set -e; cd /tmp; pwd'
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/cmd.sh --profile live 'k3s-worker-0' -- 'set -e; cd /tmp; pwd'"
+
+  run just --dry-run node-lima-cmd home-ops-k3s-test-agent-1 'set -e; cd /tmp; pwd'
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/cmd.sh --profile lima 'home-ops-k3s-test-agent-1' -- 'set -e; cd /tmp; pwd'"
+}
+
+@test "node cmd helper tolerates an accidental extra separator before the remote command" {
+  local fake_ssh capture
+  fake_ssh="${tmp}/ssh"
+  capture="${tmp}/ssh-args"
+  cat > "$fake_ssh" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$SSH_CAPTURE"
+EOF
+  chmod +x "$fake_ssh"
+
+  run env PATH="${tmp}:${PATH}" HOME=/tmp/home SSH_CAPTURE="$capture" \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/cmd.sh" \
+      --profile live k3s-worker-0 -- -- 'set -e; cd /tmp; pwd'
+  assert_success
+  assert_file_contains "$capture" 'ethan@192.168.99.20'
+  assert_file_contains "$capture" 'set -e; cd /tmp; pwd'
+  run grep -Fx -- '--' "$capture"
+  assert_failure
+
+  run env PATH="${tmp}:${PATH}" HOME=/tmp/home SSH_CAPTURE="$capture" \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/cmd.sh" \
+      --profile live k3s-worker-0 -- '-- set -e; cd /tmp; pwd'
+  assert_success
+  assert_file_contains "$capture" 'set -e; cd /tmp; pwd'
+  assert_file_not_contains "$capture" '-- set -e'
+}
+
 @test "node cmd helper fails closed for absent inventory node" {
   run env NODE_LIVE_INVENTORY_DIR="$inventory" \
     "${ROOT}/hack/bootstrap/nodes/cmd.sh" \

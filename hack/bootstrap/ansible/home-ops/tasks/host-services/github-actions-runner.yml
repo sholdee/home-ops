@@ -1,0 +1,266 @@
+---
+- name: Resolve GitHub Actions runner architecture
+  ansible.builtin.set_fact:
+    home_ops_github_runner_arch: >-
+      {{
+        {
+          'aarch64': 'arm64',
+          'arm64': 'arm64',
+          'x86_64': 'x64',
+          'amd64': 'x64'
+        }.get(ansible_facts.architecture, '')
+      }}
+  when: home_ops_github_runner_enabled | bool
+
+- name: Validate GitHub Actions runner architecture
+  ansible.builtin.assert:
+    that:
+      - home_ops_github_runner_arch | length > 0
+    fail_msg: "Unsupported GitHub Actions runner architecture: {{ ansible_facts.architecture }}"
+  when: home_ops_github_runner_enabled | bool
+
+- name: Set GitHub Actions runner archive checksum
+  ansible.builtin.set_fact:
+    home_ops_github_runner_checksum: "{{ home_ops_github_runner_checksums[home_ops_github_runner_arch] | default('') }}"
+  when: home_ops_github_runner_enabled | bool
+
+- name: Validate GitHub Actions runner archive checksum
+  ansible.builtin.assert:
+    that:
+      - home_ops_github_runner_checksum | length > 0
+    fail_msg: "Missing GitHub Actions runner checksum for architecture: {{ home_ops_github_runner_arch }}"
+  when: home_ops_github_runner_enabled | bool
+
+- name: Install GitHub Actions runner prerequisites
+  ansible.builtin.package:
+    name: "{{ home_ops_github_runner_packages }}"
+    state: present
+  when: home_ops_github_runner_enabled | bool
+
+- name: Create GitHub Actions runner group
+  ansible.builtin.group:
+    name: "{{ home_ops_github_runner_group }}"
+    system: true
+    state: present
+  when: home_ops_github_runner_enabled | bool
+
+- name: Create GitHub Actions runner user
+  ansible.builtin.user:
+    name: "{{ home_ops_github_runner_user }}"
+    group: "{{ home_ops_github_runner_group }}"
+    home: "{{ home_ops_github_runner_home }}"
+    create_home: true
+    shell: /bin/bash
+    system: true
+    password_lock: true
+    state: present
+  when: home_ops_github_runner_enabled | bool
+
+- name: Create GitHub Actions runner install directory
+  ansible.builtin.file:
+    path: "{{ home_ops_github_runner_install_dir }}"
+    state: directory
+    owner: "{{ home_ops_github_runner_user }}"
+    group: "{{ home_ops_github_runner_group }}"
+    mode: "0755"
+  when: home_ops_github_runner_enabled | bool
+
+- name: Check GitHub Actions runner listener
+  ansible.builtin.stat:
+    path: "{{ home_ops_github_runner_install_dir }}/bin/Runner.Listener"
+  register: home_ops_github_runner_listener
+  when: home_ops_github_runner_enabled | bool
+
+- name: Set GitHub Actions runner install version
+  ansible.builtin.set_fact:
+    home_ops_github_runner_install_version: "{{ home_ops_github_runner_version | regex_replace('^v', '') }}"
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_listener.stat.exists | default(false))
+
+- name: Download GitHub Actions runner
+  ansible.builtin.get_url:
+    url: >-
+      https://github.com/actions/runner/releases/download/v{{ home_ops_github_runner_install_version }}/actions-runner-linux-{{ home_ops_github_runner_arch }}-{{ home_ops_github_runner_install_version }}.tar.gz
+    dest: "/tmp/actions-runner-linux-{{ home_ops_github_runner_arch }}-{{ home_ops_github_runner_install_version }}.tar.gz"
+    owner: root
+    group: root
+    mode: "0644"
+    checksum: "sha256:{{ home_ops_github_runner_checksum }}"
+  register: home_ops_github_runner_archive
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_listener.stat.exists | default(false))
+
+- name: Extract GitHub Actions runner
+  ansible.builtin.unarchive:
+    src: "{{ home_ops_github_runner_archive.dest }}"
+    dest: "{{ home_ops_github_runner_install_dir }}"
+    remote_src: true
+    owner: "{{ home_ops_github_runner_user }}"
+    group: "{{ home_ops_github_runner_group }}"
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_listener.stat.exists | default(false))
+
+- name: Install GitHub Actions runner OS dependencies
+  ansible.builtin.command:
+    cmd: "{{ home_ops_github_runner_install_dir }}/bin/installdependencies.sh"
+  changed_when: false
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_listener.stat.exists | default(false))
+
+- name: Check GitHub Actions runner local registration
+  ansible.builtin.stat:
+    path: "{{ home_ops_github_runner_install_dir }}/.runner"
+  register: home_ops_github_runner_registration
+  when: home_ops_github_runner_enabled | bool
+
+- name: Validate GitHub Actions runner registration token source
+  ansible.builtin.assert:
+    that:
+      - home_ops_github_runner_access_token | length > 0
+    fail_msg: >-
+      Missing generated HOME_OPS_GITHUB_RUNNER_ACCESS_TOKEN. The bootstrap
+      wrapper should mint it from the host-services GitHub App fields before
+      configuring a new runner.
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_registration.stat.exists | default(false))
+
+- name: Request GitHub Actions runner registration token
+  ansible.builtin.uri:
+    url: "{{ home_ops_github_runner_api_url }}/repos/{{ home_ops_github_runner_repo_owner }}/{{ home_ops_github_runner_repo_name }}/actions/runners/registration-token"
+    method: POST
+    status_code: 201
+    return_content: true
+    headers:
+      Accept: application/vnd.github+json
+      Authorization: "Bearer {{ home_ops_github_runner_access_token }}"
+      X-GitHub-Api-Version: "{{ home_ops_github_runner_api_version }}"
+  register: home_ops_github_runner_registration_token
+  delegate_to: localhost
+  become: false
+  no_log: true
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_registration.stat.exists | default(false))
+
+- name: Configure GitHub Actions runner
+  ansible.builtin.command:
+    argv:
+      - sudo
+      - -H
+      - -u
+      - "{{ home_ops_github_runner_user }}"
+      - --
+      - ./config.sh
+      - --unattended
+      - --url
+      - "{{ home_ops_github_runner_url }}"
+      - --token
+      - "{{ home_ops_github_runner_registration_token.json.token }}"
+      - --name
+      - "{{ home_ops_github_runner_name }}"
+      - --work
+      - "{{ home_ops_github_runner_work_dir }}"
+      - --labels
+      - "{{ home_ops_github_runner_labels | join(',') }}"
+      - --replace
+    chdir: "{{ home_ops_github_runner_install_dir }}"
+    creates: "{{ home_ops_github_runner_install_dir }}/.runner"
+  no_log: true
+  when:
+    - home_ops_github_runner_enabled | bool
+    - not (home_ops_github_runner_registration.stat.exists | default(false))
+
+- name: Check GitHub Actions runner service unit
+  ansible.builtin.stat:
+    path: "{{ home_ops_github_runner_service_file }}"
+  register: home_ops_github_runner_service_unit
+  when: home_ops_github_runner_enabled | bool
+
+- name: Read existing GitHub Actions runner service unit
+  ansible.builtin.slurp:
+    path: "{{ home_ops_github_runner_service_file }}"
+  register: home_ops_github_runner_service_unit_content
+  when:
+    - home_ops_github_runner_enabled | bool
+    - home_ops_github_runner_service_unit.stat.exists | default(false)
+
+- name: Decode existing GitHub Actions runner service unit
+  ansible.builtin.set_fact:
+    home_ops_github_runner_service_unit_text: "{{ home_ops_github_runner_service_unit_content.content | b64decode }}"
+  when:
+    - home_ops_github_runner_enabled | bool
+    - home_ops_github_runner_service_unit.stat.exists | default(false)
+
+- name: Validate existing GitHub Actions runner service unit
+  ansible.builtin.assert:
+    that:
+      - "home_ops_github_runner_install_dir ~ '/runsvc.sh' in home_ops_github_runner_service_unit_text"
+      - "'User=' ~ home_ops_github_runner_user in home_ops_github_runner_service_unit_text"
+      - "'WorkingDirectory=' ~ home_ops_github_runner_install_dir in home_ops_github_runner_service_unit_text"
+    fail_msg: >-
+      Existing GitHub Actions runner service {{ home_ops_github_runner_service_name }}
+      is not managed from {{ home_ops_github_runner_install_dir }} as
+      {{ home_ops_github_runner_user }}. Uninstall the legacy runner service first
+      from its install directory with sudo ./svc.sh uninstall, then rerun host services.
+  when:
+    - home_ops_github_runner_enabled | bool
+    - home_ops_github_runner_service_unit.stat.exists | default(false)
+
+- name: Install GitHub Actions runner service
+  ansible.builtin.command:
+    cmd: "./svc.sh install {{ home_ops_github_runner_user }}"
+    chdir: "{{ home_ops_github_runner_install_dir }}"
+    creates: "{{ home_ops_github_runner_service_file }}"
+  register: home_ops_github_runner_service_install
+  when: home_ops_github_runner_enabled | bool
+
+- name: Check K3s crictl helper
+  ansible.builtin.stat:
+    path: /var/lib/rancher/k3s/data/current/bin/crictl
+  register: home_ops_github_runner_k3s_crictl
+  when: home_ops_github_runner_enabled | bool
+
+- name: Validate K3s crictl helper exists
+  ansible.builtin.assert:
+    that:
+      - home_ops_github_runner_k3s_crictl.stat.exists | default(false)
+    fail_msg: >-
+      K3s crictl was not found at /var/lib/rancher/k3s/data/current/bin/crictl;
+      install or join K3s before enabling the GitHub Actions runner.
+  when: home_ops_github_runner_enabled | bool
+
+- name: Expose crictl on the default runner PATH
+  ansible.builtin.template:
+    src: home-ops-crictl.j2
+    dest: "{{ home_ops_github_runner_crictl_wrapper_path }}"
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - home_ops_github_runner_enabled | bool
+    - home_ops_github_runner_k3s_crictl.stat.exists | default(false)
+
+- name: Allow GitHub Actions runner to verify images with crictl
+  ansible.builtin.copy:
+    dest: "{{ home_ops_github_runner_sudoers_file }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+    content: |
+      {{ home_ops_github_runner_user }} ALL=(root) NOPASSWD: {{ home_ops_github_runner_crictl_wrapper_path }} pull *
+      {{ home_ops_github_runner_user }} ALL=(root) NOPASSWD: {{ home_ops_github_runner_crictl_wrapper_path }} inspecti -o json *
+  when: home_ops_github_runner_enabled | bool
+
+- name: Enable and start GitHub Actions runner service
+  ansible.builtin.systemd:
+    name: "{{ home_ops_github_runner_service_name }}"
+    enabled: true
+    daemon_reload: "{{ home_ops_github_runner_service_install.changed | default(false) }}"
+    state: started
+  when: home_ops_github_runner_enabled | bool
