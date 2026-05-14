@@ -691,6 +691,7 @@ true'" > "$script"
   write_reimage_kubectl
   write_fake_ansible
   add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" '--reboot-argument="0 tryboot"'
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
     "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --yes k3s-worker-0
@@ -719,6 +720,7 @@ true'" > "$script"
 
 @test "node reimage apply uses recorded serve state and refreshes host key" {
   local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ssh
+  write_fake_ansible
   node_dir="${tmp}/reimage-out/live/k3s-worker-0"
   mkdir -p "${node_dir}/state"
   artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
@@ -786,12 +788,28 @@ EOF
     "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
   assert_success
   assert_output_contains 'apply_state='
+  assert_output_contains 'verifying generated image boot marker'
   assert_output_contains 'next=just node-join k3s-worker-0 && just node-uncordon k3s-worker-0'
   assert_file_contains "$calls" 'stage --profile live --context test --metadata-file'
   assert_file_contains "$calls" 'reboot --profile live --context test --yes --force k3s-worker-0'
   assert_file_contains "$calls" 'refresh --profile live --yes k3s-worker-0'
   assert_file_contains "$calls" 'ssh -o BatchMode=yes'
   [[ -f "${node_dir}/state/apply.json" ]]
+}
+
+@test "node reimage generated-image verification waits for firstboot marker" {
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    FAKE_REIMAGE_FIRSTBOOT_COMPLETE=false NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS=0 \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_verify_generated_image_booted live k3s-worker-0"
+  assert_failure
+  assert_output_contains 'timed out waiting for generated image firstboot marker'
+  assert_output_contains 'missing_firstboot_marker=/var/lib/home-ops/firstboot-complete'
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_verify_generated_image_booted live k3s-worker-0"
+  assert_success
 }
 
 @test "node reimage cleanup removes recorded serve state" {

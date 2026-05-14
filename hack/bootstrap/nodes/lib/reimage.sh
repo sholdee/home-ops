@@ -564,6 +564,7 @@ require_tool awk
 require_tool base64
 require_tool cpio
 require_tool find
+require_tool readlink
 require_tool sed
 require_tool unmkinitramfs
 require_tool xzcat
@@ -689,6 +690,98 @@ trap cleanup EXIT
     }
   }
 
+  install_host_file_into_initramfs() {
+    host_path="\$1"
+    initramfs_path="\${2:-\$host_path}"
+    host_real_path="\$host_path"
+    initramfs_path="\${initramfs_path#/}"
+
+    install -d -m 0755 "\$(dirname "\$initramfs_path")"
+    if [ -L "\$host_path" ]; then
+      host_real_path="\$(readlink -f "\$host_path")"
+    fi
+
+    if [ -x "\$host_real_path" ]; then
+      install -m 0755 "\$host_real_path" "\$initramfs_path"
+    else
+      install -m 0644 "\$host_real_path" "\$initramfs_path"
+    fi
+  }
+
+  install_host_binary_with_libs() {
+    command_name="\$1"
+    command_path="\$(command -v "\$command_name" 2>/dev/null || true)"
+    [ -n "\$command_path" ] || return 1
+    command -v ldd >/dev/null 2>&1 || return 1
+
+    install_host_file_into_initramfs "\$command_path"
+    if [ -L "\$command_path" ]; then
+      command_path="\$(readlink -f "\$command_path")"
+      install_host_file_into_initramfs "\$command_path"
+    fi
+
+    ldd "\$command_path" 2>/dev/null | while IFS= read -r ldd_line; do
+      library_path=''
+      case "\$ldd_line" in
+        *'=> '*)
+          library_path="\$(printf '%s\n' "\$ldd_line" | awk '{ for (i = 1; i <= NF; i++) if (\$i ~ /^\//) { print \$i; exit } }')"
+          ;;
+        /*)
+          library_path="\${ldd_line%% *}"
+          ;;
+      esac
+      if [ -n "\$library_path" ] && [ -e "\$library_path" ]; then
+        install_host_file_into_initramfs "\$library_path"
+      fi
+    done
+  }
+
+  initramfs_command_path() {
+    command_name="\$1"
+    for command_path in \
+      "bin/\$command_name" \
+      "sbin/\$command_name" \
+      "usr/bin/\$command_name" \
+      "usr/sbin/\$command_name"; do
+      if [ -e "\$command_path" ]; then
+        printf '%s\n' "\$command_path"
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  ensure_initramfs_command() {
+    command_name="\$1"
+    initramfs_has_command "\$command_name" && return 0
+
+    case "\$command_name" in
+      zstdcat)
+        install_host_binary_with_libs zstd &&
+          install_host_binary_with_libs zstdcat &&
+          initramfs_has_command zstdcat &&
+          return 0
+        ;;
+    esac
+
+    printf 'missing_initramfs_command=%s\n' "\$command_name"
+    exit 2
+  }
+
+  verify_initramfs_command_executes() {
+    command_name="\$1"
+    command_arg="\$2"
+    command_path="\$(initramfs_command_path "\$command_name" || true)"
+    [ -n "\$command_path" ] || {
+      printf 'missing_initramfs_command=%s\n' "\$command_name"
+      exit 2
+    }
+    chroot "\$initramfs_root" "/\$command_path" "\$command_arg" >/dev/null 2>&1 || {
+      printf 'initramfs_command_not_executable=%s\n' "\$command_name"
+      exit 2
+    }
+  }
+
   install_kernel_module() {
     module_rel_path="\$1"
     module_dest="usr/lib/modules/\$kernel_version/\$module_rel_path"
@@ -735,8 +828,13 @@ trap cleanup EXIT
   fi
 
   for command_name in \$runtime_commands; do
-    require_initramfs_command "\$command_name"
+    ensure_initramfs_command "\$command_name"
   done
+  case "\$image_url" in
+    *.zst)
+      verify_initramfs_command_executes zstdcat --version
+      ;;
+  esac
   if [ -n "\$net_vlan_id" ]; then
     install_8021q_modules || {
       printf 'missing_initramfs_module=8021q\n'

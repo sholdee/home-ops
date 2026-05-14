@@ -13,6 +13,8 @@ NODE_REIMAGE_BUILDER_MODE="${NODE_REIMAGE_BUILDER_MODE:-auto}"
 NODE_REIMAGE_DEFAULT_PORT="${NODE_REIMAGE_DEFAULT_PORT:-18080}"
 NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS:-180}"
 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS:-1800}"
+NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS="${NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS:-300}"
+NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS="${NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS:-10}"
 NODE_REIMAGE_STAGE_BIN="${NODE_REIMAGE_STAGE_BIN:-${NODE_SCRIPT_DIR}/reimage-stage.sh}"
 NODE_REIMAGE_REBOOT_BIN="${NODE_REIMAGE_REBOOT_BIN:-${NODE_SCRIPT_DIR}/reimage-reboot.sh}"
 NODE_REFRESH_SSH_HOST_KEY_BIN="${NODE_REFRESH_SSH_HOST_KEY_BIN:-${NODE_SCRIPT_DIR}/refresh-ssh-host-key.sh}"
@@ -537,4 +539,49 @@ node_reimage_wait_ssh_auth() {
     sleep 10
   done
   node_die "timed out waiting for SSH authentication on ${inventory_node}"
+}
+
+node_reimage_verify_generated_image_booted() {
+  local profile="$1"
+  local inventory_node="$2"
+  local remote_check output last_output deadline
+
+  read -r -d '' remote_check <<'EOF' || true
+set -eu
+if [ -f /var/lib/home-ops/firstboot-complete ]; then
+  printf 'generated_image_booted=true\n'
+  exit 0
+fi
+printf 'missing_firstboot_marker=/var/lib/home-ops/firstboot-complete\n'
+if [ -f /usr/local/sbin/home-ops-firstboot ]; then
+  printf 'firstboot_script=present\n'
+else
+  printf 'firstboot_script=missing\n'
+fi
+printf 'firstboot_service_state='
+systemctl is-active home-ops-firstboot.service 2>/dev/null || true
+printf 'os_release='
+sed -n 's/^PRETTY_NAME=//p' /etc/os-release 2>/dev/null | sed -n '1p' || true
+EOF
+
+  deadline=$((SECONDS + NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS))
+  while true; do
+    if output="$(node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_check")"; then
+      if grep -Fxq 'generated_image_booted=true' <<<"$output"; then
+        return 0
+      fi
+      last_output="$output"
+    else
+      last_output="firstboot marker probe failed"
+    fi
+
+    ((SECONDS >= deadline)) && break
+    sleep "$NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS"
+  done
+
+  {
+    printf 'firstboot_probe:\n'
+    node_indent_block <<<"${last_output:-no probe output}"
+  } >&2
+  node_die "timed out waiting for generated image firstboot marker on ${inventory_node}"
 }

@@ -577,6 +577,16 @@ if [[ "$joined_args" == *"0 tryboot"* ]]; then
   exit 0
 fi
 
+if [[ "$joined_args" == *"firstboot-complete"* ]]; then
+  if [[ "${FAKE_REIMAGE_FIRSTBOOT_COMPLETE:-true}" == true ]]; then
+    printf 'generated_image_booted=true\n'
+    exit 0
+  fi
+  printf 'missing_firstboot_marker=/var/lib/home-ops/firstboot-complete\n'
+  printf 'os_release=\"Debian GNU/Linux 12 (bookworm)\"\n'
+  exit 2
+fi
+
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"

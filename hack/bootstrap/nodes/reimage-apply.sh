@@ -107,6 +107,8 @@ else
   "$NODE_REFRESH_SSH_HOST_KEY_BIN" --profile "$profile" --yes "$inventory_node"
   node_log "waiting for SSH authentication on ${inventory_node}"
   node_reimage_wait_ssh_auth "$profile" "$inventory_node" "$NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS"
+  node_log "verifying generated image boot marker on ${inventory_node}"
+  node_reimage_verify_generated_image_booted "$profile" "$inventory_node"
 fi
 
 apply_state="$(node_reimage_write_apply_state "$profile" "$inventory_node" "$image_url" "$sha256")"
