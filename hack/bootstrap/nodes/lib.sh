@@ -9,6 +9,7 @@ NODE_LIMA_INVENTORY_DIR="${NODE_LIMA_INVENTORY_DIR:-${BOOTSTRAP_DIR}/.out/lima-$
 NODE_KUBECTL_BIN="${NODE_KUBECTL_BIN:-kubectl}"
 NODE_YQ_BIN="${NODE_YQ_BIN:-yq}"
 NODE_JQ_BIN="${NODE_JQ_BIN:-jq}"
+NODE_SSH_KEYGEN_BIN="${NODE_SSH_KEYGEN_BIN:-ssh-keygen}"
 NODE_JOINING_TAINT_KEY="node.home-ops.sh/joining"
 NODE_LIMA_KUBECONFIG_PORT="${NODE_LIMA_KUBECONFIG_PORT:-${LIMA_KUBECONFIG_PORT:-16443}}"
 NODE_REIMAGE_PAYLOAD_DIR="${NODE_REIMAGE_PAYLOAD_DIR:-}"
@@ -37,3 +38,5 @@ source "${NODE_LIB_DIR}/wait.sh"
 source "${NODE_LIB_DIR}/lima.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/reimage.sh
 source "${NODE_LIB_DIR}/reimage.sh"
+# shellcheck source=hack/bootstrap/nodes/lib/reimage-image.sh
+source "${NODE_LIB_DIR}/reimage-image.sh"

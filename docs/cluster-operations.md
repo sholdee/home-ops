@@ -121,6 +121,7 @@ Node lifecycle:
 | Join missing live inventory nodes after confirmation | `just node-converge` |
 | Discover live node network reimage identity | `just node-reimage-plan <node>` |
 | Render live node network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` |
+| Render live node Raspberry Pi image source | `just node-reimage-image-source <node>` |
 | Reboot a drained live node | `just node-reboot <node>` |
 | Join one explicit live node | `just node-join <node>` |
 | Finalize and uncordon one live node | `just node-uncordon <node>` |
@@ -540,6 +541,15 @@ with `just node-reimage-metadata <node> <image-url> <sha256> >
 <image-name>.metadata.json`. By default staging fails if the Kubernetes Node
 still exists. `--force` skips only that deleted-node check for disaster
 recovery when the API is unavailable.
+
+`node-reimage-image-source` renders a per-node `rpi-image-gen` source tree
+under `hack/bootstrap/.out/reimage/` from inventory. The rendered config uses
+the inventory hostname, Ansible user, `ansible_host` static IP, public SSH key
+derived from the inventory SSH key, passwordless sudo for the Ansible user, and
+a small first-boot systemd-networkd/systemd layer. It defaults to the
+`trixie-minbase` base layer; pass `--base-layer`, `--interface`, `--prefix`,
+`--gateway`, `--dns`, or `--ssh-public-key` when the defaults do not match the
+target node.
 
 By default staging builds the payload on the target from the current Raspberry
 Pi initramfs, injects the reimage hook, manifest, network env, VLAN module when

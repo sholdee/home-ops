@@ -629,6 +629,70 @@ trap cleanup EXIT
 (
   cd "\$tmp_dir"
   zstdcat "\$source_initramfs" | cpio -id --quiet
+
+  initramfs_has_command() {
+    command_name="\$1"
+    for command_path in \
+      "bin/\$command_name" \
+      "sbin/\$command_name" \
+      "usr/bin/\$command_name" \
+      "usr/sbin/\$command_name"; do
+      [ -e "\$command_path" ] && return 0
+    done
+    for busybox_path in bin/busybox usr/bin/busybox; do
+      if [ -x "\$busybox_path" ] && "\$busybox_path" --list 2>/dev/null | grep -Fxq "\$command_name"; then
+        return 0
+      fi
+    done
+    return 1
+  }
+
+  require_initramfs_command() {
+    initramfs_has_command "\$1" || {
+      printf 'missing_initramfs_command=%s\n' "\$1"
+      exit 2
+    }
+  }
+
+  install_8021q_module() {
+    module_dest="usr/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko"
+    module_src=''
+    module_src="\$(find usr lib -path '*/8021q.ko' -o -path '*/8021q.ko.xz' -o -path '*/8021q.ko.zst' 2>/dev/null | sed -n '1p' || true)"
+    if [ -z "\$module_src" ]; then
+      module_src="\$(find "/lib/modules/\$kernel_version" -path '*/8021q.ko' -o -path '*/8021q.ko.xz' -o -path '*/8021q.ko.zst' 2>/dev/null | sed -n '1p' || true)"
+    fi
+    [ -n "\$module_src" ] || return 1
+    [ "\$module_src" = "\$module_dest" ] && return 0
+    install -d -m 0755 "\$(dirname "\$module_dest")"
+    case "\$module_src" in
+      *.ko)
+        cp "\$module_src" "\$module_dest"
+        ;;
+      *.ko.xz)
+        xzcat "\$module_src" > "\$module_dest"
+        ;;
+      *.ko.zst)
+        zstdcat "\$module_src" > "\$module_dest"
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  }
+
+  for command_name in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat; do
+    require_initramfs_command "\$command_name"
+  done
+  if [ -n "\$net_vlan_id" ]; then
+    require_initramfs_command insmod
+    install_8021q_module || {
+      printf 'missing_initramfs_module=8021q\n'
+      exit 2
+    }
+  else
+    install_8021q_module || true
+  fi
+
   install -d -m 0755 scripts/local-top home-ops-reimage
   printf '%s' "\$manifest_b64" | base64 -d > home-ops-reimage/manifest.json
   cp "\$stage_dir/reimage.env" home-ops-reimage/reimage.env
@@ -636,11 +700,6 @@ trap cleanup EXIT
   chmod 0755 scripts/local-top/home-ops-reimage
   if [ -f scripts/local-top/ORDER ] && ! grep -Fxq home-ops-reimage scripts/local-top/ORDER; then
     printf '%s\n' home-ops-reimage >> scripts/local-top/ORDER
-  fi
-  if [ -f "/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko.xz" ]; then
-    install -d -m 0755 "usr/lib/modules/\$kernel_version/kernel/net/8021q"
-    xzcat "/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko.xz" > \
-      "usr/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko"
   fi
   if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
     install -d -m 0755 etc/ssl/certs

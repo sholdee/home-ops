@@ -130,6 +130,10 @@ EOF
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-metadata.sh --profile live 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}'"
 
+  run just --dry-run node-reimage-image-source k3s-worker-0 --ssh-public-key /tmp/ansiblekey.pub
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-image-source.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
+
   run just --dry-run node-reimage-stage k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha" --force
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}' --force"
@@ -213,6 +217,62 @@ EOF
   assert_output_contains 'https://images.example/k3s-worker-0.img.xz'
   assert_output_contains "$sha"
   assert_output_contains 'arm64'
+}
+
+@test "node reimage image source renders rpi-image-gen config and first-boot layer" {
+  local output_dir public_key
+  output_dir="${tmp}/image-source"
+  public_key="${tmp}/ansiblekey.pub"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live \
+      --output-dir "$output_dir" \
+      --ssh-public-key "$public_key" \
+      k3s-worker-0
+  assert_success
+  assert_output_contains "source_dir=${output_dir}"
+  assert_output_contains 'base_layer=trixie-minbase'
+  assert_output_contains 'network_interface=eth0'
+  assert_output_contains 'network_gateway=192.168.99.1'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'layer: rpi5'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'base: trixie-minbase'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'custom: home-ops-node-bootstrap'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'hostname: k3s-worker-0'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'user1: ethan'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'user1sudo: nopasswd'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'pubkey_user1: ssh-ed25519'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'rpi-user-credentials,systemd-net-min,openssh-server'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Name=eth0'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Address=192.168.99.20/24'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Gateway=192.168.99.1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'DNS=192.168.99.1'
+  assert_file_not_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'NetworkManager'
+  assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
+}
+
+@test "node reimage image source derives public key from inventory private key" {
+  local fake_ssh_keygen output_dir test_home
+  output_dir="${tmp}/image-source-derived"
+  test_home="${tmp}/home"
+  fake_ssh_keygen="${tmp}/ssh-keygen"
+  mkdir -p "$test_home"
+  touch "${test_home}/ansiblekey"
+cat >"$fake_ssh_keygen" <<'EOF'
+#!/usr/bin/env bash
+[[ "$1" == "-y" && "$2" == "-f" && "$3" == */ansiblekey && "$4" == "-P" && "$5" == "" ]] || exit 2
+printf '%s\n' 'ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
+EOF
+  chmod +x "$fake_ssh_keygen"
+
+  run env HOME="$test_home" PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live \
+      --output-dir "$output_dir" \
+      k3s-worker-0
+  assert_success
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'pubkey_user1: ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
 }
 
 @test "node reimage stage refuses to run before the Kubernetes node is deleted" {
@@ -328,6 +388,9 @@ EOF
 true'"
   assert_success
   assert_output_contains "target_disk_b64="
+  assert_output_contains "missing_initramfs_command="
+  assert_output_contains "missing_initramfs_module=8021q"
+  assert_output_contains "8021q.ko.zst"
   assert_output_not_contains "require_tool jq"
   assert_output_not_contains "| jq "
 }
@@ -981,6 +1044,7 @@ EOF
     hack/bootstrap/nodes/uncordon.sh \
     hack/bootstrap/nodes/converge.sh \
     hack/bootstrap/nodes/reimage-metadata.sh \
+    hack/bootstrap/nodes/reimage-image-source.sh \
     hack/bootstrap/nodes/reimage-plan.sh \
     hack/bootstrap/nodes/reimage-stage.sh \
     hack/bootstrap/nodes/reimage-reboot.sh \

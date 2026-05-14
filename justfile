@@ -313,6 +313,11 @@ node-reimage-plan node:
 node-reimage-metadata node image_url sha256:
     @./hack/bootstrap/nodes/reimage-metadata.sh --profile live '{{ node }}' '{{ image_url }}' '{{ sha256 }}'
 
+# Render a per-node rpi-image-gen source tree for a Raspberry Pi OS image.
+[group('node')]
+node-reimage-image-source node +args='':
+    ./hack/bootstrap/nodes/reimage-image-source.sh --profile live '{{ node }}' {{ args }}
+
 # Plan additive-only live node convergence from inventory.
 [group('node')]
 node-converge-plan:

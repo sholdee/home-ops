@@ -235,6 +235,7 @@ explicit.
 | Control-plane delete preflight | `just node-control-plane-delete-preflight <node>` | `just node-lima-control-plane-delete-preflight <node>` |
 | Discover network reimage identity | `just node-reimage-plan <node>` | n/a |
 | Render network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a |
+| Render network reimage OS source | `just node-reimage-image-source <node>` | n/a |
 | Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
 | Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
@@ -275,7 +276,9 @@ payload files before writing `tryboot.txt` plus staged files under
 the serial values that must be stored in inventory, and
 `node-reimage-metadata` to render the image metadata sidecar. By default the
 payload is built on the target from its current Raspberry Pi initramfs, so it
-keeps the matching kernel modules and boot-network tooling.
+keeps the matching kernel modules and boot-network tooling. Use
+`node-reimage-image-source` to render a per-node `rpi-image-gen` source tree for
+the replacement Raspberry Pi OS image.
 
 ## Secrets
 
