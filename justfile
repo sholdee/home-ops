@@ -289,7 +289,7 @@ node-pods node:
     kubectl --context default get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
 
 # Run one SSH command against a live inventory node without implicit sudo.
-[group('node')]
+[group('node-mutate')]
 node-cmd node +command:
     ./hack/bootstrap/nodes/cmd.sh --profile live '{{ node }}' -- {{ quote(command) }}
 
@@ -466,7 +466,7 @@ node-lima-pods node:
     kubectl --context '{{ lima_context }}' get pods -A --field-selector 'spec.nodeName={{ node }},status.phase!=Succeeded' -o wide
 
 # Run one SSH command against a Lima inventory node without implicit sudo.
-[group('node-lima')]
+[group('node-lima-mutate')]
 node-lima-cmd node +command:
     ./hack/bootstrap/nodes/cmd.sh --profile lima '{{ node }}' -- {{ quote(command) }}
 

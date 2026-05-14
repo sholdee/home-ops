@@ -1,6 +1,13 @@
 ---
+- name: Detect Raspberry Pi host for RPi reporter
+  ansible.builtin.import_tasks: ../node-prep/raspberry-pi.yml
+  when: home_ops_rpi_reporter_enabled | bool
+
 - name: Apply RPi reporter host service
   ansible.builtin.import_tasks: rpi-reporter.yml
+  when:
+    - home_ops_rpi_reporter_enabled | bool
+    - home_ops_raspberry_pi | default(false) | bool
 
 - name: Apply NUT client host service on control-plane nodes
   ansible.builtin.import_tasks: nut-client.yml
