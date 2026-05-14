@@ -203,6 +203,8 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/k3s-server.service.j2" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_node_taints'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'boot-cmdline.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" '../node-prep/raspberry-pi.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" 'home_ops_raspberry_pi | default(false) | bool'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'pcie_port_pm=off'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/raspberry-pi-config.yml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/sysctl.yml" 'fs.inotify.max_user_watches'
