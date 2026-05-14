@@ -280,6 +280,58 @@ EOF
   assert_output_contains 'reimage staged for k3s-worker-0'
 }
 
+@test "node reimage stage defaults to building payload from target initramfs" {
+  local sha metadata
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  metadata="${tmp}/metadata.json"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
+  write_reimage_kubectl
+  write_fake_ansible
+
+  run env PATH="${tmp}:${PATH}" NODE_REIMAGE_PAYLOAD_DIR="" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" FAKE_REIMAGE_NODE_ABSENT=true FAKE_REIMAGE_REMOTE_PAYLOAD=true \
+    "${ROOT}/hack/bootstrap/nodes/reimage-stage.sh" \
+      --profile live --context test --metadata-file "$metadata" --yes \
+      k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha"
+  assert_success
+  assert_output_contains 'building reimage initramfs payload on k3s-worker-0'
+  assert_output_contains 'remote_payload=built'
+  assert_output_contains 'net_iface=eth0.99'
+  assert_output_contains 'reimage staged for k3s-worker-0'
+}
+
+@test "node reimage target-built payload script does not require jq on target" {
+  local manifest
+  manifest="${tmp}/manifest.json"
+  cat > "$manifest" <<'EOF'
+{
+  "schemaVersion": "home-ops.node-reimage-stage/v1",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "imageSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "targetDisk": "/dev/nvme0n1",
+  "targetDiskSerial": "nvme-deadbeef",
+  "raspberryPiSerial": "10000000deadbeef"
+}
+EOF
+
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; manifest=\$(cat '${manifest}'); node_reimage_build_remote_payload_script /boot/firmware/home-ops-reimage \"\${manifest}\" '#!/bin/sh
+true'"
+  assert_success
+  assert_output_contains "target_disk_b64="
+  assert_output_not_contains "require_tool jq"
+  assert_output_not_contains "| jq "
+}
+
 @test "node reimage reboot requires deleted node unless forced and schedules tryboot" {
   write_reimage_kubectl
   write_fake_ansible

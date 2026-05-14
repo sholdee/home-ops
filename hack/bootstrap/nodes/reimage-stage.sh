@@ -17,7 +17,8 @@ Options:
   --context NAME        Kubernetes context. Defaults to the profile context.
   --metadata-url URL    Image metadata URL. Defaults to IMAGE_URL.metadata.json.
   --metadata-file FILE  Read image metadata from a local file instead of URL.
-  --payload-dir DIR     Directory containing initramfs.img and cmdline.txt.
+  --payload-dir DIR     Use local initramfs.img and cmdline.txt instead of
+                        building a payload from the target node initramfs.
   --force               Skip only the Kubernetes-node-absent check.
   --yes                 Skip confirmation prompt.
   -h, --help            Show help.
@@ -133,8 +134,10 @@ metadata="$(node_reimage_read_metadata "$metadata_source")"
 metadata="$(node_reimage_validate_metadata "$profile" "$inventory_node" "$image_url" "$image_sha256" "$metadata")"
 manifest="$(node_reimage_build_manifest "$profile" "$inventory_node" "$kubernetes_node" "$image_url" "$image_sha256" "$metadata_source" "$metadata")"
 
-node_reimage_payload_file "$payload_dir" initramfs.img >/dev/null
-node_reimage_payload_file "$payload_dir" cmdline.txt >/dev/null
+if [[ -n "$payload_dir" ]]; then
+  node_reimage_payload_file "$payload_dir" initramfs.img >/dev/null
+  node_reimage_payload_file "$payload_dir" cmdline.txt >/dev/null
+fi
 
 node_confirm "$yes" "stage network reimage for ${inventory_node}"
 node_reimage_stage_files "$profile" "$inventory_node" "$manifest" "$payload_dir"

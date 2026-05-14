@@ -273,7 +273,9 @@ inventory node, Raspberry Pi serial, target disk serial, image metadata, and
 payload files before writing `tryboot.txt` plus staged files under
 `/boot/firmware/home-ops-reimage`. Use `node-reimage-plan` first to discover
 the serial values that must be stored in inventory, and
-`node-reimage-metadata` to render the image metadata sidecar.
+`node-reimage-metadata` to render the image metadata sidecar. By default the
+payload is built on the target from its current Raspberry Pi initramfs, so it
+keeps the matching kernel modules and boot-network tooling.
 
 ## Secrets
 

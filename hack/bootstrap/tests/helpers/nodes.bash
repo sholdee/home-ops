@@ -545,6 +545,24 @@ JSON
   exit 0
 fi
 
+if [[ "$joined_args" == *"remote_payload=built"* ]]; then
+  printf 'remote_payload=built\n'
+  printf 'source_initramfs=/boot/firmware/initramfs_2712\n'
+  printf 'net_iface=eth0.99\n'
+  printf 'net_cidr=192.168.99.20/24\n'
+  printf 'net_gateway=192.168.99.1\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"base64 -d | /bin/sh"* && "${FAKE_REIMAGE_REMOTE_PAYLOAD:-false}" == true ]]; then
+  printf 'remote_payload=built\n'
+  printf 'source_initramfs=/boot/firmware/initramfs_2712\n'
+  printf 'net_iface=eth0.99\n'
+  printf 'net_cidr=192.168.99.20/24\n'
+  printf 'net_gateway=192.168.99.1\n'
+  exit 0
+fi
+
 if [[ "$joined_args" == *"manifest.json"* || "$joined_args" == *"tryboot.txt"* ]]; then
   printf 'staged_file=true\n'
   exit 0

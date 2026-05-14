@@ -541,9 +541,12 @@ with `just node-reimage-metadata <node> <image-url> <sha256> >
 still exists. `--force` skips only that deleted-node check for disaster
 recovery when the API is unavailable.
 
-The reimage payload directory must contain `initramfs.img` and `cmdline.txt`.
-Staging writes the payload, manifest, and `/boot/firmware/tryboot.txt`; the
-separate reboot command uses the Raspberry Pi one-shot `0 tryboot` flag.
+By default staging builds the payload on the target from the current Raspberry
+Pi initramfs, injects the reimage hook, manifest, network env, VLAN module when
+needed, and CA certificates when present. `--payload-dir` can still supply a
+local `initramfs.img` and `cmdline.txt` pair. Staging writes the payload,
+manifest, and `/boot/firmware/tryboot.txt`; the separate reboot command uses
+the Raspberry Pi one-shot `0 tryboot` flag.
 
 ## Live Validation
 

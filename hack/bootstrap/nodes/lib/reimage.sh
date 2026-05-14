@@ -177,7 +177,7 @@ node_reimage_normalize_sha256() {
   local sha256="$1"
   [[ "$sha256" =~ ^[0-9A-Fa-f]{64}$ ]] ||
     node_die "image SHA256 must be 64 hexadecimal characters"
-  printf '%s\n' "${sha256,,}"
+  printf '%s\n' "$sha256" | tr '[:upper:]' '[:lower:]'
 }
 
 node_reimage_read_metadata() {
@@ -221,7 +221,8 @@ node_reimage_validate_metadata() {
     node_die "image metadata hostname mismatch: expected ${inventory_node}, got ${hostname:-missing}"
   [[ "$metadata_image_url" == "$image_url" ]] ||
     node_die "image metadata imageUrl mismatch: expected ${image_url}, got ${metadata_image_url:-missing}"
-  [[ "${metadata_sha256,,}" == "$expected_sha256" ]] ||
+  metadata_sha256="$(printf '%s\n' "$metadata_sha256" | tr '[:upper:]' '[:lower:]')"
+  [[ "$metadata_sha256" == "$expected_sha256" ]] ||
     node_die "image metadata SHA256 mismatch for ${inventory_node}"
   case "$arch" in
     arm64|aarch64)
@@ -313,6 +314,10 @@ node_reimage_payload_file() {
   printf '%s\n' "$file_path"
 }
 
+node_reimage_b64() {
+  printf '%s' "$1" | base64 | tr -d '\n'
+}
+
 node_reimage_write_remote_text_file() {
   local profile="$1"
   local inventory_node="$2"
@@ -324,7 +329,7 @@ node_reimage_write_remote_text_file() {
   dir="$(dirname "$path")"
   printf -v dir_q '%q' "$dir"
   printf -v path_q '%q' "$path"
-  content_b64="$(printf '%s' "$content" | base64 | tr -d '\n')"
+  content_b64="$(node_reimage_b64 "$content")"
 
   read -r -d '' remote_script <<EOF || true
 set -eu
@@ -370,6 +375,309 @@ node_reimage_copy_payload_file() {
     -a "src=${src} dest=${dest} mode=${mode}" >/dev/null
 }
 
+node_reimage_runtime_script() {
+  cat <<'EOF'
+#!/bin/sh
+set -eu
+
+PREREQ=""
+prereqs() {
+  echo "$PREREQ"
+}
+
+case "${1:-}" in
+  prereqs)
+    prereqs
+    exit 0
+    ;;
+esac
+
+if ! grep -qw 'home_ops_reimage=1' /proc/cmdline; then
+  exit 0
+fi
+
+. /scripts/functions
+. /home-ops-reimage/reimage.env
+
+b64_decode() {
+  printf '%s' "$1" | base64 -d
+}
+
+KERNEL_VERSION="$(b64_decode "$KERNEL_VERSION_B64")"
+IMAGE_URL="$(b64_decode "$IMAGE_URL_B64")"
+IMAGE_SHA256="$(b64_decode "$IMAGE_SHA256_B64")"
+TARGET_DISK="$(b64_decode "$TARGET_DISK_B64")"
+TARGET_DISK_SERIAL="$(b64_decode "$TARGET_DISK_SERIAL_B64")"
+RASPBERRY_PI_SERIAL="$(b64_decode "$RASPBERRY_PI_SERIAL_B64")"
+NET_IFACE="$(b64_decode "$NET_IFACE_B64")"
+NET_CIDR="$(b64_decode "$NET_CIDR_B64")"
+NET_GATEWAY="$(b64_decode "$NET_GATEWAY_B64")"
+NET_DNS="$(b64_decode "$NET_DNS_B64")"
+NET_PARENT_IFACE="$(b64_decode "$NET_PARENT_IFACE_B64")"
+NET_VLAN_ID="$(b64_decode "$NET_VLAN_ID_B64")"
+
+die() {
+  echo "home-ops reimage ERROR: $*" >&2
+  sleep 3600
+  exit 1
+}
+
+trim_file() {
+  tr -d '\000' < "$1" | sed 's/^[[:space:]]\+//; s/[[:space:]]\+$//'
+}
+
+wait_until() {
+  description="$1"
+  timeout="$2"
+  shift 2
+  elapsed=0
+  while ! "$@"; do
+    [ "$elapsed" -lt "$timeout" ] || die "timed out waiting for $description"
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+}
+
+path_exists() {
+  [ -e "$1" ]
+}
+
+block_exists() {
+  [ -b "$1" ]
+}
+
+actual_pi_serial=""
+if [ -r /proc/cpuinfo ]; then
+  actual_pi_serial="$(awk -F: '/^Serial/ {gsub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo)"
+fi
+[ "$actual_pi_serial" = "$RASPBERRY_PI_SERIAL" ] ||
+  die "Raspberry Pi serial mismatch"
+
+target_name="$(basename "$TARGET_DISK")"
+target_sys="/sys/class/block/$target_name"
+udevadm settle --timeout=30 >/dev/null 2>&1 || true
+wait_until "$TARGET_DISK" 60 block_exists "$TARGET_DISK"
+wait_until "$target_sys/device/serial" 60 path_exists "$target_sys/device/serial"
+actual_disk_serial="$(trim_file "$target_sys/device/serial")"
+[ "$actual_disk_serial" = "$TARGET_DISK_SERIAL" ] ||
+  die "target disk serial mismatch"
+
+if [ -n "$NET_VLAN_ID" ]; then
+  wait_until "network interface $NET_PARENT_IFACE" 60 path_exists "/sys/class/net/$NET_PARENT_IFACE"
+  if [ -f "/usr/lib/modules/$KERNEL_VERSION/kernel/net/8021q/8021q.ko" ]; then
+    insmod "/usr/lib/modules/$KERNEL_VERSION/kernel/net/8021q/8021q.ko" 2>/dev/null || true
+  fi
+  ip link set "$NET_PARENT_IFACE" up
+  ip link add link "$NET_PARENT_IFACE" name "$NET_IFACE" type vlan id "$NET_VLAN_ID" 2>/dev/null || true
+fi
+
+wait_until "network interface $NET_IFACE" 60 path_exists "/sys/class/net/$NET_IFACE"
+ip link set "$NET_IFACE" up
+ip addr flush dev "$NET_IFACE" || true
+ip addr add "$NET_CIDR" dev "$NET_IFACE"
+ip route replace default via "$NET_GATEWAY" dev "$NET_IFACE"
+if [ -n "$NET_DNS" ]; then
+  printf 'nameserver %s\n' "$NET_DNS" > /etc/resolv.conf
+fi
+
+download_path=/tmp/home-ops-reimage.img
+rm -f "$download_path"
+wget -O "$download_path" "$IMAGE_URL" || die "image download failed"
+actual_sha="$(busybox sha256sum "$download_path" | awk '{print tolower($1)}')"
+[ "$actual_sha" = "$IMAGE_SHA256" ] || die "image SHA256 mismatch"
+
+case "$IMAGE_URL" in
+  *.xz)
+    xzcat "$download_path" > "$TARGET_DISK" || die "image write failed"
+    ;;
+  *.gz)
+    gunzip -c "$download_path" > "$TARGET_DISK" || die "image write failed"
+    ;;
+  *)
+    cat "$download_path" > "$TARGET_DISK" || die "image write failed"
+    ;;
+esac
+
+sync
+reboot -f
+sleep 60
+echo b > /proc/sysrq-trigger
+EOF
+}
+
+node_reimage_build_remote_payload_script() {
+  local stage_dir="$1"
+  local manifest="$2"
+  local runtime_script="$3"
+  local stage_dir_q manifest_b64 runtime_b64
+  local target_disk target_disk_serial raspberry_pi_serial image_url image_sha256
+  local target_disk_b64 target_disk_serial_b64 raspberry_pi_serial_b64 image_url_b64 image_sha256_b64
+
+  printf -v stage_dir_q '%q' "$stage_dir"
+  manifest_b64="$(node_reimage_b64 "$manifest")"
+  runtime_b64="$(node_reimage_b64 "$runtime_script")"
+  target_disk="$("$NODE_JQ_BIN" -r '.targetDisk // ""' <<<"$manifest")"
+  target_disk_serial="$("$NODE_JQ_BIN" -r '.targetDiskSerial // ""' <<<"$manifest")"
+  raspberry_pi_serial="$("$NODE_JQ_BIN" -r '.raspberryPiSerial // ""' <<<"$manifest")"
+  image_url="$("$NODE_JQ_BIN" -r '.imageUrl // ""' <<<"$manifest")"
+  image_sha256="$("$NODE_JQ_BIN" -r '.imageSha256 // ""' <<<"$manifest")"
+  [[ -n "$target_disk" && -n "$target_disk_serial" && -n "$raspberry_pi_serial" &&
+    -n "$image_url" && -n "$image_sha256" ]] ||
+    node_die "invalid reimage manifest for target-built payload"
+  target_disk_b64="$(node_reimage_b64 "$target_disk")"
+  target_disk_serial_b64="$(node_reimage_b64 "$target_disk_serial")"
+  raspberry_pi_serial_b64="$(node_reimage_b64 "$raspberry_pi_serial")"
+  image_url_b64="$(node_reimage_b64 "$image_url")"
+  image_sha256_b64="$(node_reimage_b64 "$image_sha256")"
+
+  cat <<EOF
+set -eu
+stage_dir=${stage_dir_q}
+manifest_b64='${manifest_b64}'
+runtime_b64='${runtime_b64}'
+target_disk_b64='${target_disk_b64}'
+target_disk_serial_b64='${target_disk_serial_b64}'
+raspberry_pi_serial_b64='${raspberry_pi_serial_b64}'
+image_url_b64='${image_url_b64}'
+image_sha256_b64='${image_sha256_b64}'
+
+b64_value() {
+  printf '%s' "\$1" | base64 | tr -d '\n'
+}
+
+require_tool() {
+  command -v "\$1" >/dev/null 2>&1 || {
+    printf 'missing_tool=%s\n' "\$1"
+    exit 2
+  }
+}
+
+require_tool awk
+require_tool base64
+require_tool cpio
+require_tool sed
+require_tool xzcat
+require_tool zstd
+require_tool zstdcat
+
+kernel_version="\$(uname -r)"
+source_initramfs=''
+for candidate in /boot/firmware/initramfs_2712 /boot/firmware/initramfs8 /boot/firmware/initramfs; do
+  if [ -s "\$candidate" ]; then
+    source_initramfs="\$candidate"
+    break
+  fi
+done
+[ -n "\$source_initramfs" ] || {
+  printf 'missing_source_initramfs=true\n'
+  exit 2
+}
+
+target_disk="\$(printf '%s' "\$target_disk_b64" | base64 -d)"
+target_disk_serial="\$(printf '%s' "\$target_disk_serial_b64" | base64 -d)"
+raspberry_pi_serial="\$(printf '%s' "\$raspberry_pi_serial_b64" | base64 -d)"
+image_url="\$(printf '%s' "\$image_url_b64" | base64 -d)"
+image_sha256="\$(printf '%s' "\$image_sha256_b64" | base64 -d)"
+[ -n "\$target_disk" ] && [ -n "\$target_disk_serial" ] && [ -n "\$raspberry_pi_serial" ] &&
+  [ -n "\$image_url" ] && [ -n "\$image_sha256" ] || {
+    printf 'invalid_manifest_for_payload=true\n'
+    exit 2
+  }
+
+net_iface="\$(ip -o -4 route show default | awk '{print \$5; exit}')"
+net_gateway="\$(ip -o -4 route show default | awk '{print \$3; exit}')"
+net_cidr="\$(ip -o -4 addr show dev "\$net_iface" scope global | awk '{print \$4; exit}')"
+net_dns="\$(nmcli -g IP4.DNS dev show "\$net_iface" 2>/dev/null | sed -n '1p' || true)"
+[ -n "\$net_dns" ] || net_dns="\$net_gateway"
+[ -n "\$net_iface" ] && [ -n "\$net_gateway" ] && [ -n "\$net_cidr" ] || {
+  printf 'missing_network_identity=true\n'
+  exit 2
+}
+
+net_parent_iface=''
+net_vlan_id=''
+case "\$net_iface" in
+  *.*)
+    net_parent_iface="\${net_iface%%.*}"
+    net_vlan_id="\${net_iface##*.}"
+    ;;
+esac
+
+install -d -m 0700 "\$stage_dir"
+printf '%s' "\$manifest_b64" | base64 -d > "\$stage_dir/manifest.json"
+cat > "\$stage_dir/reimage.env" <<ENV
+KERNEL_VERSION_B64=\$(b64_value "\$kernel_version")
+IMAGE_URL_B64=\$(b64_value "\$image_url")
+IMAGE_SHA256_B64=\$(b64_value "\$image_sha256")
+TARGET_DISK_B64=\$(b64_value "\$target_disk")
+TARGET_DISK_SERIAL_B64=\$(b64_value "\$target_disk_serial")
+RASPBERRY_PI_SERIAL_B64=\$(b64_value "\$raspberry_pi_serial")
+NET_IFACE_B64=\$(b64_value "\$net_iface")
+NET_CIDR_B64=\$(b64_value "\$net_cidr")
+NET_GATEWAY_B64=\$(b64_value "\$net_gateway")
+NET_DNS_B64=\$(b64_value "\$net_dns")
+NET_PARENT_IFACE_B64=\$(b64_value "\$net_parent_iface")
+NET_VLAN_ID_B64=\$(b64_value "\$net_vlan_id")
+ENV
+
+tmp_dir="\$(mktemp -d)"
+cleanup() {
+  rm -rf "\$tmp_dir"
+}
+trap cleanup EXIT
+
+(
+  cd "\$tmp_dir"
+  zstdcat "\$source_initramfs" | cpio -id --quiet
+  install -d -m 0755 scripts/local-top home-ops-reimage
+  printf '%s' "\$manifest_b64" | base64 -d > home-ops-reimage/manifest.json
+  cp "\$stage_dir/reimage.env" home-ops-reimage/reimage.env
+  printf '%s' "\$runtime_b64" | base64 -d > scripts/local-top/home-ops-reimage
+  chmod 0755 scripts/local-top/home-ops-reimage
+  if [ -f scripts/local-top/ORDER ] && ! grep -Fxq home-ops-reimage scripts/local-top/ORDER; then
+    printf '%s\n' home-ops-reimage >> scripts/local-top/ORDER
+  fi
+  if [ -f "/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko.xz" ]; then
+    install -d -m 0755 "usr/lib/modules/\$kernel_version/kernel/net/8021q"
+    xzcat "/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko.xz" > \
+      "usr/lib/modules/\$kernel_version/kernel/net/8021q/8021q.ko"
+  fi
+  if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+    install -d -m 0755 etc/ssl/certs
+    cp /etc/ssl/certs/ca-certificates.crt etc/ssl/certs/ca-certificates.crt
+  fi
+  find . | cpio -o -H newc --quiet | zstd -19 -T0 > "\$stage_dir/initramfs.img"
+)
+
+cmdline="\$(sed 's/[[:space:]]*home_ops_reimage=1//g; s/[[:space:]]*\$//' /boot/firmware/cmdline.txt)"
+printf '%s home_ops_reimage=1\n' "\$cmdline" > "\$stage_dir/cmdline.txt"
+chmod 0600 "\$stage_dir/manifest.json" "\$stage_dir/reimage.env" "\$stage_dir/initramfs.img" "\$stage_dir/cmdline.txt"
+sync "\$stage_dir"
+printf 'remote_payload=built\n'
+printf 'source_initramfs=%s\n' "\$source_initramfs"
+printf 'net_iface=%s\n' "\$net_iface"
+printf 'net_cidr=%s\n' "\$net_cidr"
+printf 'net_gateway=%s\n' "\$net_gateway"
+EOF
+}
+
+node_reimage_build_remote_payload() {
+  local profile="$1"
+  local inventory_node="$2"
+  local manifest="$3"
+  local stage_dir runtime_script remote_script remote_script_b64
+
+  stage_dir="$(node_reimage_inventory_stage_dir "$profile" "$inventory_node")"
+  runtime_script="$(node_reimage_runtime_script)"
+  remote_script="$(node_reimage_build_remote_payload_script "$stage_dir" "$manifest" "$runtime_script")"
+  remote_script_b64="$(node_reimage_b64 "$remote_script")"
+
+  node_log "building reimage initramfs payload on ${inventory_node}"
+  node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" \
+    "printf '%s' '${remote_script_b64}' | base64 -d | /bin/sh" |
+    node_indent_block
+}
+
 node_reimage_stage_files() {
   local profile="$1"
   local inventory_node="$2"
@@ -378,15 +686,19 @@ node_reimage_stage_files() {
   local stage_dir initramfs_src cmdline_src tryboot_config
 
   stage_dir="$(node_reimage_inventory_stage_dir "$profile" "$inventory_node")"
-  initramfs_src="$(node_reimage_payload_file "$payload_dir" initramfs.img)"
-  cmdline_src="$(node_reimage_payload_file "$payload_dir" cmdline.txt)"
   tryboot_config="$(node_reimage_tryboot_config "$stage_dir")"
 
   node_log "staging reimage manifest and tryboot payload on ${inventory_node}"
   node_reimage_ensure_stage_dir "$profile" "$inventory_node"
-  node_reimage_write_remote_text_file "$profile" "$inventory_node" "${stage_dir}/manifest.json" 0600 "$manifest"
-  node_reimage_copy_payload_file "$profile" "$inventory_node" "$initramfs_src" "${stage_dir}/initramfs.img" 0600
-  node_reimage_copy_payload_file "$profile" "$inventory_node" "$cmdline_src" "${stage_dir}/cmdline.txt" 0600
+  if [[ -n "$payload_dir" ]]; then
+    initramfs_src="$(node_reimage_payload_file "$payload_dir" initramfs.img)"
+    cmdline_src="$(node_reimage_payload_file "$payload_dir" cmdline.txt)"
+    node_reimage_write_remote_text_file "$profile" "$inventory_node" "${stage_dir}/manifest.json" 0600 "$manifest"
+    node_reimage_copy_payload_file "$profile" "$inventory_node" "$initramfs_src" "${stage_dir}/initramfs.img" 0600
+    node_reimage_copy_payload_file "$profile" "$inventory_node" "$cmdline_src" "${stage_dir}/cmdline.txt" 0600
+  else
+    node_reimage_build_remote_payload "$profile" "$inventory_node" "$manifest"
+  fi
   node_reimage_write_remote_text_file "$profile" "$inventory_node" "$NODE_REIMAGE_BOOT_CONFIG" 0644 "$tryboot_config"
 }
 
