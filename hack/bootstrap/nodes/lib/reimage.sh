@@ -396,7 +396,6 @@ if ! grep -qw 'home_ops_reimage=1' /proc/cmdline; then
   exit 0
 fi
 
-. /scripts/functions
 . /home-ops-reimage/reimage.env
 
 b64_decode() {
@@ -680,7 +679,7 @@ trap cleanup EXIT
     esac
   }
 
-  for command_name in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat; do
+  for command_name in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sha256sum sleep sync tr udevadm wget xzcat; do
     require_initramfs_command "\$command_name"
   done
   if [ -n "\$net_vlan_id" ]; then

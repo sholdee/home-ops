@@ -395,8 +395,10 @@ true'"
   assert_success
   assert_output_contains "target_disk_b64="
   assert_output_contains "missing_initramfs_command="
+  assert_output_contains "sha256sum"
   assert_output_contains "missing_initramfs_module=8021q"
   assert_output_contains "8021q.ko.zst"
+  assert_output_not_contains ". /scripts/functions"
   assert_output_not_contains "require_tool jq"
   assert_output_not_contains "| jq "
 }
