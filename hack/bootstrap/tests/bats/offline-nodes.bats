@@ -118,7 +118,7 @@ EOF
   assert_output_contains "./hack/bootstrap/nodes/cmd.sh --profile lima 'home-ops-k3s-test-agent-1' -- 'set -e; cd /tmp; pwd'"
 }
 
-@test "node reimage just recipes expose plan, stage, and tryboot reboot commands" {
+@test "node reimage just recipes expose build, serve, apply, and primitive commands" {
   local sha
   sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -134,6 +134,10 @@ EOF
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-image-source.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
 
+  run just --dry-run node-reimage-build k3s-worker-0 --ssh-public-key /tmp/ansiblekey.pub
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-build.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
+
   run just --dry-run node-reimage-stage k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha" --force
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}' --force"
@@ -141,6 +145,18 @@ EOF
   run just --dry-run node-reimage-reboot k3s-worker-0 --force
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-reboot.sh --profile live --context default 'k3s-worker-0' --force"
+
+  run just --dry-run node-reimage-serve k3s-worker-0 k3s-master-0 --port 18081
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-serve.sh --profile live 'k3s-worker-0' 'k3s-master-0' --port 18081"
+
+  run just --dry-run node-reimage-apply k3s-worker-0 --force
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-apply.sh --profile live --context default 'k3s-worker-0' --force"
+
+  run just --dry-run node-reimage-cleanup k3s-worker-0 --yes
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-cleanup.sh --profile live 'k3s-worker-0' --yes"
 }
 
 @test "node cmd helper tolerates an accidental extra separator before the remote command" {
@@ -287,6 +303,136 @@ EOF
       k3s-worker-0
   assert_success
   assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'pubkey_user1: ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
+}
+
+@test "node reimage build records artifact state from a local builder" {
+  local fake_rpi public_key state artifact
+  fake_rpi="${tmp}/rpi-image-gen"
+  public_key="${tmp}/ansiblekey.pub"
+  mkdir -p "$fake_rpi"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  cat > "${fake_rpi}/rpi-image-gen" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+source_dir=''
+build_dir=''
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -S)
+      source_dir="$2"
+      shift 2
+      ;;
+    -B)
+      build_dir="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+test -f "${source_dir}/config/home-ops-node.yaml"
+mkdir -p "${build_dir}/image-home-ops-k3s-worker-0"
+printf 'fake image\n' > "${build_dir}/image-home-ops-k3s-worker-0/home-ops-k3s-worker-0.img.xz"
+EOF
+  chmod +x "${fake_rpi}/rpi-image-gen"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" NODE_REIMAGE_BUILDER_MODE=local \
+    "${ROOT}/hack/bootstrap/nodes/reimage-build.sh" \
+      --profile live \
+      --rpi-image-gen-dir "$fake_rpi" \
+      --ssh-public-key "$public_key" \
+      k3s-worker-0
+  assert_success
+  assert_output_contains 'artifact='
+  assert_output_contains 'sha256='
+  assert_output_contains 'build_state='
+
+  state="${tmp}/reimage-out/live/k3s-worker-0/state/build.json"
+  artifact="${tmp}/reimage-out/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz"
+  [[ -f "$state" ]]
+  [[ -f "$artifact" ]]
+  run jq -r '.schemaVersion, .builderMode, .imageName, .artifactPath' "$state"
+  assert_success
+  assert_output_contains 'home-ops.node-reimage-build/v1'
+  assert_output_contains 'local'
+  assert_output_contains 'home-ops-k3s-worker-0'
+  assert_output_contains "$artifact"
+}
+
+@test "node reimage lima builder writes to guest-local workroot and copies artifacts back" {
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" '/var/tmp/home-ops-reimage-build/'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'for suffix in img.zst img.xz img.gz img'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'limactl copy --tty=false'
+}
+
+@test "node reimage serve records URL and metadata for a built artifact" {
+  local node_dir state artifact sha
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  printf 'fake image\n' > "$artifact"
+  sha="$(shasum -a 256 "$artifact" | awk '{print $1}')"
+  jq -n \
+    --arg artifact "$artifact" \
+    --arg sha "$sha" \
+    '{schemaVersion:"home-ops.node-reimage-build/v1", artifactPath:$artifact, sha256:$sha}' \
+    > "${node_dir}/state/build.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh" \
+      --profile live \
+      --port 18081 \
+      --yes \
+      k3s-worker-0 \
+      k3s-master-0
+  assert_success
+  assert_output_contains 'image_url=http://192.168.99.10:18081/home-ops-k3s-worker-0.img.xz'
+  assert_output_contains "sha256=${sha}"
+  assert_output_contains 'serve_state='
+
+  state="${node_dir}/state/serve.json"
+  [[ -f "$state" ]]
+  [[ -f "${artifact}.metadata.json" ]]
+  run jq -r '.schemaVersion, .hostNode, .imageUrl, .metadataPath' "$state"
+  assert_success
+  assert_output_contains 'home-ops.node-reimage-serve/v1'
+  assert_output_contains 'k3s-master-0'
+  assert_output_contains 'http://192.168.99.10:18081/home-ops-k3s-worker-0.img.xz'
+  assert_output_contains "${artifact}.metadata.json"
+}
+
+@test "node reimage serve refuses a stale artifact hash" {
+  local node_dir artifact
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  printf 'changed image\n' > "$artifact"
+  jq -n \
+    --arg artifact "$artifact" \
+    '{schemaVersion:"home-ops.node-reimage-build/v1", artifactPath:$artifact, sha256:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' \
+    > "${node_dir}/state/build.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh" \
+      --profile live \
+      --port 18081 \
+      --yes \
+      k3s-worker-0 \
+      k3s-master-0
+  assert_failure
+  assert_output_contains 'recorded image SHA does not match artifact'
+}
+
+@test "node reimage serve stops an old HTTP server before resetting remote files" {
+  run awk '
+    /if \[ -f \$\{remote_dir_q\}\/http.pid \]/ {pid_check = NR}
+    /rm -rf \$\{remote_dir_q\}/ {reset_dir = NR}
+    END {exit !(pid_check > 0 && reset_dir > 0 && pid_check < reset_dir)}
+  ' "${ROOT}/hack/bootstrap/nodes/reimage-serve.sh"
+  assert_success
 }
 
 @test "node reimage stage refuses to run before the Kubernetes node is deleted" {
@@ -569,6 +715,116 @@ true'" > "$script"
     "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --force --yes k3s-worker-0
   assert_failure
   assert_output_contains 'staged reimage manifest targetDiskSerial mismatch'
+}
+
+@test "node reimage apply uses recorded serve state and refreshes host key" {
+  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ssh
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  artifact="${node_dir}/home-ops-k3s-worker-0.img.xz"
+  metadata="${artifact}.metadata.json"
+  sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  printf 'fake image\n' > "$artifact"
+  cat > "$metadata" <<EOF
+{
+  "schemaVersion": "home-ops.node-image/v1",
+  "node": "k3s-worker-0",
+  "hostname": "k3s-worker-0",
+  "ansibleHost": "192.168.99.20",
+  "imageUrl": "http://192.168.99.10:18080/home-ops-k3s-worker-0.img.xz",
+  "sha256": "${sha}",
+  "arch": "arm64"
+}
+EOF
+  jq -n \
+    --arg imageUrl "http://192.168.99.10:18080/home-ops-k3s-worker-0.img.xz" \
+    --arg metadata "$metadata" \
+    --arg sha "$sha" \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", imageUrl:$imageUrl, metadataPath:$metadata, sha256:$sha}' \
+    > "${node_dir}/state/serve.json"
+  calls="${tmp}/apply-calls"
+  fake_stage="${tmp}/stage"
+  fake_reboot="${tmp}/reboot"
+  fake_refresh="${tmp}/refresh"
+  fake_nc="${tmp}/nc"
+  fake_ssh="${tmp}/ssh"
+  cat > "$fake_stage" <<'EOF'
+#!/usr/bin/env bash
+printf 'stage %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_reboot" <<'EOF'
+#!/usr/bin/env bash
+printf 'reboot %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_refresh" <<'EOF'
+#!/usr/bin/env bash
+printf 'refresh %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_nc" <<'EOF'
+#!/usr/bin/env bash
+count_file="${NC_COUNT_FILE:?}"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+if ((count == 1)); then
+  exit 1
+fi
+exit 0
+EOF
+  cat > "$fake_ssh" <<'EOF'
+#!/usr/bin/env bash
+printf 'ssh %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ssh"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'apply_state='
+  assert_output_contains 'next=just node-join k3s-worker-0 && just node-uncordon k3s-worker-0'
+  assert_file_contains "$calls" 'stage --profile live --context test --metadata-file'
+  assert_file_contains "$calls" 'reboot --profile live --context test --yes --force k3s-worker-0'
+  assert_file_contains "$calls" 'refresh --profile live --yes k3s-worker-0'
+  assert_file_contains "$calls" 'ssh -o BatchMode=yes'
+  [[ -f "${node_dir}/state/apply.json" ]]
+}
+
+@test "node reimage cleanup removes recorded serve state" {
+  local node_dir
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  jq -n \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", hostNode:"k3s-master-0", remoteDir:"/tmp/home-ops-reimage/k3s-worker-0"}' \
+    > "${node_dir}/state/serve.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-cleanup.sh" --profile live --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'cleanup_state='
+  [[ -f "${node_dir}/state/cleanup.json" ]]
+  [[ -f "${node_dir}/state/serve.cleaned.json" ]]
+  [[ ! -f "${node_dir}/state/serve.json" ]]
+}
+
+@test "node reimage cleanup refuses unsafe state remote dir" {
+  local node_dir
+  write_fake_ansible
+  node_dir="${tmp}/reimage-out/live/k3s-worker-0"
+  mkdir -p "${node_dir}/state"
+  jq -n \
+    '{schemaVersion:"home-ops.node-reimage-serve/v1", hostNode:"k3s-master-0", remoteDir:"/tmp/home-ops-reimage/k3s-master-0"}' \
+    > "${node_dir}/state/serve.json"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-cleanup.sh" --profile live --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'unsafe reimage remote dir in state'
 }
 
 @test "worker status command reports inventory, Kubernetes, Cilium, and Longhorn absence" {

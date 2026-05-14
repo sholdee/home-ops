@@ -247,6 +247,7 @@ explicit.
 | Discover network reimage identity | `just node-reimage-plan <node>` | n/a |
 | Render network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a |
 | Render network reimage OS source | `just node-reimage-image-source <node>` | n/a |
+| Build network reimage OS artifact | `just node-reimage-build <node>` | n/a |
 | Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
 | Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
@@ -256,6 +257,9 @@ explicit.
 | Refresh SSH host key | `just node-refresh-ssh-host-key <node>` | `just node-lima-refresh-ssh-host-key <node>` |
 | Join from inventory | `just node-join <node>` | `just node-lima-join <node>` |
 | Remove joining taint and uncordon | `just node-uncordon <node>` | `just node-lima-uncordon <node>` |
+| Serve recorded reimage artifact | `just node-reimage-serve <node> <host>` | n/a |
+| Apply recorded reimage | `just node-reimage-apply <node>` | n/a |
+| Clean up image server | `just node-reimage-cleanup <node>` | n/a |
 | Stage network reimage | `just node-reimage-stage <node> <image-url> <sha256>` | n/a |
 | Reboot into one-shot reimage | `just node-reimage-reboot <node>` | n/a |
 
@@ -285,11 +289,14 @@ inventory node, Raspberry Pi serial, target disk serial, image metadata, and
 payload files before writing `tryboot.txt` plus staged files under
 `/boot/firmware/home-ops-reimage`. Use `node-reimage-plan` first to discover
 the serial values that must be stored in inventory, and
-`node-reimage-metadata` to render the image metadata sidecar. By default the
-payload is built on the target from its current Raspberry Pi initramfs, so it
-keeps the matching kernel modules and boot-network tooling. Use
-`node-reimage-image-source` to render a per-node `rpi-image-gen` source tree for
-the replacement Raspberry Pi OS image.
+`node-reimage-build` to render and build the replacement Raspberry Pi OS image.
+On macOS the build runs in the persistent `home-ops-rpi-image-builder` Lima VM;
+on Linux it can run directly. `node-reimage-serve` hosts the recorded artifact
+from an explicit healthy inventory node, `node-reimage-apply` stages and
+tryboot-reboots the deleted node from recorded serve state, and
+`node-reimage-cleanup` removes the node-specific remote hosting directory. By
+default the payload is built on the target from its current Raspberry Pi
+initramfs, so it keeps the matching kernel modules and boot-network tooling.
 
 ## Secrets
 

@@ -122,9 +122,13 @@ Node lifecycle:
 | Discover live node network reimage identity | `just node-reimage-plan <node>` |
 | Render live node network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` |
 | Render live node Raspberry Pi image source | `just node-reimage-image-source <node>` |
+| Build live node Raspberry Pi image | `just node-reimage-build <node>` |
 | Reboot a drained live node | `just node-reboot <node>` |
 | Join one explicit live node | `just node-join <node>` |
 | Finalize and uncordon one live node | `just node-uncordon <node>` |
+| Serve recorded live node reimage artifact | `just node-reimage-serve <node> <host>` |
+| Stage, tryboot reboot, and refresh SSH key | `just node-reimage-apply <node>` |
+| Clean up recorded live image server | `just node-reimage-cleanup <node>` |
 | Stage live node network reimage | `just node-reimage-stage <node> <image-url> <sha256>` |
 | Reboot into staged network reimage | `just node-reimage-reboot <node>` |
 | Plan additive-only Lima node joins | `just node-lima-converge-plan` |
@@ -495,6 +499,10 @@ just node-refresh-ssh-host-key k3s-worker-0
 just node-join k3s-worker-0
 just node-uncordon k3s-worker-0
 just node-reimage-plan k3s-worker-0
+just node-reimage-build k3s-worker-0
+just node-reimage-serve k3s-worker-0 k3s-master-0
+just node-reimage-apply k3s-worker-0
+just node-reimage-cleanup k3s-worker-0
 ```
 
 Lima examples:
@@ -540,8 +548,27 @@ when the derived Cilium config has `kube_proxy_replacement: true`.
 ### Network Reimage
 
 Network reimage is a post-delete flow for Raspberry Pi nodes. The normal path
-is drain, Longhorn eviction when needed, `node-delete`, `node-reimage-stage`,
-`node-reimage-reboot`, SSH host-key refresh, `node-join`, and `node-uncordon`.
+is build, serve, drain, Longhorn eviction when needed, `node-delete`,
+`node-reimage-apply`, `node-join`, `node-uncordon`, and
+`node-reimage-cleanup`.
+
+`node-reimage-build` renders the per-node `rpi-image-gen` source tree, builds
+the image, copies the artifact to `.out/reimage/live/<node>/`, computes its
+SHA256, and records state. On macOS it uses the persistent
+`home-ops-rpi-image-builder` Lima VM because `rpi-image-gen` is supported on
+Debian/Linux build hosts. On Linux it can run the local `rpi-image-gen`
+checkout directly. The default checkout is `../rpi-image-gen`; override with
+`RPI_IMAGE_GEN_DIR` or `--rpi-image-gen-dir`.
+
+`node-reimage-serve <node> <host>` copies the recorded image and metadata to a
+node-specific directory under `/tmp/home-ops-reimage/<node>/` on a healthy
+inventory host, starts a `python3 -m http.server`, and records the URL/SHA in
+serve state. The host is explicit so the operator chooses a node that is
+reachable from the initramfs network path.
+
+`node-reimage-apply` reads the recorded serve state, calls the existing stage
+and tryboot reboot primitives, waits for SSH to go down and return, and
+refreshes `known_hosts`. It does not join or uncordon the node.
 
 `node-reimage-stage` requires image metadata with schema
 `home-ops.node-image/v1`, matching `node`, `hostname`, `ansibleHost`,

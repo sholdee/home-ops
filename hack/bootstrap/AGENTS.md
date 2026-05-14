@@ -34,7 +34,9 @@ normal app graph.
 - `nodes/`: existing-cluster node lifecycle commands. Command scripts source
   `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
   `nodes/converge.sh` is an additive-only planner/orchestrator and must
-  delegate actual joins to `nodes/join.sh`.
+  delegate actual joins to `nodes/join.sh`. Raspberry Pi reimage build, serve,
+  apply, and cleanup helpers are phase-based primitives; they must keep
+  drain/delete/join/uncordon as explicit lifecycle gates.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
   construction, node lifecycle helpers, and bootstrap library helpers.
 - `tests/helpers/`: BATS fixture and assertion helpers.

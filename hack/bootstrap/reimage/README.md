@@ -55,28 +55,21 @@ Debian 13 Trixie
 
 ## Build The Image
 
-Render the per-node source tree from inventory:
+Build the image with the orchestrated builder:
 
 ```sh
-just node-reimage-image-source k3s-worker-0
+just node-reimage-build k3s-worker-0
 ```
 
-Build from a checked-out `rpi-image-gen` repository. The generated source
-README under `hack/bootstrap/.out/reimage/live/<node>/source/` contains the
-exact command:
+This renders the per-node source tree, runs `rpi-image-gen`, copies the image
+artifact to `hack/bootstrap/.out/reimage/live/<node>/`, computes its SHA256,
+and records `state/build.json`.
 
-```sh
-./rpi-image-gen build \
-  -S /Users/ethan.shold/git/home-ops/hack/bootstrap/.out/reimage/live/k3s-worker-0/source \
-  -c home-ops-node.yaml
-```
-
-Copy the resulting compressed image back under `.out/reimage/live/<node>/` and
-compute its checksum:
-
-```sh
-sha256sum hack/bootstrap/.out/reimage/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz
-```
+On macOS the build runs in the persistent `home-ops-rpi-image-builder` Lima VM.
+That matches the verified path and avoids pretending `rpi-image-gen` is a
+native macOS tool. On Linux, `--builder-mode local` can run the checked-out
+`../rpi-image-gen` directly. Override the checkout with `RPI_IMAGE_GEN_DIR` or
+`--rpi-image-gen-dir`.
 
 The image first boot layer expands the root filesystem, disables
 `dphys-swapfile`, refreshes the generated initramfs with
@@ -88,40 +81,17 @@ root growth did not complete.
 ## Host The Image
 
 The node must be able to reach the image URL from the initramfs network path.
-The successful proof hosted the image from an existing cluster node:
+Host the recorded artifact from an explicit healthy inventory node:
 
 ```sh
-just node-cmd k3s-master-0 'mkdir -p /tmp/home-ops-reimage'
+just node-reimage-serve k3s-worker-0 k3s-master-0
 ```
 
-Copy the image to the host by SSH or `scp`, then run a simple HTTP server on
-the cluster-facing address:
-
-```sh
-scp -i ~/ansiblekey \
-  hack/bootstrap/.out/reimage/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz \
-  ethan@192.168.99.10:/tmp/home-ops-reimage/
-
-just node-cmd k3s-master-0 \
-  'nohup sh -c "cd /tmp/home-ops-reimage && exec python3 -m http.server 18080 --bind 192.168.99.10" >/tmp/home-ops-reimage/http.log 2>&1 & echo $! >/tmp/home-ops-reimage/http.pid'
-```
-
-Keep the server running until the reimaging node has fetched the full image.
-Afterward, remove the temporary hosting directory:
-
-```sh
-just node-cmd k3s-master-0 \
-  'if [ -f /tmp/home-ops-reimage/http.pid ]; then kill "$(cat /tmp/home-ops-reimage/http.pid)" || true; fi; rm -rf /tmp/home-ops-reimage'
-```
+This copies the image and metadata to
+`/tmp/home-ops-reimage/<node>/` on the host, starts `python3 -m http.server`,
+and records URL/SHA/remote paths in `state/serve.json`.
 
 ## Stage And Reboot
-
-Render the metadata sidecar for the exact image URL and checksum:
-
-```sh
-just node-reimage-metadata k3s-worker-0 "$image_url" "$image_sha" \
-  > hack/bootstrap/.out/reimage/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz.metadata.json
-```
 
 Run the normal node replacement gates first:
 
@@ -132,36 +102,41 @@ just node-longhorn-evict k3s-worker-0
 just node-delete k3s-worker-0
 ```
 
-Stage the payload only after the Kubernetes Node is deleted:
+Apply the recorded reimage only after the Kubernetes Node is deleted:
 
 ```sh
-just node-reimage-stage k3s-worker-0 "$image_url" "$image_sha" \
-  --metadata-file hack/bootstrap/.out/reimage/live/k3s-worker-0/home-ops-k3s-worker-0.img.xz.metadata.json
+just node-reimage-apply k3s-worker-0
 ```
 
-Reboot into one-shot tryboot mode:
+`node-reimage-apply` calls the existing stage and reboot primitives, waits for
+SSH to go down and return, then refreshes the host key. Ping can return before
+SSH is ready.
+
+Keep the image server running until the reimaging node has fetched the full
+image. The server log is recorded in `state/serve.json`.
+
+The lower-level primitives still exist for debugging:
 
 ```sh
+just node-reimage-metadata k3s-worker-0 "$image_url" "$image_sha"
+just node-reimage-stage k3s-worker-0 "$image_url" "$image_sha" --metadata-file <metadata.json>
 just node-reimage-reboot k3s-worker-0
 ```
 
-Watch the image server log for a full `GET`, then wait for the node to reboot
-into the fresh image. Ping can return before SSH is ready.
+## Join And Cleanup
 
-## Join After Reimage
-
-The fresh image changes the host key. Refresh it before running Ansible:
-
-```sh
-just node-refresh-ssh-host-key k3s-worker-0
-```
-
-Then join and finalize as usual:
+Join and finalize as usual:
 
 ```sh
 just node-join k3s-worker-0
 just node-uncordon k3s-worker-0
 just node-status k3s-worker-0
+```
+
+Then stop the image server and remove the remote temporary directory:
+
+```sh
+just node-reimage-cleanup k3s-worker-0
 ```
 
 Host services can also be run directly while proving the fresh OS:

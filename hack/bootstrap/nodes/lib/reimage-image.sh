@@ -5,7 +5,7 @@ NODE_REIMAGE_IMAGE_DEFAULT_INTERFACE="${NODE_REIMAGE_IMAGE_DEFAULT_INTERFACE:-et
 NODE_REIMAGE_IMAGE_DEFAULT_PREFIX="${NODE_REIMAGE_IMAGE_DEFAULT_PREFIX:-24}"
 
 node_reimage_image_output_root() {
-  printf '%s/.out/reimage\n' "$BOOTSTRAP_DIR"
+  printf '%s\n' "${NODE_REIMAGE_OUTPUT_ROOT:-${BOOTSTRAP_DIR}/.out/reimage}"
 }
 
 node_reimage_image_inventory_or_default() {

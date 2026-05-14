@@ -2,6 +2,7 @@
 
 NODE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${NODE_SCRIPT_DIR}/.." && pwd)"
+REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
 LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-home-ops-k3s-test}"
 NODE_LIVE_INVENTORY_DIR="${NODE_LIVE_INVENTORY_DIR:-${BOOTSTRAP_DIR}/ansible/inventory/live}"
@@ -40,3 +41,5 @@ source "${NODE_LIB_DIR}/lima.sh"
 source "${NODE_LIB_DIR}/reimage.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/reimage-image.sh
 source "${NODE_LIB_DIR}/reimage-image.sh"
+# shellcheck source=hack/bootstrap/nodes/lib/reimage-orchestrate.sh
+source "${NODE_LIB_DIR}/reimage-orchestrate.sh"
