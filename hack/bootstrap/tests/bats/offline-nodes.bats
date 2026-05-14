@@ -412,8 +412,12 @@ true'"
   assert_success
   assert_output_contains "target_disk_b64="
   assert_output_contains "missing_initramfs_command="
+  assert_output_contains "require_tool find"
   assert_output_contains "require_tool unmkinitramfs"
   assert_output_contains "unmkinitramfs \"\$source_initramfs\" \"\$tmp_dir\""
+  assert_output_contains "initramfs_root=\"\$tmp_dir/main\""
+  assert_output_contains "unsupported_initramfs_extra_content="
+  assert_output_contains "cd \"\$initramfs_root\""
   assert_output_contains "KERNEL_VERSION_B64=\$(b64_value"
   assert_output_contains "missing_initramfs_module=8021q"
   assert_output_contains "llc.ko"
@@ -421,6 +425,7 @@ true'"
   assert_output_contains "garp.ko"
   assert_output_contains "kernel/net/8021q/8021q.ko"
   assert_output_contains "runtime_commands=\"\$runtime_commands insmod\""
+  assert_output_contains "runtime_commands=\"\$runtime_commands zstdcat\""
   assert_output_contains '/scripts/local-top/home-ops-reimage "$@"'
   assert_output_contains "for command_name in \$runtime_commands"
   assert_output_not_contains "install_busybox_commands"
@@ -431,6 +436,97 @@ true'"
   assert_output_not_contains "| jq "
 }
 
+@test "node reimage target-built payload script supports main-root initramfs extraction" {
+  local manifest script stage source_initramfs source_cmdline
+  manifest="${tmp}/manifest.json"
+  script="${tmp}/payload.sh"
+  stage="${tmp}/stage"
+  source_initramfs="${tmp}/source-initramfs"
+  printf 'fake initramfs\n' > "$source_initramfs"
+  source_cmdline="${tmp}/cmdline.txt"
+  printf 'root=/dev/nvme0n1p2 rw home_ops_reimage=1\n' > "$source_cmdline"
+  cat > "$manifest" <<'EOF'
+{
+  "schemaVersion": "home-ops.node-reimage-stage/v1",
+  "imageUrl": "https://images.example/k3s-worker-0.img.xz",
+  "imageSha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "targetDisk": "/dev/nvme0n1",
+  "targetDiskSerial": "nvme-deadbeef",
+  "raspberryPiSerial": "10000000deadbeef"
+}
+EOF
+
+  cat > "${tmp}/unmkinitramfs" <<'EOF'
+#!/usr/bin/env bash
+dest="$2"
+mkdir -p "${dest}/main/bin" "${dest}/main/scripts/local-top" "${dest}/early"
+for cmd in awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat; do
+  printf '#!/bin/sh\nexit 0\n' > "${dest}/main/bin/${cmd}"
+  chmod +x "${dest}/main/bin/${cmd}"
+done
+if [[ "${FAKE_UNMKINITRAMFS_EXTRA:-}" == true ]]; then
+  printf 'early data\n' > "${dest}/early/boot-critical"
+fi
+EOF
+  cat > "${tmp}/ip" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+  "-o -4 route show default")
+    printf 'default via 192.0.2.1 dev eth0\n'
+    ;;
+  "-o -4 addr show dev eth0 scope global")
+    printf '2: eth0 inet 192.0.2.20/24 brd 192.0.2.255 scope global eth0\n'
+    ;;
+esac
+EOF
+  cat > "${tmp}/nmcli" <<'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+  cat > "${tmp}/cpio" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/zstd" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/uname" <<'EOF'
+#!/usr/bin/env bash
+printf '6.18.0-test\n'
+EOF
+  cat > "${tmp}/xzcat" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/zstdcat" <<'EOF'
+#!/usr/bin/env bash
+cat
+EOF
+  cat > "${tmp}/sync" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+  chmod +x "${tmp}/unmkinitramfs" "${tmp}/ip" "${tmp}/nmcli" "${tmp}/cpio" "${tmp}/zstd" "${tmp}/uname" "${tmp}/xzcat" "${tmp}/zstdcat" "${tmp}/sync"
+
+  bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; manifest=\$(cat '${manifest}'); node_reimage_build_remote_payload_script '${stage}' \"\${manifest}\" '#!/bin/sh
+true'" > "$script"
+
+  run env PATH="${tmp}:${PATH}" HOME_OPS_REIMAGE_SOURCE_INITRAMFS="$source_initramfs" HOME_OPS_REIMAGE_SOURCE_CMDLINE="$source_cmdline" sh "$script"
+  assert_success
+  assert_output_contains "remote_payload=built"
+  assert_output_contains "source_initramfs=${source_initramfs}"
+  [[ -f "${stage}/initramfs.img" ]]
+  run cat "${stage}/cmdline.txt"
+  assert_success
+  [[ "$output" == "root=/dev/nvme0n1p2 rw home_ops_reimage=1" ]]
+
+  rm -rf "$stage"
+  run env PATH="${tmp}:${PATH}" HOME_OPS_REIMAGE_SOURCE_INITRAMFS="$source_initramfs" HOME_OPS_REIMAGE_SOURCE_CMDLINE="$source_cmdline" FAKE_UNMKINITRAMFS_EXTRA=true sh "$script"
+  assert_failure
+  assert_output_contains "unsupported_initramfs_extra_content=early"
+}
+
 @test "node reimage runtime script loads VLAN kernel module dependencies" {
   run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_runtime_script"
   assert_success
@@ -439,7 +535,7 @@ true'"
   assert_output_contains 'kernel/net/802/garp.ko'
   assert_output_contains 'kernel/net/8021q/8021q.ko'
   assert_output_contains "busybox sha256sum"
-  assert_output_contains ". /scripts/functions"
+  assert_output_not_contains ". /scripts/functions"
   assert_output_contains "zstdcat \"\$download_path\""
   assert_output_not_contains "vconfig add"
   assert_output_not_contains 'beacon '

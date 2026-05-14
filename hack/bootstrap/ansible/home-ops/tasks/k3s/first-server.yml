@@ -15,7 +15,12 @@
     name: "{{ home_ops_k3s_server_service_name }}"
     daemon_reload: true
     enabled: true
-    state: "{{ 'restarted' if home_ops_k3s_server_service.changed else 'started' }}"
+    state: >-
+      {{
+        'restarted'
+        if home_ops_k3s_server_service.changed or (home_ops_k3s_registries_config.changed | default(false))
+        else 'started'
+      }}
 
 - name: Wait for first K3s API port
   ansible.builtin.wait_for:

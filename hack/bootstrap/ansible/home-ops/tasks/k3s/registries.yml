@@ -14,3 +14,4 @@
     owner: root
     group: root
     mode: "0644"
+  register: home_ops_k3s_registries_config

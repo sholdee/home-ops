@@ -170,12 +170,22 @@ Host services can also be run directly while proving the fresh OS:
 just ansible-host-services k3s-worker-0
 ```
 
+`node-join` and `node-uncordon` intentionally do not fail the Kubernetes node
+replacement path on optional host-service setup. Run host services separately
+after the node is schedulable when you want the reporter or Actions runner
+installed.
+
 ## Implementation Notes
 
 Staging builds from the target node's installed Raspberry Pi initramfs with
 `unmkinitramfs`, then injects the reimage hook and repacks it. This matters on
 Trixie because the generated image's initial `initramfs_2712` was not a full
 bootable initramfs until `update-initramfs -u -k all` ran.
+
+If `unmkinitramfs` extracts the real root under `main/`, staging repacks from
+that root and fails closed if any other top-level extraction path contains
+files. That keeps the payload tied to the initramfs shape we have verified
+instead of silently dropping early boot content.
 
 The staged `tryboot.txt` intentionally includes the normal firmware config:
 
@@ -187,9 +197,9 @@ initramfs home-ops-reimage/initramfs.img followkernel
 cmdline=home-ops-reimage/cmdline.txt
 ```
 
-The reimage hook sources `/scripts/functions` before doing initramfs work. That
-matches Debian initramfs hook conventions and keeps helper functions available
-if the script needs to use initramfs-provided logging or panic behavior.
+The reimage hook is self-contained and does not source `/scripts/functions`.
+That keeps it independent of initramfs-tools helper availability and limits the
+runtime contract to the explicit commands checked during staging.
 
 The runtime supports `.xz`, `.gz`, `.zst`, and uncompressed image artifacts.
 It verifies the Raspberry Pi serial, target disk serial, metadata, and SHA256

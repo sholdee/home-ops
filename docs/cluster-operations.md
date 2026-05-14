@@ -440,13 +440,19 @@ Initial K3s server args leave kube-proxy enabled so Ansible can complete before
 Cilium owns Service routing. The post-Cilium playbook disables kube-proxy when
 the derived Cilium config has `kube_proxy_replacement: true`.
 
+The in-repo backend enables the K3s embedded registry mirror by default and
+writes `registries.yaml` mirrors for the registries used by this cluster. Nodes
+must be able to reach peer nodes on TCP `5001` for Spegel image sharing and
+the API endpoint on TCP `6443`. A `registries.yaml` change restarts the
+affected K3s server or agent so the mirror config is loaded.
+
 The Ansible node-prep phase also manages host prerequisites such as Raspberry
 Pi boot flags, swap, CPU governor, and fsnotify sysctls. Fresh nodes may reboot
 automatically before they join K3s. Existing K3s nodes do not auto-reboot; if a
 boot-level change is required, drain and reboot that node through the node
 lifecycle flow, then rerun Ansible.
 
-Host services are part of the same Ansible backend. All nodes get the RPi MQTT
+Host services are part of full Ansible convergence. All nodes get the RPi MQTT
 reporter, control-plane nodes get the NUT client, and worker nodes get a
 repository-scoped GitHub Actions runner for ARM64 image-pull verification.
 Runner configuration mints a short-lived GitHub App installation token from
@@ -459,6 +465,11 @@ changing the app permission, update or reinstall the app installation so the
 installation grants the new permission. The runner installer is pinned and
 checksum-verified; the installed runner keeps GitHub's normal runner
 auto-update behavior.
+
+Single-node join/finalize recipes keep Kubernetes convergence separate from
+optional host services. After a replacement node is joined and uncordoned, run
+`just ansible-host-services <node>` when you want to converge the reporter,
+NUT client, or Actions runner explicitly.
 
 Generated live inventory, vars, kubeconfigs, and run output are written under
 `hack/bootstrap/.out/ansible-live/`.

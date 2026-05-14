@@ -396,7 +396,6 @@ if ! grep -qw 'home_ops_reimage=1' /proc/cmdline; then
   exit 0
 fi
 
-. /scripts/functions
 . /home-ops-reimage/reimage.env
 
 b64_decode() {
@@ -564,6 +563,7 @@ require_tool() {
 require_tool awk
 require_tool base64
 require_tool cpio
+require_tool find
 require_tool sed
 require_tool unmkinitramfs
 require_tool xzcat
@@ -571,15 +571,22 @@ require_tool zstd
 require_tool zstdcat
 
 kernel_version="\$(uname -r)"
-source_initramfs=''
-for candidate in /boot/firmware/initramfs_2712 /boot/firmware/initramfs8 /boot/firmware/initramfs; do
-  if [ -s "\$candidate" ]; then
-    source_initramfs="\$candidate"
-    break
-  fi
-done
-[ -n "\$source_initramfs" ] || {
+source_initramfs="\${HOME_OPS_REIMAGE_SOURCE_INITRAMFS:-}"
+if [ -z "\$source_initramfs" ]; then
+  for candidate in /boot/firmware/initramfs_2712 /boot/firmware/initramfs8 /boot/firmware/initramfs; do
+    if [ -s "\$candidate" ]; then
+      source_initramfs="\$candidate"
+      break
+    fi
+  done
+fi
+[ -n "\$source_initramfs" ] && [ -s "\$source_initramfs" ] || {
   printf 'missing_source_initramfs=true\n'
+  exit 2
+}
+source_cmdline="\${HOME_OPS_REIMAGE_SOURCE_CMDLINE:-/boot/firmware/cmdline.txt}"
+[ -s "\$source_cmdline" ] || {
+  printf 'missing_source_cmdline=%s\n' "\$source_cmdline"
   exit 2
 }
 
@@ -639,6 +646,24 @@ trap cleanup EXIT
 (
   cd "\$tmp_dir"
   unmkinitramfs "\$source_initramfs" "\$tmp_dir" >/dev/null
+  initramfs_root="\$tmp_dir"
+  if [ -d "\$tmp_dir/main" ]; then
+    initramfs_root="\$tmp_dir/main"
+    for top_level_entry in "\$tmp_dir"/* "\$tmp_dir"/.[!.]* "\$tmp_dir"/..?*; do
+      [ -e "\$top_level_entry" ] || continue
+      [ "\$top_level_entry" = "\$initramfs_root" ] && continue
+      if [ -d "\$top_level_entry" ]; then
+        if [ -n "\$(find "\$top_level_entry" -mindepth 1 -print -quit)" ]; then
+          printf 'unsupported_initramfs_extra_content=%s\n' "\${top_level_entry#\$tmp_dir/}"
+          exit 2
+        fi
+      else
+        printf 'unsupported_initramfs_extra_content=%s\n' "\${top_level_entry#\$tmp_dir/}"
+        exit 2
+      fi
+    done
+  fi
+  cd "\$initramfs_root"
 
   initramfs_has_command() {
     command_name="\$1"
@@ -700,6 +725,11 @@ trap cleanup EXIT
   }
 
   runtime_commands='awk base64 basename busybox cat grep gunzip ip reboot rm sed sh sleep sync tr udevadm wget xzcat'
+  case "\$image_url" in
+    *.zst)
+      runtime_commands="\$runtime_commands zstdcat"
+      ;;
+  esac
   if [ -n "\$net_vlan_id" ]; then
     runtime_commands="\$runtime_commands insmod"
   fi
@@ -731,7 +761,7 @@ trap cleanup EXIT
   find . | cpio -o -H newc --quiet | zstd -19 -T0 > "\$stage_dir/initramfs.img"
 )
 
-cmdline="\$(sed 's/[[:space:]]*home_ops_reimage=1//g; s/[[:space:]]*\$//' /boot/firmware/cmdline.txt)"
+cmdline="\$(sed 's/[[:space:]]*home_ops_reimage=1//g; s/[[:space:]]*\$//' "\$source_cmdline")"
 printf '%s home_ops_reimage=1\n' "\$cmdline" > "\$stage_dir/cmdline.txt"
 chmod 0600 "\$stage_dir/manifest.json" "\$stage_dir/reimage.env" "\$stage_dir/initramfs.img" "\$stage_dir/cmdline.txt"
 sync "\$stage_dir"

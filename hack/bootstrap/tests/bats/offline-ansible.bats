@@ -95,6 +95,8 @@ assert_file_contains_before() {
   [[ "$(yq -r '.home_ops_github_runner_user' "$home_ops_vars")" == "github-runner" ]]
   [[ "$(yq -r '.home_ops_github_runner_service_name' "$home_ops_vars")" == 'actions.runner.{{ home_ops_github_runner_repo_owner }}-{{ home_ops_github_runner_repo_name }}.{{ home_ops_github_runner_name }}.service' ]]
   [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
+  [[ "$(yq -r '.home_ops_k3s_embedded_registry' "$home_ops_vars")" == "true" ]]
+  assert_file_contains "$home_ops_vars" '--embedded-registry'
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_interval_in_minutes' "$home_ops_vars")" == "2" ]]
@@ -210,6 +212,7 @@ EOF
   actual_mirrors="$(yq -r '.home_ops_k3s_registry_mirrors | keys | sort | join(",")' "$defaults")"
 
   [[ "$(yq -r '.home_ops_k3s_registries_file' "$defaults")" == '{{ home_ops_k3s_config_dir }}/registries.yaml' ]]
+  [[ "$(yq -r '.home_ops_k3s_embedded_registry' "$defaults")" == "true" ]]
   [[ "$actual_mirrors" == "$expected_mirrors" ]]
 
   for playbook in site control-plane-join control-plane-finalize worker-join worker-finalize; do
@@ -225,6 +228,11 @@ EOF
 
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'templates/registries.yaml.j2'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'home_ops_k3s_registries_file'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'register: home_ops_k3s_registries_config'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/first-server.yml" 'home_ops_k3s_registries_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-agents.yml" 'home_ops_k3s_registries_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml" 'home_ops_k3s_registries_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" '--embedded-registry'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'mirrors:'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'home_ops_k3s_registry_mirrors'
 }
@@ -240,8 +248,8 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/token.sh" 'ansible_op_read_optional'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/run.sh" 'ansible_disable_kube_proxy_after_cilium'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/run.sh" 'ansible_require_host_service_env all'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/node-worker.sh" 'ansible_require_host_service_env node'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" 'ansible_require_host_service_env master'
+  assert_file_not_contains "$ROOT/hack/bootstrap/ansible/node-worker.sh" 'ansible_require_host_service_env node'
+  assert_file_not_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" 'ansible_require_host_service_env master'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" "ansible_require_host_service_env \"\$node_role\""
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/etcdctl.yml" 'api.github.com/repos/k3s-io/k3s/releases/tags'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/etcdctl.yml" 'home_ops_embedded_etcd_version'
@@ -309,8 +317,9 @@ EOF
   assert_file_contains "$ROOT/.github/workflows/helm-diff.yml" 'sudo /usr/local/bin/home-ops-crictl pull'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_github_runner_access_token'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/inventory/live/group_vars/all.yml" 'home_ops_github_runner_enabled: true'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/host-services/main.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/host-services/main.yml'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/site.yml" 'tasks/host-services/main.yml'
+  assert_file_not_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/host-services/main.yml'
+  assert_file_not_contains "$ROOT/hack/bootstrap/ansible/home-ops/worker-join.yml" 'tasks/host-services/main.yml'
 }
 
 @test "host service secret helper loads missing values from 1Password fields" {
