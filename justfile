@@ -313,6 +313,11 @@ node-converge-plan:
 node-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile live --context default '{{ node }}'
 
+# Reboot a drained live worker or control-plane node and wait for it to return Ready.
+[group('node-mutate')]
+node-reboot node:
+    ./hack/bootstrap/nodes/reboot.sh --profile live --context default '{{ node }}'
+
 # Delete a drained live worker or control-plane node after Longhorn state has been evacuated.
 [group('node-mutate')]
 node-delete node:
@@ -484,6 +489,11 @@ node-lima-converge-plan:
 [group('node-lima-mutate')]
 node-lima-drain node:
     ./hack/bootstrap/nodes/drain.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
+
+# Reboot a drained Lima worker or control-plane node and wait for it to return Ready.
+[group('node-lima-mutate')]
+node-lima-reboot node:
+    ./hack/bootstrap/nodes/reboot.sh --profile lima --context '{{ lima_context }}' '{{ node }}'
 
 # Delete a drained Lima worker or control-plane node after Longhorn state has been evacuated.
 [group('node-lima-mutate')]

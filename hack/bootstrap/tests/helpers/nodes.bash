@@ -485,6 +485,15 @@ if [[ "$joined_args" == *"ansible.builtin.systemd"* ]]; then
   exit 0
 fi
 
+if [[ "$joined_args" == *"systemctl reboot"* ]]; then
+  if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
+    mkdir -p "$FAKE_REBOOT_STATE_DIR"
+    touch "${FAKE_REBOOT_STATE_DIR}/rebooted-${target}"
+  fi
+  printf 'reboot_scheduled=true\n'
+  exit 0
+fi
+
 if [[ "$joined_args" == *"90-home-ops-kube-proxy.yaml"* ]]; then
   if [[ "${FAKE_KUBE_PROXY_DROPIN:-present}" == missing ]]; then
     printf 'kube_proxy_disable_dropin=missing\n'
@@ -545,6 +554,104 @@ printf 'https://127.0.0.1:2379, c9e409fd1205cc0a, 3.6.7, 20 kB, false, false, 9,
 printf 'etcd_endpoint_status_end\n'
 EOF
   chmod +x "$fake_ansible"
+}
+
+write_reboot_kubectl() {
+  fake_reboot_kubectl="${tmp}/kubectl-reboot"
+  cat > "$fake_reboot_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+state_dir="${FAKE_REBOOT_STATE_DIR:?}"
+
+if [[ "${1:-}" == "config" && "${2:-}" == "view" ]]; then
+  cat <<'JSON'
+{
+  "contexts": [
+    {
+      "name": "test",
+      "context": {"cluster": "test-cluster"}
+    }
+  ],
+  "clusters": [
+    {
+      "name": "test-cluster",
+      "cluster": {"server": "https://192.168.99.77:6443"}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
+  boot_id="boot-before"
+  if [[ -f "${state_dir}/rebooted-k3s-worker-0" ]]; then
+    boot_id="boot-after"
+  fi
+  sed -e "s/__BOOT_ID__/${boot_id}/g" <<'JSON'
+{
+  "metadata": {
+    "name": "k3s-worker-0",
+    "labels": {}
+  },
+  "spec": {
+    "unschedulable": true
+  },
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "True"}
+    ],
+    "nodeInfo": {
+      "bootID": "__BOOT_ID__"
+    }
+  }
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  printf '{"items":[]}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "kube-system" && "${4:-}" == "pods" ]]; then
+  cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "cilium-worker"},
+      "spec": {"nodeName": "k3s-worker-0"},
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [{"ready": true}]
+      }
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
+fi
+
+printf 'unexpected fake reboot kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_reboot_kubectl"
 }
 
 write_deleted_node_longhorn_kubectl() {

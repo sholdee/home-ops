@@ -399,6 +399,20 @@ EOF
   assert_output_contains 'etcd still has 1 member(s) for k3s-master-1'
 }
 
+@test "worker reboot requires drained state and waits for a new boot ID" {
+  write_reboot_kubectl
+  write_fake_ansible
+
+  mkdir -p "${tmp}/reboot-state"
+  run env PATH="${tmp}:${PATH}" FAKE_REBOOT_STATE_DIR="${tmp}/reboot-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reboot_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/reboot.sh" --profile live --context test --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'scheduling reboot on k3s-worker-0'
+  assert_output_contains 'waiting for k3s-worker-0 to report a new boot ID'
+  assert_output_contains 'reboot complete: k3s-worker-0; node remains cordoned'
+  [[ -f "${tmp}/reboot-state/rebooted-k3s-worker-0" ]]
+}
+
 @test "node converge plans no-op inventory and emits JSON shape" {
   local nodes_json
   nodes_json="${tmp}/nodes.json"
@@ -715,6 +729,7 @@ EOF
     hack/bootstrap/nodes/control-plane-join.sh \
     hack/bootstrap/nodes/control-plane-uncordon.sh \
     hack/bootstrap/nodes/delete.sh \
+    hack/bootstrap/nodes/reboot.sh \
     hack/bootstrap/nodes/longhorn-evict.sh \
     hack/bootstrap/nodes/join.sh \
     hack/bootstrap/nodes/uncordon.sh \

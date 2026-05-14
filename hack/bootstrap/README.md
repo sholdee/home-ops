@@ -221,13 +221,14 @@ explicit.
 | Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
 | Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
 | Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
+| Reboot a drained node | `just node-reboot <node>` | `just node-lima-reboot <node>` |
 | Evict Longhorn replicas | `just node-longhorn-evict <node>` | `just node-lima-longhorn-evict <node>` |
 | Delete | `just node-delete <node>` | `just node-lima-delete <node>` |
 | Refresh SSH host key | `just node-refresh-ssh-host-key <node>` | `just node-lima-refresh-ssh-host-key <node>` |
 | Join from inventory | `just node-join <node>` | `just node-lima-join <node>` |
 | Remove joining taint and uncordon | `just node-uncordon <node>` | `just node-lima-uncordon <node>` |
 
-For maintenance or reboot work, use `drain` and `uncordon` only.
+For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if
 remaining storage nodes cannot hold the maximum configured replica count.
 
