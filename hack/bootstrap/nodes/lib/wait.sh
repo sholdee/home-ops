@@ -51,6 +51,31 @@ node_wait_for_ready() {
   done
 }
 
+node_wait_for_boot_id_change() {
+  local context="$1"
+  local node="$2"
+  local previous_boot_id="$3"
+  local timeout="${4:-600}"
+  local deadline=$((SECONDS + timeout))
+  local node_json ready boot_id
+
+  [[ -n "$previous_boot_id" ]] ||
+    node_die "previous bootID is required to verify reboot completion: ${node}"
+
+  while true; do
+    node_json="$(node_node_json_if_present "$context" "$node")"
+    if [[ -n "$node_json" ]]; then
+      ready="$(node_ready_from_node_json <<<"$node_json")"
+      boot_id="$(node_boot_id_from_node_json <<<"$node_json")"
+      if [[ "$ready" == Ready && -n "$boot_id" && "$boot_id" != "$previous_boot_id" ]]; then
+        return 0
+      fi
+    fi
+    ((SECONDS < deadline)) || node_die "timed out waiting for node reboot: ${node}"
+    sleep 5
+  done
+}
+
 node_wait_for_cilium_ready() {
   local context="$1"
   local node="$2"

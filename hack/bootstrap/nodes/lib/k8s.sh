@@ -145,6 +145,10 @@ node_ready_from_node_json() {
   '
 }
 
+node_boot_id_from_node_json() {
+  "$NODE_JQ_BIN" -r '.status.nodeInfo.bootID // ""'
+}
+
 node_schedulable_from_node_json() {
   "$NODE_JQ_BIN" -r '
     if (.spec.unschedulable // false) then

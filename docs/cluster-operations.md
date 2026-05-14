@@ -119,6 +119,7 @@ Node lifecycle:
 | List live nodes | `just node-list` |
 | Plan additive-only live node joins | `just node-converge-plan` |
 | Join missing live inventory nodes after confirmation | `just node-converge` |
+| Reboot a drained live node | `just node-reboot <node>` |
 | Join one explicit live node | `just node-join <node>` |
 | Finalize and uncordon one live node | `just node-uncordon <node>` |
 | Plan additive-only Lima node joins | `just node-lima-converge-plan` |
@@ -457,6 +458,7 @@ just node-control-plane-status k3s-master-0
 just node-control-plane-delete-preflight k3s-master-0
 just node-converge-plan
 just node-drain k3s-worker-0
+just node-reboot k3s-worker-0
 just node-longhorn-evict k3s-worker-0
 just node-delete k3s-worker-0
 just node-refresh-ssh-host-key k3s-worker-0
@@ -474,6 +476,7 @@ just node-lima-control-plane-status home-ops-k3s-test-server-1
 just node-lima-control-plane-delete-preflight home-ops-k3s-test-server-1
 just node-lima-converge-plan
 just node-lima-drain home-ops-k3s-test-server-2
+just node-lima-reboot home-ops-k3s-test-server-2
 just node-lima-longhorn-evict home-ops-k3s-test-server-2
 just node-lima-delete home-ops-k3s-test-server-2
 just node-lima-refresh-ssh-host-key home-ops-k3s-test-server-2
@@ -481,7 +484,7 @@ just node-lima-join home-ops-k3s-test-server-2
 just node-lima-uncordon home-ops-k3s-test-server-2
 ```
 
-For normal maintenance or reboots, use drain and uncordon only.
+For normal maintenance, use drain, reboot when needed, and uncordon.
 `longhorn-evict` is for node replacement.
 
 `node-converge` is additive-only convenience after inventory edits. It joins
