@@ -51,6 +51,26 @@ node_wait_for_ready() {
   done
 }
 
+node_wait_for_schedulable() {
+  local context="$1"
+  local node="$2"
+  local timeout="${3:-300}"
+  local deadline=$((SECONDS + timeout))
+  local node_json
+
+  while true; do
+    node_json="$(node_node_json_if_present "$context" "$node")"
+    if [[ -n "$node_json" ]] && (node_assert_schedulable "$node_json" "$node") >/dev/null 2>&1; then
+      return 0
+    fi
+    if ((SECONDS >= deadline)); then
+      [[ -n "$node_json" ]] || node_die "Kubernetes node disappeared while waiting for uncordon: ${node}"
+      node_assert_schedulable "$node_json" "$node"
+    fi
+    sleep 2
+  done
+}
+
 node_wait_for_boot_id_change() {
   local context="$1"
   local node="$2"

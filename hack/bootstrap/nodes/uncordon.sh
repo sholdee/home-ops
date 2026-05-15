@@ -120,5 +120,6 @@ node_assert_no_joining_taint "$node_json" "$kubernetes_node_name"
 
 node_log "uncordoning ${kubernetes_node_name}"
 node_kubectl "$context" uncordon "$kubernetes_node_name"
+node_wait_for_schedulable "$context" "$kubernetes_node_name" "${NODE_UNCORDON_VERIFY_TIMEOUT:-60}"
 node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name"
 node_log "uncordon complete: ${kubernetes_node_name}"

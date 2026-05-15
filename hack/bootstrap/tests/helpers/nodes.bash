@@ -324,6 +324,95 @@ EOF
   chmod +x "$fake_kubectl"
 }
 
+write_uncordon_kubectl() {
+  fake_uncordon_kubectl="${tmp}/kubectl-uncordon"
+  cat > "$fake_uncordon_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+state_dir="${FAKE_UNCORDON_STATE_DIR:?}"
+node_name="${FAKE_UNCORDON_NODE:-lima-k3s-worker-0}"
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/${node_name}" ]]; then
+  spec_entries=()
+  if [[ ! -f "${state_dir}/uncordoned" ]]; then
+    spec_entries+=('"unschedulable": true')
+  fi
+  if [[ ! -f "${state_dir}/taint-removed" ]]; then
+    spec_entries+=('"taints": [{"key": "node.home-ops.sh/joining", "value": "true", "effect": "NoSchedule"}]')
+  fi
+  spec="$(IFS=,; printf '%s' "${spec_entries[*]}")"
+  cat <<JSON
+{
+  "metadata": {
+    "name": "${node_name}",
+    "labels": {}
+  },
+  "spec": {${spec}},
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "True"}
+    ]
+  }
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "kube-system" && "${4:-}" == "pods" ]]; then
+  cat <<JSON
+{
+  "items": [
+    {
+      "metadata": {"name": "cilium-one"},
+      "spec": {"nodeName": "${node_name}"},
+      "status": {
+        "phase": "Running",
+        "containerStatuses": [{"ready": true}]
+      }
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "taint" && "${2:-}" == "node" && "${3:-}" == "$node_name" && "${4:-}" == "node.home-ops.sh/joining-" ]]; then
+  mkdir -p "$state_dir"
+  touch "${state_dir}/taint-removed"
+  printf 'node/%s untainted\n' "$node_name"
+  exit 0
+fi
+
+if [[ "${1:-}" == "uncordon" && "${2:-}" == "$node_name" ]]; then
+  mkdir -p "$state_dir"
+  if [[ "${FAKE_UNCORDON_NOOP:-false}" != true ]]; then
+    touch "${state_dir}/uncordoned"
+  fi
+  printf 'node/%s uncordoned\n' "$node_name"
+  exit 0
+fi
+
+printf 'unexpected fake uncordon kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_uncordon_kubectl"
+}
+
 write_control_plane_kubectl() {
   fake_control_plane_kubectl="${tmp}/kubectl-control-plane"
   cat > "$fake_control_plane_kubectl" <<'EOF'
