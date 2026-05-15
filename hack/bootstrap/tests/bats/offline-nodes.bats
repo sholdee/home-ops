@@ -1498,6 +1498,11 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_replacement_ready test"
   assert_success
 
+  run env LONGHORN_VOLUME_CASE=attached_unknown LONGHORN_REPLICA_CASE=stable NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=volume-not-healthy'
+
   run env LONGHORN_REPLICA_CASE=stable LONGHORN_ENGINE_CASE=rebuilding NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
   assert_failure

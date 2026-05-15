@@ -110,7 +110,7 @@ node_longhorn_volume_report() {
           robustness: (.status.robustness // "unknown"),
           node: (.status.currentNodeID // "")
         }
-      | select(.robustness != "healthy" or (.state != "attached" and .state != "detached"))
+      | select((.state == "attached" and .robustness != "healthy") or (.state != "attached" and .state != "detached"))
       | "\(.name) state=\(.state) robustness=\(.robustness) node=\(.node)"
     ] | if length == 0 then "no risky Longhorn volume states observed" else .[] end
   ' <<<"$volumes_json"
@@ -221,7 +221,7 @@ node_longhorn_volume_problems() {
           robustness: (.status.robustness // "unknown"),
           node: (.status.currentNodeID // "")
         }
-      | select(.robustness != "healthy" or (.state != "attached" and .state != "detached"))
+      | select((.state == "attached" and .robustness != "healthy") or (.state != "attached" and .state != "detached"))
       | "\(.name) state=\(.state) robustness=\(.robustness) node=\(.node)"
     ] | .[]
   ' <<<"$volumes_json"
@@ -771,7 +771,7 @@ node_longhorn_storage_activity_problems() {
       | (.status.kubernetesStatus.namespace // "") as $namespace
       | (.status.kubernetesStatus.pvcName // "") as $pvc
       | [
-          if (.status.robustness // "unknown") != "healthy" then
+          if (.status.state // "unknown") == "attached" and (.status.robustness // "unknown") != "healthy" then
             "\($volume) namespace=\($namespace) pvc=\($pvc) robustness=\(.status.robustness // "unknown") reason=volume-not-healthy"
           else empty end,
           if ((.status.state // "unknown") != "attached" and (.status.state // "unknown") != "detached") then

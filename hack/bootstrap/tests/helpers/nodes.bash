@@ -1049,10 +1049,20 @@ if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "volumes.longhorn.io" ]]; then
+  if [[ "${LONGHORN_VOLUME_CASE:-stable}" == "attached_unknown" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "attached", "robustness": "unknown", "currentNodeID": "k3s-worker-1"}}
+  ]
+}
+JSON
+    exit 0
+  fi
   cat <<'JSON'
 {
   "items": [
-    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "detached", "robustness": "healthy", "currentNodeID": ""}}
+    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "detached", "robustness": "unknown", "currentNodeID": ""}}
   ]
 }
 JSON
