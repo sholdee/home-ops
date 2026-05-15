@@ -1048,6 +1048,36 @@ if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io
   exit 0
 fi
 
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
+  cat <<'JSON'
+{
+  "metadata": {
+    "name": "k3s-worker-0",
+    "labels": {}
+  },
+  "spec": {
+    "unschedulable": true
+  },
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "True"}
+    ]
+  }
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "drain" && "${2:-}" == "k3s-worker-0" ]]; then
+  printf 'node/%s drained\n' "$2"
+  exit 0
+fi
+
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "volumes.longhorn.io" ]]; then
   if [[ "${LONGHORN_VOLUME_CASE:-stable}" == "attached_unknown" ]]; then
     cat <<'JSON'

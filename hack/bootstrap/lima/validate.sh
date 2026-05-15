@@ -3,6 +3,8 @@ set -euo pipefail
 
 # shellcheck source=hack/bootstrap/lima/lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+# shellcheck source=hack/bootstrap/lima/longhorn.sh
+source "${SCRIPT_DIR}/longhorn.sh"
 
 lima_require_common_tools
 lima_require_tool kubectl
@@ -231,6 +233,31 @@ if [[ "$profile" == foundation ]]; then
   fail_if_crd_instances_exist replicationsources.volsync.backube replicationsources.volsync.backube
   fail_if_crd_instances_exist schedules.velero.io schedules.velero.io
   fail_if_exists "Deployment/external-dns" -n external-dns get deployment/external-dns
+elif [[ "$profile" == lima-longhorn ]]; then
+  fail_if_exists "ApplicationSet/k3s-apps" -n argocd get applicationset/k3s-apps
+  require_argocd_app_ready longhorn
+
+  for app in powerdns hass external-dns velero volsync crd-schema-publisher grafana-operator reloader longhorn-system; do
+    fail_if_exists "Application/${app}" -n argocd get "application/${app}"
+  done
+
+  kubectl_lima get crd \
+    volumesnapshotclasses.snapshot.storage.k8s.io \
+    volumesnapshotcontents.snapshot.storage.k8s.io \
+    volumesnapshots.snapshot.storage.k8s.io >/dev/null
+  kubectl_lima -n kube-system rollout status deployment/snapshot-controller --timeout=180s
+
+  fail_if_crd_instances_exist pushsecrets.external-secrets.io pushsecrets.external-secrets.io
+  fail_if_crd_instances_exist clusterpushsecrets.external-secrets.io clusterpushsecrets.external-secrets.io
+  fail_if_crd_instances_exist replicationsources.volsync.backube replicationsources.volsync.backube
+  fail_if_crd_instances_exist scheduledbackups.postgresql.cnpg.io scheduledbackups.postgresql.cnpg.io
+  fail_if_crd_instances_exist backups.postgresql.cnpg.io backups.postgresql.cnpg.io
+  fail_if_crd_instances_exist schedules.velero.io schedules.velero.io
+  fail_if_crd_instances_exist backups.velero.io backups.velero.io
+  fail_if_json_query_matches "Longhorn backup RecurringJob exists" recurringjobs.longhorn.io \
+    '[.items[] | select(.spec.task == "backup")] | length > 0'
+  lima_longhorn_validate_workload || lima_die "Lima Longhorn checksum workload validation failed"
+  wait_lima_apps_pods_clean
 elif [[ "$profile" == lima-apps ]]; then
   kubectl_lima -n argocd get applicationset/k3s-apps >/dev/null
   for app in cert-manager cnpg-system envoy-gateway-system external-secrets gateway hass kube-system longhorn-system powerdns; do

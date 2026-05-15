@@ -11,6 +11,7 @@ setup() {
   tmp="$BATS_TEST_TMPDIR"
   TMP_DIR="$tmp"
   source "$ROOT/hack/bootstrap/lima/apps.sh"
+  source "$ROOT/hack/bootstrap/lima/longhorn.sh"
 }
 
 assert_files_equal() {
@@ -132,4 +133,17 @@ EOF
   yq -P '.' "$expected" > "$expected.norm"
   yq -P '.spec.template.spec.source.kustomize.patches' "$appset" > "$actual"
   assert_files_equal "$expected.norm" "$actual"
+}
+
+@test "lima longhorn workload render uses retain storage and a checksum loop" {
+  local workload
+
+  workload="$tmp/lima-longhorn-workload.yaml"
+  write_lima_longhorn_workload "$workload"
+
+  [[ "$(yq -r 'select(.kind == "PersistentVolumeClaim") | .spec.storageClassName' "$workload")" == "longhorn-retain" ]]
+  [[ "$(yq -r 'select(.kind == "PersistentVolumeClaim") | .spec.resources.requests.storage' "$workload")" == "1Gi" ]]
+  [[ "$(yq -r 'select(.kind == "Deployment") | .spec.template.spec.containers[0].image' "$workload")" == "docker.io/library/busybox:1.37.0" ]]
+  assert_file_contains "$workload" 'sha256sum -c data.sha256'
+  assert_file_contains "$workload" 'home-ops-longhorn-'
 }

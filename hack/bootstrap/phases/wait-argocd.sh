@@ -2,6 +2,8 @@
 
 # shellcheck source=hack/bootstrap/lima/apps.sh
 source "${BOOTSTRAP_DIR}/lima/apps.sh"
+# shellcheck source=hack/bootstrap/lima/longhorn.sh
+source "${BOOTSTRAP_DIR}/lima/longhorn.sh"
 
 wait_statefulset argocd argocd-application-controller
 wait_deployment argocd argocd-server
@@ -143,6 +145,22 @@ elif [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
     --overwrite
   wait_cilium_ready_for_k3s_apps
   wait_application_ready dragonfly-operator
+elif [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
+  log "lima-longhorn profile: wait for Cilium and Longhorn without applying applicationset/k3s-apps"
+  kubectl_cmd -n argocd get application/dragonfly-operator >/dev/null
+  kubectl_cmd -n argocd get application/longhorn >/dev/null
+  log "refresh Lima Longhorn profile ArgoCD applications"
+  refresh_applications dragonfly-operator longhorn
+  wait_cilium_ready_for_k3s_apps
+  wait_application_ready dragonfly-operator
+  wait_application_operation_healthy longhorn
+  log "applying external snapshotter and Longhorn lifecycle test storage classes"
+  apply_external_snapshotter
+  apply_lima_longhorn_storage_manifests
+  log "applying Lima Longhorn checksum workload"
+  apply_lima_longhorn_workload
+  wait_lima_longhorn_workload_ready
+  wait_lima_longhorn_volume_healthy || die "timed out waiting for Lima Longhorn checksum volume to become healthy"
 elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
   lima_workloads_released=false
   log "waiting for Cilium and explicit operators before applying sanitized applicationset/k3s-apps"

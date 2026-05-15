@@ -131,13 +131,19 @@
     mode: "0644"
 
 - name: Wait for Cilium operator
-  ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system rollout status deployment/cilium-operator --timeout=5m"
+  ansible.builtin.command: >-
+    {{ k3s_kubectl_binary }} -n kube-system rollout status deployment/cilium-operator
+    --timeout={{ home_ops_cilium_rollout_timeout }}
   changed_when: false
 
 - name: Wait for Cilium DaemonSet
-  ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system rollout status daemonset/cilium --timeout=5m"
+  ansible.builtin.command: >-
+    {{ k3s_kubectl_binary }} -n kube-system rollout status daemonset/cilium
+    --timeout={{ home_ops_cilium_rollout_timeout }}
   changed_when: false
 
 - name: Wait for all nodes to become Ready
-  ansible.builtin.command: "{{ k3s_kubectl_binary }} wait node --all --for=condition=Ready --timeout=5m"
+  ansible.builtin.command: >-
+    {{ k3s_kubectl_binary }} wait node --all --for=condition=Ready
+    --timeout={{ home_ops_cilium_rollout_timeout }}
   changed_when: false

@@ -76,6 +76,82 @@ if [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
     ' "$render" > "$lima_filtered"
     render="$lima_filtered"
   fi
+elif [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
+  log "lima-longhorn profile: applying ArgoCD with Cilium, Dragonfly Operator, and Longhorn only"
+  prepare_hubble_takeover
+
+  filtered="${TMP_DIR}/argocd-lima-longhorn.yaml"
+  yq '
+    select(
+      .apiVersion != "argoproj.io/v1alpha1" or
+      .kind != "ApplicationSet"
+    ) |
+    select(
+      .apiVersion != "argoproj.io/v1alpha1" or
+      .kind != "Application" or
+      (
+        .metadata.name == "cilium" or
+        .metadata.name == "dragonfly-operator" or
+        .metadata.name == "longhorn"
+      )
+    ) |
+    select(
+      .apiVersion != "gateway.networking.k8s.io/v1" or
+      .kind != "HTTPRoute"
+    )
+  ' "$render" > "$filtered"
+  render="$filtered"
+  values_filtered="${TMP_DIR}/argocd-lima-longhorn-values.yaml"
+  yq '
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "dragonfly-operator") |
+      .spec.source.helm.valuesObject.serviceMonitor.enabled
+    ) = false |
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "dragonfly-operator") |
+      .spec.source.helm.valuesObject.grafanaDashboard.enabled
+    ) = false |
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "longhorn") |
+      .spec.source.helm.valuesObject.defaultSettings.backupTarget
+    ) = "" |
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "longhorn") |
+      .spec.source.helm.valuesObject.defaultSettings.backupTargetCredentialSecret
+    ) = "" |
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "longhorn") |
+      .spec.source.helm.valuesObject.metrics.serviceMonitor.enabled
+    ) = "false" |
+    (
+      . |
+      select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "longhorn") |
+      .spec.syncPolicy.syncOptions
+    ) = (((. | select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "longhorn") | .spec.syncPolicy.syncOptions) // []) + ["CreateNamespace=true"] | unique)
+  ' "$render" > "$values_filtered"
+  render="$values_filtered"
+  if [[ "${BOOTSTRAP_LIMA:-false}" == true ]]; then
+    log "Lima profile: keeping Cilium masquerading enabled for user-mode networking"
+    lima_filtered="${TMP_DIR}/argocd-lima-longhorn-cilium.yaml"
+    yq '
+      (
+        . |
+        select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "cilium") |
+        .spec.source.helm.valuesObject.enableIPv4Masquerade
+      ) = true |
+      (
+        . |
+        select(.apiVersion == "argoproj.io/v1alpha1" and .kind == "Application" and .metadata.name == "cilium") |
+        .spec.source.helm.valuesObject.bpf.masquerade
+      ) = true
+    ' "$render" > "$lima_filtered"
+    render="$lima_filtered"
+  fi
 elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
   log "lima-apps profile: applying ArgoCD without ApplicationSet/k3s-apps until Cilium is ready"
   prepare_hubble_takeover

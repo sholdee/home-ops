@@ -75,8 +75,8 @@ It can prepare fresh Debian-family Raspberry Pi nodes, install K3s, seed the
 minimum secrets, bootstrap the dependencies needed for ArgoCD takeover, and
 then let ArgoCD reconcile the steady-state application graph. The same tooling
 also validates bootstrap ordering in disposable kind and Lima clusters,
-including app-profile checks for Longhorn, VolSync, CNPG restores, and
-external-writer safety.
+including a lightweight Longhorn lifecycle profile and a fuller app profile
+for VolSync, CNPG restores, and external-writer safety.
 
 For existing clusters, the node lifecycle commands cover status, drain, safe
 reboot, Longhorn replica eviction, Kubernetes node deletion, embedded-etcd

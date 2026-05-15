@@ -41,7 +41,8 @@ Do not commit `.out/`.
 | Dry-run an already bootstrapped kind cluster | `just kind-bootstrap-dry-run` |
 | Run Lima foundation bootstrap | `just lima-fresh` |
 | Show Lima status | `just lima-status` |
-| Run larger Lima app-profile bootstrap | `just lima-apps-fresh` |
+| Run Longhorn-focused Lima bootstrap | `just lima-longhorn-fresh` |
+| Run full Lima app-profile bootstrap | `just lima-apps-fresh` |
 | Render live Ansible inventory and vars | `just ansible-plan` |
 | Plan additive-only live node joins | `just node-converge-plan` |
 | Audit active bootstrap/takeover state | `just bootstrap-audit` |
@@ -77,6 +78,7 @@ before ArgoCD can take over.
 | --- | --- |
 | `full` | Real-cluster takeover profile. Applies dependencies, ArgoCD, readiness waits, and audit. |
 | `foundation` | Lima foundation profile. Validates K3s, Cilium takeover, core operators, and ArgoCD without normal apps. |
+| `lima-longhorn` | Disposable Longhorn lifecycle validation with Longhorn, external snapshotter, storage classes, and a checksum PVC workload. |
 | `lima-apps` | Disposable app-profile validation with a sanitized app allowlist and external-writer guardrails. |
 
 ## Kind
@@ -104,13 +106,13 @@ Server-side dry-run does not persist CRDs on a clean cluster. Use
 
 Lima is the Apple Silicon VM harness for end-to-end behavior.
 
-| Goal | Foundation Recipe | App-Profile Recipe |
-| --- | --- | --- |
-| Create VMs | `just lima-create` | `just lima-apps-create` |
-| Run Ansible | `just lima-ansible` | `just lima-apps-ansible` |
-| Run Kubernetes bootstrap | `just lima-bootstrap` | `just lima-apps-bootstrap` |
-| Validate | `just lima-validate` | `just lima-apps-validate` |
-| Full fresh run | `just lima-fresh` | `just lima-apps-fresh` |
+| Goal | Foundation Recipe | Longhorn Recipe | App-Profile Recipe |
+| --- | --- | --- | --- |
+| Create VMs | `just lima-create` | `just lima-longhorn-create` | `just lima-apps-create` |
+| Run Ansible | `just lima-ansible` | `just lima-longhorn-ansible` | `just lima-apps-ansible` |
+| Run Kubernetes bootstrap | `just lima-bootstrap` | `just lima-longhorn-bootstrap` | `just lima-apps-bootstrap` |
+| Validate | `just lima-validate` | `just lima-longhorn-validate` | `just lima-apps-validate` |
+| Full fresh run | `just lima-fresh` | `just lima-longhorn-fresh` | `just lima-apps-fresh` |
 
 Useful maintenance recipes:
 
@@ -123,9 +125,16 @@ just lima-delete
 Foundation defaults to one server VM with `4` CPU and `6GiB` memory plus two
 agent VMs with `2` CPU and `3GiB` memory.
 
-The app-profile recipes create four larger agent VMs with `4` CPU, `6GiB`
-memory, and `120GiB` disks for topology spread, Longhorn, VolSync restores,
-database operators, and node replacement testing.
+The Longhorn-focused recipes default to three untainted server VMs and one
+agent VM with `3` CPU, `4GiB` memory, and `80GiB` disks. Use this profile for
+node lifecycle and Longhorn replica-eviction testing; it avoids the full app
+restore workload while still validating a real `longhorn-retain` PVC with a
+checksum loop.
+
+The app-profile recipes default to three untainted server VMs and one agent VM
+with `3` CPU, `5GiB` memory, and `120GiB` disks for topology spread, Longhorn,
+VolSync restores, database operators, and node replacement testing without
+overloading the local host.
 
 Override the shape with `LIMA_SERVER_COUNT`, `LIMA_SERVER_CPUS`,
 `LIMA_SERVER_MEMORY_GIB`, `LIMA_AGENT_COUNT`, `LIMA_AGENT_CPUS`,
@@ -326,6 +335,13 @@ stdin recipe:
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \
   | just lima-bootstrap-stdin
+```
+
+For Longhorn-focused Lima runs:
+
+```sh
+op read op://Kubernetes/op-credentials/op-credentials.yaml \
+  | just lima-longhorn-bootstrap-stdin
 ```
 
 For app-profile Lima runs:

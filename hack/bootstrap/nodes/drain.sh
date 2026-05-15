@@ -88,9 +88,16 @@ esac
 
 if [[ "$(node_schedulable_from_node_json <<<"$node_json")" == schedulable ]]; then
   node_log "waiting for Longhorn cluster quiescence before starting node replacement"
-  node_wait_for_longhorn_replacement_ready "$context"
+  node_wait_for_longhorn_replacement_ready \
+    "$context" \
+    "${NODE_LONGHORN_REPLACEMENT_READY_TIMEOUT:-1800}" \
+    "${NODE_LONGHORN_REPLACEMENT_READY_STABLE_FOR:-60}"
 else
-  node_log "node is already cordoned; assuming this is a resumed lifecycle step"
+  node_log "node is already cordoned; verifying Longhorn storage is idle before resuming lifecycle step"
+  node_wait_for_longhorn_storage_idle \
+    "$context" \
+    "${NODE_LONGHORN_STORAGE_IDLE_TIMEOUT:-1800}" \
+    "${NODE_LONGHORN_STORAGE_IDLE_STABLE_FOR:-60}"
 fi
 
 node_log "draining ${kubernetes_node_name}"
