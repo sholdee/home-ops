@@ -258,6 +258,15 @@ node_assert_cordoned() {
   [[ "$schedulable" == cordoned ]] || node_die "node must be cordoned first: ${node}"
 }
 
+node_assert_schedulable() {
+  local node_json="$1"
+  local node="$2"
+  local schedulable
+
+  schedulable="$(node_schedulable_from_node_json <<<"$node_json")"
+  [[ "$schedulable" == schedulable ]] || node_die "node is still cordoned after uncordon: ${node}"
+}
+
 node_assert_no_joining_taint() {
   local node_json="$1"
   local node="$2"

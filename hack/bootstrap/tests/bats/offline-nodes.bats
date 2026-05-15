@@ -1150,6 +1150,32 @@ EOF
   [[ -f "${tmp}/reboot-state/rebooted-k3s-worker-0" ]]
 }
 
+@test "worker uncordon verifies Kubernetes schedulability before reporting success" {
+  local fake_ansible_playbook state_dir
+  write_uncordon_kubectl
+  state_dir="${tmp}/uncordon-state"
+  mkdir -p "$state_dir"
+  fake_ansible_playbook="${tmp}/ansible-playbook"
+  cat > "$fake_ansible_playbook" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'fake ansible-playbook %s\n' "$*"
+EOF
+  chmod +x "$fake_ansible_playbook"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIMA_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_uncordon_kubectl" FAKE_UNCORDON_STATE_DIR="$state_dir" FAKE_UNCORDON_NOOP=true NODE_UNCORDON_VERIFY_TIMEOUT=0 \
+    "${ROOT}/hack/bootstrap/nodes/uncordon.sh" --profile lima --context test --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'node is still cordoned after uncordon: lima-k3s-worker-0'
+
+  rm -f "${state_dir}/taint-removed" "${state_dir}/uncordoned"
+  run env PATH="${tmp}:${PATH}" NODE_LIMA_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_uncordon_kubectl" FAKE_UNCORDON_STATE_DIR="$state_dir" NODE_UNCORDON_VERIFY_TIMEOUT=0 \
+    "${ROOT}/hack/bootstrap/nodes/uncordon.sh" --profile lima --context test --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'node/lima-k3s-worker-0 uncordoned'
+  assert_output_contains 'uncordon complete: lima-k3s-worker-0'
+}
+
 @test "node converge plans no-op inventory and emits JSON shape" {
   local nodes_json
   nodes_json="${tmp}/nodes.json"
