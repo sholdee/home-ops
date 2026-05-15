@@ -1067,11 +1067,15 @@ EOF
   assert_failure
   assert_output_contains 'live first-master lifecycle requires a stable API endpoint'
 
+  yq -i 'del(.apiserver_endpoint)' "${inventory}/group_vars/all.yml"
   mkdir -p "${tmp}/first-control-plane-state"
   run env PATH="${tmp}:${PATH}" FAKE_KUBECTL_STATE_DIR="${tmp}/first-control-plane-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
     "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-0
   assert_success
   assert_output_contains 'first inventory master selected; live context must remain reachable through the stable API endpoint'
+  assert_output_contains 'kube_vip_release_address=192.168.99.77'
+  assert_output_contains 'kube_vip_release_process=killed'
+  assert_output_contains 'kube_vip_release_interface=eth0.99'
   assert_output_contains 'snapshot_name=pre-remove-k3s-master-0-'
   assert_output_contains 'Member c9e409fd1205cc0a removed from cluster'
   assert_output_contains 'node "k3s-master-0" deleted'
@@ -1081,6 +1085,9 @@ EOF
   run env PATH="${tmp}:${PATH}" FAKE_KUBECTL_STATE_DIR="${tmp}/control-plane-state" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_control_plane_kubectl" \
     "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
   assert_success
+  assert_output_contains 'kube_vip_release_address=192.168.99.77'
+  assert_output_contains 'kube_vip_release_process=killed'
+  assert_output_contains 'kube_vip_release_interface=eth0.99'
   assert_output_contains 'snapshot_name=pre-remove-k3s-master-1-'
   assert_output_contains 'Member 70594c7c481c118 removed from cluster'
   assert_output_contains 'node "k3s-master-1" deleted'
@@ -1090,6 +1097,7 @@ EOF
     "${ROOT}/hack/bootstrap/nodes/delete.sh" --profile live --context test --yes k3s-master-1
   assert_success
   assert_output_contains 'stopping k3s server on k3s-master-1 before deleted-node cleanup'
+  assert_output_contains 'kube_vip_release_address=192.168.99.77'
   assert_output_contains 'verifying k3s-master-1 is absent from etcd membership using k3s-master-0'
   assert_output_contains 'control-plane delete cleanup complete: k3s-master-1'
 

@@ -34,6 +34,7 @@ ansible_user: ethan
 ansible_ssh_private_key_file: ~/ansiblekey
 kube_proxy_replacement: true
 k3s_version: v1.35.4+k3s1
+apiserver_endpoint: 192.168.99.77
 EOF
 }
 
@@ -498,6 +499,13 @@ printf '%s | CHANGED | rc=0 >>\n' "$target"
 
 if [[ "$joined_args" == *"ansible.builtin.systemd"* ]]; then
   printf '{"changed": true}\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"systemctl disable --now k3s"* && "$joined_args" == *"kube_vip_release_address"* && "$joined_args" == *'split($2, iface, "@")'* ]]; then
+  printf 'kube_vip_release_address=192.168.99.77\n'
+  printf 'kube_vip_release_process=killed\n'
+  printf 'kube_vip_release_interface=eth0.99\n'
   exit 0
 fi
 
