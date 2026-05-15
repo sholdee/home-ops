@@ -90,4 +90,6 @@ node_confirm "$yes" "evict Longhorn replicas from ${kubernetes_node_name} in ${c
 node_log "requesting Longhorn replica eviction from ${kubernetes_node_name}"
 node_request_longhorn_eviction "$context" "$kubernetes_node_name"
 node_wait_for_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
+node_log "waiting for Longhorn storage to settle after replica eviction"
+node_wait_for_longhorn_storage_idle "$context"
 node_log "Longhorn eviction complete: ${kubernetes_node_name}"

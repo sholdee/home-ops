@@ -126,6 +126,57 @@ node_wait_for_longhorn_safe() {
   done
 }
 
+node_wait_for_stable_assertion() {
+  local timeout="$1"
+  local stable_for="$2"
+  shift 2
+  local deadline=$((SECONDS + timeout))
+  local stable_since=""
+
+  while true; do
+    if ("$@") >/dev/null 2>&1; then
+      if [[ -z "$stable_since" ]]; then
+        stable_since="$SECONDS"
+      fi
+      if ((SECONDS - stable_since >= stable_for)); then
+        return 0
+      fi
+    else
+      stable_since=""
+    fi
+
+    if ((SECONDS >= deadline)); then
+      "$@"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+node_wait_for_longhorn_storage_idle() {
+  local context="$1"
+  local timeout="${2:-1800}"
+  local stable_for="${3:-60}"
+
+  node_wait_for_stable_assertion \
+    "$timeout" \
+    "$stable_for" \
+    node_assert_longhorn_storage_idle \
+    "$context"
+}
+
+node_wait_for_longhorn_replacement_ready() {
+  local context="$1"
+  local timeout="${2:-1800}"
+  local stable_for="${3:-60}"
+
+  node_wait_for_stable_assertion \
+    "$timeout" \
+    "$stable_for" \
+    node_assert_longhorn_replacement_ready \
+    "$context"
+}
+
 node_wait_for_longhorn_maintenance_safe() {
   local context="$1"
   local node="$2"

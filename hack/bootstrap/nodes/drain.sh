@@ -86,6 +86,13 @@ case "$inventory_role" in
     ;;
 esac
 
+if [[ "$(node_schedulable_from_node_json <<<"$node_json")" == schedulable ]]; then
+  node_log "waiting for Longhorn cluster quiescence before starting node replacement"
+  node_wait_for_longhorn_replacement_ready "$context"
+else
+  node_log "node is already cordoned; assuming this is a resumed lifecycle step"
+fi
+
 node_log "draining ${kubernetes_node_name}"
 node_kubectl "$context" drain "$kubernetes_node_name" \
   --ignore-daemonsets \

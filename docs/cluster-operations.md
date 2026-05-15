@@ -530,6 +530,13 @@ just node-lima-uncordon home-ops-k3s-test-server-2
 For normal maintenance, use drain, reboot when needed, and uncordon.
 `longhorn-evict` is for node replacement.
 
+Node replacement waits for global Longhorn quiescence at the storage-sensitive
+gates. `node-drain` refuses to start a fresh replacement while another Longhorn
+node is evicting or unschedulable, `node-longhorn-evict` and `node-delete`
+wait for storage activity to settle, `node-join` waits before introducing the
+replacement node, and `node-uncordon` waits again before the next replacement.
+Do not start the next node until `node-uncordon` completes.
+
 `node-converge` is additive-only convenience after inventory edits. It joins
 fresh inventory nodes that are absent from Kubernetes, refuses deletes,
 renames, role changes, unhealthy existing nodes, pending cordon/taint
@@ -544,7 +551,8 @@ embedded-etcd member removal from a remaining control-plane.
 
 Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
-Longhorn scheduling readiness, and restores scheduling.
+Longhorn scheduling readiness, restores scheduling, and waits for Longhorn to
+be healthy and idle.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when the derived Cilium config has `kube_proxy_replacement: true`.

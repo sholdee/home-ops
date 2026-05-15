@@ -1487,6 +1487,39 @@ EOF
   assert_output_contains 'Longhorn node resource is absent for missing-node; no eviction request needed'
 }
 
+@test "Longhorn replacement readiness blocks active storage work" {
+  write_eviction_longhorn_kubectl
+
+  run env NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_success
+
+  run env LONGHORN_REPLICA_CASE=stable NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_replacement_ready test"
+  assert_success
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_ENGINE_CASE=rebuilding NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=rebuild-in-progress'
+  assert_output_contains 'reason=replica-not-rw'
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_ENGINE_CASE=backup NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=backup-in-progress'
+
+  run env LONGHORN_REPLICA_CASE=failed NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=replica-failed'
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_NODE_CASE=evicting NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_replacement_ready test"
+  assert_failure
+  assert_output_contains 'reason=node-eviction-requested'
+}
+
 @test "stale pods bound to deleted nodes are force deleted" {
   write_stale_pods_kubectl
 

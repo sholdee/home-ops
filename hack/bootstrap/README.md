@@ -267,13 +267,20 @@ For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if
 remaining storage nodes cannot hold the maximum configured replica count.
 
+Node replacement also waits for global Longhorn quiescence. The lifecycle gates
+block while Longhorn has unhealthy volumes, active rebuilds, non-RW replicas,
+clone/restore/purge/backup activity, unschedulable storage nodes, or an
+eviction still in progress. Treat `node-uncordon` completion as the point where
+it is safe to begin the next replacement.
+
 Control-plane delete is gated by read-only preflight, quorum checks, Longhorn
 eviction when Longhorn is installed, fresh K3s etcd snapshot creation, and
 explicit embedded-etcd member removal from a remaining control-plane.
 
 Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
-Longhorn scheduling readiness, and restores scheduling.
+Longhorn scheduling readiness, restores scheduling, and waits for Longhorn to
+be healthy and idle.
 
 Converge is additive-only. It joins fresh inventory nodes that are absent from
 Kubernetes, refuses ambiguous drift or pending finalization, delegates mutation

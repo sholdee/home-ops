@@ -94,6 +94,8 @@ node_assert_kubernetes_control_plane "$node_json" "$kubernetes_node_name"
 node_assert_cordoned "$node_json" "$kubernetes_node_name"
 node_assert_no_ordinary_pods "$context" "$kubernetes_node_name"
 node_assert_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
+node_log "waiting for Longhorn storage to be idle before deleting control-plane node"
+node_wait_for_longhorn_storage_idle "$context"
 
 node_log "running control-plane delete preflight before mutation"
 preflight_json="$("$preflight_script" --profile "$profile" --context "$context" --output json "$node_name")"

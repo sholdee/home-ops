@@ -118,4 +118,6 @@ node_log "uncordoning ${kubernetes_node_name}"
 node_kubectl "$context" uncordon "$kubernetes_node_name"
 node_wait_for_schedulable "$context" "$kubernetes_node_name" "${NODE_UNCORDON_VERIFY_TIMEOUT:-60}"
 node_wait_for_longhorn_ready_for_uncordon "$context" "$kubernetes_node_name" 600
+node_log "waiting for Longhorn cluster quiescence before the next node replacement"
+node_wait_for_longhorn_replacement_ready "$context"
 node_log "control-plane uncordon complete: ${kubernetes_node_name}"

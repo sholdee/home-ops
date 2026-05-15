@@ -100,6 +100,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
   embedded-etcd member removal, join with a temporary taint, then finalize and
   uncordon.
+- Longhorn-backed replacement must gate on global storage quiescence, not only
+  target-node emptiness. Do not advance across drain, eviction, delete, join,
+  or uncordon if Longhorn is rebuilding, backing up, cloning, restoring,
+  purging, evicting, or reporting unhealthy volumes/nodes.
 - Raspberry Pi network reimage is post-delete only by default. Keep the
   deleted-node check, Pi serial check, disk serial check, image metadata check,
   and staged-payload check fail-closed; `--force` may skip only the Kubernetes
