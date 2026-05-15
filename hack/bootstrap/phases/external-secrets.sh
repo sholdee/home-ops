@@ -33,7 +33,7 @@ wait_clustersecretstore_ready onepassword-connect
 
 cert_render="${TMP_DIR}/cert-manager-full.yaml"
 render_kustomize_app apps/cert-manager > "$cert_render"
-if [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
+if [[ "$BOOTSTRAP_PROFILE" =~ ^lima-(apps|longhorn)$ ]]; then
   cert_lima_render="${TMP_DIR}/cert-manager-lima-apps.yaml"
   yq '
     select(

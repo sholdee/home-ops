@@ -78,6 +78,8 @@ node_confirm "$yes" "join control-plane node ${kubernetes_node_name} to ${contex
 
 node_cleanup_pods_for_deleted_node "$context" "$kubernetes_node_name"
 node_cleanup_longhorn_deleted_node "$context" "$kubernetes_node_name"
+node_log "waiting for Longhorn storage to be idle before joining replacement control-plane node"
+node_wait_for_longhorn_storage_idle "$context"
 node_assert_control_plane_etcd_member_absent "$profile" "$context" "$inventory_node_name" "$kubernetes_node_name"
 
 join_ip=""

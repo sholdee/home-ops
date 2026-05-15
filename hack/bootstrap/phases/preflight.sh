@@ -27,13 +27,23 @@ log "field manager: ${FIELD_MANAGER}"
 log "report dir: ${REPORT_DIR}"
 log "phases: ${PHASES[*]}"
 
-if [[ "$BOOTSTRAP_PROFILE" == lima-apps && "${BOOTSTRAP_LIMA:-false}" != true ]]; then
-  die "lima-apps profile is only supported through the Lima bootstrap harness"
+if [[ "$BOOTSTRAP_PROFILE" =~ ^lima-(apps|longhorn)$ && "${BOOTSTRAP_LIMA:-false}" != true ]]; then
+  die "${BOOTSTRAP_PROFILE} profile is only supported through the Lima bootstrap harness"
 fi
 
-if [[ "$BOOTSTRAP_PROFILE" == lima-apps && "${BOOTSTRAP_LIMA:-false}" == true ]] && ! bool "$DRY_RUN"; then
+if [[ "$BOOTSTRAP_PROFILE" =~ ^lima-(apps|longhorn)$ && "${BOOTSTRAP_LIMA:-false}" == true ]] && ! bool "$DRY_RUN"; then
+  min_nodes=3
+  min_cpu=3
+  min_memory_gib=5
+  min_storage_gib=100
+  if [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
+    min_nodes=4
+    min_memory_gib=3
+    min_storage_gib=60
+  fi
+
   node_inventory="$(kubectl_cmd get nodes -o json)"
-  schedulable_workers="$(
+  schedulable_nodes="$(
     jq '
       [
         .items[]
@@ -42,19 +52,23 @@ if [[ "$BOOTSTRAP_PROFILE" == lima-apps && "${BOOTSTRAP_LIMA:-false}" == true ]]
       ] | length
     ' <<<"$node_inventory"
   )"
-  large_workers="$(
-    jq '
+  large_nodes="$(
+    jq --argjson min_cpu "$min_cpu" --argjson min_memory_kib "$((min_memory_gib * 1024 * 1024))" '
+      def cpu_cores:
+        if test("m$") then (sub("m$"; "") | tonumber) / 1000
+        else tonumber
+        end;
       [
         .items[]
         | select(.spec.unschedulable != true)
         | select(([.spec.taints[]? | select(.effect == "NoSchedule" or .effect == "NoExecute")] | length) == 0)
-        | select((.status.allocatable.cpu | tonumber) >= 4)
-        | select((.status.allocatable.memory | sub("Ki$"; "") | tonumber) >= (5 * 1024 * 1024))
+        | select((.status.allocatable.cpu | cpu_cores) >= $min_cpu)
+        | select((.status.allocatable.memory | sub("Ki$"; "") | tonumber) >= $min_memory_kib)
       ] | length
     ' <<<"$node_inventory"
   )"
-  storage_workers="$(
-    jq '
+  storage_nodes="$(
+    jq --argjson min_storage_bytes "$((min_storage_gib * 1024 * 1024 * 1024))" '
       def quantity_bytes:
         if test("Ki$") then (sub("Ki$"; "") | tonumber) * 1024
         elif test("Mi$") then (sub("Mi$"; "") | tonumber) * 1024 * 1024
@@ -65,16 +79,16 @@ if [[ "$BOOTSTRAP_PROFILE" == lima-apps && "${BOOTSTRAP_LIMA:-false}" == true ]]
         .items[]
         | select(.spec.unschedulable != true)
         | select(([.spec.taints[]? | select(.effect == "NoSchedule" or .effect == "NoExecute")] | length) == 0)
-        | select((.status.allocatable["ephemeral-storage"] | quantity_bytes) >= (100 * 1024 * 1024 * 1024))
+        | select((.status.allocatable["ephemeral-storage"] | quantity_bytes) >= $min_storage_bytes)
       ] | length
     ' <<<"$node_inventory"
   )"
-  [[ "$schedulable_workers" -ge 3 ]] ||
-    die "lima-apps profile requires at least 3 schedulable worker nodes; found ${schedulable_workers}"
-  [[ "$large_workers" -ge 3 ]] ||
-    die "lima-apps profile requires at least 3 schedulable workers with >=4 CPU and >=5Gi allocatable memory; found ${large_workers}"
-  [[ "$storage_workers" -ge 3 ]] ||
-    die "lima-apps profile requires at least 3 schedulable workers with >=100Gi allocatable ephemeral storage; found ${storage_workers}"
+  [[ "$schedulable_nodes" -ge "$min_nodes" ]] ||
+    die "${BOOTSTRAP_PROFILE} profile requires at least ${min_nodes} schedulable nodes; found ${schedulable_nodes}"
+  [[ "$large_nodes" -ge "$min_nodes" ]] ||
+    die "${BOOTSTRAP_PROFILE} profile requires at least ${min_nodes} schedulable nodes with >=${min_cpu} CPU and >=${min_memory_gib}Gi allocatable memory; found ${large_nodes}"
+  [[ "$storage_nodes" -ge "$min_nodes" ]] ||
+    die "${BOOTSTRAP_PROFILE} profile requires at least ${min_nodes} schedulable nodes with >=${min_storage_gib}Gi allocatable ephemeral storage; found ${storage_nodes}"
 fi
 
 if ! bool "$YES"; then

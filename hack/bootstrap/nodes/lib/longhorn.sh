@@ -110,7 +110,7 @@ node_longhorn_volume_report() {
           robustness: (.status.robustness // "unknown"),
           node: (.status.currentNodeID // "")
         }
-      | select(.robustness != "healthy" or (.state != "attached" and .state != "detached"))
+      | select((.state == "attached" and .robustness != "healthy") or (.state != "attached" and .state != "detached"))
       | "\(.name) state=\(.state) robustness=\(.robustness) node=\(.node)"
     ] | if length == 0 then "no risky Longhorn volume states observed" else .[] end
   ' <<<"$volumes_json"
@@ -221,7 +221,7 @@ node_longhorn_volume_problems() {
           robustness: (.status.robustness // "unknown"),
           node: (.status.currentNodeID // "")
         }
-      | select(.robustness != "healthy" or (.state != "attached" and .state != "detached"))
+      | select((.state == "attached" and .robustness != "healthy") or (.state != "attached" and .state != "detached"))
       | "\(.name) state=\(.state) robustness=\(.robustness) node=\(.node)"
     ] | .[]
   ' <<<"$volumes_json"
@@ -599,6 +599,229 @@ node_longhorn_manager_problems() {
       | "\($kind)/\(.name) state=\(.state)"
     ] | .[]
   ' <<<"$json"
+}
+
+node_longhorn_cluster_node_problems() {
+  local context="$1"
+  local nodes_json
+
+  nodes_json="$(node_get_json "$context" -n longhorn-system nodes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$nodes_json" ]] || {
+    printf 'Longhorn nodes not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r '
+    def allow_scheduling:
+      if ((.spec // {}) | has("allowScheduling")) then .spec.allowScheduling else true end;
+    def eviction_requested:
+      if ((.spec // {}) | has("evictionRequested")) then .spec.evictionRequested else false end;
+    def condition_status($type):
+      ([.status.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
+    def disk_condition_status($disk; $type):
+      ([$disk.conditions[]? | select(.type == $type) | .status] | first) // "unknown";
+    .items[]
+    | .metadata.name as $node
+    | [
+        if allow_scheduling != true then
+          "\($node) reason=node-scheduling-disabled"
+        else empty end,
+        if eviction_requested != false then
+          "\($node) reason=node-eviction-requested"
+        else empty end,
+        if condition_status("Ready") != "True" then
+          "\($node) ready=\(condition_status("Ready")) reason=node-not-ready"
+        else empty end,
+        if condition_status("Schedulable") != "True" then
+          "\($node) schedulable=\(condition_status("Schedulable")) reason=node-not-schedulable"
+        else empty end,
+        (
+          (.status.diskStatus // {})
+          | to_entries[]
+          | .key as $disk_name
+          | .value as $disk
+          | if disk_condition_status($disk; "Ready") != "True" then
+              "\($node)/\($disk_name) ready=\(disk_condition_status($disk; "Ready")) reason=disk-not-ready"
+            else empty end,
+            if disk_condition_status($disk; "Schedulable") != "True" then
+              "\($node)/\($disk_name) schedulable=\(disk_condition_status($disk; "Schedulable")) reason=disk-not-schedulable"
+            else empty end
+        )
+      ] | .[]
+  ' <<<"$nodes_json"
+}
+
+node_longhorn_engine_activity_problems() {
+  local context="$1"
+  local engines_json
+
+  engines_json="$(node_get_json "$context" -n longhorn-system engines.longhorn.io 2>/dev/null || true)"
+  [[ -n "$engines_json" ]] || {
+    printf 'Longhorn engines not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r '
+    .items[]
+    | .metadata.name as $engine
+    | (.spec.volumeName // .metadata.labels.longhornvolume // "") as $volume
+    | [
+        if ((.status.currentState // "unknown") != "running" and (.status.currentState // "unknown") != "stopped") then
+          "\($engine) volume=\($volume) state=\(.status.currentState // "unknown") reason=engine-not-stable"
+        else empty end,
+        (
+          (.status.replicaModeMap // {})
+          | to_entries[]
+          | select(.value != "RW")
+          | "\($engine) volume=\($volume) replica=\(.key) mode=\(.value) reason=replica-not-rw"
+        ),
+        (
+          (.status.rebuildStatus // {})
+          | to_entries[]
+          | "\($engine) volume=\($volume) replica=\(.key) reason=rebuild-in-progress"
+        ),
+        (
+          (.status.cloneStatus // {})
+          | to_entries[]
+          | select((.value.isCloning // false) == true or ((.value.state // "") != "" and (.value.state // "") != "complete"))
+          | "\($engine) volume=\($volume) address=\(.key) state=\(.value.state // "") reason=clone-in-progress"
+        ),
+        (
+          (.status.restoreStatus // {})
+          | to_entries[]
+          | select((.value.isRestoring // false) == true or ((.value.state // "") != "" and (.value.state // "") != "complete"))
+          | "\($engine) volume=\($volume) address=\(.key) state=\(.value.state // "") reason=restore-in-progress"
+        ),
+        (
+          (.status.purgeStatus // {})
+          | to_entries[]
+          | select((.value.isPurging // false) == true)
+          | "\($engine) volume=\($volume) address=\(.key) progress=\(.value.progress // "") reason=purge-in-progress"
+        ),
+        (
+          (.status.backupStatus // {})
+          | to_entries[]
+          | select((.value.state // "") != "" and (.value.state // "") != "complete")
+          | "\($engine) volume=\($volume) backup=\(.key) state=\(.value.state // "") reason=backup-in-progress"
+        )
+      ] | .[]
+  ' <<<"$engines_json"
+}
+
+node_longhorn_replica_activity_problems() {
+  local context="$1"
+  local replicas_json
+
+  replicas_json="$(node_get_json "$context" -n longhorn-system replicas.longhorn.io 2>/dev/null || true)"
+  [[ -n "$replicas_json" ]] || {
+    printf 'Longhorn replicas not readable\n'
+    return 0
+  }
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r '
+    def node_id:
+      (.spec.nodeID // .status.currentNodeID // .metadata.labels.longhornnode // "");
+    def volume_name:
+      (.spec.volumeName // .metadata.labels.longhornvolume // "");
+    def replica_state:
+      (.status.currentState // .status.state // "unknown");
+    def stopped_inactive_replica:
+      replica_state == "stopped" and
+      (.spec.desireState // "") == "stopped" and
+      ((.status.started // false) == false) and
+      ((.status.instanceManagerName // "") == "");
+    .items[]
+    | .metadata.name as $replica
+    | volume_name as $volume
+    | node_id as $node
+    | [
+        if ((.spec.failedAt // .status.failedAt // "") != "" and (stopped_inactive_replica | not)) then
+          "\($replica) volume=\($volume) node=\($node) failedAt=\(.spec.failedAt // .status.failedAt // "") reason=replica-failed"
+        else empty end,
+        if (replica_state != "running" and replica_state != "stopped") then
+          "\($replica) volume=\($volume) node=\($node) state=\(replica_state) reason=replica-not-stable"
+        else empty end,
+        (
+          .status.conditions[]?
+          | select(.type == "RebuildFailed" and .status == "True")
+          | "\($replica) volume=\($volume) node=\($node) reason=replica-rebuild-failed"
+        )
+      ] | .[]
+  ' <<<"$replicas_json"
+}
+
+node_longhorn_storage_activity_problems() {
+  local context="$1"
+  local volumes_json
+
+  volumes_json="$(node_get_json "$context" -n longhorn-system volumes.longhorn.io 2>/dev/null || true)"
+  [[ -n "$volumes_json" ]] || {
+    printf 'Longhorn volumes not readable\n'
+    return 0
+  }
+
+  {
+    # shellcheck disable=SC2016
+    "$NODE_JQ_BIN" -r '
+      .items[]
+      | .metadata.name as $volume
+      | (.status.kubernetesStatus.namespace // "") as $namespace
+      | (.status.kubernetesStatus.pvcName // "") as $pvc
+      | [
+          if (.status.state // "unknown") == "attached" and (.status.robustness // "unknown") != "healthy" then
+            "\($volume) namespace=\($namespace) pvc=\($pvc) robustness=\(.status.robustness // "unknown") reason=volume-not-healthy"
+          else empty end,
+          if ((.status.state // "unknown") != "attached" and (.status.state // "unknown") != "detached") then
+            "\($volume) namespace=\($namespace) pvc=\($pvc) state=\(.status.state // "unknown") reason=volume-not-stable"
+          else empty end,
+          if (.status.restoreRequired // false) == true then
+            "\($volume) namespace=\($namespace) pvc=\($pvc) reason=volume-restore-required"
+          else empty end
+        ] | .[]
+    ' <<<"$volumes_json"
+    node_longhorn_engine_activity_problems "$context"
+    node_longhorn_replica_activity_problems "$context"
+  } | sed '/^$/d'
+}
+
+node_assert_longhorn_storage_idle() {
+  local context="$1"
+  local problems state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  problems="$(node_longhorn_storage_activity_problems "$context")"
+  if [[ -n "$problems" ]]; then
+    printf '%s\n' "$problems" >&2
+    node_die "Longhorn storage is not idle"
+  fi
+}
+
+node_assert_longhorn_replacement_ready() {
+  local context="$1"
+  local problems state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  problems="$(
+    {
+      node_longhorn_cluster_node_problems "$context"
+      node_longhorn_storage_activity_problems "$context"
+    } | sed '/^$/d'
+  )"
+  if [[ -n "$problems" ]]; then
+    printf '%s\n' "$problems" >&2
+    node_die "Longhorn cluster is not ready for the next node replacement"
+  fi
 }
 
 node_assert_longhorn_safe() {

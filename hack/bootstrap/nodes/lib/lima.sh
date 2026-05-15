@@ -90,21 +90,37 @@ node_handoff_control_plane_api_if_needed() {
   local context="$2"
   local inventory_node="$3"
   local kubernetes_node="$4"
-  local alternate_inventory_node alternate_kubernetes_node alternate_node_json
+  local alternate_inventory_node alternate_kubernetes_node handoff_error
+  local -a alternate_inventory_nodes
 
   case "$profile" in
     lima)
-      alternate_inventory_node="$(node_alternate_ready_control_plane_inventory_node "$profile" "$context" "$kubernetes_node" true)" ||
+      mapfile -t alternate_inventory_nodes < <(
+        node_alternate_ready_control_plane_inventory_nodes "$profile" "$context" "$kubernetes_node" true
+      )
+      ((${#alternate_inventory_nodes[@]} > 0)) ||
         node_die "no alternate inventory control-plane is available for API handoff"
-      alternate_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$alternate_inventory_node" "$alternate_inventory_node")"
-      node_log "retargeting Lima API tunnel away from ${inventory_node} to ${alternate_inventory_node}"
-      node_start_lima_api_tunnel_to_inventory_node "$alternate_inventory_node" "$context" >/dev/null
-      node_assert_api_reachable "$context"
-      alternate_node_json="$(node_node_json_if_present "$context" "$alternate_kubernetes_node")"
-      [[ -n "$alternate_node_json" ]] ||
-        node_die "Lima API tunnel handoff did not reach alternate control-plane node: ${alternate_kubernetes_node}"
-      node_assert_kubernetes_control_plane "$alternate_node_json" "$alternate_kubernetes_node"
-      node_assert_ready "$alternate_node_json" "$alternate_kubernetes_node"
+
+      for alternate_inventory_node in "${alternate_inventory_nodes[@]}"; do
+        alternate_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$alternate_inventory_node" "$alternate_inventory_node")"
+        node_log "retargeting Lima API tunnel away from ${inventory_node} to ${alternate_inventory_node}"
+        if handoff_error="$(
+          (
+            node_start_lima_api_tunnel_to_inventory_node "$alternate_inventory_node" "$context" >/dev/null
+            node_assert_api_reachable "$context"
+            alternate_node_json="$(node_node_json_if_present "$context" "$alternate_kubernetes_node")"
+            [[ -n "$alternate_node_json" ]] ||
+              node_die "Lima API tunnel handoff did not reach alternate control-plane node: ${alternate_kubernetes_node}"
+            node_assert_kubernetes_control_plane "$alternate_node_json" "$alternate_kubernetes_node"
+            node_assert_ready "$alternate_node_json" "$alternate_kubernetes_node"
+          ) 2>&1
+        )"; then
+          return 0
+        fi
+        node_warn "Lima API handoff candidate ${alternate_inventory_node} failed: ${handoff_error//$'\n'/; }"
+      done
+
+      node_die "no alternate inventory control-plane served a reachable Lima API"
       ;;
     live)
       node_is_first_inventory_master "$profile" "$inventory_node" || return 0

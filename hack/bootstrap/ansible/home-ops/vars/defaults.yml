@@ -45,6 +45,7 @@ home_ops_k3s_registry_mirrors:
 home_ops_remote_kubeconfig: /tmp/home-ops-kubeconfig
 home_ops_cilium_values_file: /tmp/home-ops-cilium-values.yaml
 home_ops_cilium_checksum_file: /var/lib/rancher/k3s/server/home-ops-cilium-bootstrap.sha256
+home_ops_cilium_rollout_timeout: 20m
 # Empty means derive the upstream etcdctl base version from the K3s release's
 # embedded Etcd version, such as K3s Etcd v3.6.7-k3s1 -> etcdctl v3.6.7.
 home_ops_etcdctl_version_override: ""

@@ -139,6 +139,28 @@ EOF
   assert_output_contains 'argocd=yes'
 }
 
+@test "bootstrap profile validation accepts the Longhorn-focused Lima profile" {
+  local bootstrap_lib
+
+  bootstrap_lib="${tmp}/bootstrap-lib.sh"
+  sed '$d' "${ROOT}/hack/bootstrap/bootstrap.sh" |
+    sed "s|^BOOTSTRAP_DIR=.*|BOOTSTRAP_DIR=\"${ROOT}/hack/bootstrap\"|" > "$bootstrap_lib"
+
+  run bash -c "source '${bootstrap_lib}'; FROM_PHASE=''; ONLY_PHASE=''; BOOTSTRAP_PROFILE=lima-longhorn; validate_phase_names"
+  assert_success
+}
+
+@test "gateway cert seed skips profiles that do not apply gateway" {
+  local profile
+
+  for profile in foundation lima-longhorn; do
+    run env BOOTSTRAP_PROFILE="$profile" \
+      bash -c "log() { printf '%s\n' \"\$*\"; }; ensure_namespace() { printf 'unexpected namespace\n' >&2; return 1; }; source '${ROOT}/hack/bootstrap/phases/gateway-cert-seed.sh'"
+    assert_success
+    assert_output_contains "${profile} profile: skip gateway cert seed"
+  done
+}
+
 @test "runbook phase list matches bootstrap phase order" {
   local bootstrap_lib expected actual
 

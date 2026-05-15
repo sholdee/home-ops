@@ -945,7 +945,7 @@ EOF
 
   run env CALLS_FILE="$calls_file" bash -c "
     source '${ROOT}/hack/bootstrap/nodes/lib.sh'
-    node_alternate_ready_control_plane_inventory_node() { printf '%s\n' k3s-master-0; }
+    node_alternate_ready_control_plane_inventory_nodes() { printf '%s\n' k3s-master-0; }
     node_start_lima_api_tunnel_to_inventory_node() { printf 'tunnel=%s context=%s\n' \"\$1\" \"\$2\" >>\"\${CALLS_FILE}\"; }
     node_assert_api_reachable() { :; }
     node_node_json_if_present() { printf '{\"metadata\":{\"name\":\"%s\",\"labels\":{\"node-role.kubernetes.io/control-plane\":\"true\"}},\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\"}]}}' \"\$2\"; }
@@ -956,6 +956,35 @@ EOF
   assert_success
   assert_output_contains 'retargeting Lima API tunnel away from k3s-master-1 to k3s-master-0'
   assert_file_contains "$calls_file" 'tunnel=k3s-master-0 context=test'
+}
+
+@test "Lima control-plane API handoff tries another Ready peer when a candidate API is down" {
+  local calls_file
+  calls_file="${tmp}/handoff-retry.calls"
+
+  run env CALLS_FILE="$calls_file" bash -c "
+    source '${ROOT}/hack/bootstrap/nodes/lib.sh'
+    current_tunnel=''
+    node_alternate_ready_control_plane_inventory_nodes() { printf '%s\n' k3s-master-0 k3s-master-2; }
+    node_start_lima_api_tunnel_to_inventory_node() {
+      current_tunnel=\"\$1\"
+      printf 'tunnel=%s context=%s\n' \"\$1\" \"\$2\" >>\"\${CALLS_FILE}\"
+    }
+    node_assert_api_reachable() {
+      if [[ \"\$current_tunnel\" == k3s-master-0 ]]; then
+        node_die 'api down'
+      fi
+    }
+    node_node_json_if_present() { printf '{\"metadata\":{\"name\":\"%s\",\"labels\":{\"node-role.kubernetes.io/control-plane\":\"true\"}},\"status\":{\"conditions\":[{\"type\":\"Ready\",\"status\":\"True\"}]}}' \"\$2\"; }
+    node_assert_kubernetes_control_plane() { :; }
+    node_assert_ready() { :; }
+    node_handoff_control_plane_api_if_needed lima test k3s-master-1 lima-k3s-master-1
+  "
+  assert_success
+  assert_output_contains 'Lima API handoff candidate k3s-master-0 failed'
+  assert_output_contains 'retargeting Lima API tunnel away from k3s-master-1 to k3s-master-2'
+  assert_file_contains "$calls_file" 'tunnel=k3s-master-0 context=test'
+  assert_file_contains "$calls_file" 'tunnel=k3s-master-2 context=test'
 }
 
 @test "Lima API tunnels disable SSH multiplexing" {
@@ -1485,6 +1514,61 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_request_longhorn_eviction test missing-node"
   assert_success
   assert_output_contains 'Longhorn node resource is absent for missing-node; no eviction request needed'
+}
+
+@test "Longhorn replacement readiness blocks active storage work" {
+  write_eviction_longhorn_kubectl
+
+  run env NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_success
+
+  run env LONGHORN_REPLICA_CASE=stable NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_replacement_ready test"
+  assert_success
+
+  run env LONGHORN_VOLUME_CASE=attached_unknown LONGHORN_REPLICA_CASE=stable NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=volume-not-healthy'
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_ENGINE_CASE=rebuilding NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=rebuild-in-progress'
+  assert_output_contains 'reason=replica-not-rw'
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_ENGINE_CASE=backup NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=backup-in-progress'
+
+  run env LONGHORN_REPLICA_CASE=failed NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_storage_idle test"
+  assert_failure
+  assert_output_contains 'reason=replica-failed'
+
+  run env LONGHORN_REPLICA_CASE=stable LONGHORN_NODE_CASE=evicting NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_longhorn_replacement_ready test"
+  assert_failure
+  assert_output_contains 'reason=node-eviction-requested'
+}
+
+@test "drain verifies Longhorn idle state when resuming an already cordoned node" {
+  write_eviction_longhorn_kubectl
+
+  run env PATH="${tmp}:${PATH}" \
+    LONGHORN_REPLICA_CASE=stable \
+    LONGHORN_ENGINE_CASE=rebuilding \
+    NODE_LONGHORN_STORAGE_IDLE_TIMEOUT=0 \
+    NODE_LONGHORN_STORAGE_IDLE_STABLE_FOR=0 \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_longhorn_kubectl" \
+    "${ROOT}/hack/bootstrap/nodes/drain.sh" --profile live --context test --yes k3s-worker-0
+  assert_failure
+  assert_output_contains 'node is already cordoned; verifying Longhorn storage is idle before resuming lifecycle step'
+  assert_output_contains 'Longhorn storage is not idle'
+  assert_output_not_contains 'draining k3s-worker-0'
 }
 
 @test "stale pods bound to deleted nodes are force deleted" {

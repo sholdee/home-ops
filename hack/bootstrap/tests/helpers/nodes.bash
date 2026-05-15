@@ -1048,11 +1048,51 @@ if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io
   exit 0
 fi
 
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
+  cat <<'JSON'
+{
+  "metadata": {
+    "name": "k3s-worker-0",
+    "labels": {}
+  },
+  "spec": {
+    "unschedulable": true
+  },
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "True"}
+    ]
+  }
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "drain" && "${2:-}" == "k3s-worker-0" ]]; then
+  printf 'node/%s drained\n' "$2"
+  exit 0
+fi
+
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "volumes.longhorn.io" ]]; then
+  if [[ "${LONGHORN_VOLUME_CASE:-stable}" == "attached_unknown" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "attached", "robustness": "unknown", "currentNodeID": "k3s-worker-1"}}
+  ]
+}
+JSON
+    exit 0
+  fi
   cat <<'JSON'
 {
   "items": [
-    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "detached", "robustness": "healthy", "currentNodeID": ""}}
+    {"metadata": {"name": "vol-a"}, "spec": {"numberOfReplicas": 3}, "status": {"state": "detached", "robustness": "unknown", "currentNodeID": ""}}
   ]
 }
 JSON
@@ -1060,7 +1100,25 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "replicas.longhorn.io" ]]; then
-  if [[ "${LONGHORN_REPLICA_CASE:-safe}" == "insufficient" ]]; then
+  if [[ "${LONGHORN_REPLICA_CASE:-safe}" == "stable" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a-r-one"}, "spec": {"nodeID": "k3s-worker-1", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-one"}},
+    {"metadata": {"name": "vol-a-r-two"}, "spec": {"nodeID": "k3s-worker-2", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-two"}},
+    {"metadata": {"name": "vol-a-r-three"}, "spec": {"nodeID": "k3s-worker-3", "volumeName": "vol-a", "desireState": "running", "failedAt": "", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-three"}}
+  ]
+}
+JSON
+  elif [[ "${LONGHORN_REPLICA_CASE:-safe}" == "failed" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {"metadata": {"name": "vol-a-r-one"}, "spec": {"nodeID": "k3s-worker-1", "volumeName": "vol-a", "desireState": "running", "failedAt": "2026-05-12T19:49:00Z", "healthyAt": "2026-05-12T19:48:52Z"}, "status": {"currentState": "running", "started": true, "instanceManagerName": "im-one"}}
+  ]
+}
+JSON
+  elif [[ "${LONGHORN_REPLICA_CASE:-safe}" == "insufficient" ]]; then
     cat <<'JSON'
 {
   "items": [
@@ -1086,7 +1144,48 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "engines.longhorn.io" ]]; then
-  printf '{"items":[]}\n'
+  if [[ "${LONGHORN_ENGINE_CASE:-stable}" == "rebuilding" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "vol-a-e-0"},
+      "spec": {"volumeName": "vol-a", "nodeID": "k3s-worker-1"},
+      "status": {
+        "currentState": "running",
+        "replicaModeMap": {"vol-a-r-one": "RW", "vol-a-r-two": "WO"},
+        "rebuildStatus": {"vol-a-r-two": {"progress": 42}},
+        "cloneStatus": {},
+        "restoreStatus": {},
+        "purgeStatus": {}
+      }
+    }
+  ]
+}
+JSON
+  elif [[ "${LONGHORN_ENGINE_CASE:-stable}" == "backup" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "vol-a-e-0"},
+      "spec": {"volumeName": "vol-a", "nodeID": "k3s-worker-1"},
+      "status": {
+        "currentState": "running",
+        "replicaModeMap": {"vol-a-r-one": "RW", "vol-a-r-two": "RW", "vol-a-r-three": "RW"},
+        "rebuildStatus": {},
+        "cloneStatus": {},
+        "restoreStatus": {},
+        "purgeStatus": {},
+        "backupStatus": {"backup-a": {"state": "in-progress"}}
+      }
+    }
+  ]
+}
+JSON
+  else
+    printf '{"items":[]}\n'
+  fi
   exit 0
 fi
 
@@ -1107,7 +1206,30 @@ if [[ "${1:-}" == "-n" && "${2:-}" == "longhorn-system" && "${3:-}" == "patch" &
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && "${4:-}" == "nodes.longhorn.io" ]]; then
-  cat <<'JSON'
+  if [[ "${LONGHORN_NODE_CASE:-stable}" == "evicting" ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "k3s-worker-0"},
+      "spec": {"allowScheduling": false, "evictionRequested": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "False"}]}
+    },
+    {
+      "metadata": {"name": "k3s-worker-1"},
+      "spec": {"allowScheduling": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "True"}]}
+    },
+    {
+      "metadata": {"name": "k3s-worker-2"},
+      "spec": {"allowScheduling": true},
+      "status": {"conditions": [{"type": "Ready", "status": "True"}, {"type": "Schedulable", "status": "True"}]}
+    }
+  ]
+}
+JSON
+  else
+    cat <<'JSON'
 {
   "items": [
     {
@@ -1128,6 +1250,7 @@ if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "longhorn-system" && 
   ]
 }
 JSON
+  fi
   exit 0
 fi
 

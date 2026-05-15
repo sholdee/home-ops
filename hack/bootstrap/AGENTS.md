@@ -51,6 +51,9 @@ Profiles:
   ArgoCD takeover, applies ArgoCD, waits for takeover readiness, then audits.
 - `foundation`: Lima foundation profile. It validates K3s, Cilium takeover,
   core operators, and ArgoCD without applying normal app workloads.
+- `lima-longhorn`: disposable Longhorn lifecycle profile. It installs
+  foundation plus Longhorn, external snapshotter, repo storage classes, and a
+  checksum PVC workload without applying normal apps.
 - `lima-apps`: disposable app-profile validation. It applies a sanitized
   workload allowlist and fail-closed safety guards so restores can be tested
   without creating external writers.
@@ -84,7 +87,7 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   explicitly requested after the branch is merged.
 - Prefer render-time Kustomize patches for Lima safety. Admission policies are
   fail-closed guardrails, not the primary mutation mechanism.
-- Lima app tests must not create external writers: `PushSecret`, ACME
+- Lima Longhorn/app tests must not create external writers: `PushSecret`, ACME
   `Order`/`Challenge`, VolSync `ReplicationSource`, CNPG active
   `Cluster.spec.plugins`, CNPG `Backup` or `ScheduledBackup`, Velero backup
   resources, or Longhorn backup jobs.
@@ -100,6 +103,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   if installed, fresh K3s etcd snapshot, Kubernetes Node deletion, explicit
   embedded-etcd member removal, join with a temporary taint, then finalize and
   uncordon.
+- Longhorn-backed replacement must gate on global storage quiescence, not only
+  target-node emptiness. Do not advance across drain, eviction, delete, join,
+  or uncordon if Longhorn is rebuilding, backing up, cloning, restoring,
+  purging, evicting, or reporting unhealthy volumes/nodes.
 - Raspberry Pi network reimage is post-delete only by default. Keep the
   deleted-node check, Pi serial check, disk serial check, image metadata check,
   and staged-payload check fail-closed; `--force` may skip only the Kubernetes
@@ -143,7 +150,8 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   `just bootstrap-test` for Bash and offline behavior,
   `just kind-fresh` for disposable Kubernetes bootstrap behavior,
   Lima foundation recipes for Cilium and ArgoCD takeover behavior,
-  Lima app recipes for Longhorn, VolSync, CNPG restore, and workload safety,
+  Lima Longhorn recipes for storage lifecycle safety,
+  Lima app recipes for VolSync, CNPG restore, and workload safety,
   live audit/dry-run recipes for real-cluster field ownership and drift.
 - Add offline regression coverage in `tests/bats/` for Bash helper behavior
   that can be exercised without a real cluster. Keep Lima and live recipes for

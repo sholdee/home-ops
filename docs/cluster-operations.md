@@ -93,6 +93,11 @@ Lima app profile:
 
 | Goal | Recipe |
 | --- | --- |
+| Create Longhorn-focused VMs | `just lima-longhorn-create` |
+| Run Ansible on Longhorn-focused VMs | `just lima-longhorn-ansible` |
+| Run Longhorn-focused bootstrap | `just lima-longhorn-bootstrap` |
+| Validate Longhorn checksum workload | `just lima-longhorn-validate` |
+| Full fresh Longhorn flow | `just lima-longhorn-fresh` |
 | Create app-sized VMs | `just lima-apps-create` |
 | Run Ansible on app-sized VMs | `just lima-apps-ansible` |
 | Run app-profile bootstrap | `just lima-apps-bootstrap` |
@@ -143,9 +148,10 @@ Use the smallest validation that covers the change:
 2. `just kind-fresh` for clean Kubernetes bootstrap ordering.
 3. `just kind-bootstrap-dry-run` for server-side validation after CRDs exist.
 4. `just lima-fresh` for Cilium takeover and core operators.
-5. `just lima-apps-fresh` for Longhorn, VolSync, CNPG, and app safety.
-6. `just bootstrap-audit` for active-context read-only inventory.
-7. `just bootstrap-dry-run` for active-context API/admission validation.
+5. `just lima-longhorn-fresh` for Longhorn storage lifecycle behavior.
+6. `just lima-apps-fresh` for VolSync, CNPG, restored apps, and app safety.
+7. `just bootstrap-audit` for active-context read-only inventory.
+8. `just bootstrap-dry-run` for active-context API/admission validation.
 
 Do not run a live non-dry-run bootstrap from an unmerged branch. Use dry-run
 from the branch, then let merged `master` and ArgoCD own steady state.
@@ -300,8 +306,50 @@ Longhorn block and RWX volumes can mount.
 
 ## Lima App Workflow
 
+Use the Longhorn-focused profile for node lifecycle work that only needs
+Longhorn and a real PVC. It is much lighter than the full app profile and is
+the preferred harness for replacement-loop tests.
+
+Run the Longhorn-focused flow:
+
+```sh
+just lima-longhorn-fresh
+```
+
+Or run it phase by phase:
+
+```sh
+just lima-longhorn-delete
+just lima-longhorn-create
+just lima-longhorn-ansible
+just lima-longhorn-bootstrap
+just lima-longhorn-validate
+```
+
+The Longhorn recipes set:
+
+```text
+LIMA_SERVER_COUNT=3
+LIMA_AGENT_COUNT=1
+LIMA_K3S_MASTER_TAINT=false
+LIMA_SERVER_CPUS=3
+LIMA_AGENT_CPUS=3
+LIMA_SERVER_MEMORY_GIB=4
+LIMA_AGENT_MEMORY_GIB=4
+LIMA_DISK_GIB=80
+LIMA_VALIDATE_APP_WAIT_SECONDS=2400
+```
+
+The `lima-longhorn` profile applies Cilium, Dragonfly Operator, Longhorn,
+external snapshotter, repo Longhorn storage classes, and a small checksum
+writer mounted on a `longhorn-retain` PVC. Validation checks that the workload
+is readable, the Longhorn volume is healthy, and no storage-corruption events
+were emitted.
+
 The app profile should use the app-sized Lima shape, not the smaller
-foundation shape.
+foundation shape. The default app shape is three untainted server VMs and one
+agent VM, each with enough memory for Longhorn rebuilds and app restores while
+keeping local host pressure manageable.
 
 Run the full app-sized flow:
 
@@ -322,15 +370,21 @@ just lima-apps-validate
 The app recipes set:
 
 ```text
-LIMA_AGENT_COUNT=4
-LIMA_AGENT_CPUS=4
-LIMA_AGENT_MEMORY_GIB=6
+LIMA_SERVER_COUNT=3
+LIMA_AGENT_COUNT=1
+LIMA_K3S_MASTER_TAINT=false
+LIMA_SERVER_CPUS=3
+LIMA_AGENT_CPUS=3
+LIMA_SERVER_MEMORY_GIB=5
+LIMA_AGENT_MEMORY_GIB=5
 LIMA_DISK_GIB=120
 LIMA_VALIDATE_APP_WAIT_SECONDS=3600
 ```
 
 The app-profile preflight requires at least `100GiB` allocatable ephemeral
-storage per schedulable worker.
+storage per schedulable node. The Longhorn-focused profile requires four
+schedulable nodes with at least `60GiB` allocatable ephemeral storage so one
+node can be removed while three Longhorn replica targets remain.
 
 To test app manifests from an unmerged branch, push the branch first:
 
@@ -530,6 +584,13 @@ just node-lima-uncordon home-ops-k3s-test-server-2
 For normal maintenance, use drain, reboot when needed, and uncordon.
 `longhorn-evict` is for node replacement.
 
+Node replacement waits for global Longhorn quiescence at the storage-sensitive
+gates. `node-drain` refuses to start a fresh replacement while another Longhorn
+node is evicting or unschedulable, `node-longhorn-evict` and `node-delete`
+wait for storage activity to settle, `node-join` waits before introducing the
+replacement node, and `node-uncordon` waits again before the next replacement.
+Do not start the next node until `node-uncordon` completes.
+
 `node-converge` is additive-only convenience after inventory edits. It joins
 fresh inventory nodes that are absent from Kubernetes, refuses deletes,
 renames, role changes, unhealthy existing nodes, pending cordon/taint
@@ -544,7 +605,8 @@ embedded-etcd member removal from a remaining control-plane.
 
 Join starts K3s with `node.home-ops.sh/joining=true:NoSchedule`, then cordons
 the node. Uncordon removes the temporary taint, waits for Cilium, checks
-Longhorn scheduling readiness, and restores scheduling.
+Longhorn scheduling readiness, restores scheduling, and waits for Longhorn to
+be healthy and idle.
 
 Control-plane joins also install and verify the K3s kube-proxy disable drop-in
 when the derived Cilium config has `kube_proxy_replacement: true`.
@@ -682,6 +744,13 @@ For Lima, you can also pipe the seed manifest to a stdin recipe:
 ```sh
 op read op://Kubernetes/op-credentials/op-credentials.yaml \
   | just lima-bootstrap-stdin
+```
+
+For Longhorn-focused Lima runs:
+
+```sh
+op read op://Kubernetes/op-credentials/op-credentials.yaml \
+  | just lima-longhorn-bootstrap-stdin
 ```
 
 For Lima app-profile runs:

@@ -87,6 +87,8 @@ node_assert_kubernetes_worker "$node_json" "$kubernetes_node_name"
 node_assert_cordoned "$node_json" "$kubernetes_node_name"
 node_assert_no_ordinary_pods "$context" "$kubernetes_node_name"
 node_assert_longhorn_empty_for_delete "$context" "$kubernetes_node_name"
+node_log "waiting for Longhorn storage to be idle before deleting Kubernetes node"
+node_wait_for_longhorn_storage_idle "$context"
 
 node_confirm "$yes" "delete ${kubernetes_node_name} from ${context}"
 node_log "stopping k3s agent on ${inventory_node_name}"

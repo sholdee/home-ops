@@ -126,6 +126,69 @@ node_wait_for_longhorn_safe() {
   done
 }
 
+node_wait_for_stable_assertion() {
+  local timeout="$1"
+  local stable_for="$2"
+  shift 2
+  local deadline=$((SECONDS + timeout))
+  local stable_since=""
+
+  while true; do
+    if ("$@") >/dev/null 2>&1; then
+      if [[ -z "$stable_since" ]]; then
+        stable_since="$SECONDS"
+      fi
+      if ((SECONDS - stable_since >= stable_for)); then
+        return 0
+      fi
+    else
+      stable_since=""
+    fi
+
+    if ((SECONDS >= deadline)); then
+      "$@"
+      return 1
+    fi
+    sleep 5
+  done
+}
+
+node_wait_for_longhorn_storage_idle() {
+  local context="$1"
+  local timeout="${2:-1800}"
+  local stable_for="${3:-60}"
+  local state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  node_wait_for_stable_assertion \
+    "$timeout" \
+    "$stable_for" \
+    node_assert_longhorn_storage_idle \
+    "$context"
+}
+
+node_wait_for_longhorn_replacement_ready() {
+  local context="$1"
+  local timeout="${2:-1800}"
+  local stable_for="${3:-60}"
+  local state
+
+  state="$(node_assert_longhorn_discovery "$context")"
+  if [[ "$state" == absent ]]; then
+    return
+  fi
+
+  node_wait_for_stable_assertion \
+    "$timeout" \
+    "$stable_for" \
+    node_assert_longhorn_replacement_ready \
+    "$context"
+}
+
 node_wait_for_longhorn_maintenance_safe() {
   local context="$1"
   local node="$2"
@@ -219,7 +282,7 @@ node_ready_control_plane_internal_ip() {
   ' <<<"$node_json"
 }
 
-node_alternate_ready_control_plane_inventory_node() {
+node_alternate_ready_control_plane_inventory_nodes() {
   local profile="$1"
   local context="$2"
   local target_kubernetes_node="$3"
@@ -235,21 +298,24 @@ node_alternate_ready_control_plane_inventory_node() {
     if [[ "$probe_kubernetes_node" != "$target_kubernetes_node" ]] &&
       node_contains_line "$probe_kubernetes_node" "${ready_control_planes[@]}"; then
       printf '%s\n' "$inventory_master"
-      return 0
     fi
   done
 
-  if node_bool "$allow_inventory_fallback"; then
+  if [[ ${#ready_control_planes[@]} -eq 0 ]] && node_bool "$allow_inventory_fallback"; then
     for inventory_master in "${inventory_masters[@]}"; do
       probe_kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_master" "$inventory_master")"
       if [[ "$probe_kubernetes_node" != "$target_kubernetes_node" ]]; then
         printf '%s\n' "$inventory_master"
-        return 0
       fi
     done
   fi
+}
 
-  return 1
+node_alternate_ready_control_plane_inventory_node() {
+  local candidate
+  candidate="$(node_alternate_ready_control_plane_inventory_nodes "$@" | sed -n '1p')"
+  [[ -n "$candidate" ]] || return 1
+  printf '%s\n' "$candidate"
 }
 
 node_alternate_ready_control_plane_internal_ip() {
