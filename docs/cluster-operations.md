@@ -150,6 +150,10 @@ Use the smallest validation that covers the change:
 Do not run a live non-dry-run bootstrap from an unmerged branch. Use dry-run
 from the branch, then let merged `master` and ArgoCD own steady state.
 
+For PVC corruption where VolSync clone pods, application mounts, or CNPG
+replica joins fail with storage errors, use
+[PVC Recovery](pvc-recovery.md).
+
 ## Cluster Inspection
 
 Use `context` for a quick read-only look at the target context:
