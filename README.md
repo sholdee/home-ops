@@ -65,16 +65,32 @@ All checks feed into a single required status gate for branch protection and aut
 
 ### Cluster Bootstrap & Lifecycle 🚀
 
-This repository owns the operational path for building and maintaining the
-cluster, not just steady-state GitOps manifests. The bootstrap framework under
-`hack/bootstrap/` can converge K3s nodes, install the minimal dependencies
-needed for ArgoCD takeover, validate bootstrap flows in kind and Lima, and run
-safe worker/control-plane node lifecycle operations.
+This repository also owns the operational platform for building, testing, and
+maintaining the physical cluster. The framework under `hack/bootstrap/` combines
+small Bash phase runners, an in-repo Ansible backend, `just` recipes, and
+kind/Lima harnesses so cluster lifecycle work can be rehearsed and repeated
+from source control.
 
-Bootstrap stays narrower than steady-state GitOps: it prepares the cluster only
-until ArgoCD can reconcile the normal app graph. See
-[hack/bootstrap/README.md](hack/bootstrap/README.md) for the framework overview
-and linked operator runbooks.
+It can prepare fresh Debian-family Raspberry Pi nodes, install K3s, seed the
+minimum secrets, bootstrap the dependencies needed for ArgoCD takeover, and
+then let ArgoCD reconcile the steady-state application graph. The same tooling
+also validates bootstrap ordering in disposable kind and Lima clusters,
+including app-profile checks for Longhorn, VolSync, CNPG restores, and
+external-writer safety.
+
+For existing clusters, the node lifecycle commands cover status, drain, safe
+reboot, Longhorn replica eviction, Kubernetes node deletion, embedded-etcd
+member cleanup, inventory-based joins, temporary scheduling taints, and
+uncordon/finalization. Raspberry Pi nodes can also be replaced in place by
+building a per-node OS image, serving it from another cluster node, staging a
+one-shot initramfs reimage payload, rebooting into the network reimage, and
+joining the rebuilt node back into K3s.
+
+Bootstrap stays narrower than steady-state GitOps: it prepares only the
+dependencies required for ArgoCD takeover, then normal workloads return to
+ArgoCD. See [hack/bootstrap/README.md](hack/bootstrap/README.md) for the
+framework overview and [docs/cluster-operations.md](docs/cluster-operations.md)
+for the operator runbook.
 
 ### ArgoCD Project Structure 🏗️
 
