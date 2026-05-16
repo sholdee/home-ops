@@ -7,8 +7,16 @@ INTERVAL_SECONDS=${INTERVAL_SECONDS:-86400}
 
 log(){ echo "$(date -u +"%Y-%m-%dT%H:%M:%SZ") [INFO] $*"; }
 
+ensure_backup_state(){
+  mkdir -p "$BACKUP_DIR"
+  if [ ! -e "$META_FILE" ]; then
+    printf '{}\n' > "$META_FILE"
+  fi
+}
+
 cleanup(){
   log "Cleanup job started"
+  ensure_backup_state
 
   find "$BACKUP_DIR" -maxdepth 1 -type f -name '*.unf' -mtime +7 -print0 \
     | while IFS= read -r -d '' file; do
@@ -22,7 +30,7 @@ cleanup(){
         if [ ! -e "$BACKUP_DIR/$name" ]; then
           log "Removing metadata for missing file: $name"
           tmp=$(mktemp)
-          jq "del(.\"$name\")" "$META_FILE" > "$tmp"
+          jq --arg name "$name" 'del(.[$name])' "$META_FILE" > "$tmp"
           mv "$tmp" "$META_FILE"
         fi
       done
