@@ -58,5 +58,6 @@ patches:
       - op: replace
         path: /metadata/name
         value: portainer-pvc
-      - op: remove
-        path: /spec/dataSourceRef
+      - op: replace
+        path: /spec/dataSourceRef/name
+        value: portainer-bootstrap
