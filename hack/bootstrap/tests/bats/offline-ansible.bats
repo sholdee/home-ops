@@ -98,7 +98,9 @@ assert_file_contains_before() {
   [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
   [[ "$(yq -r '.home_ops_github_runner_crictl_timeout' "$home_ops_vars")" == "30s" ]]
   [[ "$(yq -r '.home_ops_k3s_embedded_registry' "$home_ops_vars")" == "true" ]]
+  [[ "$(yq -r '.home_ops_k3s_etcd_expose_metrics' "$home_ops_vars")" == "true" ]]
   assert_file_contains "$home_ops_vars" '--embedded-registry'
+  assert_file_contains "$home_ops_vars" '--etcd-expose-metrics'
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_interval_in_minutes' "$home_ops_vars")" == "2" ]]
@@ -282,12 +284,32 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'templates/registries.yaml.j2'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'home_ops_k3s_registries_file'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/registries.yml" 'register: home_ops_k3s_registries_config'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/first-server.yml" 'home_ops_k3s_registries_config.changed'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-agents.yml" 'home_ops_k3s_registries_config.changed'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml" 'home_ops_k3s_registries_config.changed'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" '--embedded-registry'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'mirrors:'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/registries.yaml.j2" 'home_ops_k3s_registry_mirrors'
+}
+
+@test "K3s service tasks do not restart already-running nodes for config drift" {
+  local first_server join_agents join_servers task
+
+  first_server="${ROOT}/hack/bootstrap/ansible/home-ops/tasks/k3s/first-server.yml"
+  join_agents="${ROOT}/hack/bootstrap/ansible/home-ops/tasks/k3s/join-agents.yml"
+  join_servers="${ROOT}/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml"
+
+  for task in \
+    "$first_server" \
+    "$join_agents" \
+    "$join_servers"; do
+    assert_file_contains "$task" 'state: started'
+    assert_file_not_contains "$task" "'restarted'"
+  done
+
+  assert_file_not_contains "$first_server" 'state: restarted'
+  assert_file_not_contains "$join_agents" 'state: restarted'
+  [[ "$(grep -c 'state: restarted' "$join_servers")" == "1" ]]
+  assert_file_contains "$join_servers" 'Restart fresh joining K3s server after kube-proxy disable config'
+  assert_file_contains "$join_servers" 'not (home_ops_k3s_installed | default(false) | bool)'
+  assert_file_contains "$join_servers" 'home_ops_kube_proxy_config.changed | default(false) | bool'
 }
 
 @test "static Ansible lifecycle invariants are present" {
@@ -333,7 +355,7 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-join.yml" 'tasks/k3s/kube-proxy-disable.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" 'tasks/k3s/kube-proxy-disable.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml" '../home-ops/tasks/k3s/kube-proxy-disable.yml'
-  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml" 'home_ops_kube_proxy_config.changed'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/join-servers.yml" 'home_ops_kube_proxy_config.changed | default(false) | bool'
   assert_file_contains "$ROOT/hack/bootstrap/nodes/control-plane-join.sh" 'node_assert_kube_proxy_disable_dropin'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/host-services.sh" 'home-ops/host-services.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/rpi-reporter.yml" 'home_ops_rpi_reporter_update_existing'

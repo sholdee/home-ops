@@ -34,6 +34,7 @@ home_ops_k3s_runtime_dir: /var/lib/rancher/k3s/server
 home_ops_k3s_config_dir: /etc/rancher/k3s
 home_ops_k3s_token_file: /etc/rancher/k3s/home-ops-token
 home_ops_k3s_embedded_registry: true
+home_ops_k3s_etcd_expose_metrics: true
 home_ops_k3s_registries_file: "{{ home_ops_k3s_config_dir }}/registries.yaml"
 home_ops_k3s_registry_mirrors:
   docker.io:
@@ -91,11 +92,13 @@ home_ops_fsnotify_max_queued_events: 65536
 home_ops_first_server_args: >-
   {{ '--cluster-init' if (groups[group_name_master] | length) > 1 else '' }}
   {{ '--embedded-registry' if home_ops_k3s_embedded_registry | bool else '' }}
+  {{ '--etcd-expose-metrics' if ((home_ops_k3s_etcd_expose_metrics | bool) and ((groups[group_name_master] | length) > 1)) else '' }}
   --token-file {{ home_ops_k3s_token_file }}
   {{ extra_server_args | default('') }}
 home_ops_join_server_args: >-
   --server https://{{ home_ops_first_master_join_ip }}:6443
   {{ '--embedded-registry' if home_ops_k3s_embedded_registry | bool else '' }}
+  {{ '--etcd-expose-metrics' if ((home_ops_k3s_etcd_expose_metrics | bool) and ((groups[group_name_master] | length) > 1)) else '' }}
   --token-file {{ home_ops_k3s_token_file }}
   {{ extra_server_args | default('') }}
 home_ops_agent_args: >-

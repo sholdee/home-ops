@@ -21,14 +21,16 @@
     name: "{{ home_ops_k3s_server_service_name }}"
     daemon_reload: true
     enabled: true
-    state: >-
-      {{
-        'restarted'
-        if home_ops_k3s_server_service.changed
-        or (home_ops_kube_proxy_config.changed | default(false))
-        or (home_ops_k3s_registries_config.changed | default(false))
-        else 'started'
-      }}
+    state: started
+
+- name: Restart fresh joining K3s server after kube-proxy disable config
+  ansible.builtin.systemd:
+    name: "{{ home_ops_k3s_server_service_name }}"
+    daemon_reload: true
+    state: restarted
+  when:
+    - not (home_ops_k3s_installed | default(false) | bool)
+    - home_ops_kube_proxy_config.changed | default(false) | bool
 
 - name: Wait for local K3s API port
   ansible.builtin.wait_for:
