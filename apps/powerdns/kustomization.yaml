@@ -19,3 +19,20 @@ resources:
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
+patches:
+  - target:
+      group: postgresql.cnpg.io
+      version: v1
+      kind: Cluster
+      name: powerdns-db
+    patch: |-
+      - op: remove
+        path: /spec/bootstrap/initdb
+      - op: add
+        path: /spec/bootstrap/recovery
+        value:
+          source: barman-cloud
+          database: powerdns
+          owner: powerdns
+          secret:
+            name: powerdns-db-app-user
