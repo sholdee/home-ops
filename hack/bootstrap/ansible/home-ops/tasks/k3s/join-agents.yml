@@ -19,12 +19,7 @@
     name: "{{ home_ops_k3s_agent_service_name }}"
     daemon_reload: true
     enabled: true
-    state: >-
-      {{
-        'restarted'
-        if home_ops_k3s_agent_service.changed or (home_ops_k3s_registries_config.changed | default(false))
-        else 'started'
-      }}
+    state: started
 
 - name: Wait for joined worker node object
   ansible.builtin.command: "{{ k3s_kubectl_binary }} get node/{{ home_ops_node_name }}"
