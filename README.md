@@ -3,7 +3,7 @@
 # K3s Home Operations
 
 ...managed with<br />
-🤖 ArgoCD, Renovate, and GitHub Actions 🤖
+🤖 ArgoCD, Ansible, Renovate, and GitHub Actions 🤖
 
 </div>
 
@@ -33,11 +33,13 @@
 
 ## Overview 📔
 
-This repository contains the configurations for my home operations k3s cluster.
+This repository defines my Raspberry Pi K3s self-hosting platform, including
+bootable node images, Ansible host convergence, and ArgoCD-managed Kubernetes
+applications.
 
 My applications are managed in GitOps fashion with ArgoCD, Renovate, and GitHub webhooks. Repository push events trigger a webhook to ArgoCD, causing it to immediately sync the cluster state with this repository.
 
-Renovate continuously scans the repository and submits pull requests for dependency updates. This includes upgrades to K3s itself via [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller).
+Renovate continuously scans the repository and submits pull requests for dependency updates, including K3s version upgrades delivered by [system-upgrade-controller](https://github.com/rancher/system-upgrade-controller). A scheduled OS update workflow also opens opt-in `system-upgrade-controller` plan PRs for node package upgrades.
 
 A unified CI pipeline runs on all pull requests, conditionally triggering the appropriate checks:
 
@@ -59,7 +61,7 @@ All checks feed into a single required status gate for branch protection and aut
 └── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
 📁 components/        # Reusable Kustomize Components (namespace pull secrets, Dragonfly, VolSync backups)
 📁 docs/              # Operational documentation
-📁 hack/bootstrap/    # Local bootstrap tooling for fresh clusters before ArgoCD takeover
+📁 hack/bootstrap/    # Bootstrap, node lifecycle, and Raspberry Pi reimage tooling
 📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
 ```
 
@@ -160,7 +162,7 @@ erDiagram
 
 - **ArgoCD** — GitOps continuous delivery
 - **Stakater Reloader** — rolling restarts on Secret/ConfigMap changes
-- **System Upgrade Controller** — automated K3s version upgrades
+- **System Upgrade Controller** — automated K3s and OS package upgrades
 - **[CRD Schema Publisher](https://github.com/sholdee/crd-schema-publisher)** — watches for CRD changes and publishes JSON schemas to Cloudflare Pages
 
 #### Secrets & Certificates
