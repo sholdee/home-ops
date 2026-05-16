@@ -53,6 +53,5 @@ patches:
       - op: replace
         path: /metadata/name
         value: codeserver-pvc
-      - op: replace
-        path: /spec/dataSourceRef/name
-        value: codeserver-bootstrap
+      - op: remove
+        path: /spec/dataSourceRef

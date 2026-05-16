@@ -54,6 +54,5 @@ patches:
       - op: replace
         path: /metadata/name
         value: appdaemon-pvc
-      - op: replace
-        path: /spec/dataSourceRef/name
-        value: appdaemon-bootstrap
+      - op: remove
+        path: /spec/dataSourceRef

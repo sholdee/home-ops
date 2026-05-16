@@ -57,6 +57,5 @@ patches:
       - op: replace
         path: /spec/accessModes/0
         value: ReadWriteMany
-      - op: replace
-        path: /spec/dataSourceRef/name
-        value: hass-bootstrap
+      - op: remove
+        path: /spec/dataSourceRef
