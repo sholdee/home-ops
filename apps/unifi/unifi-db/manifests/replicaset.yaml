@@ -46,6 +46,10 @@ spec:
           db: unifi_audit
         - name: dbOwner
           db: unifi_audit
+        - name: readWrite
+          db: unifi_restore
+        - name: dbOwner
+          db: unifi_restore
       scramCredentialsSecretName: unifi-db-scram
       connectionStringSecretNamespace: unifi
   additionalMongodConfig:
