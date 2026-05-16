@@ -20,8 +20,12 @@ spec:
   superuserSecret:
     name: hass-db-superuser
   storage:
-    storageClass: longhorn-noreplicas
+    storageClass: local-path
     size: 14Gi
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
   bootstrap:
     recovery:
       source: &src barman-cloud

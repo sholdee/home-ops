@@ -20,8 +20,12 @@ spec:
   superuserSecret:
     name: powerdns-db-superuser
   storage:
-    storageClass: longhorn-noreplicas
+    storageClass: local-path
     size: 2Gi
+  affinity:
+    enablePodAntiAffinity: true
+    podAntiAffinityType: required
+    topologyKey: kubernetes.io/hostname
   bootstrap:
     initdb:
       database: powerdns
