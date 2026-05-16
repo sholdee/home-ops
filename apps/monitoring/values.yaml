@@ -19,11 +19,11 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: local-path
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 50Gi
+              storage: 25Gi
     resources:
       requests:
         cpu: 300m
@@ -65,7 +65,11 @@ kubelet:
   serviceMonitor:
     relabelings:
       # Fix default kubelet dashboard using wrong instance label value
-      - sourceLabels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]
+      - sourceLabels:
+          [
+            __meta_kubernetes_endpoint_address_target_kind,
+            __meta_kubernetes_endpoint_address_target_name,
+          ]
         regex: Node;(.*)
         targetLabel: node
         action: replace
