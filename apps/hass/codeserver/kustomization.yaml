@@ -4,6 +4,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
 components:
@@ -19,7 +20,13 @@ patches:
         value: codeserver
       - op: replace
         path: /spec/sourcePVC
-        value: codeserver-pvc
+        value: codeserver-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: codeserver-volsync-b2

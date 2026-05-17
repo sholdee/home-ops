@@ -6,6 +6,7 @@ namespace: portainer
 resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
@@ -24,7 +25,13 @@ patches:
         value: portainer
       - op: replace
         path: /spec/sourcePVC
-        value: portainer-pvc
+        value: portainer-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: portainer-volsync-b2

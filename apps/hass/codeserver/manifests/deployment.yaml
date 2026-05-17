@@ -6,7 +6,7 @@ metadata:
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -82,15 +82,15 @@ spec:
       volumes:
       - name: codeserver
         persistentVolumeClaim:
-          claimName: codeserver-pvc
+          claimName: codeserver-pvc-local
       - name: appdaemon-data
         persistentVolumeClaim:
-          claimName: appdaemon-pvc
+          claimName: appdaemon-pvc-local
       - name: hass-data
         persistentVolumeClaim:
-          claimName: hass-pvc
+          claimName: hass-pvc-local
       - name: zwave-data
         persistentVolumeClaim:
-          claimName: zwave-pvc
+          claimName: zwave-pvc-local
       - name: tmp
         emptyDir: {}

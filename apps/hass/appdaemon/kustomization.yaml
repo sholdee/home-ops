@@ -4,6 +4,7 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/externalsecret.yaml
   - manifests/httproute.yaml
@@ -20,7 +21,13 @@ patches:
         value: appdaemon
       - op: replace
         path: /spec/sourcePVC
-        value: appdaemon-pvc
+        value: appdaemon-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: appdaemon-volsync-b2

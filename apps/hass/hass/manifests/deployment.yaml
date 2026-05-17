@@ -4,7 +4,7 @@ metadata:
   name: hass
   namespace: hass
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -55,4 +55,4 @@ spec:
       volumes:
         - name: hass-data
           persistentVolumeClaim:
-            claimName: hass-pvc
+            claimName: hass-pvc-local
