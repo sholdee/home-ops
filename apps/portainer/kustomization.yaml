@@ -62,9 +62,8 @@ patches:
       kind: PersistentVolumeClaim
       name: app-pvc
     patch: |-
-      - op: replace
-        path: /metadata/name
-        value: portainer-pvc
-      - op: replace
-        path: /spec/dataSourceRef/name
-        value: portainer-bootstrap
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: app-pvc

@@ -57,8 +57,8 @@ patches:
       kind: PersistentVolumeClaim
       name: app-pvc
     patch: |-
-      - op: replace
-        path: /metadata/name
-        value: codeserver-pvc
-      - op: remove
-        path: /spec/dataSourceRef
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: app-pvc

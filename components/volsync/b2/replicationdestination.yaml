@@ -17,14 +17,13 @@ spec:
     capacity: 5Gi
     cleanupCachePVC: true
     cleanupTempPVC: true
-    copyMethod: Snapshot
+    copyMethod: Direct
     enableFileDeletion: false
     moverSecurityContext:
       runAsUser: 65534
       runAsGroup: 65534
       fsGroup: 65534
     repository: app-volsync-b2
-    storageClassName: longhorn-retain
-    volumeSnapshotClassName: longhorn
+    storageClassName: local-path
   trigger:
     manual: restore-once

@@ -11,7 +11,7 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: "longhorn"
+  storageClassName: local-path
   dataSourceRef:
     apiGroup: volsync.backube
     kind: ReplicationDestination

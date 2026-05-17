@@ -43,7 +43,8 @@ helmCharts:
 
 ## VolSync Backup Setup
 
-Apps needing persistent data backup include two components and apply patches:
+Apps needing persistent data backup include two components and apply patches.
+The default PVC and VolSync source use `local-path` with direct Restic copies:
 
 ```yaml
 components:

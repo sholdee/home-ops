@@ -58,11 +58,8 @@ patches:
       kind: PersistentVolumeClaim
       name: app-pvc
     patch: |-
-      - op: replace
-        path: /metadata/name
-        value: zwave-pvc
-      - op: replace
-        path: /spec/accessModes/0
-        value: ReadWriteMany
-      - op: remove
-        path: /spec/dataSourceRef
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: app-pvc
