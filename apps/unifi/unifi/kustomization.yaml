@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/externalsecret.yaml
@@ -30,7 +31,13 @@ patches:
         value: unifi
       - op: replace
         path: /spec/sourcePVC
-        value: unifi-pvc
+        value: unifi-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: unifi-volsync-b2

@@ -4,7 +4,7 @@ metadata:
   name: portainer
   namespace: portainer
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -62,7 +62,7 @@ spec:
       volumes:
       - name: portainer-data
         persistentVolumeClaim:
-          claimName: portainer-pvc
+          claimName: portainer-pvc-local
       - name: external-wildcard
         secret:
           secretName: external-wildcard

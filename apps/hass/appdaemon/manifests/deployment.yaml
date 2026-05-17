@@ -6,7 +6,7 @@ metadata:
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
-  replicas: 0
+  replicas: 1
   strategy:
     type: Recreate
   selector:
@@ -70,6 +70,6 @@ spec:
       volumes:
       - name: appdaemon-data
         persistentVolumeClaim:
-          claimName: appdaemon-pvc
+          claimName: appdaemon-pvc-local
       - name: tmp
         emptyDir: {}

@@ -5,6 +5,7 @@ kind: Kustomization
 resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
 components:
@@ -20,7 +21,13 @@ patches:
         value: hass
       - op: replace
         path: /spec/sourcePVC
-        value: hass-pvc
+        value: hass-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: hass-volsync-b2

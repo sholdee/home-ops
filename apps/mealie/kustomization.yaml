@@ -6,6 +6,7 @@ namespace: mealie
 resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
+  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
@@ -24,7 +25,13 @@ patches:
         value: mealie
       - op: replace
         path: /spec/sourcePVC
-        value: mealie-pvc
+        value: mealie-pvc-local
+      - op: replace
+        path: /spec/restic/copyMethod
+        value: Direct
+      - op: replace
+        path: /spec/restic/storageClassName
+        value: local-path
       - op: replace
         path: /spec/restic/repository
         value: mealie-volsync-b2
