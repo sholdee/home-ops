@@ -70,4 +70,4 @@ spec:
       volumes:
       - name: zwave-data
         persistentVolumeClaim:
-          claimName: zwave-pvc-local
+          claimName: zwave-pvc

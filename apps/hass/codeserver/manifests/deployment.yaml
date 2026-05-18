@@ -82,15 +82,15 @@ spec:
       volumes:
       - name: codeserver
         persistentVolumeClaim:
-          claimName: codeserver-pvc-local
+          claimName: codeserver-pvc
       - name: appdaemon-data
         persistentVolumeClaim:
-          claimName: appdaemon-pvc-local
+          claimName: appdaemon-pvc
       - name: hass-data
         persistentVolumeClaim:
-          claimName: hass-pvc-local
+          claimName: hass-pvc
       - name: zwave-data
         persistentVolumeClaim:
-          claimName: zwave-pvc-local
+          claimName: zwave-pvc
       - name: tmp
         emptyDir: {}

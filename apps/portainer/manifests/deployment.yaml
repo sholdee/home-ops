@@ -62,7 +62,7 @@ spec:
       volumes:
       - name: portainer-data
         persistentVolumeClaim:
-          claimName: portainer-pvc-local
+          claimName: portainer-pvc
       - name: external-wildcard
         secret:
           secretName: external-wildcard

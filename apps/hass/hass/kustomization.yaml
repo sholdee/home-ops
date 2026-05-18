@@ -21,13 +21,7 @@ patches:
         value: hass
       - op: replace
         path: /spec/sourcePVC
-        value: hass-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: hass-pvc
       - op: replace
         path: /spec/restic/repository
         value: hass-volsync-b2

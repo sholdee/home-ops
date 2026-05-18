@@ -25,13 +25,7 @@ patches:
         value: mealie
       - op: replace
         path: /spec/sourcePVC
-        value: mealie-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: mealie-pvc
       - op: replace
         path: /spec/restic/repository
         value: mealie-volsync-b2

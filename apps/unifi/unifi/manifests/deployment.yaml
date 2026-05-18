@@ -153,7 +153,7 @@ spec:
       volumes:
         - name: unifi-data
           persistentVolumeClaim:
-            claimName: unifi-pvc-local
+            claimName: unifi-pvc
         - name: localtime
           hostPath:
             path: /etc/localtime

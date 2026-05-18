@@ -55,4 +55,4 @@ spec:
       volumes:
         - name: hass-data
           persistentVolumeClaim:
-            claimName: hass-pvc-local
+            claimName: hass-pvc

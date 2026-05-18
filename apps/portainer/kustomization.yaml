@@ -25,13 +25,7 @@ patches:
         value: portainer
       - op: replace
         path: /spec/sourcePVC
-        value: portainer-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: portainer-pvc
       - op: replace
         path: /spec/restic/repository
         value: portainer-volsync-b2

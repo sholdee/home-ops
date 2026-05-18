@@ -31,13 +31,7 @@ patches:
         value: unifi
       - op: replace
         path: /spec/sourcePVC
-        value: unifi-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: unifi-pvc
       - op: replace
         path: /spec/restic/repository
         value: unifi-volsync-b2
