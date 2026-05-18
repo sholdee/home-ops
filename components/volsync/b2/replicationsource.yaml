@@ -14,7 +14,7 @@ spec:
       - ReadWriteOnce
     cacheCapacity: 1Gi
     cacheStorageClassName: local-path
-    copyMethod: Direct
+    copyMethod: Clone
     moverSecurityContext:
       fsGroup: 65534
       runAsGroup: 65534
@@ -24,8 +24,9 @@ spec:
     retain:
       daily: 14
       hourly: 24
-    storageClassName: local-path
+    storageClassName: longhorn
     unlock: u2
+    volumeSnapshotClassName: longhorn
   sourcePVC: app-pvc
   trigger:
     schedule: "0 6 * * *"

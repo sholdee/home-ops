@@ -10,6 +10,7 @@ parameters:
   dataLocality: best-effort
   fromBackup: ''
   fsType: ext4
+  mkfsParams: '-b 16384'
   numberOfReplicas: '1'
   staleReplicaTimeout: '30'
   unmapMarkSnapChainRemoved: ignored
@@ -28,6 +29,7 @@ parameters:
   dataLocality: best-effort
   fromBackup: ''
   fsType: xfs
+  mkfsParams: '-b size=16384'
   numberOfReplicas: '1'
   staleReplicaTimeout: '30'
   unmapMarkSnapChainRemoved: ignored
@@ -46,6 +48,7 @@ parameters:
   dataLocality: best-effort
   fromBackup: ''
   fsType: ext4
+  mkfsParams: '-b 16384'
   numberOfReplicas: '3'
   staleReplicaTimeout: '30'
   unmapMarkSnapChainRemoved: ignored

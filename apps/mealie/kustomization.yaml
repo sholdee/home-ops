@@ -62,8 +62,12 @@ patches:
       kind: PersistentVolumeClaim
       name: app-pvc
     patch: |-
-      $patch: delete
-      apiVersion: v1
-      kind: PersistentVolumeClaim
-      metadata:
-        name: app-pvc
+      - op: replace
+        path: /metadata/name
+        value: mealie-pvc
+      - op: replace
+        path: /spec/dataSourceRef/name
+        value: mealie-bootstrap
+      - op: replace
+        path: /spec/accessModes/0
+        value: ReadWriteMany
