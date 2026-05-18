@@ -29,4 +29,5 @@ spec:
     volumeSnapshotClassName: longhorn
   sourcePVC: app-pvc
   trigger:
+    manual: manual-20260518T232320Z
     schedule: "0 6 * * *"
