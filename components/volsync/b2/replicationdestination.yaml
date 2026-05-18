@@ -27,4 +27,4 @@ spec:
     storageClassName: longhorn-retain
     volumeSnapshotClassName: longhorn
   trigger:
-    manual: restore-once
+    manual: restore-20260518T224205Z
