@@ -28,6 +28,19 @@ type: Opaque
 ---
 apiVersion: v1
 stringData:
+  name: longhorn
+  project: k3s
+  type: helm
+  url: https://charts.longhorn.io
+kind: Secret
+metadata:
+  labels:
+    argocd.argoproj.io/secret-type: repository
+  name: longhorn
+type: Opaque
+---
+apiVersion: v1
+stringData:
   name: cilium
   project: k3s
   type: helm

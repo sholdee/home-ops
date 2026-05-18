@@ -13,8 +13,6 @@ spec:
         revision: master
         directories:
           - path: "apps/*"
-          - path: "apps/longhorn-system"
-            exclude: true
   template:
     metadata:
       name: "{{.path.basename}}"

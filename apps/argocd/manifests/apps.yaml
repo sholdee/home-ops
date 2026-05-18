@@ -250,6 +250,55 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: longhorn
+spec:
+  destination:
+    name: in-cluster
+    namespace: longhorn-system
+  ignoreDifferences:
+    - group: "*"
+      kind: CustomResourceDefinition
+      jsonPointers:
+        - /spec/preserveUnknownFields
+  project: k3s
+  source:
+    chart: longhorn
+    helm:
+      valuesObject:
+        preUpgradeChecker:
+          jobEnabled: false
+        persistence:
+          defaultMkfsParams: "-b 16384"
+        defaultSettings:
+          defaultDataLocality: best-effort
+          concurrentAutomaticEngineUpgradePerNodeLimit: "2"
+          nodeDownPodDeletionPolicy: delete-both-statefulset-and-deployment-pod
+          nodeDrainPolicy: block-for-eviction-if-contains-last-replica
+          replicaAutoBalance: best-effort
+          backupTarget: "nfs://10.2.0.110:/volume1/longhorn"
+          backupTargetCredentialSecret: ""
+          backupstorePollInterval: "3600"
+          removeSnapshotsDuringFilesystemTrim: "true"
+        metrics:
+          serviceMonitor:
+            enabled: "true"
+        networkPolicies:
+          enabled: false
+          type: "k3s"
+    repoURL: https://charts.longhorn.io
+    targetRevision: 1.11.2
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: reloader
 spec:
   destination:

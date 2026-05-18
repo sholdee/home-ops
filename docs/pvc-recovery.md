@@ -25,6 +25,12 @@ Common symptoms:
 - Keep temporary manifests under `hack/bootstrap/.out/` or another ignored
   path.
 - After any recovery, remove live-only patches so ArgoCD returns to Git state.
+- Longhorn PVCs on Raspberry Pi 5 Trixie nodes should be created with a 16 KiB
+  filesystem block size; this was live-tested after replica rebuild and
+  reattach. Use `mkfsParams: "-b 16384"` for ext4 and
+  `mkfsParams: "-b size=16384"` for XFS. Existing Longhorn PVCs created with
+  4 KiB filesystem blocks should be restored or recreated, not trusted in
+  place.
 
 ## Initial Audit
 
