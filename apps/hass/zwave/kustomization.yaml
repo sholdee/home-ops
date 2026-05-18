@@ -21,13 +21,7 @@ patches:
         value: zwave
       - op: replace
         path: /spec/sourcePVC
-        value: zwave-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: zwave-pvc
       - op: replace
         path: /spec/restic/repository
         value: zwave-volsync-b2

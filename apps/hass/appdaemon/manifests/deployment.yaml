@@ -70,6 +70,6 @@ spec:
       volumes:
       - name: appdaemon-data
         persistentVolumeClaim:
-          claimName: appdaemon-pvc-local
+          claimName: appdaemon-pvc
       - name: tmp
         emptyDir: {}

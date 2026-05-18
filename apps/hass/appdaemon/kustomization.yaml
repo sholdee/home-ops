@@ -21,13 +21,7 @@ patches:
         value: appdaemon
       - op: replace
         path: /spec/sourcePVC
-        value: appdaemon-pvc-local
-      - op: replace
-        path: /spec/restic/copyMethod
-        value: Direct
-      - op: replace
-        path: /spec/restic/storageClassName
-        value: local-path
+        value: appdaemon-pvc
       - op: replace
         path: /spec/restic/repository
         value: appdaemon-volsync-b2
