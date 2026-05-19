@@ -300,18 +300,31 @@ mmdebstrap:
     - bash
     - busybox-static
     - ca-certificates
+    - conntrack
+    - cryptsetup
     - curl
+    - dnsutils
+    - dmsetup
     - e2fsprogs
+    - ethtool
     - git
+    - htop
     - initramfs-tools
     - iproute2
     - iptables
     - jq
+    - kmod
+    - lsof
+    - nano
     - nfs-common
+    - nvme-cli
     - open-iscsi
     - parted
     - python3
     - socat
+    - smartmontools
+    - strace
+    - tcpdump
     - xz-utils
     - zstd
 EOF
