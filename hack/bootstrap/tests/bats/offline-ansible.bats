@@ -359,6 +359,9 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/swap.yml" 'dphys-swapfile'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/cpu-governor.yml" 'home-ops-cpu-governor'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/templates/cilium-values.yaml.j2" "cilium_iface != 'auto'"
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'Install bootstrap Cilium when absent'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'when: home_ops_cilium_daemonset.rc != 0'
+  assert_file_not_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'cilium upgrade'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/reset-server-db.yml" 'db-before-rejoin'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/node-control-plane.sh" '--join-ip ADDRESS'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/kube-proxy-disable.yml" 'disable-kube-proxy: true'
