@@ -18,16 +18,26 @@ home_ops_supported_architectures:
 
 home_ops_debian_packages:
   - ca-certificates
+  - conntrack
   - cryptsetup
   - curl
+  - dnsutils
   - dmsetup
+  - ethtool
+  - htop
   - iproute2
   - iptables
   - jq
   - kmod
+  - lsof
+  - nano
   - nfs-common
+  - nvme-cli
   - open-iscsi
   - socat
+  - smartmontools
+  - strace
+  - tcpdump
 
 home_ops_kernel_modules:
   - br_netfilter
