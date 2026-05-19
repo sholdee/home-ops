@@ -5,7 +5,6 @@ kind: Kustomization
 resources:
   - manifests/namespace.yaml
   - manifests/deployment.yaml
-  - manifests/local-pvc.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/externalsecret.yaml
