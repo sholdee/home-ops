@@ -432,6 +432,11 @@ node-reimage-image-source node +args='':
 node-reimage-build node +args='':
     ./hack/bootstrap/nodes/reimage-build.sh --profile live '{{ node }}' {{ args }}
 
+# Run the full live reimage flow through join, leaving final uncordon to the operator.
+[group('node-reimage')]
+node-reimage-full node:
+    ./hack/bootstrap/nodes/reimage-full.sh --profile live --context default '{{ node }}'
+
 # Plan additive-only live node convergence from inventory.
 [group('node')]
 node-converge-plan:

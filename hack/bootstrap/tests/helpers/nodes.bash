@@ -786,6 +786,101 @@ EOF
   chmod +x "$fake_reimage_kubectl"
 }
 
+write_reimage_full_kubectl() {
+  fake_reimage_full_kubectl="${tmp}/kubectl-reimage-full"
+  cat > "$fake_reimage_full_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+node_json() {
+  local node_name="$1"
+  local role="$2"
+  local labels='{}'
+  if [[ "$role" == master ]]; then
+    labels='{"node-role.kubernetes.io/control-plane":"true"}'
+  fi
+  cat <<JSON
+{
+  "metadata": {
+    "name": "${node_name}",
+    "labels": ${labels}
+  },
+  "spec": {},
+  "status": {
+    "conditions": [
+      {"type": "Ready", "status": "True"}
+    ],
+    "nodeInfo": {
+      "kubeletVersion": "v1.35.4+k3s1"
+    }
+  }
+}
+JSON
+}
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd" && "${3:-}" == "volumes.longhorn.io" ]]; then
+  printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "volumes.longhorn.io" not found\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pv" ]]; then
+  cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "pv-local"},
+      "spec": {
+        "storageClassName": "local-path",
+        "local": {"path": "/var/lib/rancher/k3s/storage/pvc-local_default_app"},
+        "claimRef": {"namespace": "default", "name": "app-pvc"},
+        "nodeAffinity": {
+          "required": {
+            "nodeSelectorTerms": [
+              {
+                "matchExpressions": [
+                  {
+                    "key": "kubernetes.io/hostname",
+                    "operator": "In",
+                    "values": ["k3s-worker-0"]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
+  node_json "${2#node/}" master
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
+  node_json k3s-worker-0 node
+  exit 0
+fi
+
+printf 'unexpected fake reimage-full kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_reimage_full_kubectl"
+}
+
 write_reboot_kubectl() {
   fake_reboot_kubectl="${tmp}/kubectl-reboot"
   cat > "$fake_reboot_kubectl" <<'EOF'

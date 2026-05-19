@@ -101,6 +101,8 @@ if [[ "${NODE_REIMAGE_APPLY_SKIP_WAIT:-false}" == true ]]; then
 else
   node_log "waiting for SSH to go down on ${target_address}"
   node_reimage_wait_port_down "$target_address" 22 "$NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS"
+  node_log "SSH is down on ${target_address}; observing ping transitions during reimage"
+  node_reimage_observe_ping_reimage_progress "$target_address"
   node_log "waiting for SSH to come back on ${target_address}"
   node_reimage_wait_port_up "$target_address" 22 "$NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS"
   node_log "refreshing SSH host key for ${inventory_node}"

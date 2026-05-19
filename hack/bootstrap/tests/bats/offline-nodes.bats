@@ -138,6 +138,10 @@ EOF
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-build.sh --profile live 'k3s-worker-0' --ssh-public-key /tmp/ansiblekey.pub"
 
+  run just --dry-run node-reimage-full k3s-worker-0
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/reimage-full.sh --profile live --context default 'k3s-worker-0'"
+
   run just --dry-run node-reimage-stage k3s-worker-0 https://images.example/k3s-worker-0.img.xz "$sha" --force
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-stage.sh --profile live --context default 'k3s-worker-0' 'https://images.example/k3s-worker-0.img.xz' '${sha}' --force"
@@ -210,6 +214,126 @@ EOF
   assert_output_contains 'next_inventory_values:'
   assert_output_contains 'home_ops_reimage_pi_serial: 10000000deadbeef'
   assert_output_contains 'home_ops_reimage_disk_serial: nvme-deadbeef'
+}
+
+@test "node reimage full helpers report local-path PVs and prefer ready control-plane serve hosts" {
+  write_reimage_full_kubectl
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_local_path_pv_report test k3s-worker-0"
+  assert_success
+  assert_output_contains 'pv-local namespace=default pvc=app-pvc path=/var/lib/rancher/k3s/storage/pvc-local_default_app'
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_ready_inventory_candidates live test k3s-worker-0 | paste -sd, -"
+  assert_success
+  [[ "$output" == "k3s-master-0,k3s-master-1,k3s-master-2" ]]
+}
+
+@test "node reimage full orchestrates through join and leaves uncordon manual" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh
+  add_reimage_identity k3s-master-0 10000000deadbeef nvme-deadbeef
+  write_reimage_full_kubectl
+  write_fake_ansible
+
+  calls="${tmp}/reimage-full-calls"
+  fake_plan="${tmp}/plan"
+  fake_preflight="${tmp}/preflight"
+  fake_build="${tmp}/build"
+  fake_serve="${tmp}/serve"
+  fake_drain="${tmp}/drain"
+  fake_evict="${tmp}/evict"
+  fake_delete="${tmp}/delete"
+  fake_apply="${tmp}/apply"
+  fake_join="${tmp}/join"
+  fake_host_services="${tmp}/host-services"
+  fake_cleanup="${tmp}/cleanup"
+  fake_ssh="${tmp}/ssh"
+
+  cat > "$fake_plan" <<'EOF'
+#!/usr/bin/env bash
+printf 'plan %s\n' "$*" >>"${CALLS_FILE:?}"
+printf 'profile: live\n'
+EOF
+  cat > "$fake_preflight" <<'EOF'
+#!/usr/bin/env bash
+printf 'preflight %s\n' "$*" >>"${CALLS_FILE:?}"
+printf 'preflight_result: pass\n'
+EOF
+  cat > "$fake_build" <<'EOF'
+#!/usr/bin/env bash
+printf 'build %s\n' "$*" >>"${CALLS_FILE:?}"
+EOF
+  cat > "$fake_serve" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'serve %s\n' "$*" >>"${CALLS_FILE:?}"
+node="${@: -2:1}"
+state_dir="${NODE_REIMAGE_OUTPUT_ROOT:?}/live/${node}/state"
+mkdir -p "$state_dir"
+jq -n \
+  --arg imageUrl "http://192.168.99.11:18080/home-ops-${node}.img.zst" \
+  '{schemaVersion:"home-ops.node-reimage-serve/v1", imageUrl:$imageUrl, sha256:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", metadataPath:"/tmp/metadata.json"}' \
+  > "${state_dir}/serve.json"
+EOF
+  for spec in \
+    "$fake_drain:drain" \
+    "$fake_evict:evict" \
+    "$fake_delete:delete" \
+    "$fake_apply:apply" \
+    "$fake_join:join" \
+    "$fake_host_services:host-services" \
+    "$fake_cleanup:cleanup" \
+    "$fake_ssh:ssh"; do
+    path="${spec%%:*}"
+    label="${spec#*:}"
+    cat > "$path" <<EOF
+#!/usr/bin/env bash
+printf '${label} %s\n' "\$*" >>"\${CALLS_FILE:?}"
+EOF
+  done
+  chmod +x "$fake_plan" "$fake_preflight" "$fake_build" "$fake_serve" "$fake_drain" "$fake_evict" "$fake_delete" "$fake_apply" "$fake_join" "$fake_host_services" "$fake_cleanup" "$fake_ssh"
+
+  run env PATH="${tmp}:${PATH}" \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" \
+    NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    NODE_REIMAGE_PLAN_BIN="$fake_plan" \
+    NODE_CONTROL_PLANE_DELETE_PREFLIGHT_BIN="$fake_preflight" \
+    NODE_REIMAGE_BUILD_BIN="$fake_build" \
+    NODE_REIMAGE_SERVE_BIN="$fake_serve" \
+    NODE_DRAIN_BIN="$fake_drain" \
+    NODE_LONGHORN_EVICT_BIN="$fake_evict" \
+    NODE_DELETE_BIN="$fake_delete" \
+    NODE_REIMAGE_APPLY_BIN="$fake_apply" \
+    NODE_JOIN_BIN="$fake_join" \
+    NODE_ANSIBLE_HOST_SERVICES_BIN="$fake_host_services" \
+    NODE_REIMAGE_CLEANUP_BIN="$fake_cleanup" \
+    HOME_OPS_RPI_REPORTER_MQTT_HOSTNAME=mqtt.example \
+    HOME_OPS_RPI_REPORTER_MQTT_USERNAME=reporter \
+    HOME_OPS_RPI_REPORTER_MQTT_PASSWORD=password \
+    HOME_OPS_NUT_MONITOR_SYSTEM=ups \
+    HOME_OPS_NUT_MONITOR_USER=upsmon \
+    HOME_OPS_NUT_MONITOR_PASSWORD=password \
+    CALLS_FILE="$calls" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-full.sh" --profile live --context test --yes k3s-master-0
+  assert_success
+  assert_output_contains 'selected image serve host: k3s-master-1'
+  assert_output_contains 'final_uncordon: operator-run'
+  assert_output_contains 'next=just node-status k3s-master-0 && just node-uncordon k3s-master-0'
+  assert_file_contains "$calls" 'plan --profile live --context test k3s-master-0'
+  assert_file_contains "$calls" 'preflight --profile live --context test k3s-master-0'
+  assert_file_contains "$calls" 'build --profile live k3s-master-0'
+  assert_file_contains "$calls" 'serve --profile live --port 18080 --yes k3s-master-0 k3s-master-1'
+  assert_file_contains "$calls" 'drain --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'evict --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'delete --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'apply --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'join --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'host-services --yes k3s-master-0'
+  assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
+  assert_file_not_contains "$calls" 'uncordon'
+  [[ -f "${tmp}/reimage-out/live/k3s-master-0/state/full.json" ]]
 }
 
 @test "node reimage metadata renders stage-compatible image metadata" {
@@ -731,8 +855,8 @@ true'" > "$script"
   assert_output_contains 'staged reimage manifest targetDiskSerial mismatch'
 }
 
-@test "node reimage apply uses recorded serve state and refreshes host key" {
-  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ssh
+@test "node reimage apply uses recorded serve state, observes ping transitions, and refreshes host key" {
+  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ping fake_ssh
   write_fake_ansible
   node_dir="${tmp}/reimage-out/live/k3s-worker-0"
   mkdir -p "${node_dir}/state"
@@ -762,6 +886,7 @@ EOF
   fake_reboot="${tmp}/reboot"
   fake_refresh="${tmp}/refresh"
   fake_nc="${tmp}/nc"
+  fake_ping="${tmp}/ping"
   fake_ssh="${tmp}/ssh"
   cat > "$fake_stage" <<'EOF'
 #!/usr/bin/env bash
@@ -784,30 +909,88 @@ if [[ -f "$count_file" ]]; then
 fi
 count=$((count + 1))
 printf '%s\n' "$count" > "$count_file"
-if ((count == 1)); then
-  exit 1
+if [[ "${NC_MODE:-normal}" == "final_ssh_early" ]]; then
+  case "$count" in
+    1)
+      exit 1
+      ;;
+    2|3)
+      exit 0
+      ;;
+    *)
+      exit 1
+      ;;
+  esac
 fi
-exit 0
+
+case "$count" in
+  1)
+    exit 1
+    ;;
+  2)
+    exit 1
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+  cat > "$fake_ping" <<'EOF'
+#!/usr/bin/env bash
+count_file="${PING_COUNT_FILE:?}"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+printf 'ping %s\n' "$*" >>"${CALLS_FILE:?}"
+case "$count" in
+  1|3|4)
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac
 EOF
   cat > "$fake_ssh" <<'EOF'
 #!/usr/bin/env bash
 printf 'ssh %s\n' "$*" >>"${CALLS_FILE:?}"
 EOF
-  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ssh"
+  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ping" "$fake_ssh"
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
     NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
-    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 \
+    NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS=5 \
+    CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" PING_COUNT_FILE="${tmp}/ping-count" \
     "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
   assert_success
   assert_output_contains 'apply_state='
+  assert_output_contains 'SSH is down on 192.168.99.20; observing ping transitions during reimage'
+  assert_output_contains 'ping is down on 192.168.99.20; tryboot reboot is in progress'
+  assert_output_contains 'ping is back on 192.168.99.20; initramfs payload is likely downloading/writing image'
+  assert_output_contains 'ping is down again on 192.168.99.20; image was likely applied and node is rebooting into new OS'
   assert_output_contains 'verifying generated image boot marker'
   assert_output_contains 'next=just node-join k3s-worker-0 && just node-uncordon k3s-worker-0'
   assert_file_contains "$calls" 'stage --profile live --context test --metadata-file'
   assert_file_contains "$calls" 'reboot --profile live --context test --yes --force k3s-worker-0'
   assert_file_contains "$calls" 'refresh --profile live --yes k3s-worker-0'
+  assert_file_contains "$calls" 'ping -n -c 1'
   assert_file_contains "$calls" 'ssh -o BatchMode=yes'
   [[ -f "${node_dir}/state/apply.json" ]]
+
+  rm -f "$calls" "${tmp}/nc-count" "${tmp}/ping-count" "${node_dir}/state/apply.json"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 \
+    NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS=30 \
+    CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" PING_COUNT_FILE="${tmp}/ping-count" NC_MODE=final_ssh_early \
+    "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'SSH is already reachable on 192.168.99.20; final ping-down transition was missed'
+  assert_output_contains 'refreshing SSH host key for k3s-worker-0'
 }
 
 @test "node reimage generated-image verification waits for firstboot marker" {
@@ -1613,6 +1796,7 @@ EOF
     hack/bootstrap/nodes/reimage-plan.sh \
     hack/bootstrap/nodes/reimage-stage.sh \
     hack/bootstrap/nodes/reimage-reboot.sh \
+    hack/bootstrap/nodes/reimage-full.sh \
     hack/bootstrap/nodes/refresh-ssh-host-key.sh \
     hack/bootstrap/ansible/node-control-plane.sh; do
     run "${ROOT}/${script}" --help

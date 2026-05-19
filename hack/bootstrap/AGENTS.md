@@ -35,8 +35,9 @@ normal app graph.
   `nodes/lib.sh`; implementation modules live under `nodes/lib/`.
   `nodes/converge.sh` is an additive-only planner/orchestrator and must
   delegate actual joins to `nodes/join.sh`. Raspberry Pi reimage build, serve,
-  apply, and cleanup helpers are phase-based primitives; they must keep
-  drain/delete/join/uncordon as explicit lifecycle gates.
+  apply, and cleanup helpers are phase-based primitives. The full reimage
+  orchestrator may compose the proven drain/evict/delete/apply/join path for
+  one live node, but final uncordon must remain an explicit operator gate.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
   construction, node lifecycle helpers, and bootstrap library helpers.
 - `tests/helpers/`: BATS fixture and assertion helpers.

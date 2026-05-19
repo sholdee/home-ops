@@ -51,6 +51,22 @@ Debian 13 Trixie
 
 ## Build The Image
 
+For the proven rolling replacement path, use the full orchestrator:
+
+```sh
+just node-reimage-full k3s-worker-0
+just node-uncordon k3s-worker-0
+```
+
+`node-reimage-full` runs the safety preflights, builds before node downtime,
+selects a healthy serve host automatically, verifies target-to-server
+reachability, drains, evicts Longhorn, deletes the Kubernetes Node, applies the
+network reimage, rejoins the node, runs host services, and cleans up the image
+server. It leaves final uncordon to the operator.
+
+The remaining commands are the primitive flow for debugging or manual
+resumption.
+
 Build the image with the orchestrated builder:
 
 ```sh
@@ -108,6 +124,10 @@ just node-reimage-apply k3s-worker-0
 SSH to go down and return, refreshes the host key, and waits for
 `/var/lib/home-ops/firstboot-complete`. Ping can return before SSH is ready,
 and SSH can return before firstboot has finished.
+Between SSH going down and returning, it also logs best-effort ping
+transitions: initial reboot into tryboot, initramfs image application, and final
+reboot into the new OS. These ping logs are operator progress hints only; the
+success gates remain SSH authentication and the firstboot marker.
 
 Keep the image server running until the reimaging node has fetched the full
 image. The server log is recorded in `state/serve.json`.

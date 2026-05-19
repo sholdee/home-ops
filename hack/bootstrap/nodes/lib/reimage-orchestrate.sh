@@ -4,6 +4,7 @@ NODE_REIMAGE_BUILD_SCHEMA="home-ops.node-reimage-build/v1"
 NODE_REIMAGE_SERVE_SCHEMA="home-ops.node-reimage-serve/v1"
 NODE_REIMAGE_APPLY_SCHEMA="home-ops.node-reimage-apply/v1"
 NODE_REIMAGE_CLEANUP_SCHEMA="home-ops.node-reimage-cleanup/v1"
+NODE_REIMAGE_FULL_SCHEMA="home-ops.node-reimage-full/v1"
 NODE_REIMAGE_BUILDER_NAME="${NODE_REIMAGE_BUILDER_NAME:-home-ops-rpi-image-builder}"
 NODE_REIMAGE_BUILDER_CPUS="${NODE_REIMAGE_BUILDER_CPUS:-6}"
 NODE_REIMAGE_BUILDER_MEMORY_GIB="${NODE_REIMAGE_BUILDER_MEMORY_GIB:-8}"
@@ -13,11 +14,26 @@ NODE_REIMAGE_BUILDER_MODE="${NODE_REIMAGE_BUILDER_MODE:-auto}"
 NODE_REIMAGE_DEFAULT_PORT="${NODE_REIMAGE_DEFAULT_PORT:-18080}"
 NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS:-180}"
 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS:-1800}"
+NODE_REIMAGE_APPLY_OBSERVE_PING="${NODE_REIMAGE_APPLY_OBSERVE_PING:-true}"
+NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS:-300}"
+NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS:-900}"
+NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS:-120}"
 NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS="${NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS:-300}"
 NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS="${NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS:-10}"
 NODE_REIMAGE_STAGE_BIN="${NODE_REIMAGE_STAGE_BIN:-${NODE_SCRIPT_DIR}/reimage-stage.sh}"
 NODE_REIMAGE_REBOOT_BIN="${NODE_REIMAGE_REBOOT_BIN:-${NODE_SCRIPT_DIR}/reimage-reboot.sh}"
 NODE_REFRESH_SSH_HOST_KEY_BIN="${NODE_REFRESH_SSH_HOST_KEY_BIN:-${NODE_SCRIPT_DIR}/refresh-ssh-host-key.sh}"
+NODE_REIMAGE_PLAN_BIN="${NODE_REIMAGE_PLAN_BIN:-${NODE_SCRIPT_DIR}/reimage-plan.sh}"
+NODE_REIMAGE_BUILD_BIN="${NODE_REIMAGE_BUILD_BIN:-${NODE_SCRIPT_DIR}/reimage-build.sh}"
+NODE_REIMAGE_SERVE_BIN="${NODE_REIMAGE_SERVE_BIN:-${NODE_SCRIPT_DIR}/reimage-serve.sh}"
+NODE_REIMAGE_APPLY_BIN="${NODE_REIMAGE_APPLY_BIN:-${NODE_SCRIPT_DIR}/reimage-apply.sh}"
+NODE_REIMAGE_CLEANUP_BIN="${NODE_REIMAGE_CLEANUP_BIN:-${NODE_SCRIPT_DIR}/reimage-cleanup.sh}"
+NODE_DRAIN_BIN="${NODE_DRAIN_BIN:-${NODE_SCRIPT_DIR}/drain.sh}"
+NODE_LONGHORN_EVICT_BIN="${NODE_LONGHORN_EVICT_BIN:-${NODE_SCRIPT_DIR}/longhorn-evict.sh}"
+NODE_DELETE_BIN="${NODE_DELETE_BIN:-${NODE_SCRIPT_DIR}/delete.sh}"
+NODE_JOIN_BIN="${NODE_JOIN_BIN:-${NODE_SCRIPT_DIR}/join.sh}"
+NODE_CONTROL_PLANE_DELETE_PREFLIGHT_BIN="${NODE_CONTROL_PLANE_DELETE_PREFLIGHT_BIN:-${NODE_SCRIPT_DIR}/control-plane-delete-preflight.sh}"
+NODE_ANSIBLE_HOST_SERVICES_BIN="${NODE_ANSIBLE_HOST_SERVICES_BIN:-${BOOTSTRAP_DIR}/ansible/host-services.sh}"
 
 node_reimage_node_dir() {
   local profile="$1"
@@ -43,6 +59,10 @@ node_reimage_apply_state_file() {
 
 node_reimage_cleanup_state_file() {
   printf '%s/cleanup.json\n' "$(node_reimage_state_dir "$1" "$2")"
+}
+
+node_reimage_full_state_file() {
+  printf '%s/full.json\n' "$(node_reimage_state_dir "$1" "$2")"
 }
 
 node_reimage_resolve_existing_inventory_node() {
@@ -432,6 +452,207 @@ node_reimage_write_cleanup_state() {
   printf '%s\n' "$state_file"
 }
 
+node_reimage_write_full_state() {
+  local profile="$1"
+  local inventory_node="$2"
+  local context="$3"
+  local role="$4"
+  local serve_host="$5"
+  local status="$6"
+  local host_services_status="$7"
+  local state_file
+
+  state_file="$(node_reimage_full_state_file "$profile" "$inventory_node")"
+  mkdir -p "$(dirname "$state_file")"
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -n \
+    --arg schema "$NODE_REIMAGE_FULL_SCHEMA" \
+    --arg completedAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    --arg profile "$profile" \
+    --arg context "$context" \
+    --arg node "$inventory_node" \
+    --arg role "$role" \
+    --arg serveHost "$serve_host" \
+    --arg status "$status" \
+    --argjson hostServicesStatus "$host_services_status" \
+    '{
+      schemaVersion: $schema,
+      completedAt: $completedAt,
+      profile: $profile,
+      context: $context,
+      node: $node,
+      role: $role,
+      serveHost: $serveHost,
+      status: $status,
+      hostServicesStatus: $hostServicesStatus
+    }' > "$state_file"
+  printf '%s\n' "$state_file"
+}
+
+node_reimage_local_path_pv_report() {
+  local context="$1"
+  local node="$2"
+  local pv_json
+
+  if ! pv_json="$(node_get_json "$context" pv 2>/dev/null)"; then
+    node_warn "local-path PVs not readable in ${context}; continuing without local-path report"
+    return 0
+  fi
+
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -r --arg node "$node" '
+    .items[]?
+    | select((.spec.storageClassName // "") == "local-path")
+    | [
+        .spec.nodeAffinity.required.nodeSelectorTerms[]?.matchExpressions[]?
+        | select((.key // "") == "kubernetes.io/hostname")
+        | select((.operator // "In") == "In")
+        | .values[]?
+      ] as $node_names
+    | select($node_names | index($node))
+    | "\(.metadata.name) namespace=\(.spec.claimRef.namespace // "-") pvc=\(.spec.claimRef.name // "-") path=\(.spec.local.path // "-")"
+  ' <<<"$pv_json"
+}
+
+node_reimage_ready_inventory_candidates() {
+  local profile="$1"
+  local context="$2"
+  local target_inventory_node="$3"
+  local group inventory_node kubernetes_node node_json
+
+  for group in master node; do
+    while IFS= read -r inventory_node; do
+      [[ -n "$inventory_node" ]] || continue
+      [[ "$inventory_node" != "$target_inventory_node" ]] || continue
+      kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_node" "$inventory_node")"
+      node_json="$(node_node_json_if_present "$context" "$kubernetes_node")"
+      [[ -n "$node_json" ]] || continue
+      [[ "$(node_ready_from_node_json <<<"$node_json")" == Ready ]] || continue
+      printf '%s\n' "$inventory_node"
+    done < <(node_inventory_group_names "$profile" "$group")
+  done
+}
+
+node_reimage_probe_serve_host() {
+  local profile="$1"
+  local inventory_node="$2"
+  local host_address="$3"
+  local port="$4"
+  local host_address_q port_q remote_script
+
+  node_reimage_ssh_ok "$profile" "$inventory_node" || return 1
+
+  printf -v host_address_q '%q' "$host_address"
+  printf -v port_q '%q' "$port"
+  read -r -d '' remote_script <<EOF || true
+set -eu
+command -v python3 >/dev/null 2>&1 || {
+  printf 'serve_probe_error=missing_python3\n'
+  exit 2
+}
+python3 - ${host_address_q} ${port_q} <<'PY'
+import socket
+import sys
+
+host = sys.argv[1]
+port = int(sys.argv[2])
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+try:
+    sock.bind((host, port))
+except OSError as exc:
+    print(f"serve_probe_error=port_unavailable:{exc}")
+    sys.exit(2)
+finally:
+    sock.close()
+print("serve_probe=ok")
+PY
+EOF
+
+  node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_script" >/dev/null
+}
+
+node_reimage_select_serve_host() {
+  local profile="$1"
+  local context="$2"
+  local target_inventory_node="$3"
+  local port="$4"
+  local candidate host_address
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    host_address="$(node_reimage_target_address "$profile" "$candidate")"
+    if node_reimage_probe_serve_host "$profile" "$candidate" "$host_address" "$port"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+    node_warn "serve host candidate unavailable: ${candidate}"
+  done < <(node_reimage_ready_inventory_candidates "$profile" "$context" "$target_inventory_node")
+
+  node_die "no Ready inventory node can serve the reimage artifact for ${target_inventory_node}"
+}
+
+node_reimage_assert_target_can_fetch() {
+  local profile="$1"
+  local inventory_node="$2"
+  local image_url="$3"
+  local image_url_q remote_script
+
+  printf -v image_url_q '%q' "$image_url"
+  read -r -d '' remote_script <<EOF || true
+set -eu
+image_url=${image_url_q}
+if command -v curl >/dev/null 2>&1; then
+  curl -fsI --max-time 20 "\$image_url" >/dev/null
+elif command -v wget >/dev/null 2>&1; then
+  wget -q --spider --timeout=20 "\$image_url"
+else
+  printf 'fetch_probe_error=missing_curl_or_wget\n'
+  exit 2
+fi
+printf 'fetch_probe=ok\n'
+EOF
+
+  node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_script" >/dev/null
+}
+
+node_reimage_assert_host_service_inputs() {
+  local profile="$1"
+  local role="$2"
+  local var missing=()
+
+  [[ "$profile" == live ]] || return 0
+
+  # shellcheck source=hack/bootstrap/ansible/lib.sh
+  source "${BOOTSTRAP_DIR}/ansible/lib.sh"
+  ansible_load_host_service_secrets_from_op "$role"
+
+  while IFS= read -r var; do
+    [[ -n "$var" ]] || continue
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("$var")
+    fi
+  done < <(ansible_host_service_secret_vars "$role")
+
+  if ((${#missing[@]} > 0)); then
+    {
+      printf 'ERROR: missing host service secret environment values for %s:\n' "$role"
+      printf '  - %s\n' "${missing[@]}"
+      printf 'Create fields with these exact names in op://%s/%s, or export them before running node-reimage-full.\n' \
+        "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_VAULT" \
+        "$BOOTSTRAP_ANSIBLE_HOST_SERVICES_OP_ITEM"
+    } >&2
+    exit 1
+  fi
+
+  if ansible_host_service_needs_github_runner "$role"; then
+    ansible_require_tool openssl
+    if ! ansible_github_app_private_key | openssl pkey -noout >/dev/null 2>&1; then
+      node_die "HOME_OPS_GITHUB_APP_PRIVATE_KEY is not a valid base64-encoded PEM private key"
+    fi
+  fi
+}
+
 node_reimage_ansible_copy() {
   local profile="$1"
   local inventory_node="$2"
@@ -523,6 +744,106 @@ node_reimage_wait_port_up() {
     sleep 10
   done
   node_die "timed out waiting for ${host}:${port} to come up"
+}
+
+node_reimage_ping_once() {
+  local host="$1"
+
+  command -v ping >/dev/null 2>&1 || return 2
+  case "$(uname -s)" in
+    Darwin)
+      ping -n -c 1 -W 2000 "$host" >/dev/null 2>&1
+      ;;
+    Linux)
+      ping -n -c 1 -W 2 "$host" >/dev/null 2>&1
+      ;;
+    *)
+      ping -n -c 1 "$host" >/dev/null 2>&1
+      ;;
+  esac
+}
+
+node_reimage_wait_ping_down() {
+  local host="$1"
+  local timeout="$2"
+  local port="${3:-}"
+  local deadline
+
+  deadline=$((SECONDS + timeout))
+  while true; do
+    if ! node_reimage_ping_once "$host"; then
+      return 0
+    fi
+    if [[ -n "$port" ]] && nc -z -w 1 "$host" "$port" >/dev/null 2>&1; then
+      return 2
+    fi
+    ((SECONDS >= deadline)) && return 1
+    sleep 5
+  done
+}
+
+node_reimage_wait_ping_up() {
+  local host="$1"
+  local timeout="$2"
+  local deadline
+
+  deadline=$((SECONDS + timeout))
+  while true; do
+    if node_reimage_ping_once "$host"; then
+      return 0
+    fi
+    ((SECONDS >= deadline)) && return 1
+    sleep 5
+  done
+}
+
+node_reimage_observe_ping_reimage_progress() {
+  local host="$1"
+
+  if [[ "$NODE_REIMAGE_APPLY_OBSERVE_PING" != true ]]; then
+    node_warn "NODE_REIMAGE_APPLY_OBSERVE_PING is not true; skipping ping-based progress logs"
+    return 0
+  fi
+  if ! command -v ping >/dev/null 2>&1; then
+    node_warn "ping is not available; skipping ping-based progress logs"
+    return 0
+  fi
+
+  node_log "waiting for ping to go down on ${host}; node is rebooting into reimage payload"
+  if node_reimage_wait_ping_down "$host" "$NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS"; then
+    node_log "ping is down on ${host}; tryboot reboot is in progress"
+  else
+    node_warn "timed out waiting for ping to go down on ${host}; continuing to SSH wait"
+    return 0
+  fi
+
+  node_log "waiting for ping to return on ${host}; initramfs should be applying image"
+  if node_reimage_wait_ping_up "$host" "$NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS"; then
+    node_log "ping is back on ${host}; initramfs payload is likely downloading/writing image"
+  else
+    node_warn "timed out waiting for ping to return on ${host}; continuing to SSH wait"
+    return 0
+  fi
+
+  node_log "waiting for ping to go down again on ${host}; image write should complete before final reboot"
+  set +e
+  node_reimage_wait_ping_down "$host" "$NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS" 22
+  final_ping_status=$?
+  set -e
+  case "$final_ping_status" in
+    0)
+      node_log "ping is down again on ${host}; image was likely applied and node is rebooting into new OS"
+      ;;
+    1)
+      node_warn "timed out waiting for final ping-down transition on ${host}; continuing to SSH wait"
+      ;;
+    2)
+      node_log "SSH is already reachable on ${host}; final ping-down transition was missed"
+      ;;
+    *)
+      node_warn "unexpected final ping observer status ${final_ping_status}; continuing to SSH wait"
+      ;;
+  esac
 }
 
 node_reimage_wait_ssh_auth() {
