@@ -509,10 +509,12 @@ the API endpoint on TCP `6443`. A `registries.yaml` change restarts the
 affected K3s server or agent so the mirror config is loaded.
 
 The Ansible node-prep phase also manages host prerequisites such as Raspberry
-Pi boot flags, swap, CPU governor, and fsnotify sysctls. Fresh nodes may reboot
-automatically before they join K3s. Existing K3s nodes do not auto-reboot; if a
-boot-level change is required, drain and reboot that node through the node
-lifecycle flow, then rerun Ansible.
+Pi boot flags, swap, CPU governor, fsnotify sysctls, K3s kernel modules, and
+Longhorn host packages/modules such as `open-iscsi`, `nfs-common`,
+`cryptsetup`, `dmsetup`, and `dm_crypt`. Fresh nodes may reboot automatically
+before they join K3s. Existing K3s nodes do not auto-reboot; if a boot-level
+change is required, drain and reboot that node through the node lifecycle flow,
+then rerun Ansible.
 
 Host services are part of full Ansible convergence. All nodes get the RPi MQTT
 reporter, control-plane nodes get the NUT client, and worker nodes get a

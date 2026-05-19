@@ -148,6 +148,7 @@ assert_file_contains_before() {
     "${ROOT}/hack/bootstrap/ansible/home-ops/control-plane-finalize.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-join.yml" \
     "${ROOT}/hack/bootstrap/ansible/home-ops/worker-finalize.yml" \
+    "${ROOT}/hack/bootstrap/ansible/playbooks/home-ops-prereqs.yml" \
     "${ROOT}/hack/bootstrap/ansible/playbooks/disable-kube-proxy.yml"; do
     run ansible-playbook --syntax-check -i "${home_ops_out}/inventory/live/hosts.yml" "$playbook"
     assert_success
@@ -343,6 +344,15 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'boot-cmdline.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" '../node-prep/raspberry-pi.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" 'home_ops_raspberry_pi | default(false) | bool'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'cryptsetup'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'dmsetup'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'kmod'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_kernel_modules'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_optional_kernel_modules'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'dm_crypt'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/kernel.yml" 'home_ops_kernel_modules'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/kernel.yml" 'home_ops_optional_kernel_modules'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/playbooks/home-ops-prereqs.yml" '../home-ops/tasks/node-prep/kernel.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'pcie_port_pm=off'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/raspberry-pi-config.yml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/sysctl.yml" 'fs.inotify.max_user_watches'
