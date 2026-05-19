@@ -855,8 +855,8 @@ true'" > "$script"
   assert_output_contains 'staged reimage manifest targetDiskSerial mismatch'
 }
 
-@test "node reimage apply uses recorded serve state and refreshes host key" {
-  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ssh
+@test "node reimage apply uses recorded serve state, observes ping transitions, and refreshes host key" {
+  local node_dir artifact metadata sha calls fake_stage fake_reboot fake_refresh fake_nc fake_ping fake_ssh
   write_fake_ansible
   node_dir="${tmp}/reimage-out/live/k3s-worker-0"
   mkdir -p "${node_dir}/state"
@@ -886,6 +886,7 @@ EOF
   fake_reboot="${tmp}/reboot"
   fake_refresh="${tmp}/refresh"
   fake_nc="${tmp}/nc"
+  fake_ping="${tmp}/ping"
   fake_ssh="${tmp}/ssh"
   cat > "$fake_stage" <<'EOF'
 #!/usr/bin/env bash
@@ -908,30 +909,88 @@ if [[ -f "$count_file" ]]; then
 fi
 count=$((count + 1))
 printf '%s\n' "$count" > "$count_file"
-if ((count == 1)); then
-  exit 1
+if [[ "${NC_MODE:-normal}" == "final_ssh_early" ]]; then
+  case "$count" in
+    1)
+      exit 1
+      ;;
+    2|3)
+      exit 0
+      ;;
+    *)
+      exit 1
+      ;;
+  esac
 fi
-exit 0
+
+case "$count" in
+  1)
+    exit 1
+    ;;
+  2)
+    exit 1
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+EOF
+  cat > "$fake_ping" <<'EOF'
+#!/usr/bin/env bash
+count_file="${PING_COUNT_FILE:?}"
+count=0
+if [[ -f "$count_file" ]]; then
+  count="$(cat "$count_file")"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$count_file"
+printf 'ping %s\n' "$*" >>"${CALLS_FILE:?}"
+case "$count" in
+  1|3|4)
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac
 EOF
   cat > "$fake_ssh" <<'EOF'
 #!/usr/bin/env bash
 printf 'ssh %s\n' "$*" >>"${CALLS_FILE:?}"
 EOF
-  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ssh"
+  chmod +x "$fake_stage" "$fake_reboot" "$fake_refresh" "$fake_nc" "$fake_ping" "$fake_ssh"
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
     NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
-    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 \
+    NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS=5 \
+    CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" PING_COUNT_FILE="${tmp}/ping-count" \
     "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
   assert_success
   assert_output_contains 'apply_state='
+  assert_output_contains 'SSH is down on 192.168.99.20; observing ping transitions during reimage'
+  assert_output_contains 'ping is down on 192.168.99.20; tryboot reboot is in progress'
+  assert_output_contains 'ping is back on 192.168.99.20; initramfs payload is likely downloading/writing image'
+  assert_output_contains 'ping is down again on 192.168.99.20; image was likely applied and node is rebooting into new OS'
   assert_output_contains 'verifying generated image boot marker'
   assert_output_contains 'next=just node-join k3s-worker-0 && just node-uncordon k3s-worker-0'
   assert_file_contains "$calls" 'stage --profile live --context test --metadata-file'
   assert_file_contains "$calls" 'reboot --profile live --context test --yes --force k3s-worker-0'
   assert_file_contains "$calls" 'refresh --profile live --yes k3s-worker-0'
+  assert_file_contains "$calls" 'ping -n -c 1'
   assert_file_contains "$calls" 'ssh -o BatchMode=yes'
   [[ -f "${node_dir}/state/apply.json" ]]
+
+  rm -f "$calls" "${tmp}/nc-count" "${tmp}/ping-count" "${node_dir}/state/apply.json"
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" \
+    NODE_REIMAGE_STAGE_BIN="$fake_stage" NODE_REIMAGE_REBOOT_BIN="$fake_reboot" NODE_REFRESH_SSH_HOST_KEY_BIN="$fake_refresh" \
+    NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS=5 \
+    NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS=5 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS=30 \
+    CALLS_FILE="$calls" NC_COUNT_FILE="${tmp}/nc-count" PING_COUNT_FILE="${tmp}/ping-count" NC_MODE=final_ssh_early \
+    "${ROOT}/hack/bootstrap/nodes/reimage-apply.sh" --profile live --context test --force --yes k3s-worker-0
+  assert_success
+  assert_output_contains 'SSH is already reachable on 192.168.99.20; final ping-down transition was missed'
+  assert_output_contains 'refreshing SSH host key for k3s-worker-0'
 }
 
 @test "node reimage generated-image verification waits for firstboot marker" {

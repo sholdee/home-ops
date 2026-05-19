@@ -124,6 +124,10 @@ just node-reimage-apply k3s-worker-0
 SSH to go down and return, refreshes the host key, and waits for
 `/var/lib/home-ops/firstboot-complete`. Ping can return before SSH is ready,
 and SSH can return before firstboot has finished.
+Between SSH going down and returning, it also logs best-effort ping
+transitions: initial reboot into tryboot, initramfs image application, and final
+reboot into the new OS. These ping logs are operator progress hints only; the
+success gates remain SSH authentication and the firstboot marker.
 
 Keep the image server running until the reimaging node has fetched the full
 image. The server log is recorded in `state/serve.json`.

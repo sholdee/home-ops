@@ -14,6 +14,10 @@ NODE_REIMAGE_BUILDER_MODE="${NODE_REIMAGE_BUILDER_MODE:-auto}"
 NODE_REIMAGE_DEFAULT_PORT="${NODE_REIMAGE_DEFAULT_PORT:-18080}"
 NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS:-180}"
 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS:-1800}"
+NODE_REIMAGE_APPLY_OBSERVE_PING="${NODE_REIMAGE_APPLY_OBSERVE_PING:-true}"
+NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS:-300}"
+NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS:-900}"
+NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS:-120}"
 NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS="${NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS:-300}"
 NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS="${NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS:-10}"
 NODE_REIMAGE_STAGE_BIN="${NODE_REIMAGE_STAGE_BIN:-${NODE_SCRIPT_DIR}/reimage-stage.sh}"
@@ -740,6 +744,106 @@ node_reimage_wait_port_up() {
     sleep 10
   done
   node_die "timed out waiting for ${host}:${port} to come up"
+}
+
+node_reimage_ping_once() {
+  local host="$1"
+
+  command -v ping >/dev/null 2>&1 || return 2
+  case "$(uname -s)" in
+    Darwin)
+      ping -n -c 1 -W 2000 "$host" >/dev/null 2>&1
+      ;;
+    Linux)
+      ping -n -c 1 -W 2 "$host" >/dev/null 2>&1
+      ;;
+    *)
+      ping -n -c 1 "$host" >/dev/null 2>&1
+      ;;
+  esac
+}
+
+node_reimage_wait_ping_down() {
+  local host="$1"
+  local timeout="$2"
+  local port="${3:-}"
+  local deadline
+
+  deadline=$((SECONDS + timeout))
+  while true; do
+    if ! node_reimage_ping_once "$host"; then
+      return 0
+    fi
+    if [[ -n "$port" ]] && nc -z -w 1 "$host" "$port" >/dev/null 2>&1; then
+      return 2
+    fi
+    ((SECONDS >= deadline)) && return 1
+    sleep 5
+  done
+}
+
+node_reimage_wait_ping_up() {
+  local host="$1"
+  local timeout="$2"
+  local deadline
+
+  deadline=$((SECONDS + timeout))
+  while true; do
+    if node_reimage_ping_once "$host"; then
+      return 0
+    fi
+    ((SECONDS >= deadline)) && return 1
+    sleep 5
+  done
+}
+
+node_reimage_observe_ping_reimage_progress() {
+  local host="$1"
+
+  if [[ "$NODE_REIMAGE_APPLY_OBSERVE_PING" != true ]]; then
+    node_warn "NODE_REIMAGE_APPLY_OBSERVE_PING is not true; skipping ping-based progress logs"
+    return 0
+  fi
+  if ! command -v ping >/dev/null 2>&1; then
+    node_warn "ping is not available; skipping ping-based progress logs"
+    return 0
+  fi
+
+  node_log "waiting for ping to go down on ${host}; node is rebooting into reimage payload"
+  if node_reimage_wait_ping_down "$host" "$NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS"; then
+    node_log "ping is down on ${host}; tryboot reboot is in progress"
+  else
+    node_warn "timed out waiting for ping to go down on ${host}; continuing to SSH wait"
+    return 0
+  fi
+
+  node_log "waiting for ping to return on ${host}; initramfs should be applying image"
+  if node_reimage_wait_ping_up "$host" "$NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS"; then
+    node_log "ping is back on ${host}; initramfs payload is likely downloading/writing image"
+  else
+    node_warn "timed out waiting for ping to return on ${host}; continuing to SSH wait"
+    return 0
+  fi
+
+  node_log "waiting for ping to go down again on ${host}; image write should complete before final reboot"
+  set +e
+  node_reimage_wait_ping_down "$host" "$NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS" 22
+  final_ping_status=$?
+  set -e
+  case "$final_ping_status" in
+    0)
+      node_log "ping is down again on ${host}; image was likely applied and node is rebooting into new OS"
+      ;;
+    1)
+      node_warn "timed out waiting for final ping-down transition on ${host}; continuing to SSH wait"
+      ;;
+    2)
+      node_log "SSH is already reachable on ${host}; final ping-down transition was missed"
+      ;;
+    *)
+      node_warn "unexpected final ping observer status ${final_ping_status}; continuing to SSH wait"
+      ;;
+  esac
 }
 
 node_reimage_wait_ssh_auth() {
