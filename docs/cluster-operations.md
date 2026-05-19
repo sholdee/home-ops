@@ -62,6 +62,11 @@ Common validation:
 | Show current and target cluster status | `just context` |
 | List ArgoCD Applications | `just argocd-apps` |
 | List ArgoCD ApplicationSets | `just argocd-appsets` |
+| Show ArgoCD Application sync status | `just argocd-status <app>` |
+| Refresh one ArgoCD Application | `just argocd-refresh <app>` |
+| Hard-refresh one ArgoCD Application | `just argocd-hard-refresh <app>` |
+| Request sync for one ArgoCD Application | `just argocd-sync <app>` |
+| Wait for one ArgoCD Application | `just argocd-wait <app>` |
 
 Kind:
 
@@ -187,9 +192,20 @@ just argocd-appsets k3s-apps default
 just argocd-appsets k3s-apps lima-home-ops-k3s-test
 ```
 
-With no context argument, `argocd-apps`, `argocd-appsets`, `app-dry-run`, and
-`app-diff` target the active kube context. Pass a context name when you want a
-specific cluster.
+Inspect or drive one ArgoCD Application:
+
+```sh
+just argocd-status hass
+just argocd-refresh hass
+just argocd-hard-refresh hass
+just argocd-sync hass
+just argocd-wait hass
+```
+
+With no context argument, ArgoCD recipes, `app-dry-run`, and `app-diff` target
+the active kube context. Pass a context name when you want a specific cluster.
+`argocd-refresh`, `argocd-hard-refresh`, and `argocd-sync` are mutating and
+are intentionally scoped to one Application.
 
 ## Kind Workflow
 

@@ -56,11 +56,12 @@ context context='':
     fi
 
 # List ArgoCD Applications, or one named Application, in a target context.
-[group('cluster')]
+[group('argocd')]
 argocd-apps app='' context='':
     #!/usr/bin/env bash
     set -euo pipefail
-    target='{{ context }}'
+    app={{ quote(app) }}
+    target={{ quote(context) }}
     if [[ -z "${target}" ]]; then
       target="$(kubectl config current-context 2>/dev/null || true)"
     fi
@@ -68,18 +69,19 @@ argocd-apps app='' context='':
       echo "ERROR: no target context provided and no current kube context is set" >&2
       exit 2
     fi
-    if [[ -n '{{ app }}' ]]; then
-      kubectl --context "${target}" -n argocd get 'application/{{ app }}' -o wide
+    if [[ -n "${app}" ]]; then
+      kubectl --context "${target}" -n argocd get "application/${app}" -o wide
     else
       kubectl --context "${target}" -n argocd get applications.argoproj.io -o wide
     fi
 
 # List ArgoCD ApplicationSets, or one named ApplicationSet, in a target context.
-[group('cluster')]
+[group('argocd')]
 argocd-appsets appset='' context='':
     #!/usr/bin/env bash
     set -euo pipefail
-    target='{{ context }}'
+    appset={{ quote(appset) }}
+    target={{ quote(context) }}
     if [[ -z "${target}" ]]; then
       target="$(kubectl config current-context 2>/dev/null || true)"
     fi
@@ -87,11 +89,117 @@ argocd-appsets appset='' context='':
       echo "ERROR: no target context provided and no current kube context is set" >&2
       exit 2
     fi
-    if [[ -n '{{ appset }}' ]]; then
-      kubectl --context "${target}" -n argocd get 'applicationset/{{ appset }}' -o wide
+    if [[ -n "${appset}" ]]; then
+      kubectl --context "${target}" -n argocd get "applicationset/${appset}" -o wide
     else
       kubectl --context "${target}" -n argocd get applicationsets.argoproj.io -o wide
     fi
+
+# Show sync, health, revision, operation, and conditions for ArgoCD Applications.
+[group('argocd')]
+argocd-status app='' context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{ quote(app) }}
+    target={{ quote(context) }}
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    if [[ -z "${app}" ]]; then
+      kubectl --context "${target}" -n argocd get applications.argoproj.io \
+        --sort-by=.metadata.name \
+        -o custom-columns='NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status,REVISION:.status.sync.revision,OPERATION:.status.operationState.phase'
+      exit 0
+    fi
+    kubectl --context "${target}" -n argocd get "application/${app}" -o json | jq -r '
+      def val($v): if $v == null or $v == "" then "unknown" else $v end;
+      "name: \(.metadata.name)",
+      "sync: \(val(.status.sync.status))",
+      "health: \(val(.status.health.status))",
+      "revision: \(val(.status.sync.revision))",
+      "operation: \(val(.status.operationState.phase))",
+      (if .status.operationState.message then "message: \(.status.operationState.message)" else empty end),
+      (if ((.status.conditions // []) | length) > 0 then "conditions:" else empty end),
+      (.status.conditions // [] | .[] | "- \(.type): \(.message)")
+    '
+
+# Ask ArgoCD to refresh one Application through the normal refresh annotation.
+[group('argocd')]
+argocd-refresh app context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{ quote(app) }}
+    target={{ quote(context) }}
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    kubectl --context "${target}" -n argocd annotate "application/${app}" \
+      argocd.argoproj.io/refresh=normal --overwrite
+
+# Ask ArgoCD to discard cache and hard-refresh one Application.
+[group('argocd')]
+argocd-hard-refresh app context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{ quote(app) }}
+    target={{ quote(context) }}
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    kubectl --context "${target}" -n argocd annotate "application/${app}" \
+      argocd.argoproj.io/refresh=hard --overwrite
+
+# Request a controller-side sync for one ArgoCD Application.
+[group('argocd')]
+argocd-sync app context='':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{ quote(app) }}
+    target={{ quote(context) }}
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    kubectl --context "${target}" -n argocd patch "application/${app}" \
+      --type=merge \
+      -p '{"operation":{"sync":{"syncStrategy":{"hook":{}}}}}'
+
+# Wait for one ArgoCD Application to become Synced and Healthy.
+[group('argocd')]
+argocd-wait app context='' timeout='10m':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    app={{ quote(app) }}
+    target={{ quote(context) }}
+    timeout={{ quote(timeout) }}
+    if [[ -z "${target}" ]]; then
+      target="$(kubectl config current-context 2>/dev/null || true)"
+    fi
+    if [[ -z "${target}" ]]; then
+      echo "ERROR: no target context provided and no current kube context is set" >&2
+      exit 2
+    fi
+    kubectl --context "${target}" -n argocd wait "application/${app}" \
+      --for=jsonpath='{.status.sync.status}'=Synced \
+      --timeout="${timeout}"
+    kubectl --context "${target}" -n argocd wait "application/${app}" \
+      --for=jsonpath='{.status.health.status}'=Healthy \
+      --timeout="${timeout}"
 
 # Render one top-level app directory with the same Kustomize Helm settings used by CI.
 [group('apps')]
