@@ -20,6 +20,7 @@ NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS:-90
 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS:-120}"
 NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS="${NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS:-300}"
 NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS="${NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS:-10}"
+NODE_REIMAGE_OS_PLAN_MANIFEST="${NODE_REIMAGE_OS_PLAN_MANIFEST:-${REPO_ROOT}/apps/system-upgrade/manifests/os-plan.yaml}"
 NODE_REIMAGE_STAGE_BIN="${NODE_REIMAGE_STAGE_BIN:-${NODE_SCRIPT_DIR}/reimage-stage.sh}"
 NODE_REIMAGE_REBOOT_BIN="${NODE_REIMAGE_REBOOT_BIN:-${NODE_SCRIPT_DIR}/reimage-reboot.sh}"
 NODE_REFRESH_SSH_HOST_KEY_BIN="${NODE_REFRESH_SSH_HOST_KEY_BIN:-${NODE_SCRIPT_DIR}/refresh-ssh-host-key.sh}"
@@ -651,6 +652,90 @@ node_reimage_assert_host_service_inputs() {
       node_die "HOME_OPS_GITHUB_APP_PRIVATE_KEY is not a valid base64-encoded PEM private key"
     fi
   fi
+}
+
+node_reimage_system_upgrade_plan_config() {
+  local manifest="$NODE_REIMAGE_OS_PLAN_MANIFEST"
+  local name namespace keys key_count label_key
+
+  [[ -f "$manifest" ]] || {
+    printf 'missing system-upgrade Plan manifest: %s\n' "$manifest" >&2
+    return 1
+  }
+
+  name="$("$NODE_YQ_BIN" -r '
+    select(.apiVersion == "upgrade.cattle.io/v1" and .kind == "Plan")
+    | .metadata.name // ""
+  ' "$manifest")"
+  namespace="$("$NODE_YQ_BIN" -r '
+    select(.apiVersion == "upgrade.cattle.io/v1" and .kind == "Plan")
+    | .metadata.namespace // "system-upgrade"
+  ' "$manifest")"
+  keys="$(
+    "$NODE_YQ_BIN" -r '
+      select(.apiVersion == "upgrade.cattle.io/v1" and .kind == "Plan")
+      | .spec.nodeSelector.matchExpressions[]?
+      | select((.operator // "") == "Exists")
+      | .key // ""
+    ' "$manifest" |
+      awk '/^plan[.]upgrade[.]cattle[.]io\// {print}' |
+      sort -u
+  )"
+
+  [[ -n "$name" && "$name" != "null" ]] || {
+    printf 'system-upgrade Plan manifest has no Plan metadata.name: %s\n' "$manifest" >&2
+    return 1
+  }
+  [[ -n "$namespace" && "$namespace" != "null" ]] || {
+    printf 'system-upgrade Plan manifest has no namespace: %s\n' "$manifest" >&2
+    return 1
+  }
+
+  key_count="$(sed '/^$/d' <<<"$keys" | wc -l | tr -d ' ')"
+  [[ "$key_count" == 1 ]] || {
+    printf 'expected exactly one plan.upgrade.cattle.io Exists selector in %s, found %s\n' \
+      "$manifest" \
+      "$key_count" >&2
+    return 1
+  }
+  label_key="$(sed -n '1p' <<<"$keys")"
+
+  printf '%s\t%s\t%s\n' "$namespace" "$name" "$label_key"
+}
+
+node_reimage_adopt_system_upgrade_plan() {
+  local context="$1"
+  local node="$2"
+  local config namespace plan_name label_key plan_json latest_hash latest_version version_suffix output
+
+  if ! config="$(node_reimage_system_upgrade_plan_config 2>&1)"; then
+    node_warn "system-upgrade Plan adoption skipped: ${config}"
+    return 0
+  fi
+  IFS=$'\t' read -r namespace plan_name label_key <<<"$config"
+
+  if ! plan_json="$(node_get_json "$context" -n "$namespace" "plan/${plan_name}" 2>/dev/null)"; then
+    node_warn "system-upgrade Plan adoption skipped: live Plan ${namespace}/${plan_name} is not readable"
+    return 0
+  fi
+
+  latest_hash="$("$NODE_JQ_BIN" -r '.status.latestHash // ""' <<<"$plan_json")"
+  latest_version="$("$NODE_JQ_BIN" -r '.status.latestVersion // ""' <<<"$plan_json")"
+  [[ -n "$latest_hash" && "$latest_hash" != "null" ]] || {
+    node_warn "system-upgrade Plan adoption skipped: live Plan ${namespace}/${plan_name} has no status.latestHash"
+    return 0
+  }
+
+  version_suffix=""
+  if [[ -n "$latest_version" && "$latest_version" != "null" ]]; then
+    version_suffix=" (${latest_version})"
+  fi
+  node_log "adopting ${node} into system-upgrade Plan ${namespace}/${plan_name}${version_suffix}"
+  if ! output="$(node_kubectl "$context" label "node/${node}" "${label_key}=${latest_hash}" --overwrite 2>&1)"; then
+    node_warn "system-upgrade Plan adoption failed: ${output}"
+    return 0
+  fi
+  printf '%s\n' "$output"
 }
 
 node_reimage_ansible_copy() {

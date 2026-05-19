@@ -212,6 +212,9 @@ node_log "phase: apply"
 node_log "phase: join"
 "$NODE_JOIN_BIN" --profile "$profile" --context "$context" --yes "$inventory_node"
 
+node_log "phase: os-plan-adopt"
+node_reimage_adopt_system_upgrade_plan "$context" "$kubernetes_node"
+
 host_services_status=0
 node_log "phase: host-services"
 if "$NODE_ANSIBLE_HOST_SERVICES_BIN" --yes "$inventory_node"; then
