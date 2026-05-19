@@ -319,6 +319,8 @@ EOF
     "${ROOT}/hack/bootstrap/nodes/reimage-full.sh" --profile live --context test --yes k3s-master-0
   assert_success
   assert_output_contains 'selected image serve host: k3s-master-1'
+  assert_output_contains 'phase: os-plan-adopt'
+  assert_output_contains 'adopting k3s-master-0 into system-upgrade Plan system-upgrade/raspios-trixie (trixie-2026-05-14)'
   assert_output_contains 'final_uncordon: operator-run'
   assert_output_contains 'next=just node-status k3s-master-0 && just node-uncordon k3s-master-0'
   assert_file_contains "$calls" 'plan --profile live --context test k3s-master-0'
@@ -330,6 +332,7 @@ EOF
   assert_file_contains "$calls" 'delete --profile live --context test --yes k3s-master-0'
   assert_file_contains "$calls" 'apply --profile live --context test --yes k3s-master-0'
   assert_file_contains "$calls" 'join --profile live --context test --yes k3s-master-0'
+  assert_file_contains "$calls" 'kubectl label node/k3s-master-0 plan.upgrade.cattle.io/raspios-trixie=e602e6d2122f6d49ec99bf659b5495436f6fdb75792a18f7ba1420a0 --overwrite'
   assert_file_contains "$calls" 'host-services --yes k3s-master-0'
   assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
   assert_file_not_contains "$calls" 'uncordon'

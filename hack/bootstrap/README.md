@@ -313,8 +313,11 @@ on Linux it can run directly. `node-reimage-serve` hosts the recorded artifact
 from an explicit healthy inventory node, `node-reimage-apply` stages and
 tryboot-reboots the deleted node from recorded serve state, and
 waits for SSH plus the generated-image firstboot marker before reporting
-success. `node-reimage-cleanup` removes the node-specific remote hosting
-directory. By default the payload is built on the target from its current
+success. The full reimage flow labels the rejoined node with the current
+system-upgrade Plan hash so it is adopted by future OS updates without
+rerunning the already-applied revision. `node-reimage-cleanup` removes the
+node-specific remote hosting directory. By default the payload is built on the
+target from its current
 Raspberry Pi initramfs, so it keeps the matching kernel modules and
 boot-network tooling.
 

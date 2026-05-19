@@ -642,8 +642,9 @@ inspection. The full command runs read-only reimage and storage preflights,
 builds the image before node downtime, automatically selects a healthy serve
 host, verifies the target can reach the image URL, drains, evicts Longhorn,
 deletes the Kubernetes Node, applies the one-shot network reimage, rejoins the
-node, runs host services, and cleans up the image server. It intentionally
-leaves the final uncordon manual.
+node, labels it with the current system-upgrade Plan hash, runs host services,
+and cleans up the image server. It intentionally leaves the final uncordon
+manual.
 
 The primitive/debug path is build, serve, drain, Longhorn eviction when needed,
 `node-delete`, `node-reimage-apply`, `node-join`, `node-uncordon`, and

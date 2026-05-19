@@ -61,8 +61,9 @@ just node-uncordon k3s-worker-0
 `node-reimage-full` runs the safety preflights, builds before node downtime,
 selects a healthy serve host automatically, verifies target-to-server
 reachability, drains, evicts Longhorn, deletes the Kubernetes Node, applies the
-network reimage, rejoins the node, runs host services, and cleans up the image
-server. It leaves final uncordon to the operator.
+network reimage, rejoins the node, labels it with the current system-upgrade
+Plan hash, runs host services, and cleans up the image server. It leaves final
+uncordon to the operator.
 
 The remaining commands are the primitive flow for debugging or manual
 resumption.

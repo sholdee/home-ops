@@ -865,6 +865,24 @@ JSON
   exit 0
 fi
 
+if [[ "${1:-}" == "get" && "${2:-}" == "-n" && "${3:-}" == "system-upgrade" && "${4:-}" == "plan/raspios-trixie" ]]; then
+  cat <<'JSON'
+{
+  "apiVersion": "upgrade.cattle.io/v1",
+  "kind": "Plan",
+  "metadata": {
+    "name": "raspios-trixie",
+    "namespace": "system-upgrade"
+  },
+  "status": {
+    "latestHash": "e602e6d2122f6d49ec99bf659b5495436f6fdb75792a18f7ba1420a0",
+    "latestVersion": "trixie-2026-05-14"
+  }
+}
+JSON
+  exit 0
+fi
+
 if [[ "${1:-}" == "get" && "${2:-}" =~ ^node/k3s-master-[0-2]$ ]]; then
   node_json "${2#node/}" master
   exit 0
@@ -872,6 +890,14 @@ fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
   node_json k3s-worker-0 node
+  exit 0
+fi
+
+if [[ "${1:-}" == "label" && "${2:-}" =~ ^node/k3s- && "${4:-}" == "--overwrite" ]]; then
+  if [[ -n "${CALLS_FILE:-}" ]]; then
+    printf 'kubectl %s\n' "$*" >>"$CALLS_FILE"
+  fi
+  printf '%s labeled\n' "$2"
   exit 0
 fi
 
