@@ -1,40 +1,40 @@
-# PVC Recovery Runbook
+# PVC Restore Runbook
 
-Use this when a PVC-backed workload shows filesystem, clone, checksum, or mount
-corruption. Keep the repair narrow: identify the owning controller, repair one
-PVC or database instance at a time, and prove the backup path works again before
-cleaning up.
+Use this when a PVC-backed workload shows filesystem, checksum, or mount
+corruption. The default recovery path is restore from a known-good backup or
+controller-managed replica, not filesystem repair.
+
+This runbook assumes Git is the desired state. Prefer changing the app
+manifests, merging the change, and letting ArgoCD reconcile instead of applying
+long-lived live patches.
 
 Common symptoms:
 
-- `applyFSGroup ... bad message` on a VolSync source clone pod
 - `fsck ... UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY` during mount
 - `Structure needs cleaning`, `remote I/O`, or `input/output error`
-- VolSync `ReplicationSource` stuck with no `LAST SYNC`
+- `applyFSGroup ... bad message` on a VolSync mover or application pod
 - PostgreSQL `checksum verification failed` during CNPG replica join or backup
+- A workload starts but serves broken data from a mounted PVC
 
 ## Safety Rules
 
-- Confirm the workload owner before deleting anything. Application PVCs,
+- Confirm the PVC owner before deleting anything. Application PVCs,
   StatefulSet PVCs, VolSync cache PVCs, and CNPG instance PVCs have different
   replacement paths.
-- For application PVCs backed by VolSync/restic, prefer a clean restore and
-  replacement over filesystem repair.
+- For VolSync-backed app PVCs, prefer deleting the bad PVC and recreating it
+  from Git with the correct `dataSourceRef` and `storageClassName`.
 - For CNPG-managed PostgreSQL PVCs, use `kubectl cnpg` commands. Do not
   manually delete CNPG pods or PVCs.
-- Keep temporary manifests under `hack/bootstrap/.out/` or another ignored
-  path.
-- After any recovery, remove live-only patches so ArgoCD returns to Git state.
-- Longhorn PVCs on Raspberry Pi 5 Trixie nodes should be created with a 16 KiB
-  filesystem block size; this was live-tested after replica rebuild and
-  reattach. Use `mkfsParams: "-b 16384"` for ext4 and
-  `mkfsParams: "-b size=16384"` for XFS. Existing Longhorn PVCs created with
-  4 KiB filesystem blocks should be restored or recreated, not trusted in
-  place.
+- Do not run filesystem repair on a mounted live workload PVC. Use repair only
+  as last-resort forensic work on an isolated copy.
+- If several PVCs fail at once, suspect the storage datapath first. Restore
+  onto a trusted StorageClass before spending time on per-volume repairs.
+- After recovery, ArgoCD should be `Synced` and `Healthy`; any emergency live
+  patch should be removed or represented in Git.
 
-## Initial Audit
+## Initial Triage
 
-Check for non-running pods and recent storage errors:
+Find unhealthy pods and storage-related events:
 
 ```sh
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded -o wide
@@ -42,286 +42,120 @@ kubectl get events -A --sort-by=.lastTimestamp | \
   rg -i 'fsck|bad message|remote I/O|EREMOTEIO|UNEXPECTED INCONSISTENCY|applyFSGroup|FailedMount|MountVolume|checksum verification failed|Structure needs cleaning'
 ```
 
-List bound PVCs and Longhorn volume health:
-
-```sh
-kubectl get pvc -A -o wide
-kubectl -n longhorn-system get volumes.longhorn.io -o wide
-```
-
-For a suspicious pod, map each mounted volume back to its PVC and owner:
+Map the failing pod to its PVC and controller:
 
 ```sh
 kubectl -n <namespace> describe pod <pod>
 kubectl -n <namespace> describe pvc <pvc>
-kubectl -n <namespace> get pods -o wide
+kubectl -n <namespace> get deploy,sts,pod,pvc,replicationsource,replicationdestination -o wide
 ```
 
-## Application PVC Path
-
-Use this path for normal application PVCs where a known-good VolSync restic
-backup exists and the app can tolerate restoring to that point in time.
-
-### 1. Inspect VolSync
+Check backup freshness before changing the live PVC:
 
 ```sh
 kubectl -n <namespace> get replicationsource <name> -o wide
-kubectl -n <namespace> describe pod -l job-name=volsync-src-<name>
+kubectl -n <namespace> get replicationdestination <name> -o yaml
 ```
 
-If VolSync is stuck on an old clone PVC, expect to remove
-`volsync-<name>-src` and `volsync-src-<name>-cache` during the cutover.
+## VolSync App PVC Restore
 
-### 2. Restore Into A Temporary PVC
+Use this path for normal application PVCs where a known-good VolSync restic
+backup exists and the workload can be restored to that backup time.
 
-Restore to a temporary PVC first. Do not replace the live PVC until the restore
-finishes and expected files are present.
+### 1. Put The Desired Restore In Git
+
+The PVC should be the final shape you want after recovery. Set the
+StorageClass deliberately, such as `local-path` for node-local recovery or a
+known-good Longhorn class when Longhorn is trusted.
+
+The PVC should include a `dataSourceRef` to the matching
+`ReplicationDestination` so a deleted PVC can be recreated by ArgoCD and
+populated automatically:
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: <name>-restore-check
+  name: <app>-pvc
   namespace: <namespace>
 spec:
   accessModes:
     - ReadWriteOnce
+  dataSourceRef:
+    apiGroup: volsync.backube
+    kind: ReplicationDestination
+    name: <app>-bootstrap
   resources:
     requests:
       storage: <size>
-  storageClassName: longhorn
----
-apiVersion: volsync.backube/v1alpha1
-kind: ReplicationDestination
-metadata:
-  name: <name>-restore-check
-  namespace: <namespace>
-spec:
-  trigger:
-    manual: restore-YYYY-MM-DDTHH-MM-SSZ
-  restic:
-    repository: <name>-volsync-b2
-    destinationPVC: <name>-restore-check
-    copyMethod: Direct
-    storageClassName: longhorn
-    accessModes:
-      - ReadWriteOnce
-    capacity: <size>
-    enableFileDeletion: true
-    restoreAsOf: "YYYY-MM-DDTHH:MM:SSZ"
-    moverSecurityContext:
-      runAsUser: 65534
-      runAsGroup: 65534
-      fsGroup: 65534
+  storageClassName: <trusted-storage-class>
 ```
+
+The `ReplicationDestination` should point at the desired restic repository and
+restore time. Omit `restoreAsOf` to use the latest backup.
+
+If the app must stay down during restore, commit the workload at `replicas: 0`
+in the same PR or in an earlier PR.
+
+### 2. Recreate The PVC
+
+After the Git change is merged and ArgoCD sees the desired shape, stop the
+workload if it is not already scaled down:
 
 ```sh
-kubectl apply --server-side --field-manager=home-ops-restore -f <restore-check>.yaml
-kubectl -n <namespace> wait --for=jsonpath='{.status.lastSyncTime}' \
-  replicationdestination/<name>-restore-check --timeout=10m
-```
-
-Verify app-specific files with a one-shot job:
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: <name>-restore-verify
-  namespace: <namespace>
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      restartPolicy: Never
-      securityContext:
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        fsGroupChangePolicy: OnRootMismatch
-      containers:
-        - name: verify
-          image: quay.io/backube/volsync:0.15.0
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -eu
-              test -f /data/<expected-file>
-              find /data -maxdepth 2 -mindepth 1 | sort | head -50
-          volumeMounts:
-            - name: data
-              mountPath: /data
-      volumes:
-        - name: data
-          persistentVolumeClaim:
-            claimName: <name>-restore-check
-```
-
-```sh
-kubectl apply --server-side --field-manager=home-ops-restore -f <verify>.yaml
-kubectl -n <namespace> wait --for=condition=complete job/<name>-restore-verify --timeout=3m
-kubectl -n <namespace> logs job/<name>-restore-verify
-```
-
-### 3. Replace The Source PVC
-
-Pause VolSync and stop every workload that mounts the PVC:
-
-```sh
-kubectl -n <namespace> patch replicationsource <name> \
-  --type=merge -p '{"spec":{"paused":true}}'
-
 kubectl -n <namespace> scale deploy/<consumer> --replicas=0
-kubectl -n <namespace> wait --for=delete pod -l app=<consumer> --timeout=3m
+kubectl -n <namespace> wait --for=delete pod -l app=<consumer> --timeout=5m
 ```
 
-Delete stale VolSync source state before deleting the app PVC:
+Delete the corrupt PVC and let ArgoCD recreate it from Git:
 
 ```sh
-kubectl -n <namespace> delete job volsync-src-<name> --ignore-not-found --wait=false
-kubectl -n <namespace> delete pvc volsync-<name>-src volsync-src-<name>-cache --ignore-not-found
+kubectl -n <namespace> delete pvc <app>-pvc --wait=true --timeout=5m
+kubectl -n argocd annotate application <argocd-app> \
+  argocd.argoproj.io/refresh=hard --overwrite
 ```
 
-Delete and recreate the source PVC. The replacement manifest must match Git
-desired state: name, namespace, access modes, storage class, size, labels, and
-ArgoCD tracking annotations when present.
+Wait for the restore destination and PVC population:
 
 ```sh
-kubectl -n <namespace> delete pvc <source-pvc> --wait=true --timeout=3m
+kubectl -n <namespace> get pvc <app>-pvc -w
+kubectl -n <namespace> get replicationdestination <app>-bootstrap -o wide -w
 ```
 
-```yaml
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: <source-pvc>
-  namespace: <namespace>
-  annotations:
-    argocd.argoproj.io/sync-wave: "-2"
-    argocd.argoproj.io/tracking-id: <argocd-app>:/PersistentVolumeClaim:<namespace>/<source-pvc>
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: <size>
-  storageClassName: longhorn
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: <source-pvc>-cutover-copy
-  namespace: <namespace>
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      restartPolicy: Never
-      securityContext:
-        runAsUser: 65534
-        runAsGroup: 65534
-        fsGroup: 65534
-        fsGroupChangePolicy: OnRootMismatch
-      containers:
-        - name: copy
-          image: quay.io/backube/volsync:0.15.0
-          command:
-            - /bin/sh
-            - -c
-            - |
-              set -eu
-              cp -R --no-preserve=mode,ownership,timestamps /source/. /dest/
-              test -f /dest/<expected-file>
-          volumeMounts:
-            - name: source
-              mountPath: /source
-              readOnly: true
-            - name: dest
-              mountPath: /dest
-      volumes:
-        - name: source
-          persistentVolumeClaim:
-            claimName: <name>-restore-check
-        - name: dest
-          persistentVolumeClaim:
-            claimName: <source-pvc>
-```
+### 3. Start And Validate
 
-Use `cp -R --no-preserve=mode,ownership,timestamps`, not tar. Tar may still
-attempt to chmod or utime the mounted destination root even with ownership and
-permission preservation disabled.
+Return the workload to its Git-managed replica count, either by merging the
+replica change or by syncing the already-merged app manifest:
 
 ```sh
-kubectl apply --server-side --field-manager=home-ops-restore -f <cutover>.yaml
-kubectl -n <namespace> wait --for=condition=complete \
-  job/<source-pvc>-cutover-copy --timeout=10m
-kubectl -n <namespace> logs job/<source-pvc>-cutover-copy
+kubectl -n argocd annotate application <argocd-app> \
+  argocd.argoproj.io/refresh=hard --overwrite
+kubectl -n <namespace> rollout status deploy/<consumer> --timeout=10m
 ```
 
-Restart consumers and wait for rollout:
+Verify application-specific files, logs, and health. Then trigger or wait for a
+fresh `ReplicationSource` backup from the restored PVC:
 
 ```sh
-kubectl -n <namespace> scale deploy/<consumer> --replicas=1
-kubectl -n <namespace> rollout status deploy/<consumer> --timeout=6m
+kubectl -n <namespace> get replicationsource <name> -o wide
+kubectl -n <namespace> logs job/volsync-src-<name> --all-containers --tail=200
 ```
 
-If another consumer now reports fsck errors, map that volume back to its PVC and
-repeat the application PVC path for that PVC.
+If a manual backup trigger is needed, make that trigger in Git when practical
+so ArgoCD remains the source of truth.
 
-### 4. Prove VolSync Works Again
+## CNPG PostgreSQL Restore
 
-Delete stale source clones before triggering the regression backup. Otherwise
-VolSync can reuse the old damaged clone.
+Use this path for CNPG-managed PostgreSQL instance PVCs. CNPG instance names
+are normally `<cluster>-<ordinal>`.
 
-```sh
-kubectl -n <namespace> patch replicationsource <name> \
-  --type=merge -p '{"spec":{"paused":true}}'
-kubectl -n <namespace> delete job volsync-src-<name> --ignore-not-found --wait=false
-kubectl -n <namespace> delete pvc volsync-<name>-src volsync-src-<name>-cache --ignore-not-found
-```
-
-Trigger one manual source backup:
-
-```sh
-kubectl -n <namespace> patch replicationsource <name> \
-  --type=merge -p '{"spec":{"paused":false,"trigger":{"schedule":"0 6 * * *","manual":"repair-YYYY-MM-DD"}}}'
-
-kubectl -n <namespace> wait --for=condition=complete \
-  job/volsync-src-<name> --timeout=10m
-```
-
-After it succeeds, remove live-only fields so ArgoCD returns to Git state:
-
-```sh
-kubectl -n <namespace> patch replicationsource <name> --type=json \
-  -p '[{"op":"remove","path":"/spec/trigger/manual"},{"op":"remove","path":"/spec/paused"}]'
-```
-
-## CNPG PostgreSQL Path
-
-Use this path for CNPG-managed PostgreSQL instance PVCs. CNPG instance names are
-normally `<cluster>-<ordinal>`, and the CNPG CLI expects the cluster name plus
-the ordinal.
-
-### 1. Inspect The Cluster
+Inspect the cluster:
 
 ```sh
 kubectl cnpg status <cluster> -n <namespace>
 kubectl -n <namespace> get pods,pvc -l cnpg.io/cluster=<cluster> -o wide
 kubectl -n <namespace> logs <instance-pod> -c postgres --since=30m --tail=500
 ```
-
-Confirm the target instance role before any destructive action:
-
-```sh
-kubectl cnpg status <cluster> -n <namespace>
-```
-
-Do not destroy a primary until a healthy standby has been promoted and accepted
-writes.
-
-### 2. Destroy A Corrupt Replica
 
 If the corrupt instance is a replica, let CNPG remove the pod and PVC:
 
@@ -332,83 +166,34 @@ kubectl -n <namespace> wait cluster.postgresql.cnpg.io/<cluster> \
 kubectl cnpg status <cluster> -n <namespace>
 ```
 
-CNPG should create a replacement instance automatically when
-`spec.instances` still requires it.
-
-### 3. Replace A Corrupt Primary
-
-First identify a standby that can produce a checksum-clean basebackup. For
-PostgreSQL versions that support the blackhole backup target, this checks the
-standby without writing a local backup:
-
-```sh
-kubectl -n <namespace> exec <standby-pod> -c postgres -- \
-  pg_basebackup --target=blackhole -X none --checkpoint=fast \
-  -d "host=<standby-pod> user=streaming_replica port=5432 \
-sslkey=/controller/certificates/streaming_replica.key \
-sslcert=/controller/certificates/streaming_replica.crt \
-sslrootcert=/controller/certificates/server-ca.crt \
-application_name=checksum-check sslmode=verify-ca dbname=postgres connect_timeout=5"
-```
-
-Promote the clean standby:
+If the corrupt instance is primary, first confirm a standby is healthy. Promote
+the clean standby, then destroy the old primary through CNPG:
 
 ```sh
 kubectl cnpg promote <cluster> <clean-standby-ordinal> -n <namespace>
 kubectl cnpg status <cluster> -n <namespace>
-```
-
-After `kubectl cnpg status` reports the promoted instance as primary, destroy
-the old corrupt primary:
-
-```sh
 kubectl cnpg destroy <cluster> <old-primary-ordinal> -n <namespace>
 ```
 
-If a failed join instance was created from the corrupt primary, destroy that
-instance through CNPG too:
-
-```sh
-kubectl cnpg destroy <cluster> <failed-join-ordinal> -n <namespace>
-```
-
-Wait for CNPG to rebuild the requested number of instances:
-
-```sh
-kubectl -n <namespace> wait cluster.postgresql.cnpg.io/<cluster> \
-  --for=condition=Ready --timeout=30m
-kubectl cnpg status <cluster> -n <namespace>
-```
-
-### 4. Take A Fresh CNPG Backup
-
-Trigger a fresh backup after the cluster is healthy. Use the same method and
-plugin as the cluster's Git-managed backup configuration.
+After CNPG is healthy, take a fresh backup with the same method used by the
+cluster's Git-managed backup configuration:
 
 ```sh
 kubectl cnpg backup <cluster> -n <namespace> \
   --method plugin \
   --plugin-name barman-cloud.cloudnative-pg.io \
   --backup-target prefer-standby \
-  --backup-name <cluster>-post-repair-YYYYMMDDHHMM
-
-kubectl -n <namespace> get backup.postgresql.cnpg.io <backup-name> -o wide
-kubectl -n <namespace> wait backup.postgresql.cnpg.io/<backup-name> \
-  --for=jsonpath='{.status.phase}'=completed --timeout=60m
+  --backup-name <cluster>-post-restore-YYYYMMDDHHMM
 ```
-
-If the normal scheduled backup uses `target: primary`, use `--backup-target
-primary` instead so the on-demand backup matches steady-state behavior.
 
 ## Final Validation
 
-Run these checks after either path:
+Run these checks after recovery:
 
 ```sh
 kubectl get pods -A --field-selector=status.phase!=Running,status.phase!=Succeeded -o wide
 kubectl get events -A --sort-by=.lastTimestamp | \
   rg -i 'fsck|bad message|remote I/O|EREMOTEIO|UNEXPECTED INCONSISTENCY|applyFSGroup|FailedMount|MountVolume|checksum verification failed|Structure needs cleaning'
-kubectl -n longhorn-system get volumes.longhorn.io -o wide
 kubectl get replicationsource -A -o wide
 kubectl -n argocd get applications.argoproj.io -o wide
 ```
@@ -428,5 +213,5 @@ kubectl get pods -A -o json | \
   done
 ```
 
-The target ArgoCD applications should be `Synced` and `Healthy`, and any
-live-only recovery patches should be removed or represented in Git.
+The target application should be `Synced` and `Healthy`, the workload should
+serve expected data, and a fresh backup should succeed from the restored PVC.
