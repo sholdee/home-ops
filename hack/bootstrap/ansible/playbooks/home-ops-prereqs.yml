@@ -3,10 +3,15 @@
   hosts: k3s_cluster
   gather_facts: true
   become: true
+  vars_files:
+    - ../home-ops/vars/defaults.yml
   tasks:
     - name: Install Debian storage prerequisites
       ansible.builtin.apt:
         name:
+          - cryptsetup
+          - dmsetup
+          - kmod
           - open-iscsi
           - nfs-common
         state: present
@@ -19,3 +24,6 @@
         enabled: true
         state: started
       when: ansible_facts["os_family"] == "Debian"
+
+    - name: Configure kernel prerequisites
+      ansible.builtin.import_tasks: ../home-ops/tasks/node-prep/kernel.yml

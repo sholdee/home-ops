@@ -1,10 +1,14 @@
 ---
 - name: Load required kernel modules
   ansible.builtin.command: "modprobe {{ item }}"
-  loop:
-    - br_netfilter
-    - overlay
+  loop: "{{ home_ops_kernel_modules }}"
   changed_when: false
+
+- name: Load optional kernel modules when available
+  ansible.builtin.command: "modprobe {{ item }}"
+  loop: "{{ home_ops_optional_kernel_modules }}"
+  changed_when: false
+  failed_when: false
 
 - name: Persist required kernel modules
   ansible.builtin.copy:
@@ -12,6 +16,4 @@
     owner: root
     group: root
     mode: "0644"
-    content: |
-      br_netfilter
-      overlay
+    content: "{{ home_ops_kernel_modules | join('\n') }}\n"

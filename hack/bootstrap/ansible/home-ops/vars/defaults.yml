@@ -18,13 +18,23 @@ home_ops_supported_architectures:
 
 home_ops_debian_packages:
   - ca-certificates
+  - cryptsetup
   - curl
+  - dmsetup
   - iproute2
   - iptables
   - jq
+  - kmod
   - nfs-common
   - open-iscsi
   - socat
+
+home_ops_kernel_modules:
+  - br_netfilter
+  - overlay
+  - dm_crypt
+home_ops_optional_kernel_modules:
+  - nfs
 
 home_ops_k3s_binary_path: /usr/local/bin/k3s
 home_ops_k3s_server_service_name: k3s

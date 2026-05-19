@@ -217,9 +217,11 @@ affected K3s server or agent so the mirror config is actually loaded.
 
 The in-repo backend owns node-prep prerequisites before K3s install or join:
 Raspberry Pi boot/config flags, swap disablement, CPU governor, fsnotify
-sysctls, and base kernel modules. Fresh nodes may reboot automatically before
-joining K3s. Existing K3s nodes stop with a reboot-required message instead of
-rebooting themselves; use the node lifecycle drain/reboot/uncordon flow.
+sysctls, K3s kernel modules, and Longhorn host prerequisites such as
+`open-iscsi`, `nfs-common`, `cryptsetup`, `dmsetup`, and `dm_crypt`. Fresh
+nodes may reboot automatically before joining K3s. Existing K3s nodes stop with
+a reboot-required message instead of rebooting themselves; use the node
+lifecycle drain/reboot/uncordon flow.
 
 Full Ansible runs also converge host services: RPi MQTT reporter on all nodes,
 NUT client on control-plane nodes, and a GitHub Actions runner on workers for
