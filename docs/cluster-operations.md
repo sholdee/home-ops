@@ -133,6 +133,7 @@ Node lifecycle:
 | Render live node network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` |
 | Render live node Raspberry Pi image source | `just node-reimage-image-source <node>` |
 | Build live node Raspberry Pi image | `just node-reimage-build <node>` |
+| Run full live node reimage through rejoin | `just node-reimage-full <node>` |
 | Reboot a drained live node | `just node-reboot <node>` |
 | Join one explicit live node | `just node-join <node>` |
 | Finalize and uncordon one live node | `just node-uncordon <node>` |
@@ -575,6 +576,10 @@ just node-refresh-ssh-host-key k3s-worker-0
 just node-join k3s-worker-0
 just node-uncordon k3s-worker-0
 just node-reimage-plan k3s-worker-0
+just node-reimage-full k3s-worker-0
+just node-uncordon k3s-worker-0
+
+# Primitive/debug flow:
 just node-reimage-build k3s-worker-0
 just node-reimage-serve k3s-worker-0 k3s-master-0
 just node-reimage-apply k3s-worker-0
@@ -631,9 +636,17 @@ when the derived Cilium config has `kube_proxy_replacement: true`.
 
 ### Network Reimage
 
-Network reimage is a post-delete flow for Raspberry Pi nodes. The normal path
-is build, serve, drain, Longhorn eviction when needed, `node-delete`,
-`node-reimage-apply`, `node-join`, `node-uncordon`, and
+Network reimage replaces one Raspberry Pi node in place. The normal operator
+path is `node-reimage-full <node>`, then `node-uncordon <node>` after final
+inspection. The full command runs read-only reimage and storage preflights,
+builds the image before node downtime, automatically selects a healthy serve
+host, verifies the target can reach the image URL, drains, evicts Longhorn,
+deletes the Kubernetes Node, applies the one-shot network reimage, rejoins the
+node, runs host services, and cleans up the image server. It intentionally
+leaves the final uncordon manual.
+
+The primitive/debug path is build, serve, drain, Longhorn eviction when needed,
+`node-delete`, `node-reimage-apply`, `node-join`, `node-uncordon`, and
 `node-reimage-cleanup`.
 
 `node-reimage-build` renders the per-node `rpi-image-gen` source tree, builds

@@ -51,6 +51,22 @@ Debian 13 Trixie
 
 ## Build The Image
 
+For the proven rolling replacement path, use the full orchestrator:
+
+```sh
+just node-reimage-full k3s-worker-0
+just node-uncordon k3s-worker-0
+```
+
+`node-reimage-full` runs the safety preflights, builds before node downtime,
+selects a healthy serve host automatically, verifies target-to-server
+reachability, drains, evicts Longhorn, deletes the Kubernetes Node, applies the
+network reimage, rejoins the node, runs host services, and cleans up the image
+server. It leaves final uncordon to the operator.
+
+The remaining commands are the primitive flow for debugging or manual
+resumption.
+
 Build the image with the orchestrated builder:
 
 ```sh

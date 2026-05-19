@@ -191,7 +191,7 @@ ansible_load_host_service_secrets_from_op() {
     fi
   done < <(ansible_host_service_secret_vars "$role")
 
-  ansible_bool "$needs_op" || return
+  ansible_bool "$needs_op" || return 0
 
   command -v op >/dev/null 2>&1 || return 0
   if [[ -n "${BOOTSTRAP_ANSIBLE_HOST_SERVICES_ITEM_JSON:-}" ]]; then
