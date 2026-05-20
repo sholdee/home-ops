@@ -140,6 +140,12 @@
       allowedVersions: '<4',
     },
     {
+      description: 'Keep 1Password CLI pinned until Renovate can resolve its mise backend cleanly',
+      matchManagers: ['mise'],
+      matchPackageNames: ['1password/cli', 'op'],
+      enabled: false,
+    },
+    {
       description: 'Automerge mise-managed tool minor/patch updates',
       matchManagers: ['mise'],
       matchUpdateTypes: ['minor','patch'],

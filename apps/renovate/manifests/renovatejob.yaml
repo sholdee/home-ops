@@ -25,6 +25,8 @@ spec:
       value: enabled
     - name: RENOVATE_REPOSITORY_CACHE_TYPE
       value: "s3://renovate-cache"
+    - name: RENOVATE_CUSTOM_ENV_VARIABLES
+      value: '{"MISE_TRUSTED_CONFIG_PATHS":"/tmp/repos/github/sholdee/home-ops"}'
     - name: AWS_REGION
       value: garage
     - name: AWS_ENDPOINT_URL
