@@ -9,7 +9,7 @@ actionlint = "1.7.12"
 kubeconform = "0.7.0"
 
 # Kubernetes and GitOps CLIs.
-kubectl = "1.35.4"
+kubectl = "1.36.1"
 kustomize = "5.8.1"
 helm = "3.21.0"
 yq = "4.53.2"
