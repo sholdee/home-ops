@@ -92,7 +92,10 @@ Bootstrap stays narrower than steady-state GitOps: it prepares only the
 dependencies required for ArgoCD takeover, then normal workloads return to
 ArgoCD. See [hack/bootstrap/README.md](hack/bootstrap/README.md) for the
 framework overview and [docs/cluster-operations.md](docs/cluster-operations.md)
-for the operator runbook.
+for the operator runbook. Local operator tooling is pinned with
+[`mise`](https://mise.jdx.dev/); on a fresh workstation install `mise`, run
+`mise install --locked --yes`, then use `mise exec -- just ...` until your
+shell has mise activated.
 
 ### ArgoCD Project Structure 🏗️
 

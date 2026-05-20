@@ -10,6 +10,12 @@ directory are implementation details behind those recipes.
 just --list
 ```
 
+Install the pinned local tools with `mise install --locked --yes` before
+running validation or bootstrap recipes on a fresh workstation. Use
+`mise exec -- just <recipe>` until your shell has mise activated. After `just`
+is available, `just tools` is the repo shortcut. The tool list lives in the
+repository root `mise.toml`.
+
 For the longer operator runbook, see
 [`docs/cluster-operations.md`](../../docs/cluster-operations.md).
 
@@ -33,6 +39,7 @@ Do not commit `.out/`.
 | Goal | Recipe |
 | --- | --- |
 | List available commands | `just --list` |
+| Install pinned local tools | `just tools` |
 | Show active cluster status | `just context` |
 | Run full local checks | `just check` |
 | Test bootstrap Bash and offline behavior | `just bootstrap-test` |

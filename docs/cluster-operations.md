@@ -14,29 +14,19 @@ debugging cases.
 
 ## Prerequisites
 
-Required for all bootstrap work:
+Recommended local setup:
 
-- `just`
-- `kubectl`
-- `kustomize`
-- `helm`
-- `yq`
-- `jq`
-- `op`
+```sh
+brew install mise
+mise install --locked --yes
+mise exec -- just check
+```
 
-Required for local validation:
-
-- `shellcheck`
-- `bats`
-
-Required for Ansible-backed node convergence:
-
-- `ansible-playbook`
-- `ansible-galaxy`
-
-Required for Lima VM tests:
-
-- `limactl`
+`mise.toml` is the source of truth for local operator tooling. `mise` installs
+the pinned CLI versions; `just` remains the command surface for normal
+operation. For regular use, activate mise in your shell or run commands through
+`mise exec --`. After `just` is available, `just tools` is the repo shortcut
+for `mise install --locked --yes`.
 
 1Password must have access to:
 

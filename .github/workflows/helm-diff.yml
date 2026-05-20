@@ -28,61 +28,8 @@ jobs:
       - name: Fetch base branch for comparison
         run: git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
 
-      - name: Install CLI tools
-        uses: ./.github/actions/setup-tools
-
-      - name: Check yq presence/version
-        id: check-yq
-        run: |
-          MIN_MAJOR=4
-          NEED_INSTALL=0
-
-          if command -v yq >/dev/null 2>&1; then
-            CURRENT_VER="$(yq --version 2>/dev/null || true)"
-            echo "Found yq: $CURRENT_VER"
-
-            # Extract major version from e.g. "yq (...) version v4.48.1"
-            CURRENT_MAJOR="$(printf '%s\n' "$CURRENT_VER" | sed -n 's/.*version v\([0-9]\+\).*/\1/p')"
-
-            if [ -z "$CURRENT_MAJOR" ] || [ "$CURRENT_MAJOR" -lt "$MIN_MAJOR" ]; then
-              echo "Existing yq major '${CURRENT_MAJOR:-unknown}' is < ${MIN_MAJOR}, will install newer yq."
-              NEED_INSTALL=1
-            else
-              echo "Existing yq is v$CURRENT_MAJOR (>= v${MIN_MAJOR}); will reuse."
-            fi
-          else
-            echo "yq not found; will install."
-            NEED_INSTALL=1
-          fi
-
-          if [ "$NEED_INSTALL" -eq 1 ]; then
-            echo "need_install=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "need_install=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Determine yq version
-        id: yq-version
-        if: steps.check-yq.outputs.need_install == 'true'
-        run: |
-          YQ_VERSION=$(curl -sL https://api.github.com/repos/mikefarah/yq/releases/latest \
-            | jq -r '.tag_name')  # keep the leading "v"
-          echo "YQ_VERSION=$YQ_VERSION" >> "$GITHUB_ENV"
-          echo "version=$YQ_VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Install yq
-        if: steps.check-yq.outputs.need_install == 'true'
-        env:
-          YQ_VERSION: ${{ steps.yq-version.outputs.version }}
-        run: |
-          echo "Installing yq ${YQ_VERSION}..."
-          curl -sSL "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64" \
-            -o yq
-          sudo mv yq /usr/local/bin/yq
-          sudo chmod +x /usr/local/bin/yq
-
-          echo "yq after install:"
-          yq --version
+      - name: Install mise toolchain
+        uses: ./.github/actions/setup-mise
 
       - name: Prepare base worktree
         run: |
@@ -177,6 +124,9 @@ jobs:
         with:
           name: ${{ needs.helm-diff.outputs.ARTIFACT_NAME }}
 
+      - name: Install mise toolchain
+        uses: ./.github/actions/setup-mise
+
       - name: Extract Image Updates from Helm Diff
         id: extract_helm_images
         env:
@@ -185,7 +135,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DIFF_TXT_PATH: diff.txt
         run: |
-          python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
+          mise exec -- python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
 
       - name: Attempt to Pull Extracted Images and Verify Platform
         id: pull_helm_images
