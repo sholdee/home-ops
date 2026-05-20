@@ -1,0 +1,24 @@
+[tools]
+# Core validation and command UX.
+python = "3.14"
+just = "1.51.0"
+"pipx:pre-commit" = "4.6.0"
+shellcheck = "0.11.0"
+bats = "1.13.0"
+actionlint = "1.7.12"
+kubeconform = "0.7.0"
+
+# Kubernetes and GitOps CLIs.
+kubectl = "1.35.4"
+kustomize = "5.8.1"
+helm = "3.21.0"
+yq = "4.53.2"
+jq = "1.7.1"
+
+# Bootstrap, node lifecycle, and operator workflow CLIs.
+ansible-core = "2.20.6"
+"pipx:ansible-lint" = "26.4.0"
+kind = "0.31.0"
+lima = "2.1.1"
+op = "2.34.0"
+gh = "2.92.0"

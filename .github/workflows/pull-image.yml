@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Install mise toolchain
+        uses: ./.github/actions/setup-mise
+
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest
         env:
@@ -19,7 +22,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
+          mise exec -- python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
 
       - name: Attempt to pull image and verify platform
         id: pull_image

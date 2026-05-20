@@ -129,12 +129,6 @@
       automerge: true,
     },
     {
-      description: 'Automerge CLI tool minor/patch updates',
-      matchFileNames: ['.github/actions/setup-tools/**'],
-      matchUpdateTypes: ['minor','patch'],
-      automerge: true,
-    },
-    {
       description: 'Automerge github-releases minor/patch updates (CRDs, manifests)',
       matchDatasources: ['github-releases'],
       matchUpdateTypes: ['minor','patch'],
@@ -142,8 +136,14 @@
     },
     {
       description: 'Hold Helm at v3.x until v4 compatibility is verified',
-      matchPackageNames: ['helm/helm'],
+      matchPackageNames: ['helm', 'helm/helm', 'aqua:helm/helm'],
       allowedVersions: '<4',
+    },
+    {
+      description: 'Automerge mise-managed tool minor/patch updates',
+      matchManagers: ['mise'],
+      matchUpdateTypes: ['minor','patch'],
+      automerge: true,
     },
   ],
   customManagers: [
@@ -261,15 +261,15 @@
     },
     {
       customType: 'regex',
-      description: ['Process CLI tool versions in composite action'],
+      description: ['Process mise installer version in setup action'],
       managerFilePatterns: [
-        '/^\\.github/actions/setup-tools/action\\.ya?ml$/',
+        '/^\\.github/actions/setup-mise/action\\.ya?ml$/',
       ],
       matchStrings: [
-        '# renovate: datasource=(?<datasource>[\\w-]+) depName=(?<depName>[\\w./-]+)( versioning=(?<versioning>[\\w:^.()$/-]+))?( extractVersion=(?<extractVersion>[\\w:^.()$/-]+))?\\n\\s+default: \'(?<currentValue>[\\d.]+)\'',
+        '# renovate: datasource=(?<datasource>[\\w-]+) depName=(?<depName>[\\w./-]+) extractVersion=(?<extractVersion>[^\\s]+)\\n\\s+default: \'(?<currentValue>[\\d.]+)\'',
       ],
-      versioningTemplate: '{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}',
-      extractVersionTemplate: '{{#if extractVersion}}{{{extractVersion}}}{{else}}^v?(?<version>.+)${{/if}}',
+      versioningTemplate: 'semver-coerced',
+      extractVersionTemplate: '{{{extractVersion}}}',
     },
   ],
   customDatasources: {

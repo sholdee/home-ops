@@ -18,6 +18,11 @@ check:
     just github-test
     just bootstrap-test
 
+# Install the pinned local operator toolchain.
+[group('core')]
+tools:
+    mise install --locked --yes
+
 # Run every pre-commit hook against the repository.
 [group('core')]
 pre-commit:
