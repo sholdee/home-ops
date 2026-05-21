@@ -33,7 +33,7 @@ patches:
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
-    version: 9.5.14
+    version: 9.5.15
     releaseName: argocd
     namespace: argocd
     valuesFile: manifests/values.yaml
