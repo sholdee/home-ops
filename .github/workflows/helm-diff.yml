@@ -30,6 +30,8 @@ jobs:
 
       - name: Install mise toolchain
         uses: ./.github/actions/setup-mise
+        with:
+          profile: helm-diff
 
       - name: Prepare base worktree
         run: |
@@ -126,6 +128,8 @@ jobs:
 
       - name: Install mise toolchain
         uses: ./.github/actions/setup-mise
+        with:
+          profile: image
 
       - name: Extract Image Updates from Helm Diff
         id: extract_helm_images
