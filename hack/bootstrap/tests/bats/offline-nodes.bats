@@ -11,6 +11,8 @@ setup_file() {
 
 setup() {
   tmp="$BATS_TEST_TMPDIR"
+  export TEST_K3S_VERSION
+  TEST_K3S_VERSION="$(repo_k3s_version)"
   export BOOTSTRAP_ANSIBLE_OUT_DIR="${tmp}/ansible-out"
   create_node_inventory
 }
@@ -1457,11 +1459,11 @@ EOF
   add_inventory_master k3s-master-3 192.168.99.13
   add_inventory_master k3s-master-4 192.168.99.14
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-3:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
+    "k3s-master-3:master:True:schedulable:absent:current" \
+    "k3s-worker-0:node:True:schedulable:absent:current"
   write_converge_kubectl
   write_fake_ansible
 
@@ -1502,9 +1504,9 @@ EOF
   nodes_json="${tmp}/nodes.json"
   add_inventory_worker k3s-worker-1 192.168.99.21
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-worker-0:node:True:schedulable:absent:current"
   write_converge_kubectl
   write_fake_ansible
 
@@ -1543,30 +1545,30 @@ EOF
   write_fake_ansible
 
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:master:True:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
+    "k3s-worker-0:master:True:schedulable:absent:current"
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
     "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
   assert_failure
   assert_output_contains 'role drift for k3s-worker-0'
 
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:False:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
+    "k3s-worker-0:node:False:schedulable:absent:current"
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
     "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
   assert_failure
   assert_output_contains 'Kubernetes node is not Ready: k3s-worker-0'
 
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:True:cordoned:present:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
+    "k3s-worker-0:node:True:cordoned:present:current"
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
     "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
   assert_failure
@@ -1574,9 +1576,9 @@ EOF
   assert_output_contains 'Kubernetes node still has temporary joining taint: k3s-worker-0'
 
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
     "k3s-worker-0:node:True:schedulable:absent:v1.35.3+k3s1"
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_converge_kubectl" FAKE_CONVERGE_NODES_JSON="$nodes_json" \
     "${ROOT}/hack/bootstrap/nodes/converge.sh" --profile live --context test --plan
@@ -1594,11 +1596,11 @@ EOF
   local nodes_json
   nodes_json="${tmp}/nodes.json"
   write_converge_nodes_json "$nodes_json" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-stray-0:node:True:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:current" \
+    "k3s-master-1:master:True:schedulable:absent:current" \
+    "k3s-master-2:master:True:schedulable:absent:current" \
+    "k3s-worker-0:node:True:schedulable:absent:current" \
+    "k3s-stray-0:node:True:schedulable:absent:current"
   write_converge_kubectl
   write_fake_ansible
 

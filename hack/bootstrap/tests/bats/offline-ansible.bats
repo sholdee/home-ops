@@ -17,6 +17,10 @@ setup() {
       "v" + (.spec.source.targetRevision | sub("^v"; ""))
     ' "${ROOT}/apps/argocd/manifests/apps.yaml"
   )"
+  expected_apiserver_endpoint="$(repo_apiserver_endpoint)"
+  expected_cluster_cidr="$(repo_cluster_cidr)"
+  expected_k3s_version="$(repo_k3s_version)"
+  expected_kube_proxy_replacement="$(repo_kube_proxy_replacement)"
 
   cat > "${k3s_ansible}/inventory/sample/group_vars/all.yml" <<'EOF'
 ---
@@ -68,11 +72,11 @@ assert_file_contains_before() {
   expected_key="$(printf '\176/%s' ansiblekey)"
   [[ "$(yq -r '.ansible_user' "$vars")" == "ethan" ]]
   [[ "$(yq -r '.ansible_ssh_private_key_file' "$vars")" == "$expected_key" ]]
-  [[ "$(yq -r '.k3s_version' "$vars")" == "v1.35.4+k3s1" ]]
+  [[ "$(yq -r '.k3s_version' "$vars")" == "$expected_k3s_version" ]]
   [[ "$(yq -r '.cilium_tag' "$vars")" == "$cilium_tag" ]]
-  [[ "$(yq -r '.cluster_cidr' "$vars")" == "10.52.0.0/16" ]]
-  [[ "$(yq -r '.kube_proxy_replacement' "$vars")" == "true" ]]
-  [[ "$(yq -r '.apiserver_endpoint' "$vars")" == "192.168.99.77" ]]
+  [[ "$(yq -r '.cluster_cidr' "$vars")" == "$expected_cluster_cidr" ]]
+  [[ "$(yq -r '.kube_proxy_replacement' "$vars")" == "$expected_kube_proxy_replacement" ]]
+  [[ "$(yq -r '.apiserver_endpoint' "$vars")" == "$expected_apiserver_endpoint" ]]
   [[ "$(yq -r '.k3s_token' "$vars")" == "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}" ]]
   assert_file_not_contains "$vars" 'sample-token'
   run bash -c "yq -r '.extra_server_args' '$vars' | grep -q -- '--disable-kube-proxy'"
@@ -83,9 +87,9 @@ assert_file_contains_before() {
   render_home_ops_inventory
 
   [[ "$(yq -r '.ansible_user' "$home_ops_vars")" == "ethan" ]]
-  [[ "$(yq -r '.k3s_version' "$home_ops_vars")" == "v1.35.4+k3s1" ]]
+  [[ "$(yq -r '.k3s_version' "$home_ops_vars")" == "$expected_k3s_version" ]]
   [[ "$(yq -r '.cilium_tag' "$home_ops_vars")" == "$cilium_tag" ]]
-  [[ "$(yq -r '.cluster_cidr' "$home_ops_vars")" == "10.52.0.0/16" ]]
+  [[ "$(yq -r '.cluster_cidr' "$home_ops_vars")" == "$expected_cluster_cidr" ]]
   [[ "$(yq -r '.k3s_token' "$home_ops_vars")" == "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}" ]]
   [[ "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" == "" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_enabled' "$home_ops_vars")" == "true" ]]
