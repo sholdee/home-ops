@@ -4,7 +4,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
-LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-home-ops-k3s-test}"
+# shellcheck source=hack/bootstrap/lib/config.sh
+source "${BOOTSTRAP_DIR}/lib/config.sh"
+
+LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-$BOOTSTRAP_LIMA_CLUSTER_NAME_DEFAULT}"
 BOOTSTRAP_ANSIBLE_BACKEND="${BOOTSTRAP_ANSIBLE_BACKEND:-home-ops}"
 BOOTSTRAP_ANSIBLE_OUT_DIR="${BOOTSTRAP_ANSIBLE_OUT_DIR:-${BOOTSTRAP_DIR}/.out/ansible-lima}"
 K3S_ANSIBLE_DIR="${K3S_ANSIBLE_DIR:-${REPO_ROOT}/../k3s-ansible}"

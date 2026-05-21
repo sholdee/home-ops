@@ -35,7 +35,7 @@ ansible_read_remote_token_if_exists() {
   local inventory_dir="$1"
   local inventory_file="${inventory_dir}/hosts.yml"
   local vars_file="${inventory_dir}/group_vars/all.yml"
-  local first_master host address user key_file ssh_args
+  local first_master host address user key_file ssh_args token_path_q remote_token_script
 
   first_master="$(ansible_first_master_name "$inventory_file")"
   [[ -n "$first_master" && "$first_master" != "null" ]] || ansible_die "inventory has no master hosts"
@@ -49,8 +49,10 @@ ansible_read_remote_token_if_exists() {
     ssh_args+=(-i "$key_file")
   fi
 
-  ssh "${ssh_args[@]}" "$host" \
-    'if sudo -n test -f /var/lib/rancher/k3s/server/token; then sudo -n cat /var/lib/rancher/k3s/server/token; fi'
+  printf -v token_path_q '%q' "$BOOTSTRAP_K3S_TOKEN_PATH"
+  remote_token_script="if sudo -n test -f ${token_path_q}; then sudo -n cat ${token_path_q}; fi"
+  # shellcheck disable=SC2029
+  ssh "${ssh_args[@]}" "$host" "$remote_token_script"
 }
 
 ansible_read_token_from_op() {

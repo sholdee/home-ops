@@ -22,7 +22,7 @@ normal app graph.
 
 - `bootstrap.sh`: generic Kubernetes bootstrap runner and phase dispatcher.
 - `lib/`: shared bootstrap runner helpers for logging, Kubernetes commands,
-  rendering, and local run reports.
+  rendering, repo-derived facts, runtime defaults, and local run reports.
 - `phases/`: idempotent bootstrap phases sourced by `bootstrap.sh`.
 - `ansible/`: physical-node and Lima K3s convergence wrapper, inventory
   rendering, token/kubeconfig handling, and the in-repo `home-ops` Ansible
@@ -137,6 +137,12 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
 - Scripts are Bash. Keep phases idempotent and fail hard on real errors.
 - Preserve explicit phase names and logs; they are the debugging interface for
   long bootstrap runs.
+- Keep repo-derived facts such as the K3s version, Cilium values, and kube-vip
+  API endpoint in `lib/repo-facts.sh`; do not duplicate `yq` expressions across
+  tests and runtime scripts.
+- Keep shared runtime defaults in `lib/config.sh` and node lifecycle defaults
+  in `nodes/lib/config.sh`; avoid burying physical-cluster constants directly in
+  command scripts.
 - Keep `bootstrap.sh` generic and put profile-specific behavior in narrow phase
   helpers or Lima wrapper scripts.
 - Keep physical-node Ansible orchestration in `hack/bootstrap/ansible/`.

@@ -4,7 +4,12 @@ NODE_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${NODE_SCRIPT_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
-LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-home-ops-k3s-test}"
+# shellcheck source=hack/bootstrap/lib/config.sh
+source "${BOOTSTRAP_DIR}/lib/config.sh"
+# shellcheck source=hack/bootstrap/lib/repo-facts.sh
+source "${BOOTSTRAP_DIR}/lib/repo-facts.sh"
+
+LIMA_CLUSTER_NAME="${LIMA_CLUSTER_NAME:-$BOOTSTRAP_LIMA_CLUSTER_NAME_DEFAULT}"
 NODE_LIVE_INVENTORY_DIR="${NODE_LIVE_INVENTORY_DIR:-${BOOTSTRAP_DIR}/ansible/inventory/live}"
 NODE_LIMA_INVENTORY_DIR="${NODE_LIMA_INVENTORY_DIR:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME}/inventory}"
 NODE_KUBECTL_BIN="${NODE_KUBECTL_BIN:-kubectl}"
@@ -19,6 +24,8 @@ NODE_LIB_DIR="${NODE_SCRIPT_DIR}/lib"
 
 # shellcheck source=hack/bootstrap/nodes/lib/common.sh
 source "${NODE_LIB_DIR}/common.sh"
+# shellcheck source=hack/bootstrap/nodes/lib/config.sh
+source "${NODE_LIB_DIR}/config.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/inventory.sh
 source "${NODE_LIB_DIR}/inventory.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/k8s.sh

@@ -11,12 +11,7 @@ setup() {
   tmp="$BATS_TEST_TMPDIR"
   k3s_ansible="${tmp}/k3s-ansible"
   mkdir -p "${k3s_ansible}/inventory/sample/group_vars"
-  cilium_tag="$(
-    yq -r '
-      select(.kind == "Application" and .metadata.name == "cilium") |
-      "v" + (.spec.source.targetRevision | sub("^v"; ""))
-    ' "${ROOT}/apps/argocd/manifests/apps.yaml"
-  )"
+  cilium_tag="$(bootstrap_repo_cilium_tag)"
   expected_apiserver_endpoint="$(repo_apiserver_endpoint)"
   expected_cluster_cidr="$(repo_cluster_cidr)"
   expected_k3s_version="$(repo_k3s_version)"
@@ -100,6 +95,7 @@ assert_file_contains_before() {
   [[ "$(yq -r '.home_ops_github_runner_user' "$home_ops_vars")" == "github-runner" ]]
   [[ "$(yq -r '.home_ops_github_runner_service_name' "$home_ops_vars")" == 'actions.runner.{{ home_ops_github_runner_repo_owner }}-{{ home_ops_github_runner_repo_name }}.{{ home_ops_github_runner_name }}.service' ]]
   [[ "$(yq -r '.home_ops_github_runner_service_file' "$home_ops_vars")" == '{{ systemd_dir }}/{{ home_ops_github_runner_service_name }}' ]]
+  [[ "$(yq -r '.home_ops_github_runner_crictl_path' "$home_ops_vars")" == "/var/lib/rancher/k3s/data/current/bin/crictl" ]]
   [[ "$(yq -r '.home_ops_github_runner_crictl_timeout' "$home_ops_vars")" == "30s" ]]
   [[ "$(yq -r '.home_ops_k3s_embedded_registry' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_k3s_etcd_expose_metrics' "$home_ops_vars")" == "true" ]]

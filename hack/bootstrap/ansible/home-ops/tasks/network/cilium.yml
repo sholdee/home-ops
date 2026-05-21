@@ -108,7 +108,7 @@
     --version {{ cilium_tag }}
     --values {{ home_ops_cilium_values_file }}
   environment:
-    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+    KUBECONFIG: "{{ home_ops_k3s_kubeconfig }}"
   register: home_ops_cilium_install
   changed_when: home_ops_cilium_install.rc == 0
   when: home_ops_cilium_daemonset.rc != 0

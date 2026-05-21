@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-crictl=/var/lib/rancher/k3s/data/current/bin/crictl
+crictl={{ home_ops_github_runner_crictl_path | quote }}
 runtime_endpoint={{ home_ops_github_runner_crictl_runtime_endpoint | quote }}
 timeout={{ home_ops_github_runner_crictl_timeout | quote }}
 
