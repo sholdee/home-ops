@@ -179,17 +179,13 @@ node_effective_ansible_group_var() {
 node_kube_vip_address() {
   local profile="$1"
   local value
-  local kube_vip_file
 
   value="$(node_effective_ansible_group_var "$profile" apiserver_endpoint 2>/dev/null || true)"
   value="$(node_trim "$value")"
   case "$value" in
     ""|null)
-      kube_vip_file="${REPO_ROOT}/apps/kube-system/kube-vip/manifests/daemonset.yaml"
-      if [[ -f "$kube_vip_file" ]]; then
-        value="$("$NODE_YQ_BIN" -r '.spec.template.spec.containers[] | select(.name == "kube-vip") | .env[] | select(.name == "address") | .value // ""' "$kube_vip_file")"
-        value="$(node_trim "$value")"
-      fi
+      value="$(BOOTSTRAP_YQ_BIN="$NODE_YQ_BIN" bootstrap_repo_apiserver_endpoint 2>/dev/null || true)"
+      value="$(node_trim "$value")"
       ;;
   esac
   case "$value" in
@@ -228,7 +224,7 @@ node_assert_kube_proxy_disable_dropin() {
   local profile="$1"
   local inventory_node="$2"
   local inventory_file
-  local remote_check
+  local remote_check dropin_q
 
   if ! node_kube_proxy_replacement_enabled "$profile"; then
     node_log "kube_proxy_replacement is false; skipping K3s kube-proxy disable drop-in check"
@@ -236,10 +232,11 @@ node_assert_kube_proxy_disable_dropin() {
   fi
 
   inventory_file="$(node_effective_ansible_inventory_file "$profile")"
+  printf -v dropin_q '%q' "$NODE_K3S_KUBE_PROXY_DISABLE_CONFIG"
   read -r -d '' remote_check <<'EOF' || true
 set -eu
 
-dropin=/etc/rancher/k3s/config.yaml.d/90-home-ops-kube-proxy.yaml
+dropin=__NODE_K3S_KUBE_PROXY_DISABLE_CONFIG__
 if [ ! -f "$dropin" ]; then
   printf 'kube_proxy_disable_dropin=missing\n'
   exit 2
@@ -250,6 +247,7 @@ if ! grep -Fxq 'disable-kube-proxy: true' "$dropin"; then
 fi
 printf 'kube_proxy_disable_dropin=present\n'
 EOF
+  remote_check="${remote_check/__NODE_K3S_KUBE_PROXY_DISABLE_CONFIG__/$dropin_q}"
 
   node_log "validating K3s kube-proxy disable drop-in on ${inventory_node}"
   node_run_remote_shell "$inventory_file" "$inventory_node" "$remote_check" >/dev/null ||

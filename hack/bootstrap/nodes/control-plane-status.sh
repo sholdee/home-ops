@@ -110,6 +110,9 @@ else
   printf 'single_control_plane_outage_budget: unavailable\n'
 fi
 
+printf -v etcd_tls_dir_q '%q' "$NODE_K3S_ETCD_TLS_DIR"
+printf -v etcd_data_dir_q '%q' "$NODE_K3S_ETCD_DATA_DIR"
+printf -v sqlite_db_q '%q' "$NODE_K3S_SQLITE_DB"
 read -r -d '' remote_probe <<'EOF' || true
 set -eu
 
@@ -128,9 +131,9 @@ else
   printf 'k3s_service_enabled=unknown_no_systemctl\n'
 fi
 
-etcd_tls_dir=/var/lib/rancher/k3s/server/tls/etcd
-etcd_data_dir=/var/lib/rancher/k3s/server/db/etcd
-sqlite_db=/var/lib/rancher/k3s/server/db/state.db
+etcd_tls_dir=__NODE_K3S_ETCD_TLS_DIR__
+etcd_data_dir=__NODE_K3S_ETCD_DATA_DIR__
+sqlite_db=__NODE_K3S_SQLITE_DB__
 
 if [ -d "$etcd_tls_dir" ]; then
   printf 'etcd_tls_dir=present\n'
@@ -192,6 +195,9 @@ else
   printf 'etcd_member_list=skipped_missing_etcdctl_listener_or_certs\n'
 fi
 EOF
+remote_probe="${remote_probe/__NODE_K3S_ETCD_TLS_DIR__/$etcd_tls_dir_q}"
+remote_probe="${remote_probe/__NODE_K3S_ETCD_DATA_DIR__/$etcd_data_dir_q}"
+remote_probe="${remote_probe/__NODE_K3S_SQLITE_DB__/$sqlite_db_q}"
 
 printf '\nremote_probe:\n'
 if remote_output="$(

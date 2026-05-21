@@ -7,6 +7,7 @@ node_assert_control_plane_etcd_member_absent() {
   local kubernetes_node_name="$4"
   local absent_message_prefix="${5:-etcd still has}"
   local inventory_file target_ansible_host probe_inventory_node probe_kubernetes_node remote_member_list
+  local etcd_tls_dir_q
   local filtered_remote_output member_lines member_line
   local _member_id _member_status member_name member_peer_urls member_client_urls _member_is_learner _
   local matched_member_count=0
@@ -29,10 +30,11 @@ node_assert_control_plane_etcd_member_absent() {
   [[ -n "$probe_inventory_node" ]] ||
     node_die "no alternate Ready control-plane node is available to verify etcd membership"
 
+  printf -v etcd_tls_dir_q '%q' "$NODE_K3S_ETCD_TLS_DIR"
   read -r -d '' remote_member_list <<'EOF' || true
 set -eu
 
-etcd_tls_dir=/var/lib/rancher/k3s/server/tls/etcd
+etcd_tls_dir=__NODE_K3S_ETCD_TLS_DIR__
 etcdctl_path="$(command -v etcdctl 2>/dev/null || true)"
 if [ -z "$etcdctl_path" ]; then
   printf 'member_list_error=etcdctl_absent\n'
@@ -57,6 +59,7 @@ printf 'etcd_member_simple_begin\n'
   member list
 printf 'etcd_member_simple_end\n'
 EOF
+  remote_member_list="${remote_member_list/__NODE_K3S_ETCD_TLS_DIR__/$etcd_tls_dir_q}"
 
   node_log "verifying ${kubernetes_node_name} is absent from etcd membership using ${probe_inventory_node}"
   if ! filtered_remote_output="$(node_run_remote_shell "$inventory_file" "$probe_inventory_node" "$remote_member_list")"; then

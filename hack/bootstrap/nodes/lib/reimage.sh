@@ -2,9 +2,6 @@
 
 NODE_REIMAGE_METADATA_SCHEMA="home-ops.node-image/v1"
 NODE_REIMAGE_STAGE_SCHEMA="home-ops.node-reimage-stage/v1"
-NODE_REIMAGE_DEFAULT_DISK="/dev/nvme0n1"
-NODE_REIMAGE_DEFAULT_STAGE_DIR="/boot/firmware/home-ops-reimage"
-NODE_REIMAGE_BOOT_CONFIG="/boot/firmware/tryboot.txt"
 
 node_reimage_inventory_disk_path() {
   local profile="$1"

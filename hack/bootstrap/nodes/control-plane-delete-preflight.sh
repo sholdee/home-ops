@@ -265,10 +265,11 @@ done
 [[ -n "$probe_inventory_node" ]] ||
   node_die "no alternate Ready control-plane node is available to query etcd"
 
+printf -v etcd_tls_dir_q '%q' "$NODE_K3S_ETCD_TLS_DIR"
 read -r -d '' remote_probe <<'EOF' || true
 set -eu
 
-etcd_tls_dir=/var/lib/rancher/k3s/server/tls/etcd
+etcd_tls_dir=__NODE_K3S_ETCD_TLS_DIR__
 etcdctl_path="$(command -v etcdctl 2>/dev/null || true)"
 if [ -z "$etcdctl_path" ]; then
   printf 'preflight_error=etcdctl_absent\n'
@@ -307,6 +308,7 @@ printf 'etcd_endpoint_status_begin\n'
   endpoint status
 printf 'etcd_endpoint_status_end\n'
 EOF
+remote_probe="${remote_probe/__NODE_K3S_ETCD_TLS_DIR__/$etcd_tls_dir_q}"
 
 if remote_output="$(
   ANSIBLE_HOST_KEY_CHECKING=False \
@@ -401,7 +403,7 @@ fi
 ((remaining_ready_control_planes >= post_remove_quorum_size)) ||
   node_die "removing ${kubernetes_node_name} would leave ${remaining_ready_control_planes} Ready control-planes; post-remove quorum is ${post_remove_quorum_size}"
 
-planned_member_remove_command="/usr/local/bin/etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/var/lib/rancher/k3s/server/tls/etcd/server-ca.crt --cert=/var/lib/rancher/k3s/server/tls/etcd/client.crt --key=/var/lib/rancher/k3s/server/tls/etcd/client.key member remove ${target_member_id}"
+planned_member_remove_command="/usr/local/bin/etcdctl --endpoints=https://127.0.0.1:2379 --cacert=${NODE_K3S_ETCD_TLS_DIR}/server-ca.crt --cert=${NODE_K3S_ETCD_TLS_DIR}/client.crt --key=${NODE_K3S_ETCD_TLS_DIR}/client.key member remove ${target_member_id}"
 
 case "$output_format" in
   text)

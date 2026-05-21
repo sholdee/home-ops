@@ -221,7 +221,7 @@
 
 - name: Check K3s crictl helper
   ansible.builtin.stat:
-    path: /var/lib/rancher/k3s/data/current/bin/crictl
+    path: "{{ home_ops_github_runner_crictl_path }}"
   register: home_ops_github_runner_k3s_crictl
   when: home_ops_github_runner_enabled | bool
 
@@ -230,7 +230,7 @@
     that:
       - home_ops_github_runner_k3s_crictl.stat.exists | default(false)
     fail_msg: >-
-      K3s crictl was not found at /var/lib/rancher/k3s/data/current/bin/crictl;
+      K3s crictl was not found at {{ home_ops_github_runner_crictl_path }};
       install or join K3s before enabling the GitHub Actions runner.
   when: home_ops_github_runner_enabled | bool
 

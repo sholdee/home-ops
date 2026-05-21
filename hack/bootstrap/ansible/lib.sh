@@ -4,6 +4,11 @@ ANSIBLE_BOOTSTRAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${ANSIBLE_BOOTSTRAP_DIR}/.." && pwd)"
 REPO_ROOT="$(cd "${BOOTSTRAP_DIR}/../.." && pwd)"
 
+# shellcheck source=hack/bootstrap/lib/config.sh
+source "${BOOTSTRAP_DIR}/lib/config.sh"
+# shellcheck source=hack/bootstrap/lib/repo-facts.sh
+source "${BOOTSTRAP_DIR}/lib/repo-facts.sh"
+
 K3S_ANSIBLE_DIR="${K3S_ANSIBLE_DIR:-${REPO_ROOT}/../k3s-ansible}"
 BOOTSTRAP_ANSIBLE_BACKEND="${BOOTSTRAP_ANSIBLE_BACKEND:-home-ops}"
 BOOTSTRAP_ANSIBLE_PROFILE="${BOOTSTRAP_ANSIBLE_PROFILE:-live}"

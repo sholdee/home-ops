@@ -52,6 +52,7 @@ home_ops_k3s_agent_service_name: k3s-node
 home_ops_k3s_manifests_dir: /var/lib/rancher/k3s/server/manifests
 home_ops_k3s_runtime_dir: /var/lib/rancher/k3s/server
 home_ops_k3s_config_dir: /etc/rancher/k3s
+home_ops_k3s_kubeconfig: "{{ home_ops_k3s_config_dir }}/k3s.yaml"
 home_ops_k3s_token_file: /etc/rancher/k3s/home-ops-token
 home_ops_k3s_embedded_registry: true
 home_ops_k3s_etcd_expose_metrics: true
@@ -210,6 +211,7 @@ home_ops_github_runner_packages:
   - sudo
   - tar
 home_ops_github_runner_crictl_wrapper_path: /usr/local/bin/home-ops-crictl
+home_ops_github_runner_crictl_path: /var/lib/rancher/k3s/data/current/bin/crictl
 home_ops_github_runner_crictl_runtime_endpoint: unix:///run/k3s/containerd/containerd.sock
 home_ops_github_runner_crictl_timeout: 30s
 home_ops_github_runner_sudoers_file: /etc/sudoers.d/home-ops-github-runner

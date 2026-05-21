@@ -3,8 +3,7 @@ kind_context := "kind-" + kind_cluster
 lima_cluster := env_var_or_default("LIMA_CLUSTER_NAME", "home-ops-k3s-test")
 lima_context := "lima-" + lima_cluster
 helm_api_version := "grafana.integreatly.org/v1beta1/GrafanaDashboard"
-lima_longhorn_env := "LIMA_SERVER_COUNT=" + env_var_or_default("LIMA_SERVER_COUNT", "3") + " LIMA_AGENT_COUNT=" + env_var_or_default("LIMA_AGENT_COUNT", "1") + " LIMA_K3S_MASTER_TAINT=" + env_var_or_default("LIMA_K3S_MASTER_TAINT", "false") + " LIMA_SERVER_CPUS=" + env_var_or_default("LIMA_SERVER_CPUS", "3") + " LIMA_AGENT_CPUS=" + env_var_or_default("LIMA_AGENT_CPUS", "3") + " LIMA_SERVER_MEMORY_GIB=" + env_var_or_default("LIMA_SERVER_MEMORY_GIB", "4") + " LIMA_AGENT_MEMORY_GIB=" + env_var_or_default("LIMA_AGENT_MEMORY_GIB", "4") + " LIMA_DISK_GIB=" + env_var_or_default("LIMA_DISK_GIB", "80") + " LIMA_VALIDATE_APP_WAIT_SECONDS=" + env_var_or_default("LIMA_VALIDATE_APP_WAIT_SECONDS", "2400")
-lima_app_env := "LIMA_SERVER_COUNT=" + env_var_or_default("LIMA_SERVER_COUNT", "3") + " LIMA_AGENT_COUNT=" + env_var_or_default("LIMA_AGENT_COUNT", "1") + " LIMA_K3S_MASTER_TAINT=" + env_var_or_default("LIMA_K3S_MASTER_TAINT", "false") + " LIMA_SERVER_CPUS=" + env_var_or_default("LIMA_SERVER_CPUS", "3") + " LIMA_AGENT_CPUS=" + env_var_or_default("LIMA_AGENT_CPUS", "3") + " LIMA_SERVER_MEMORY_GIB=" + env_var_or_default("LIMA_SERVER_MEMORY_GIB", "5") + " LIMA_AGENT_MEMORY_GIB=" + env_var_or_default("LIMA_AGENT_MEMORY_GIB", "5") + " LIMA_DISK_GIB=" + env_var_or_default("LIMA_DISK_GIB", "120") + " LIMA_VALIDATE_APP_WAIT_SECONDS=" + env_var_or_default("LIMA_VALIDATE_APP_WAIT_SECONDS", "3600")
+lima_profile_env := "./hack/bootstrap/lima/profile-env.sh"
 
 # Show available just tasks and their descriptions.
 [group('core')]
@@ -586,12 +585,12 @@ lima-longhorn-status: lima-status
 # Create Longhorn-focused Lima VMs for storage lifecycle testing.
 [group('lima-longhorn')]
 lima-longhorn-create:
-    {{ lima_longhorn_env }} ./hack/bootstrap/lima/create.sh
+    {{ lima_profile_env }} lima-longhorn ./hack/bootstrap/lima/create.sh
 
 # Run the selected Ansible backend against the Longhorn-focused VM shape.
 [group('lima-longhorn')]
 lima-longhorn-ansible:
-    {{ lima_longhorn_env }} ./hack/bootstrap/lima/run-ansible.sh
+    {{ lima_profile_env }} lima-longhorn ./hack/bootstrap/lima/run-ansible.sh
 
 # Run home-ops Longhorn-focused bootstrap profile against the Lima K3s cluster.
 [group('lima-longhorn')]
@@ -615,9 +614,9 @@ lima-longhorn-delete: lima-delete
 # Recreate Longhorn-focused Lima VMs, bootstrap Longhorn, and validate the checksum workload.
 [group('lima-longhorn')]
 lima-longhorn-fresh:
-    {{ lima_longhorn_env }} ./hack/bootstrap/lima/delete.sh
-    {{ lima_longhorn_env }} ./hack/bootstrap/lima/create.sh
-    {{ lima_longhorn_env }} ./hack/bootstrap/lima/run-ansible.sh
+    {{ lima_profile_env }} lima-longhorn ./hack/bootstrap/lima/delete.sh
+    {{ lima_profile_env }} lima-longhorn ./hack/bootstrap/lima/create.sh
+    {{ lima_profile_env }} lima-longhorn ./hack/bootstrap/lima/run-ansible.sh
     LIMA_BOOTSTRAP_PROFILE=lima-longhorn ./hack/bootstrap/lima/bootstrap-home-ops.sh
     LIMA_VALIDATE_PROFILE=lima-longhorn ./hack/bootstrap/lima/validate.sh
 
@@ -628,12 +627,12 @@ lima-apps-status: lima-status
 # Create app-profile Lima VMs for workload, Longhorn, and node lifecycle testing.
 [group('lima-apps')]
 lima-apps-create:
-    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
+    {{ lima_profile_env }} lima-apps ./hack/bootstrap/lima/create.sh
 
 # Run the selected Ansible backend against the Lima app-profile VM shape.
 [group('lima-apps')]
 lima-apps-ansible:
-    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
+    {{ lima_profile_env }} lima-apps ./hack/bootstrap/lima/run-ansible.sh
 
 # Run home-ops app bootstrap profile against the Lima K3s cluster.
 [group('lima-apps')]
@@ -739,9 +738,9 @@ node-lima-converge-yes:
 # Recreate app-profile Lima VMs, run Ansible, bootstrap apps, and validate safety.
 [group('lima-apps')]
 lima-apps-fresh:
-    {{ lima_app_env }} ./hack/bootstrap/lima/delete.sh
-    {{ lima_app_env }} ./hack/bootstrap/lima/create.sh
-    {{ lima_app_env }} ./hack/bootstrap/lima/run-ansible.sh
+    {{ lima_profile_env }} lima-apps ./hack/bootstrap/lima/delete.sh
+    {{ lima_profile_env }} lima-apps ./hack/bootstrap/lima/create.sh
+    {{ lima_profile_env }} lima-apps ./hack/bootstrap/lima/run-ansible.sh
     LIMA_BOOTSTRAP_PROFILE=lima-apps ./hack/bootstrap/lima/bootstrap-home-ops.sh
     LIMA_VALIDATE_PROFILE=lima-apps ./hack/bootstrap/lima/validate.sh
 

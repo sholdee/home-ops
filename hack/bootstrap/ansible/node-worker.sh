@@ -105,7 +105,7 @@ case "$profile" in
     export K3S_TOKEN
     ;;
   lima)
-    inventory_dir="${inventory_dir:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME:-home-ops-k3s-test}/inventory}"
+    inventory_dir="${inventory_dir:-${BOOTSTRAP_DIR}/.out/lima-${LIMA_CLUSTER_NAME:-$BOOTSTRAP_LIMA_CLUSTER_NAME_DEFAULT}/inventory}"
     [[ -f "${inventory_dir}/hosts.yml" ]] ||
       ansible_die "missing generated Lima inventory: ${inventory_dir}/hosts.yml"
     ;;

@@ -161,11 +161,12 @@ if ! grep -q "^snapshot_name=${snapshot_name}$" <<<"$snapshot_output"; then
   node_die "snapshot output did not confirm expected snapshot name: ${snapshot_name}"
 fi
 
+printf -v etcd_tls_dir_q '%q' "$NODE_K3S_ETCD_TLS_DIR"
 read -r -d '' remote_member_remove <<EOF || true
 set -eu
 
 member_id="${target_member_id}"
-etcd_tls_dir=/var/lib/rancher/k3s/server/tls/etcd
+etcd_tls_dir=${etcd_tls_dir_q}
 etcdctl_path="\$(command -v etcdctl 2>/dev/null || true)"
 if [ -z "\$etcdctl_path" ]; then
   printf 'remove_error=etcdctl_absent\n'
