@@ -17,6 +17,8 @@ jobs:
 
       - name: Install mise toolchain
         uses: ./.github/actions/setup-mise
+        with:
+          profile: bootstrap-test
 
       - name: Check justfile formatting
         run: just --fmt --check

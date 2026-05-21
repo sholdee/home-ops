@@ -14,6 +14,8 @@ jobs:
 
       - name: Install mise toolchain
         uses: ./.github/actions/setup-mise
+        with:
+          profile: image
 
       - name: Extract Image, Tag, and Digest from PR Diff
         id: extract_image_tag_digest

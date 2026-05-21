@@ -23,6 +23,31 @@ provenance = "github-attestations"
 version = "2.21.0"
 backend = "pipx:ansible-core"
 
+[[tools.argocd]]
+version = "3.4.2"
+backend = "aqua:argoproj/argo-cd"
+
+[tools.argocd."platforms.linux-arm64"]
+checksum = "sha256:d0b74511242b2b4827dea6435092ef8b1402eb26c29c00944934e546a6445944"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-linux-arm64"
+
+[tools.argocd."platforms.linux-arm64".provenance.slsa]
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-cli.intoto.jsonl"
+
+[tools.argocd."platforms.linux-x64"]
+checksum = "sha256:d4cb1ac8002baab8afaca2da3de597b613df8459074bc7c6d96dc95161c2a33f"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-linux-amd64"
+
+[tools.argocd."platforms.linux-x64".provenance.slsa]
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-cli.intoto.jsonl"
+
+[tools.argocd."platforms.macos-arm64"]
+checksum = "sha256:25c82417f3a487079fed4975744b3571f66ff6caf479a888246b2491ed66b680"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-darwin-arm64"
+
+[tools.argocd."platforms.macos-arm64".provenance.slsa]
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.4.2/argocd-cli.intoto.jsonl"
+
 [[tools.bats]]
 version = "1.13.0"
 backend = "aqua:bats-core/bats-core"
@@ -54,6 +79,34 @@ provenance = "github-attestations"
 checksum = "sha256:b11c54f6bd7d15ed6590475079e5b2fcf36f45d3991a80041b29c9d0cc1f1d07"
 url = "https://github.com/cli/cli/releases/download/v2.92.0/gh_2.92.0_macOS_arm64.zip"
 provenance = "github-attestations"
+
+[[tools."github:cloudnative-pg/cloudnative-pg"]]
+version = "1.29.1"
+backend = "github:cloudnative-pg/cloudnative-pg"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-arm64"]
+checksum = "sha256:77e5e2e9d21be1a6a1ddecb210c63026ecd4fbd1b086d8a886af3404db5b23b2"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332108"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-arm64".provenance.slsa]
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-x64"]
+checksum = "sha256:2a550d5ee2224e5bb66b95602f8052fc50da50485f59f97b817a0c3b44b58581"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332109"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-x64".provenance.slsa]
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64"]
+checksum = "sha256:d26019d8cb4deac553a6d5c31203a6332b71c2eddf76d762f5179fe4cac8624c"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332105"
+
+[tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64".provenance.slsa]
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
 
 [[tools.helm]]
 version = "3.21.0"

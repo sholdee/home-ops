@@ -13,14 +13,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  warm-caches:
+  warm-pre-commit:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install mise toolchain
+      - name: Warm pre-commit mise tools
         uses: ./.github/actions/setup-mise
+        with:
+          profile: pre-commit
 
       - name: Warm pre-commit environment cache
         shell: bash
@@ -30,3 +32,14 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-4|${{ runner.os }}-${{ runner.arch }}|${{ hashFiles('.pre-commit-config.yaml', 'mise.toml', 'mise.lock') }}
+
+  warm-bootstrap-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Warm bootstrap-test mise tools
+        uses: ./.github/actions/setup-mise
+        with:
+          profile: bootstrap-test
