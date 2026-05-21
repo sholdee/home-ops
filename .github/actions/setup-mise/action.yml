@@ -71,6 +71,10 @@ runs:
         experimental: true
         github_token: ${{ github.token }}
 
+    - name: Update mise binary
+      shell: bash
+      run: mise self-update --yes --no-plugins
+
     - name: Install locked toolchain
       shell: bash
       run: |
