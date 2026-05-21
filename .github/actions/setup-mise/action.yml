@@ -53,6 +53,9 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
+        export PATH="${HOME}/.local/share/mise/shims:${PATH}"
+        mise install --locked --yes pipx
+        mise reshim
         mise install --locked --yes
         mise reshim
         echo "${HOME}/.local/share/mise/shims" >> "${GITHUB_PATH}"
