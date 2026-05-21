@@ -4,6 +4,10 @@
 create_node_inventory() {
   inventory="${tmp}/inventory/live"
   mkdir -p "${inventory}/group_vars"
+  local apiserver_endpoint k3s_version kube_proxy_replacement
+  apiserver_endpoint="$(repo_apiserver_endpoint)"
+  k3s_version="$(repo_k3s_version)"
+  kube_proxy_replacement="$(repo_kube_proxy_replacement)"
   cat > "${inventory}/hosts.yml" <<'EOF'
 ---
 all:
@@ -28,13 +32,13 @@ all:
               k3s_role: agent
 EOF
 
-  cat > "${inventory}/group_vars/all.yml" <<'EOF'
+  cat > "${inventory}/group_vars/all.yml" <<EOF
 ---
 ansible_user: ethan
 ansible_ssh_private_key_file: ~/ansiblekey
-kube_proxy_replacement: true
-k3s_version: v1.35.4+k3s1
-apiserver_endpoint: 192.168.99.77
+kube_proxy_replacement: ${kube_proxy_replacement}
+k3s_version: ${k3s_version}
+apiserver_endpoint: ${apiserver_endpoint}
 EOF
 }
 
@@ -81,9 +85,13 @@ write_converge_nodes_json() {
   shift
   printf '{"items":[' > "$file"
   local first=true
-  local node name role ready schedulable taint version role_labels spec_fields
+  local node name role ready schedulable taint version role_labels spec_fields desired_k3s_version
+  desired_k3s_version="${TEST_K3S_VERSION:-$(repo_k3s_version)}"
   for spec in "$@"; do
     IFS=: read -r name role ready schedulable taint version <<<"$spec"
+    if [[ -z "${version:-}" || "$version" == current ]]; then
+      version="$desired_k3s_version"
+    fi
     if [[ "$first" == true ]]; then
       first=false
     else
@@ -125,7 +133,7 @@ write_converge_nodes_json() {
   "spec": {${spec_fields}},
   "status": {
     "conditions": [{"type": "Ready", "status": "${ready}"}],
-    "nodeInfo": {"kubeletVersion": "${version:-v1.35.4+k3s1}"}
+    "nodeInfo": {"kubeletVersion": "${version}"}
   }
 }
 JSON
@@ -136,11 +144,13 @@ JSON
 }
 
 write_default_converge_nodes_json() {
+  local k3s_version
+  k3s_version="${TEST_K3S_VERSION:-$(repo_k3s_version)}"
   write_converge_nodes_json "$1" \
-    "k3s-master-0:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-1:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-master-2:master:True:schedulable:absent:v1.35.4+k3s1" \
-    "k3s-worker-0:node:True:schedulable:absent:v1.35.4+k3s1"
+    "k3s-master-0:master:True:schedulable:absent:${k3s_version}" \
+    "k3s-master-1:master:True:schedulable:absent:${k3s_version}" \
+    "k3s-master-2:master:True:schedulable:absent:${k3s_version}" \
+    "k3s-worker-0:node:True:schedulable:absent:${k3s_version}"
 }
 
 write_converge_kubectl() {
@@ -815,7 +825,7 @@ node_json() {
       {"type": "Ready", "status": "True"}
     ],
     "nodeInfo": {
-      "kubeletVersion": "v1.35.4+k3s1"
+      "kubeletVersion": "${FAKE_K3S_VERSION:-${TEST_K3S_VERSION:-v1.35.4+k3s1}}"
     }
   }
 }
