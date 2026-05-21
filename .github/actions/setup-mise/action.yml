@@ -42,8 +42,11 @@ runs:
             ;;
         esac
 
+        mkdir -p "${HOME}/.local/bin"
         curl -fsSLo /tmp/mise "https://github.com/jdx/mise/releases/download/v${MISE_VERSION}/mise-v${MISE_VERSION}-${asset}"
-        sudo install -m 0755 /tmp/mise /usr/local/bin/mise
+        install -m 0755 /tmp/mise "${HOME}/.local/bin/mise"
+        export PATH="${HOME}/.local/bin:${PATH}"
+        echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"
         mise --version
 
     - name: Install locked toolchain
