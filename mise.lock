@@ -23,6 +23,25 @@ provenance = "github-attestations"
 version = "2.21.0"
 backend = "pipx:ansible-core"
 
+[[tools."aqua:sholdee/crd-schema-publisher"]]
+version = "2026.519.317"
+backend = "aqua:sholdee/crd-schema-publisher"
+
+[tools."aqua:sholdee/crd-schema-publisher"."platforms.linux-arm64"]
+checksum = "sha256:fa296b16124361560a25dbcc4cfe46a820ce75d55dd155a5a0c867bed4407939"
+url = "https://github.com/sholdee/crd-schema-publisher/releases/download/v2026.519.317/crd-schema-publisher-linux-arm64"
+provenance = "github-attestations"
+
+[tools."aqua:sholdee/crd-schema-publisher"."platforms.linux-x64"]
+checksum = "sha256:0006d13de4a46085adfc23441023f726924dcadd4734a7302117d0de0c78635a"
+url = "https://github.com/sholdee/crd-schema-publisher/releases/download/v2026.519.317/crd-schema-publisher-linux-amd64"
+provenance = "github-attestations"
+
+[tools."aqua:sholdee/crd-schema-publisher"."platforms.macos-arm64"]
+checksum = "sha256:44503fc98b445f46f948131197a2d8bec1e56e95a2235cc23acffe8df561b32b"
+url = "https://github.com/sholdee/crd-schema-publisher/releases/download/v2026.519.317/crd-schema-publisher-darwin-arm64"
+provenance = "github-attestations"
+
 [[tools.argocd]]
 version = "3.4.2"
 backend = "aqua:argoproj/argo-cd"
