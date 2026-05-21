@@ -24,7 +24,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mise exec -- python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
+          python3 .github/scripts/extract_image_info.py || { echo "❌ Script failed!"; exit 1; }
 
       - name: Attempt to pull image and verify platform
         id: pull_image
@@ -76,6 +76,11 @@ jobs:
         id: format_image_pull_status
         if: always()
         run: |
+          if [ ! -s pull_results.txt ]; then
+            echo "No image pull results were produced. Skipping PR comment."
+            exit 0
+          fi
+
           {
             echo "IMAGE_PULL_COMMENT<<EOF"
             echo "| Pulled | Platform | Image |"
