@@ -220,18 +220,6 @@
     {
       customType: 'regex',
       managerFilePatterns: [
-        '/^apps/kube-system/external-snapshotter/kustomization\\.ya?ml$/',
-      ],
-      matchStrings: [
-        'https://raw\\.githubusercontent\\.com/kubernetes-csi/external-snapshotter/refs/tags/v(?<currentValue>\\d+\\.\\d+\\.\\d+)/',
-      ],
-      datasourceTemplate: 'github-releases',
-      packageNameTemplate: 'kubernetes-csi/external-snapshotter',
-      versioningTemplate: 'semver',
-    },
-    {
-      customType: 'regex',
-      managerFilePatterns: [
         '/^apps/external-dns/kustomization\\.ya?ml$/',
       ],
       matchStrings: [

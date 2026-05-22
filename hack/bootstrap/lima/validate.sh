@@ -245,6 +245,7 @@ elif [[ "$profile" == lima-longhorn ]]; then
     volumesnapshotclasses.snapshot.storage.k8s.io \
     volumesnapshotcontents.snapshot.storage.k8s.io \
     volumesnapshots.snapshot.storage.k8s.io >/dev/null
+  require_argocd_app_ready snapshot-controller
   kubectl_lima -n kube-system rollout status deployment/snapshot-controller --timeout=180s
 
   fail_if_crd_instances_exist pushsecrets.external-secrets.io pushsecrets.external-secrets.io
@@ -284,6 +285,7 @@ elif [[ "$profile" == lima-apps ]]; then
     volumesnapshotclasses.snapshot.storage.k8s.io \
     volumesnapshotcontents.snapshot.storage.k8s.io \
     volumesnapshots.snapshot.storage.k8s.io >/dev/null
+  require_argocd_app_ready snapshot-controller
   kubectl_lima -n kube-system rollout status deployment/snapshot-controller --timeout=180s
 
   fail_if_exists "ExternalSecret/cert-manager/cloudflare-api-token-secret" \

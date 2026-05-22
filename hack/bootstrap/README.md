@@ -85,7 +85,7 @@ before ArgoCD can take over.
 | --- | --- |
 | `full` | Real-cluster takeover profile. Applies dependencies, ArgoCD, readiness waits, and audit. |
 | `foundation` | Lima foundation profile. Validates K3s, Cilium takeover, core operators, and ArgoCD without normal apps. |
-| `lima-longhorn` | Disposable Longhorn lifecycle validation with Longhorn, external snapshotter, storage classes, and a checksum PVC workload. |
+| `lima-longhorn` | Disposable Longhorn lifecycle validation with Longhorn, snapshot controller, storage classes, and a checksum PVC workload. |
 | `lima-apps` | Disposable app-profile validation with a sanitized app allowlist and external-writer guardrails. |
 
 ## Kind
@@ -178,8 +178,8 @@ reconciles `Application/cilium`, waits for Hubble server and relay certs,
 restarts Cilium/Hubble if stale takeover certs were replaced, and then releases
 apps.
 
-Before normal apps are released, bootstrap applies
-`apps/kube-system/external-snapshotter` so VolSync restore workloads have the
+Before normal apps are released, bootstrap waits for
+`Application/snapshot-controller` so VolSync restore workloads have the
 snapshot CRDs and controller.
 
 Lima keeps Cilium masquerading enabled because Lima user-mode networking cannot

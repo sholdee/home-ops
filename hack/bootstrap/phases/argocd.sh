@@ -77,7 +77,7 @@ if [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
     render="$lima_filtered"
   fi
 elif [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
-  log "lima-longhorn profile: applying ArgoCD with Cilium, Dragonfly Operator, and Longhorn only"
+  log "lima-longhorn profile: applying ArgoCD with Cilium, Dragonfly Operator, snapshot controller, and Longhorn only"
   prepare_hubble_takeover
 
   filtered="${TMP_DIR}/argocd-lima-longhorn.yaml"
@@ -92,6 +92,7 @@ elif [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
       (
         .metadata.name == "cilium" or
         .metadata.name == "dragonfly-operator" or
+        .metadata.name == "snapshot-controller" or
         .metadata.name == "longhorn"
       )
     ) |
@@ -257,6 +258,7 @@ elif ! crd_exists ciliumnetworkpolicies.cilium.io; then
         .metadata.name != "cilium" and
         .metadata.name != "cilium-preflight" and
         .metadata.name != "crd-schema-publisher" and
+        .metadata.name != "snapshot-controller" and
         .metadata.name != "longhorn"
       )
     )
