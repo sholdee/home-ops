@@ -57,7 +57,7 @@ All checks feed into a single required status gate for branch protection and aut
 ├── 📁 hass/          # Grouped: Home Assistant, Appdaemon, Z-Wave, Codeserver, CNPG, MQTT bridge
 ├── 📁 unifi/         # Grouped: UniFi controller, MongoDB ReplicaSet, guest portal proxy
 ├── 📁 monitoring/    # Grouped: kube-prometheus-stack, Grafana Operator, Prometheus, Alertmanager, Kromgo
-├── 📁 kube-system/   # Grouped: Cilium BGP config, kube-vip, external-snapshotter
+├── 📁 kube-system/   # Grouped: Cilium BGP config, kube-vip
 └── 📁 .../           # Each remaining directory is a standalone app (Helm or plain manifests)
 📁 components/        # Reusable Kustomize Components (namespace pull secrets, Dragonfly, VolSync backups)
 📁 docs/              # Operational documentation

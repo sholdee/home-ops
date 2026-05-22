@@ -348,7 +348,7 @@ LIMA_VALIDATE_APP_WAIT_SECONDS=2400
 ```
 
 The `lima-longhorn` profile applies Cilium, Dragonfly Operator, Longhorn,
-external snapshotter, repo Longhorn storage classes, and a small checksum
+snapshot controller, repo Longhorn storage classes, and a small checksum
 writer mounted on a `longhorn-retain` PVC. Validation checks that the workload
 is readable, the Longhorn volume is healthy, and no storage-corruption events
 were emitted.
@@ -443,8 +443,8 @@ Hubble server and relay certificates, and Cilium health.
 If stale Hubble cert Secrets from the bootstrap install were replaced,
 bootstrap restarts Cilium and Hubble relay so they load the new certs.
 
-Before normal apps are released, bootstrap applies
-`apps/kube-system/external-snapshotter` so VolSync restore workloads have the
+Before normal apps are released, bootstrap waits for
+`Application/snapshot-controller` so VolSync restore workloads have the
 snapshot CRDs and controller.
 
 Lima keeps Cilium masquerading enabled because user-mode networking cannot

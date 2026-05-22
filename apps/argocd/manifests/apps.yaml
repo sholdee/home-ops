@@ -326,6 +326,55 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
+  name: snapshot-controller
+  annotations:
+    argocd.argoproj.io/compare-options: ServerSideDiff=true
+spec:
+  destination:
+    name: in-cluster
+    namespace: kube-system
+  project: k3s
+  source:
+    chart: snapshot-controller
+    repoURL: ghcr.io/piraeusdatastore/helm-charts
+    targetRevision: 5.0.4
+    helm:
+      releaseName: snapshot-controller
+      valuesObject:
+        controller:
+          fullnameOverride: snapshot-controller
+          replicaCount: 2
+          serviceMonitor:
+            create: true
+          topologySpreadConstraints:
+            - maxSkew: 1
+              topologyKey: kubernetes.io/hostname
+              whenUnsatisfiable: DoNotSchedule
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: snapshot-controller
+                  app.kubernetes.io/instance: snapshot-controller
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+        webhook:
+          enabled: false
+          tls:
+            autogenerate: false
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - ApplyOutOfSyncOnly=true
+      - ServerSideApply=true
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/argoproj.io/application_v1alpha1.json
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
   name: volsync
 spec:
   destination:

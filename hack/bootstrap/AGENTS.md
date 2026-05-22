@@ -53,7 +53,7 @@ Profiles:
 - `foundation`: Lima foundation profile. It validates K3s, Cilium takeover,
   core operators, and ArgoCD without applying normal app workloads.
 - `lima-longhorn`: disposable Longhorn lifecycle profile. It installs
-  foundation plus Longhorn, external snapshotter, repo storage classes, and a
+  foundation plus Longhorn, snapshot controller, repo storage classes, and a
   checksum PVC workload without applying normal apps.
 - `lima-apps`: disposable app-profile validation. It applies a sanitized
   workload allowlist and fail-closed safety guards so restores can be tested
@@ -122,8 +122,8 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   Cilium/Hubble when stale takeover certs were replaced, then release apps.
 - Gateway wildcard TLS restore must happen before applying normal Gateway
   resources in profiles that include app workloads.
-- External snapshotter must be applied before VolSync restore destinations and
-  PVCs that use snapshot-based restores.
+- `Application/snapshot-controller` must be ready before VolSync restore
+  destinations and PVCs that use snapshot-based restores.
 - For CNPG clusters that reference the Barman Cloud plugin, apply required
   ExternalSecrets and `barmancloud.cnpg.io/ObjectStore` resources before the
   `postgresql.cnpg.io/Cluster`. The Cluster pre-reconcile hook blocks instance

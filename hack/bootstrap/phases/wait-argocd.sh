@@ -81,7 +81,7 @@ wait_cilium_ready_for_k3s_apps() {
 }
 
 wait_platform_applications_for_k3s_apps() {
-  local apps=(dragonfly-operator grafana-operator longhorn reloader volsync)
+  local apps=(dragonfly-operator snapshot-controller grafana-operator longhorn reloader volsync)
   log "refreshing explicit platform applications before applying applicationset/k3s-apps"
   refresh_applications "${apps[@]}"
   local app
@@ -90,21 +90,19 @@ wait_platform_applications_for_k3s_apps() {
   done
 }
 
-apply_external_snapshotter() {
-  local snapshotter
+wait_snapshot_controller() {
   if crd_exists volumesnapshotclasses.snapshot.storage.k8s.io &&
     crd_exists volumesnapshotcontents.snapshot.storage.k8s.io &&
     crd_exists volumesnapshots.snapshot.storage.k8s.io &&
     kubectl_cmd -n kube-system get deployment/snapshot-controller >/dev/null 2>&1; then
-    log "external snapshotter already exists; waiting for readiness"
+    log "snapshot controller already exists; waiting for readiness"
     wait_deployment kube-system snapshot-controller
     return
   fi
 
-  snapshotter="${TMP_DIR}/external-snapshotter.yaml"
-  render_kustomize_app apps/kube-system/external-snapshotter > "$snapshotter"
-  apply_file "$snapshotter"
-  save_render_if_safe external-snapshotter "$snapshotter"
+  kubectl_cmd -n argocd get application/snapshot-controller >/dev/null
+  refresh_applications snapshot-controller
+  wait_application_operation_healthy snapshot-controller
   wait_crd volumesnapshotclasses.snapshot.storage.k8s.io
   wait_crd volumesnapshotcontents.snapshot.storage.k8s.io
   wait_crd volumesnapshots.snapshot.storage.k8s.io
@@ -150,12 +148,13 @@ elif [[ "$BOOTSTRAP_PROFILE" == lima-longhorn ]]; then
   kubectl_cmd -n argocd get application/dragonfly-operator >/dev/null
   kubectl_cmd -n argocd get application/longhorn >/dev/null
   log "refresh Lima Longhorn profile ArgoCD applications"
-  refresh_applications dragonfly-operator longhorn
+  refresh_applications dragonfly-operator snapshot-controller longhorn
   wait_cilium_ready_for_k3s_apps
   wait_application_ready dragonfly-operator
+  wait_application_operation_healthy snapshot-controller
   wait_application_operation_healthy longhorn
-  log "applying external snapshotter and Longhorn lifecycle test storage classes"
-  apply_external_snapshotter
+  log "waiting for snapshot controller and applying Longhorn lifecycle test storage classes"
+  wait_snapshot_controller
   apply_lima_longhorn_storage_manifests
   log "applying Lima Longhorn checksum workload"
   apply_lima_longhorn_workload
@@ -166,8 +165,8 @@ elif [[ "$BOOTSTRAP_PROFILE" == lima-apps ]]; then
   log "waiting for Cilium and explicit operators before applying sanitized applicationset/k3s-apps"
   wait_cilium_ready_for_k3s_apps
   wait_platform_applications_for_k3s_apps
-  log "applying external snapshotter before VolSync restore workloads"
-  apply_external_snapshotter
+  log "waiting for snapshot controller before VolSync restore workloads"
+  wait_snapshot_controller
   log "applying Lima safety admission policies"
   apply_lima_apps_safety_policies
   if lima_apps_workloads_released; then
@@ -193,8 +192,8 @@ else
   log "waiting for Cilium, Hubble certs, and platform applications before applying applicationset/k3s-apps"
   wait_cilium_ready_for_k3s_apps
   wait_platform_applications_for_k3s_apps
-  log "applying external snapshotter before VolSync restore workloads"
-  apply_external_snapshotter
+  log "waiting for snapshot controller before VolSync restore workloads"
+  wait_snapshot_controller
   log "applying applicationset/k3s-apps after platform prerequisites are ready"
   apply_k3s_apps_appset
   kubectl_cmd -n argocd get applicationset/k3s-apps >/dev/null
