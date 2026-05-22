@@ -2,7 +2,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/kashalls/kromgo/main/config.schema.json
 metrics:
   - name: kubernetes_version
-    query: max by(git_version) (kubernetes_build_info{job="apiserver"})
+    query: max by(git_version) (kubernetes_build_info{job="k3s-server"})
     label: git_version
   - name: cluster_node_count
     query: count(kube_node_info)
