@@ -127,6 +127,25 @@ url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/a
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64".provenance.slsa]
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
 
+[[tools."github:sholdee/drydock"]]
+version = "0.1.0"
+backend = "github:sholdee/drydock"
+
+[tools."github:sholdee/drydock"."platforms.linux-arm64"]
+checksum = "sha256:79ec02f3e84855af35e7895e265bb9141fc217fb1684c46d5e1597c97375feb5"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.0/drydock_linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/430375877"
+
+[tools."github:sholdee/drydock"."platforms.linux-x64"]
+checksum = "sha256:384f395d52b818650029ab1ff61699bafeb59b26618ca942a6697450f7fc3b49"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.0/drydock_linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/430375876"
+
+[tools."github:sholdee/drydock"."platforms.macos-arm64"]
+checksum = "sha256:0b9973f5a14e7f3db7b4e035669b2116e47077744b12a97ef10c90b4199c77da"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.0/drydock_darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/430375879"
+
 [[tools.helm]]
 version = "3.21.0"
 backend = "aqua:helm/helm"

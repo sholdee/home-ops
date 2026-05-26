@@ -10,7 +10,7 @@ lima_profile_env := "./hack/bootstrap/lima/profile-env.sh"
 default:
     @just --list --unsorted
 
-# Run full local validation, including pre-commit, GitHub script tests, and bootstrap script tests.
+# Run full local validation, including pre-commit, GitHub workflow validation, and bootstrap script tests.
 [group('core')]
 check:
     just pre-commit
@@ -27,10 +27,10 @@ tools:
 pre-commit:
     pre-commit run --all-files
 
-# Run lightweight tests for GitHub workflow helper scripts.
+# Validate GitHub workflow syntax.
 [group('core')]
 github-test:
-    python3 -B .github/scripts/test_extract_image_info.py
+    actionlint
 
 # Show current and target cluster status without mutating anything.
 [group('cluster')]
