@@ -12,7 +12,6 @@ repos:
       - id: check-added-large-files
       - id: check-yaml
         args: ["--allow-multiple-documents"]
-      - id: check-ast
 
   - repo: https://github.com/ansible/ansible-lint
     rev: v26.4.0
@@ -80,16 +79,6 @@ repos:
           - "https://kube-schemas.shold.io/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
         types: [yaml]
         exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|^hack/bootstrap/ansible/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
-
-  - repo: local
-    hooks:
-      - id: kustomize-build
-        name: kustomize build
-        language: system
-        entry: .github/scripts/kustomize_build_check.sh
-        files: "^apps/"
-        require_serial: true
-        pass_filenames: true
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1

@@ -19,8 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       authorized: ${{ steps.author.outputs.authorized }}
-      helm: ${{ steps.paths.outputs.helm }}
-      docker-only: ${{ steps.eval.outputs.docker-only }}
+      gitops: ${{ steps.paths.outputs.gitops }}
     steps:
       - name: Check PR author
         id: author
@@ -44,27 +43,9 @@ jobs:
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
         with:
           filters: |
-            helm:
-              - '**/kustomization.yaml'
-              - '**/values.yaml'
-              - '**/values*.yaml'
-              - 'apps/argocd/manifests/apps.yaml'
-              - 'apps/argocd/manifests/cilium-preflight.yaml'
-
-      - name: Evaluate docker-only
-        id: eval
-        env:
-          HELM: ${{ steps.paths.outputs.helm }}
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: |
-          DOCKER_ONLY=false
-          if [[ "${HELM}" != "true" ]]; then
-            if [[ "${PR_TITLE}" == chore\(deps\)* ]] && { [[ "${PR_TITLE}" == *"docker tag"* ]] || [[ "${PR_TITLE}" == *"docker digest"* ]]; }; then
-              DOCKER_ONLY=true
-            fi
-          fi
-
-          echo "docker-only=${DOCKER_ONLY}" >> "$GITHUB_OUTPUT"
+            gitops:
+              - 'apps/**'
+              - 'components/**'
 
   pre-commit:
     uses: ./.github/workflows/pre-commit.yml
@@ -72,34 +53,27 @@ jobs:
   bootstrap-test:
     uses: ./.github/workflows/bootstrap-test.yml
 
-  helm-diff:
+  drydock-gitops:
     needs: detect
-    if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.helm == 'true'
-    uses: ./.github/workflows/helm-diff.yml
-    secrets: inherit
-
-  docker-verify:
-    needs: detect
-    if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.docker-only == 'true'
-    uses: ./.github/workflows/pull-image.yml
+    if: needs.detect.outputs.authorized == 'true' && needs.detect.outputs.gitops == 'true'
+    uses: ./.github/workflows/drydock-gitops.yml
     secrets: inherit
 
   gate:
     runs-on: ubuntu-latest
     if: always()
-    needs: [detect, pre-commit, bootstrap-test, helm-diff, docker-verify]
+    needs: [detect, pre-commit, bootstrap-test, drydock-gitops]
     steps:
       - name: Evaluate results
         run: |
           DETECT="${{ needs.detect.result }}"
           PRECOMMIT="${{ needs.pre-commit.result }}"
           BOOTSTRAP="${{ needs.bootstrap-test.result }}"
-          HELM="${{ needs.helm-diff.result }}"
-          DOCKER="${{ needs.docker-verify.result }}"
+          DRYDOCK="${{ needs.drydock-gitops.result }}"
 
-          echo "detect=$DETECT pre-commit=$PRECOMMIT bootstrap-test=$BOOTSTRAP helm-diff=$HELM docker-verify=$DOCKER"
+          echo "detect=$DETECT pre-commit=$PRECOMMIT bootstrap-test=$BOOTSTRAP drydock-gitops=$DRYDOCK"
 
-          if [[ "$DETECT" == "failure" || "$PRECOMMIT" == "failure" || "$BOOTSTRAP" == "failure" || "$HELM" == "failure" || "$DOCKER" == "failure" ]]; then
+          if [[ "$DETECT" == "failure" || "$PRECOMMIT" == "failure" || "$BOOTSTRAP" == "failure" || "$DRYDOCK" == "failure" ]]; then
             echo "CI failed"
             exit 1
           fi

@@ -5,7 +5,7 @@ description: Install the locked repository toolchain with mise
 
 inputs:
   profile:
-    description: Tool profile to install. One of all, pre-commit, bootstrap-test, helm-diff, image, operator.
+    description: Tool profile to install. One of all, pre-commit, bootstrap-test, drydock, image, operator.
     default: all
 
 runs:
@@ -24,20 +24,20 @@ runs:
             tools=(
               python just pipx pipx:pre-commit shellcheck bats actionlint kubeconform
               kubectl argocd github:cloudnative-pg/cloudnative-pg kustomize helm yq jq
-              ansible-core pipx:ansible-lint kind lima op gh
+              github:sholdee/drydock ansible-core pipx:ansible-lint kind lima op gh
             )
             ;;
           pre-commit)
             tools=(python pipx pipx:pre-commit shellcheck actionlint kubeconform kustomize helm yq jq)
             ;;
           bootstrap-test)
-            tools=(python just shellcheck bats yq jq kustomize helm ansible-core)
+            tools=(python just shellcheck bats actionlint yq jq kustomize helm ansible-core)
             ;;
-          helm-diff)
-            tools=(helm kustomize yq jq)
+          drydock)
+            tools=(github:sholdee/drydock jq)
             ;;
           image)
-            tools=(python jq)
+            tools=(jq)
             ;;
           operator)
             tools=(kubectl argocd github:cloudnative-pg/cloudnative-pg)
