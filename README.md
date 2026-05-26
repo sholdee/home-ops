@@ -43,9 +43,10 @@ Renovate continuously scans the repository and submits pull requests for depende
 
 A unified CI pipeline runs on all pull requests, conditionally triggering the appropriate checks:
 
-- **Helm updates** — diffs inflated manifests between old and new versions, pulls new container images to verify ARM64 compatibility
-- **Image updates** — pulls the new image and verifies ARM64 platform support
-- **Pre-commit** — validates YAML syntax, Kubernetes schemas, and code quality
+- **Drydock GitOps validation** — uses [drydock](https://github.com/sholdee/drydock) to render and test ArgoCD Applications, produce desired-state diffs, and identify newly rendered container images
+- **ARM64 image verification** — pulls drydock-detected new images on a self-hosted ARM64 runner and verifies `linux/arm64` platform support
+- **Pre-commit** — validates YAML syntax, Kubernetes schemas, workflow syntax, shell scripts, Markdown, Renovate config, and code quality
+- **Bootstrap tests** — shellchecks and exercises the offline bootstrap, Ansible, Lima, and node lifecycle test suite
 
 All checks feed into a single required status gate for branch protection and automerge.
 
@@ -62,7 +63,7 @@ All checks feed into a single required status gate for branch protection and aut
 📁 components/        # Reusable Kustomize Components (namespace pull secrets, Dragonfly, VolSync backups)
 📁 docs/              # Operational documentation
 📁 hack/bootstrap/    # Bootstrap, node lifecycle, and Raspberry Pi reimage tooling
-📁 .github/           # CI workflows, composite actions, Renovate config, helper scripts
+📁 .github/           # CI workflows, composite actions, and Renovate config
 ```
 
 ### Cluster Bootstrap & Lifecycle 🚀

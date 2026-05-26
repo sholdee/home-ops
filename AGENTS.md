@@ -14,7 +14,7 @@ a PR with passing `CI / gate`.
 - `components/`: reusable Kustomize components such as namespace and VolSync
 - `docs/`: operational docs and templates
 - `hack/bootstrap/`: local bootstrap runner for fresh clusters before ArgoCD takeover
-- `.github/`: CI, Renovate, and helper scripts
+- `.github/`: CI workflows, composite actions, and Renovate config
 
 Key files:
 
@@ -33,12 +33,17 @@ Use the smallest validation that covers the change:
 
 ```bash
 pre-commit run --files <changed-files>
-kustomize build --enable-helm \
-  --helm-api-versions grafana.integreatly.org/v1beta1/GrafanaDashboard \
-  apps/<name>/
+drydock test app <name> --path .
+drydock test apps --path .
+drydock diff apps --repo . --ref HEAD --ref-orig origin/master --skip-secrets --exit-code=false
 ```
 
-For ArgoCD server-side apply/diff behavior, match ArgoCD's field manager:
+`drydock` is the default local and CI renderability/diff tool for steady-state
+ArgoCD GitOps validation. It renders desired state without requiring a live
+ArgoCD or Kubernetes runtime. Use the full `apps` commands for cross-app or
+shared-component changes, and single-app commands for narrow app-local changes.
+
+For live ArgoCD server-side apply/diff behavior, match ArgoCD's field manager:
 
 ```bash
 kustomize build --enable-helm \
