@@ -18,7 +18,7 @@ helm = "3.21.0"
 yq = "4.53.2"
 jq = "1.8.1"
 "aqua:sholdee/crd-schema-publisher" = "2026.519.317"
-"github:sholdee/drydock[exe=drydock]" = "v0.1.1"
+"github:sholdee/drydock[exe=drydock]" = "v0.1.2"
 
 # Bootstrap, node lifecycle, and operator workflow CLIs.
 ansible-core = "2.21.0"
