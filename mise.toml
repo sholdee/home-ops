@@ -11,7 +11,7 @@ kubeconform = "0.7.0"
 
 # Kubernetes and GitOps CLIs.
 kubectl = "1.36.1"
-argocd = "3.4.2"
+argocd = "3.4.3"
 "github:cloudnative-pg/cloudnative-pg[exe=kubectl-cnpg]" = "1.29.1"
 kustomize = "5.8.1"
 helm = "3.21.0"
