@@ -128,25 +128,25 @@ url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/a
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
 
 [[tools."github:sholdee/drydock"]]
-version = "0.1.5"
+version = "0.1.6"
 backend = "github:sholdee/drydock"
 
 [tools."github:sholdee/drydock"."platforms.linux-arm64"]
-checksum = "sha256:45fe876786692550a67321efaf685af5ccb1038d10e587451679ceebc0bc63e9"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.5/drydock_linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/431493030"
+checksum = "sha256:465a8eec2775d69a7b533b61cb56a9efbbbc297d0e2b80925ee4f7fa3631db12"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.6/drydock_linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/432285021"
 provenance = "github-attestations"
 
 [tools."github:sholdee/drydock"."platforms.linux-x64"]
-checksum = "sha256:8fd6bd818ba6e9b780ada45e926cbab7ab1db4bcca05b1b4ce3aee96aa7bf5ae"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.5/drydock_linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/431493026"
+checksum = "sha256:8c4e1b8e3220d95ee0dc789d692c283b6406ff89ba08afc59f4372873c5b4c64"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.6/drydock_linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/432285009"
 provenance = "github-attestations"
 
 [tools."github:sholdee/drydock"."platforms.macos-arm64"]
-checksum = "sha256:45e4776729532e8adcd3c5dc78dc6a429ddce7653ea9360de685076ef5d8f5f7"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.5/drydock_darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/431493021"
+checksum = "sha256:9ade769aa8afa7b8dc4b13e11e124544d9d6e110709ad4a6ee657d453054c399"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.6/drydock_darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/432284981"
 provenance = "github-attestations"
 
 [[tools.helm]]
