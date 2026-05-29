@@ -9,160 +9,18 @@ jobs:
   drydock-diff:
     runs-on: ubuntu-latest
     outputs:
-      HAS_DIFF: ${{ steps.read-diff.outputs.HAS_DIFF }}
-      HAS_IMAGES: ${{ steps.read-images.outputs.HAS_IMAGES }}
-      DIFF_ARTIFACT_NAME: ${{ steps.artifacts.outputs.DIFF_ARTIFACT_NAME }}
-      IMAGE_ARTIFACT_NAME: ${{ steps.artifacts.outputs.IMAGE_ARTIFACT_NAME }}
+      HAS_DIFF: ${{ steps.drydock.outputs.has-diff }}
+      HAS_IMAGES: ${{ steps.drydock.outputs.has-images }}
+      DIFF_ARTIFACT_NAME: ${{ steps.drydock.outputs.diff-artifact-name }}
+      IMAGE_ARTIFACT_NAME: ${{ steps.drydock.outputs.image-artifact-name }}
     steps:
-      - name: Configure artifact names
-        id: artifacts
-        run: |
-          DIFF_ARTIFACT_NAME="drydock-diff-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          IMAGE_ARTIFACT_NAME="drydock-images-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          echo "DIFF_ARTIFACT_NAME=${DIFF_ARTIFACT_NAME}" >> "$GITHUB_ENV"
-          echo "IMAGE_ARTIFACT_NAME=${IMAGE_ARTIFACT_NAME}" >> "$GITHUB_ENV"
-          echo "DIFF_ARTIFACT_NAME=${DIFF_ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
-          echo "IMAGE_ARTIFACT_NAME=${IMAGE_ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run drydock pull request validation
+        id: drydock
+        uses: sholdee/drydock/pr-action@5611a3328b7dd6966f0f873d100503b8022d5d7d # main
         with:
-          fetch-depth: 1
-          ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Fetch base branch for comparison
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          git fetch --no-tags --depth=1 origin "${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-
-      - name: Install mise toolchain
-        uses: ./.github/actions/setup-mise
-        with:
-          profile: drydock
-
-      - name: Restore drydock source cache
-        id: drydock-cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/.cache/drydock
-          key: drydock-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/**/*.yaml', 'components/**/*.yaml') }}
-          restore-keys: |
-            drydock-${{ runner.os }}-${{ runner.arch }}-
-
-      - name: Test Argo CD Applications
-        run: drydock test apps --path .
-
-      - name: Diff rendered desired state
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          drydock diff apps \
-            --repo . \
-            --ref HEAD \
-            --ref-orig "origin/${BASE_REF}" \
-            --skip-secrets \
-            --exit-code=false \
-            > diff.txt
-
-      - name: Diff rendered images
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          drydock diff images \
-            --repo . \
-            --ref HEAD \
-            --ref-orig "origin/${BASE_REF}" \
-            --skip-secrets \
-            --output json \
-            --exit-code=false \
-            > image-diff.json
-          jq -r '.added[]?' image-diff.json > added-images.txt
-
-      - name: Save drydock source cache
-        if: always() && steps.drydock-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
-        with:
-          path: ~/.cache/drydock
-          key: drydock-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/**/*.yaml', 'components/**/*.yaml') }}
-
-      - name: Read drydock diff output
-        id: read-diff
-        run: |
-          if [ -s diff.txt ]; then
-            echo "HAS_DIFF=true" >> "$GITHUB_OUTPUT"
-            echo "Differences detected."
-          else
-            echo "HAS_DIFF=false" >> "$GITHUB_OUTPUT"
-            echo "No differences detected."
-          fi
-
-      - name: Read rendered image updates
-        id: read-images
-        run: |
-          if [ -s added-images.txt ]; then
-            echo "HAS_IMAGES=true" >> "$GITHUB_OUTPUT"
-            echo "Rendered image additions detected."
-          else
-            echo "HAS_IMAGES=false" >> "$GITHUB_OUTPUT"
-            echo "No rendered image additions detected."
-          fi
-
-      - name: Prepare drydock diff comment
-        if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        run: |
-          MAX_BYTES=61000
-
-          if [ "$(wc -c < diff.txt)" -gt "$MAX_BYTES" ]; then
-            head -c "$MAX_BYTES" diff.txt | iconv -c -f utf-8 -t utf-8 > diff_snippet.txt
-            printf "\n\n####### TRUNCATED -- see artifact for full diff #######\n" >> diff_snippet.txt
-          else
-            cp diff.txt diff_snippet.txt
-          fi
-
-          {
-            echo '```diff'
-            cat diff_snippet.txt
-            echo '```'
-            echo
-            echo "- [Download Artifact](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})"
-          } > pr-comment.md
-
-      - name: Generate Token
-        if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        id: app-token
-        with:
-          app-id: "${{ secrets.BOT_APP_ID }}"
-          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
-
-      - name: Add drydock diff comment
-        if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        continue-on-error: true
-        uses: mshick/add-pr-comment@8e4927817251f1ff60c001f04568532b38e0b4a0 # v3.11
-        with:
-          repo-token: "${{ steps.app-token.outputs.token }}"
-          message-id: "${{ github.event.pull_request.number }}/drydock-diff"
-          message-failure: Diff was not successful
-          message-path: pr-comment.md
-
-      - name: Upload drydock diff artifact
-        if: steps.read-diff.outputs.HAS_DIFF == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ env.DIFF_ARTIFACT_NAME }}
-          path: diff.txt
-          retention-days: 30
-
-      - name: Upload rendered image diff artifact
-        if: steps.read-images.outputs.HAS_IMAGES == 'true'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ env.IMAGE_ARTIFACT_NAME }}
-          path: |
-            added-images.txt
-            image-diff.json
-          retention-days: 30
+          github-app-id: ${{ secrets.BOT_APP_ID }}
+          github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          version: latest
 
   verify-new-images:
     needs: drydock-diff
@@ -191,11 +49,11 @@ jobs:
             [ -n "${IMAGE_FULL}" ] || continue
 
             echo "Pulling image for linux/arm64: ${IMAGE_FULL}"
-            PULL_STATUS="FAIL"
-            PLATFORM_STATUS="SKIP"
+            PULL_STATUS="❌"
+            PLATFORM_STATUS="ℹ️"
 
             if sudo /usr/local/bin/home-ops-crictl pull "${IMAGE_FULL}"; then
-              PULL_STATUS="PASS"
+              PULL_STATUS="✅"
 
               INSPECT_JSON="$(sudo /usr/local/bin/home-ops-crictl inspecti -o json "${IMAGE_FULL}" || true)"
               if [ -n "${INSPECT_JSON}" ]; then
@@ -203,14 +61,14 @@ jobs:
                 OS="$(printf '%s' "${INSPECT_JSON}" | jq -r '.info.imageSpec.os // .imageSpec.os // empty')"
 
                 if [ "${ARCH}" = "arm64" ] && [ "${OS}" = "linux" ]; then
-                  PLATFORM_STATUS="PASS"
+                  PLATFORM_STATUS="✅"
                 else
-                  PLATFORM_STATUS="FAIL"
+                  PLATFORM_STATUS="❌"
                   echo "Platform mismatch for ${IMAGE_FULL}: expected linux/arm64, got ${OS:-unknown}/${ARCH:-unknown}"
                   PULL_FAILED=1
                 fi
               else
-                PLATFORM_STATUS="FAIL"
+                PLATFORM_STATUS="❌"
                 echo "Failed to inspect image metadata for ${IMAGE_FULL}"
                 PULL_FAILED=1
               fi
