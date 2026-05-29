@@ -14,10 +14,25 @@ jobs:
       DIFF_ARTIFACT_NAME: ${{ steps.drydock.outputs.diff-artifact-name }}
       IMAGE_ARTIFACT_NAME: ${{ steps.drydock.outputs.image-artifact-name }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 1
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install mise toolchain
+        uses: ./.github/actions/setup-mise
+        with:
+          profile: drydock
+
       - name: Run drydock pull request validation
         id: drydock
-        uses: sholdee/drydock/pr-action@5611a3328b7dd6966f0f873d100503b8022d5d7d # main
+        uses: sholdee/drydock/pr-action@c5a1185ccd74af155670f5877e10d6fa60694f70 # feature/pr-action-external-drydock-bin
         with:
+          checkout: "false"
+          install: "false"
+          drydock-bin: drydock
+          github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
           version: v0.1.7
@@ -26,6 +41,9 @@ jobs:
     needs: drydock-diff
     if: needs.drydock-diff.outputs.HAS_IMAGES == 'true'
     runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]
+    env:
+      HAS_BOT_APP_CLIENT_ID: ${{ secrets.BOT_APP_CLIENT_ID != '' }}
+      HAS_BOT_APP_ID: ${{ secrets.BOT_APP_ID != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -104,8 +122,19 @@ jobs:
 
       - name: Generate Token
         if: always() && env.IMAGE_PULL_COMMENT != ''
+          && env.HAS_BOT_APP_CLIENT_ID == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        id: app-token
+        id: app-token-client
+        with:
+          client-id: "${{ secrets.BOT_APP_CLIENT_ID }}"
+          private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+
+      - name: Generate Token from legacy App ID
+        if: always() && env.IMAGE_PULL_COMMENT != ''
+          && env.HAS_BOT_APP_CLIENT_ID != 'true'
+          && env.HAS_BOT_APP_ID == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        id: app-token-legacy
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
@@ -115,7 +144,7 @@ jobs:
         continue-on-error: true
         uses: mshick/add-pr-comment@8e4927817251f1ff60c001f04568532b38e0b4a0 # v3.11
         with:
-          repo-token: "${{ steps.app-token.outputs.token }}"
+          repo-token: "${{ steps.app-token-client.outputs.token || steps.app-token-legacy.outputs.token || github.token }}"
           message-id: "${{ github.event.pull_request.number }}/pull-results"
           message: |
             ${{ env.IMAGE_PULL_COMMENT }}
