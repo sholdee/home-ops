@@ -20,7 +20,7 @@ jobs:
         with:
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
-          version: latest
+          version: v0.1.7
 
   verify-new-images:
     needs: drydock-diff

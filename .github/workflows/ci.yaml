@@ -44,6 +44,7 @@ jobs:
         with:
           filters: |
             gitops:
+              - '.github/workflows/drydock-gitops.yml'
               - 'apps/**'
               - 'components/**'
 
