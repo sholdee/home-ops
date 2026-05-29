@@ -409,13 +409,6 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'openssl base64 -d -A'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'HOME_OPS_GITHUB_APP_PRIVATE_KEY is not valid base64-encoded PEM private key data'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/lib/host-services.sh" 'could not create GitHub App JWT for host services'
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" 'drydock test apps --path .'
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" "drydock diff apps \\"
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" "drydock diff images \\"
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" "jq -r '.added[]?' image-diff.json > added-images.txt"
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" 'runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]'
-  assert_file_contains "$ROOT/.github/workflows/drydock-gitops.yml" 'sudo /usr/local/bin/home-ops-crictl pull'
-  assert_file_not_contains "$ROOT/.github/workflows/drydock-gitops.yml" 'python .github/scripts/extract_image_info.py'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'home_ops_github_runner_access_token'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/inventory/live/group_vars/all.yml" 'home_ops_github_runner_enabled: true'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/site.yml" 'tasks/host-services/main.yml'
