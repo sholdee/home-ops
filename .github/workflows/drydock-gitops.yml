@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 1
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install mise toolchain
@@ -27,7 +28,7 @@ jobs:
 
       - name: Run drydock pull request validation
         id: drydock
-        uses: sholdee/drydock/pr-action@c5a1185ccd74af155670f5877e10d6fa60694f70 # feature/pr-action-external-drydock-bin
+        uses: sholdee/drydock/pr-action@94723240ad43784d7e2c6cfc02ae154c4e7aa640 # feature/pr-action-external-drydock-bin
         with:
           checkout: "false"
           install: "false"
