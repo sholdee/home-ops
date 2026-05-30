@@ -297,20 +297,20 @@ url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_amd64_v2.34.
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_darwin_arm64_v2.34.0.zip"
 
 [[tools.pipx]]
-version = "1.12.0"
+version = "1.13.0"
 backend = "aqua:pypa/pipx"
 
 [tools.pipx."platforms.linux-arm64"]
-checksum = "sha256:f7492089d576f1ed04a56ab60d3f8918da4a3c951fa5c6631ce3f5a804deac51"
-url = "https://github.com/pypa/pipx/releases/download/1.12.0/pipx.pyz"
+checksum = "sha256:621ba9b76481d44494a797f8fb25146a3b47d8ba9ddcfb815e821131f1a4f178"
+url = "https://github.com/pypa/pipx/releases/download/1.13.0/pipx.pyz"
 
 [tools.pipx."platforms.linux-x64"]
-checksum = "sha256:f7492089d576f1ed04a56ab60d3f8918da4a3c951fa5c6631ce3f5a804deac51"
-url = "https://github.com/pypa/pipx/releases/download/1.12.0/pipx.pyz"
+checksum = "sha256:621ba9b76481d44494a797f8fb25146a3b47d8ba9ddcfb815e821131f1a4f178"
+url = "https://github.com/pypa/pipx/releases/download/1.13.0/pipx.pyz"
 
 [tools.pipx."platforms.macos-arm64"]
-checksum = "sha256:f7492089d576f1ed04a56ab60d3f8918da4a3c951fa5c6631ce3f5a804deac51"
-url = "https://github.com/pypa/pipx/releases/download/1.12.0/pipx.pyz"
+checksum = "sha256:621ba9b76481d44494a797f8fb25146a3b47d8ba9ddcfb815e821131f1a4f178"
+url = "https://github.com/pypa/pipx/releases/download/1.13.0/pipx.pyz"
 
 [[tools."pipx:ansible-lint"]]
 version = "26.4.0"
