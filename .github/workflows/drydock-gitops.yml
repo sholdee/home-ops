@@ -36,6 +36,9 @@ jobs:
           github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
+          changed-only-include: |
+            apps/**
+            components/**
           comment-mode: diff
 
   verify-new-images:
