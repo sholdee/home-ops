@@ -19,16 +19,17 @@ metrics:
     query: sum(kube_pod_info)
     value: "humanizeNumber(result)"
     color: '"green"'
+    cacheSeconds: 30
   - name: cluster_cpu_usage
     query: round(avg(100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100), 0.01)
     value: 'humanizeFloat(result) + "%"'
     color: 'result <= 35.0 ? "green" : result <= 75.0 ? "orange" : "red"'
-    cacheSeconds: 60
+    cacheSeconds: 30
   - name: cluster_memory_usage
     query: round((sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes)) * 100, 0.1)
     value: 'humanizeFloat(result) + "%"'
     color: 'result <= 75.0 ? "green" : result <= 85.0 ? "orange" : "red"'
-    cacheSeconds: 60
+    cacheSeconds: 30
   - name: cluster_age_days
     query: round((time() - max(kube_namespace_created{namespace="kube-system"})) / 86400)
     value: 'humanizeFloat(result) + "d"'
