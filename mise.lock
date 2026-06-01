@@ -265,22 +265,22 @@ checksum = "sha256:8886f8a78474e608cc81234f729fda188a9767da23e28925802f00ece2bab
 url = "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.8.1/kustomize_v5.8.1_darwin_arm64.tar.gz"
 
 [[tools.lima]]
-version = "2.1.1"
+version = "2.1.2"
 backend = "aqua:lima-vm/lima"
 
 [tools.lima."platforms.linux-arm64"]
-checksum = "sha256:1011d18701697e2a559c044932309728fd6488a5380673c489556784924bf3ca"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.1/lima-2.1.1-Linux-aarch64.tar.gz"
+checksum = "sha256:c2deb0aad9ba375b0d1cc37bf3e01402f2d9ef6cf63db924171d2627823626b0"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.2/lima-2.1.2-Linux-aarch64.tar.gz"
 provenance = "github-attestations"
 
 [tools.lima."platforms.linux-x64"]
-checksum = "sha256:0f89235de8c3676d988d863cfef37ac7cf4b8a14ba05d5d678a99dfea1db2d3c"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.1/lima-2.1.1-Linux-x86_64.tar.gz"
+checksum = "sha256:648ed5f599012a0864bd0c4809063b18116bca57f2593d30547dfedbef3c2ce0"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.2/lima-2.1.2-Linux-x86_64.tar.gz"
 provenance = "github-attestations"
 
 [tools.lima."platforms.macos-arm64"]
-checksum = "sha256:b6b0e6701189cd8c4e549cc39e6d054dc681487798b9b774ad2cbd30c08b2bd8"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.1/lima-2.1.1-Darwin-arm64.tar.gz"
+checksum = "sha256:7081d03d01511f20c4a3b38d8120428ef1c66e4b21ec9b54017bc65da60b031f"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.2/lima-2.1.2-Darwin-arm64.tar.gz"
 provenance = "github-attestations"
 
 [[tools.op]]
