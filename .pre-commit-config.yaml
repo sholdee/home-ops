@@ -46,7 +46,7 @@ repos:
         args:
           [
             "--schemafile",
-            "https://raw.githubusercontent.com/kashalls/kromgo/main/config.schema.json",
+            "https://raw.githubusercontent.com/home-operations/kromgo/0.11.1/config.schema.json",
           ]
       - id: check-jsonschema
         name: validate external-dns values
