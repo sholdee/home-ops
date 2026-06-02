@@ -23,7 +23,7 @@ jq = "1.8.1"
 # Bootstrap, node lifecycle, and operator workflow CLIs.
 ansible-core = "2.21.0"
 "pipx:ansible-lint" = "26.4.0"
-kind = "0.31.0"
+kind = "0.32.0"
 lima = "2.1.2"
 op = "2.34.0"
 gh = "2.93.0"
