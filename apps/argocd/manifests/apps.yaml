@@ -123,6 +123,9 @@ spec:
       valuesObject:
         annotations:
           reloader.stakater.com/auto: "true"
+        config:
+          includeBuiltins: true
+          includeKustomize: true
         externalSecret:
           enabled: true
           secretStoreRef:
