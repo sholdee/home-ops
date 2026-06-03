@@ -7,6 +7,7 @@ Reference templates for common operations. Read this file when adding new apps, 
 1. Create `apps/<name>/kustomization.yaml`:
 
 ```yaml
+# yaml-language-server: $schema=https://kube-schemas.shold.io/kustomize.config.k8s.io/kustomization_v1beta1.json
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: <name>
@@ -25,6 +26,7 @@ resources:
 ## Adding a New Helm App
 
 ```yaml
+# yaml-language-server: $schema=https://kube-schemas.shold.io/kustomize.config.k8s.io/kustomization_v1beta1.json
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: <name>
