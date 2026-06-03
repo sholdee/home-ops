@@ -1,0 +1,285 @@
+From a56e59c52f25c00e3761def344c5e3aa9e2cd3b2 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 02:04:00 -0500
+Subject: [PATCH 08/12] feat: generate html diff artifact in pr action
+
+---
+ pr-action/prepare.sh      |  5 ++++
+ pr-action/prepare_test.go | 59 +++++++++++++++++++++++++++++++++++++++
+ pr-action/run.sh          | 24 ++++------------
+ pr-action/run_test.go     | 48 +++++++++++++++++++++++++++----
+ 4 files changed, 112 insertions(+), 24 deletions(-)
+ create mode 100644 pr-action/prepare_test.go
+
+diff --git a/pr-action/prepare.sh b/pr-action/prepare.sh
+index 1a7a6ca..bb7d8a0 100755
+--- a/pr-action/prepare.sh
++++ b/pr-action/prepare.sh
+@@ -92,6 +92,10 @@ diff_artifact_name="${DRYDOCK_INPUT_DIFF_ARTIFACT_NAME}"
+ if [[ -z "${diff_artifact_name}" ]]; then
+   diff_artifact_name="drydock-diff-${GITHUB_RUN_ID:-run}-${GITHUB_RUN_ATTEMPT:-1}"
+ fi
++diff_html_artifact_name="${DRYDOCK_INPUT_DIFF_HTML_ARTIFACT_NAME}"
++if [[ -z "${diff_html_artifact_name}" ]]; then
++  diff_html_artifact_name="drydock-diff-${GITHUB_RUN_ID:-run}-${GITHUB_RUN_ATTEMPT:-1}.html"
++fi
+ image_artifact_name="${DRYDOCK_INPUT_IMAGE_ARTIFACT_NAME}"
+ if [[ -z "${image_artifact_name}" ]]; then
+   image_artifact_name="drydock-images-${GITHUB_RUN_ID:-run}-${GITHUB_RUN_ATTEMPT:-1}"
+@@ -105,6 +109,7 @@ fi
+   echo "cache-save=${cache_save}"
+   echo "trusted-context=${trusted_context}"
+   echo "diff-artifact-name=${diff_artifact_name}"
++  echo "diff-html-artifact-name=${diff_html_artifact_name}"
+   echo "image-artifact-name=${image_artifact_name}"
+   echo "restore-keys<<EOF"
+   printf '%s\n' "${restore_keys}"
+diff --git a/pr-action/prepare_test.go b/pr-action/prepare_test.go
+new file mode 100644
+index 0000000..f685322
+--- /dev/null
++++ b/pr-action/prepare_test.go
+@@ -0,0 +1,59 @@
++package praction
++
++import (
++	"os"
++	"os/exec"
++	"path/filepath"
++	"runtime"
++	"strings"
++	"testing"
++)
++
++func TestPrepareOutputsDefaultHTMLDiffArtifactName(t *testing.T) {
++	if runtime.GOOS == "windows" {
++		t.Skip("shell action tests require bash")
++	}
++
++	tmp := t.TempDir()
++	outputPath := filepath.Join(tmp, "github-output")
++	cmd := exec.Command("bash", "prepare.sh")
++	cmd.Dir = "."
++	cmd.Env = append(os.Environ(),
++		"GITHUB_OUTPUT="+outputPath,
++		"GITHUB_RUN_ID=12345",
++		"GITHUB_RUN_ATTEMPT=2",
++		"GITHUB_EVENT_NAME=pull_request",
++		"GITHUB_REPOSITORY=example/repo",
++		"RUNNER_TEMP="+tmp,
++		"RUNNER_OS=Linux",
++		"RUNNER_ARCH=X64",
++		"DRYDOCK_INPUT_ARTIFACT_RETENTION_DAYS=",
++		"DRYDOCK_INPUT_CACHE=true",
++		"DRYDOCK_INPUT_CACHE_KEY=",
++		"DRYDOCK_INPUT_CACHE_KEY_PREFIX=drydock",
++		"DRYDOCK_INPUT_CACHE_KEY_SUFFIX=v1",
++		"DRYDOCK_INPUT_CACHE_PATH=",
++		"DRYDOCK_INPUT_CACHE_RESTORE_KEYS=",
++		"DRYDOCK_INPUT_CACHE_UNTRUSTED_RESTORE=false",
++		"DRYDOCK_INPUT_COMMENT_CONTINUE_ON_ERROR=false",
++		"DRYDOCK_INPUT_COMMENT_EMPTY=false",
++		"DRYDOCK_INPUT_COMMENT_MODE=both",
++		"DRYDOCK_INPUT_DIFF_ARTIFACT_NAME=",
++		"DRYDOCK_INPUT_DIFF_HTML_ARTIFACT_NAME=",
++		"DRYDOCK_INPUT_DIFF_MAX_BYTES=60000",
++		"DRYDOCK_INPUT_IMAGE_ARTIFACT_NAME=",
++		"DRYDOCK_INPUT_SAVE_CACHE=true",
++		"DRYDOCK_INPUT_UPLOAD_ARTIFACTS=true",
++		"DRYDOCK_PR_HEAD_REPO=example/repo",
++		"DRYDOCK_RESOLVED_VERSION=test",
++	)
++	out, err := cmd.CombinedOutput()
++	if err != nil {
++		t.Fatalf("prepare.sh failed: %v\n%s", err, out)
++	}
++
++	output := readFile(t, outputPath)
++	if !strings.Contains(output, "diff-html-artifact-name=drydock-diff-12345-2.html") {
++		t.Fatalf("GITHUB_OUTPUT = %q, want default HTML diff artifact name", output)
++	}
++}
+diff --git a/pr-action/run.sh b/pr-action/run.sh
+index 12d6f52..0643e80 100755
+--- a/pr-action/run.sh
++++ b/pr-action/run.sh
+@@ -169,22 +169,6 @@ diff_comment_budget() {
+   printf '%s\n' "$((effective - reserve))"
+ }
+ 
+-append_diff_artifact_footer() {
+-  local comment_file="$1"
+-  local max_bytes=60000
+-  local footer
+-  footer="- Full diff output: [${DRYDOCK_DIFF_ARTIFACT_NAME} artifact](${run_url})."
+-  local current footer_bytes
+-  current="$(wc -c < "${comment_file}")"
+-  footer_bytes="$(printf '\n%s\n' "${footer}" | wc -c)"
+-  if [[ $((current + footer_bytes)) -le "${max_bytes}" ]]; then
+-    {
+-      echo
+-      echo "${footer}"
+-    } >> "${comment_file}"
+-  fi
+-}
+-
+ validate_diff_comment_size() {
+   local comment_file="$1"
+   local max_bytes=60000
+@@ -296,6 +280,7 @@ fi
+ test_stdout="${work_dir}/test.out"
+ test_stderr="${work_dir}/test.err"
+ diff_path="${work_dir}/diff.txt"
++diff_html_path="${work_dir}/${DRYDOCK_DIFF_HTML_ARTIFACT_NAME}"
+ diff_stderr="${work_dir}/diff.err"
+ images_path="${work_dir}/added-images.txt"
+ images_removed_path="${work_dir}/removed-images.txt"
+@@ -376,6 +361,7 @@ if [[ "${DRYDOCK_INPUT_RUN_DIFF}" == "true" ]]; then
+     -o markdown
+     --markdown-max-bytes "$(diff_comment_budget "${DRYDOCK_INPUT_DIFF_MAX_BYTES}")"
+     --raw-output-file "${diff_path}"
++    --html-output-file "${diff_html_path}"
+     --exit-code=false
+   )
+   if ! capture_command "${diff_comment_path}" "${diff_stderr}" "${diff_args[@]}"; then
+@@ -389,6 +375,7 @@ if [[ "${DRYDOCK_INPUT_RUN_DIFF}" == "true" ]]; then
+   fi
+ else
+   : > "${diff_path}"
++  : > "${diff_html_path}"
+   : > "${diff_comment_path}"
+ fi
+ 
+@@ -471,9 +458,6 @@ if [[ "${diff_comment}" == "true" ]]; then
+       echo "No rendered manifest differences detected."
+     } > "${diff_comment_path}"
+   fi
+-  if [[ "${has_diff}" == "true" && "${DRYDOCK_INPUT_UPLOAD_ARTIFACTS}" == "true" && -n "${run_url}" ]]; then
+-    append_diff_artifact_footer "${diff_comment_path}"
+-  fi
+   validate_diff_comment_size "${diff_comment_path}"
+ fi
+ 
+@@ -534,12 +518,14 @@ fi
+   echo "has-image-diff=${has_image_diff}"
+   echo "render-status=${render_status}"
+   echo "diff-path=${diff_path}"
++  echo "diff-html-path=${diff_html_path}"
+   echo "images-path=${images_path}"
+   echo "diff-comment-path=${diff_comment_path}"
+   echo "images-comment-path=${images_comment_path}"
+   echo "diff-comment=${diff_comment}"
+   echo "images-comment=${images_comment}"
+   echo "diff-artifact-name=${DRYDOCK_DIFF_ARTIFACT_NAME}"
++  echo "diff-html-artifact-name=${DRYDOCK_DIFF_HTML_ARTIFACT_NAME}"
+   echo "image-artifact-name=${DRYDOCK_IMAGE_ARTIFACT_NAME}"
+ } >> "${GITHUB_OUTPUT}"
+ 
+diff --git a/pr-action/run_test.go b/pr-action/run_test.go
+index cce4c2d..fc5deb5 100644
+--- a/pr-action/run_test.go
++++ b/pr-action/run_test.go
+@@ -116,14 +116,14 @@ func TestRunCommentsLinkWorkflowRunArtifactsWhenUploadEnabled(t *testing.T) {
+ 	})
+ 
+ 	diffComment := readFile(t, filepath.Join(workDir, "diff-comment.md"))
+-	for _, want := range []string{
+-		"Full diff output: [diff artifact](https://github.example.test/example/repo/actions/runs/12345).",
+-		"~~~diff",
+-	} {
++	for _, want := range []string{"~~~diff"} {
+ 		if !strings.Contains(diffComment, want) {
+ 			t.Fatalf("diff comment = %q, want %q", diffComment, want)
+ 		}
+ 	}
++	if strings.Contains(diffComment, "Full diff output") || strings.Contains(diffComment, "actions/runs/12345") {
++		t.Fatalf("diff comment contains raw artifact footer from run.sh:\n%s", diffComment)
++	}
+ 	if strings.Contains(diffComment, "Full output is available from the workflow artifacts") {
+ 		t.Fatalf("diff comment still has vague artifact text:\n%s", diffComment)
+ 	}
+@@ -275,7 +275,7 @@ func TestRunDiffUsesMarkdownOutputAfterExtraDiffArgs(t *testing.T) {
+ 	})
+ 
+ 	args := readFile(t, filepath.Join(workDir, "drydock-args.txt"))
+-	for _, want := range []string{"-o json", "--raw-output-file /tmp/ignored", "-o markdown", "--markdown-max-bytes 59488", "--raw-output-file " + filepath.Join(workDir, "diff.txt"), "--exit-code=false"} {
++	for _, want := range []string{"-o json", "--raw-output-file /tmp/ignored", "-o markdown", "--markdown-max-bytes 59488", "--raw-output-file " + filepath.Join(workDir, "diff.txt"), "--html-output-file " + filepath.Join(workDir, "diff.html"), "--exit-code=false"} {
+ 		if !strings.Contains(args, want) {
+ 			t.Fatalf("drydock args = %q, want %q", args, want)
+ 		}
+@@ -291,6 +291,35 @@ func TestRunDiffUsesMarkdownOutputAfterExtraDiffArgs(t *testing.T) {
+ 	if !strings.Contains(diffComment, "## drydock desired state diff") {
+ 		t.Fatalf("diff comment = %q, want markdown report", diffComment)
+ 	}
++	if strings.Contains(diffComment, "Full diff output") || strings.Contains(diffComment, "actions/runs/12345") {
++		t.Fatalf("diff comment contains raw artifact footer from run.sh:\n%s", diffComment)
++	}
++}
++
++func TestRunOutputsHTMLDiffArtifactPath(t *testing.T) {
++	if runtime.GOOS == "windows" {
++		t.Skip("shell action tests require bash")
++	}
++
++	workDir := runCommentScenario(t, commentScenario{
++		diffOutput: true,
++	})
++
++	htmlPath := filepath.Join(workDir, "diff.html")
++	html := readFile(t, htmlPath)
++	if !strings.Contains(html, "<html><body>drydock diff</body></html>") {
++		t.Fatalf("diff.html = %q, want HTML diff artifact", html)
++	}
++
++	output := readFile(t, filepath.Join(filepath.Dir(workDir), "github-output"))
++	for _, want := range []string{
++		"diff-html-path=" + htmlPath,
++		"diff-html-artifact-name=diff.html",
++	} {
++		if !strings.Contains(output, want) {
++			t.Fatalf("GITHUB_OUTPUT = %q, want %q", output, want)
++		}
++	}
+ }
+ 
+ func TestRunPassesChangedOnlyPathFiltersOnlyToDiffCommands(t *testing.T) {
+@@ -573,6 +602,7 @@ fi
+ if [[ "$*" == *"diff apps"* ]]; then
+   `+diffOutput+`
+   raw_output_file=""
++  html_output_file=""
+   output="diff"
+   while [[ "$#" -gt 0 ]]; do
+     case "$1" in
+@@ -580,6 +610,10 @@ if [[ "$*" == *"diff apps"* ]]; then
+         raw_output_file="$2"
+         shift 2
+         ;;
++      --html-output-file)
++        html_output_file="$2"
++        shift 2
++        ;;
+       -o | --output)
+         output="$2"
+         shift 2
+@@ -596,6 +630,9 @@ if [[ "$*" == *"diff apps"* ]]; then
+   if [[ -n "${raw_output_file}" ]]; then
+     printf '%s' "${diff_body:-}" > "${raw_output_file}"
+   fi
++  if [[ -n "${html_output_file}" ]]; then
++    printf '<html><body>drydock diff</body></html>\n' > "${html_output_file}"
++  fi
+   if [[ "${output}" == "markdown" ]]; then
+     if [[ -n "${diff_body:-}" ]]; then
+       printf '## drydock desired state diff\n\n~~~diff\n%s~~~\n' "${diff_body}"
+@@ -741,6 +778,7 @@ func defaultRunEnv(tmp, workDir, outputPath string) []string {
+ 		"DRYDOCK_BIN=drydock",
+ 		"DRYDOCK_CACHE_PATH=",
+ 		"DRYDOCK_DIFF_ARTIFACT_NAME=diff",
++		"DRYDOCK_DIFF_HTML_ARTIFACT_NAME=diff.html",
+ 		"DRYDOCK_IMAGE_ARTIFACT_NAME=images",
+ 		"DRYDOCK_INPUT_CHANGED_ONLY=",
+ 		"DRYDOCK_INPUT_CHANGED_ONLY_INCLUDE=",
+-- 
+2.54.0
+

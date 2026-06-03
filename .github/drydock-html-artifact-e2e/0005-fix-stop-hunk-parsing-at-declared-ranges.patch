@@ -1,0 +1,133 @@
+From 29dd2330bd110d13597742ce1563707b4b88d1c1 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:47:07 -0500
+Subject: [PATCH 05/12] fix: stop hunk parsing at declared ranges
+
+---
+ internal/report/diffhtml/hunk.go      | 42 ++++++++++++++++++++++-----
+ internal/report/diffhtml/hunk_test.go | 16 ++++++++++
+ 2 files changed, 50 insertions(+), 8 deletions(-)
+
+diff --git a/internal/report/diffhtml/hunk.go b/internal/report/diffhtml/hunk.go
+index d6c072e..39e2790 100644
+--- a/internal/report/diffhtml/hunk.go
++++ b/internal/report/diffhtml/hunk.go
+@@ -23,12 +23,16 @@ func parseUnifiedDiff(text string) []diffHunk {
+ 	var hunks []diffHunk
+ 	var current *diffHunk
+ 	var leftNumber, rightNumber int
++	var leftRemaining, rightRemaining int
+ 
+ 	for _, line := range strings.Split(text, "\n") {
+ 		if strings.HasPrefix(line, "@@ ") {
+-			leftNumber, rightNumber = parseHunkStart(line)
++			leftNumber, leftRemaining, rightNumber, rightRemaining = parseHunkRange(line)
+ 			hunks = append(hunks, diffHunk{Header: line})
+ 			current = &hunks[len(hunks)-1]
++			if hunkConsumed(leftRemaining, rightRemaining) {
++				current = nil
++			}
+ 			continue
+ 		}
+ 		if current == nil || line == "" {
+@@ -48,6 +52,8 @@ func parseUnifiedDiff(text string) []diffHunk {
+ 			})
+ 			leftNumber++
+ 			rightNumber++
++			leftRemaining--
++			rightRemaining--
+ 		case '-':
+ 			current.Rows = append(current.Rows, diffRow{
+ 				Kind:       "removed",
+@@ -55,6 +61,7 @@ func parseUnifiedDiff(text string) []diffHunk {
+ 				LeftText:   content,
+ 			})
+ 			leftNumber++
++			leftRemaining--
+ 		case '+':
+ 			current.Rows = append(current.Rows, diffRow{
+ 				Kind:        "added",
+@@ -62,27 +69,46 @@ func parseUnifiedDiff(text string) []diffHunk {
+ 				RightText:   content,
+ 			})
+ 			rightNumber++
++			rightRemaining--
++		default:
++			continue
++		}
++		if hunkConsumed(leftRemaining, rightRemaining) {
++			current = nil
+ 		}
+ 	}
+ 
+ 	return hunks
+ }
+ 
+-func parseHunkStart(header string) (int, int) {
++func parseHunkRange(header string) (int, int, int, int) {
+ 	fields := strings.Fields(header)
+ 	if len(fields) < 3 {
+-		return 0, 0
++		return 0, 0, 0, 0
+ 	}
+-	return parseRangeStart(fields[1]), parseRangeStart(fields[2])
++	leftStart, leftCount := parseRange(fields[1])
++	rightStart, rightCount := parseRange(fields[2])
++	return leftStart, leftCount, rightStart, rightCount
+ }
+ 
+-func parseRangeStart(rangeText string) int {
++func parseRange(rangeText string) (int, int) {
+ 	rangeText = strings.TrimPrefix(rangeText, "-")
+ 	rangeText = strings.TrimPrefix(rangeText, "+")
+-	start, _, _ := strings.Cut(rangeText, ",")
++	start, countText, hasCount := strings.Cut(rangeText, ",")
+ 	number, err := strconv.Atoi(start)
+ 	if err != nil {
+-		return 0
++		return 0, 0
++	}
++	if !hasCount {
++		return number, 1
+ 	}
+-	return number
++	count, err := strconv.Atoi(countText)
++	if err != nil {
++		return number, 0
++	}
++	return number, count
++}
++
++func hunkConsumed(leftRemaining, rightRemaining int) bool {
++	return leftRemaining <= 0 && rightRemaining <= 0
+ }
+diff --git a/internal/report/diffhtml/hunk_test.go b/internal/report/diffhtml/hunk_test.go
+index 39ec5ec..c91e6d8 100644
+--- a/internal/report/diffhtml/hunk_test.go
++++ b/internal/report/diffhtml/hunk_test.go
+@@ -54,6 +54,22 @@ func TestParseUnifiedDiffPreservesRowsThatResembleFileHeaders(t *testing.T) {
+ 	assertDiffRows(t, hunks[0].Rows, want)
+ }
+ 
++func TestParseUnifiedDiffStopsAtDeclaredHunkRanges(t *testing.T) {
++	hunks := parseUnifiedDiff("--- old\n+++ new\n@@ -1,1 +1,1 @@\n-old\n+new\n--- old2\n+++ new2\n@@ -20,1 +20,1 @@\n-old twenty\n+new twenty\n")
++
++	if len(hunks) != 2 {
++		t.Fatalf("len(hunks) = %d, want 2", len(hunks))
++	}
++	assertDiffRows(t, hunks[0].Rows, []diffRow{
++		{Kind: "removed", LeftNumber: 1, LeftText: "old"},
++		{Kind: "added", RightNumber: 1, RightText: "new"},
++	})
++	assertDiffRows(t, hunks[1].Rows, []diffRow{
++		{Kind: "removed", LeftNumber: 20, LeftText: "old twenty"},
++		{Kind: "added", RightNumber: 20, RightText: "new twenty"},
++	})
++}
++
+ func assertDiffRows(t *testing.T, got, want []diffRow) {
+ 	t.Helper()
+ 
+-- 
+2.54.0
+

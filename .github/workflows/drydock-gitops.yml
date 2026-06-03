@@ -26,13 +26,32 @@ jobs:
         with:
           profile: drydock
 
+      - name: Checkout drydock under test
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        with:
+          repository: sholdee/drydock
+          ref: ea3c46c38c982e77aad3436f352440cc53ece6ec
+          path: .drydock-under-test
+          persist-credentials: false
+
+      - name: Apply drydock HTML diff artifact patches
+        run: |
+          git -C .drydock-under-test config user.name "drydock e2e"
+          git -C .drydock-under-test config user.email "drydock-e2e@example.invalid"
+          git -C .drydock-under-test am "$GITHUB_WORKSPACE"/.github/drydock-html-artifact-e2e/*.patch
+
+      - name: Build drydock under test
+        run: |
+          mise x go@1.26.4 -- go build -C .drydock-under-test -o "$RUNNER_TEMP/drydock-under-test" ./cmd/drydock
+          "$RUNNER_TEMP/drydock-under-test" version
+
       - name: Run drydock pull request validation
         id: drydock
-        uses: sholdee/drydock/pr-action@main
+        uses: ./.drydock-under-test/pr-action
         with:
           checkout: "false"
           install: "false"
-          drydock-bin: drydock
+          drydock-bin: ${{ runner.temp }}/drydock-under-test
           github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}

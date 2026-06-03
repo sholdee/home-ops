@@ -4,6 +4,7 @@ metadata:
   name: mealie
   namespace: mealie
   annotations:
+    drydock.sholdee.dev/e2e: html-artifact
     reloader.stakater.com/auto: "true"
 spec:
   replicas: 1

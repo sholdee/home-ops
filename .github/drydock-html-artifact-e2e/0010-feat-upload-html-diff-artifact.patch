@@ -1,0 +1,137 @@
+From e1c91221aef8dd2d0b713d412c2033e3854c9f7f Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 02:11:57 -0500
+Subject: [PATCH 10/12] feat: upload html diff artifact
+
+---
+ pr-action/action.yml         | 29 ++++++++++++++++++
+ pr-action/action_yml_test.go | 57 ++++++++++++++++++++++++++++++++++++
+ 2 files changed, 86 insertions(+)
+ create mode 100644 pr-action/action_yml_test.go
+
+diff --git a/pr-action/action.yml b/pr-action/action.yml
+index a58ecef..4db7344 100644
+--- a/pr-action/action.yml
++++ b/pr-action/action.yml
+@@ -235,12 +235,18 @@ outputs:
+   diff-path:
+     description: Local path to the rendered manifest diff file.
+     value: ${{ steps.run.outputs.diff-path }}
++  diff-html-path:
++    description: Local path to the rendered manifest diff HTML file.
++    value: ${{ steps.run.outputs.diff-html-path }}
+   images-path:
+     description: Local path to the current-only image references file.
+     value: ${{ steps.run.outputs.images-path }}
+   diff-artifact-name:
+     description: Rendered manifest diff artifact name.
+     value: ${{ steps.run.outputs.diff-artifact-name }}
++  diff-html-artifact-name:
++    description: Rendered manifest diff HTML artifact name.
++    value: ${{ steps.run.outputs.diff-html-artifact-name }}
+   image-artifact-name:
+     description: Added image artifact name.
+     value: ${{ steps.run.outputs.image-artifact-name }}
+@@ -394,6 +400,7 @@ runs:
+         DRYDOCK_BIN: ${{ inputs.install == 'true' && format('{0}/drydock', steps.setup.outputs.install-dir) || inputs.drydock-bin }}
+         DRYDOCK_CACHE_PATH: ${{ steps.prepare.outputs.cache-path }}
+         DRYDOCK_DIFF_ARTIFACT_NAME: ${{ steps.prepare.outputs.diff-artifact-name }}
++        DRYDOCK_DIFF_HTML_ARTIFACT_NAME: ${{ steps.prepare.outputs.diff-html-artifact-name }}
+         DRYDOCK_IMAGE_ARTIFACT_NAME: ${{ steps.prepare.outputs.image-artifact-name }}
+         DRYDOCK_INPUT_CHANGED_ONLY: ${{ inputs.changed-only }}
+         DRYDOCK_INPUT_CHANGED_ONLY_INCLUDE: ${{ inputs.changed-only-include }}
+@@ -446,6 +453,28 @@ runs:
+         path: ${{ steps.run.outputs.diff-path }}
+         retention-days: ${{ inputs.artifact-retention-days }}
+ 
++    - name: Upload rendered manifest diff HTML
++      id: upload-diff-html
++      if: ${{ inputs.upload-artifacts == 'true' && steps.run.outputs.has-diff == 'true' }}
++      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
++      with:
++        path: ${{ steps.run.outputs.diff-html-path }}
++        retention-days: ${{ inputs.artifact-retention-days }}
++        if-no-files-found: error
++        archive: false
++
++    - name: Add rendered manifest diff HTML link
++      if: ${{ github.event_name == 'pull_request' && steps.prepare.outputs.trusted-context == 'true' && steps.run.outputs.diff-comment == 'true' && inputs.upload-artifacts == 'true' && steps.run.outputs.has-diff == 'true' }}
++      shell: bash
++      env:
++        DRYDOCK_DIFF_COMMENT_PATH: ${{ steps.run.outputs.diff-comment-path }}
++        DRYDOCK_DIFF_HTML_ARTIFACT_NAME: ${{ steps.run.outputs.diff-html-artifact-name }}
++        DRYDOCK_DIFF_HTML_ARTIFACT_URL: ${{ steps.upload-diff-html.outputs.artifact-url }}
++      run: |
++        if [[ -n "${DRYDOCK_DIFF_HTML_ARTIFACT_URL}" ]]; then
++          printf '%s\n' "- Full diff report: [${DRYDOCK_DIFF_HTML_ARTIFACT_NAME}](${DRYDOCK_DIFF_HTML_ARTIFACT_URL})." >> "${DRYDOCK_DIFF_COMMENT_PATH}"
++        fi
++
+     - name: Comment rendered manifest diff
+       if: ${{ github.event_name == 'pull_request' && steps.prepare.outputs.trusted-context == 'true' && steps.run.outputs.diff-comment == 'true' }}
+       continue-on-error: ${{ inputs.comment-continue-on-error == 'true' }}
+diff --git a/pr-action/action_yml_test.go b/pr-action/action_yml_test.go
+new file mode 100644
+index 0000000..aa96d5d
+--- /dev/null
++++ b/pr-action/action_yml_test.go
+@@ -0,0 +1,57 @@
++package praction
++
++import (
++	"os"
++	"strings"
++	"testing"
++)
++
++func TestActionUploadsHTMLDiffBeforeCommentAndAppendsURL(t *testing.T) {
++	actionYAMLBytes, err := os.ReadFile("action.yml")
++	if err != nil {
++		t.Fatalf("read action.yml: %v", err)
++	}
++	actionYAML := string(actionYAMLBytes)
++
++	rawUpload := strings.Index(actionYAML, "- name: Upload rendered manifest diff\n")
++	htmlUpload := strings.Index(actionYAML, "- name: Upload rendered manifest diff HTML\n")
++	htmlLink := strings.Index(actionYAML, "- name: Add rendered manifest diff HTML link\n")
++	comment := strings.Index(actionYAML, "- name: Comment rendered manifest diff\n")
++	for name, index := range map[string]int{
++		"raw diff upload":  rawUpload,
++		"HTML diff upload": htmlUpload,
++		"HTML link":        htmlLink,
++		"diff comment":     comment,
++	} {
++		if index == -1 {
++			t.Fatalf("action.yml missing %s step", name)
++		}
++	}
++	if !(rawUpload < htmlUpload && htmlUpload < htmlLink && htmlLink < comment) {
++		t.Fatalf("action.yml step order raw upload=%d html upload=%d html link=%d comment=%d", rawUpload, htmlUpload, htmlLink, comment)
++	}
++
++	htmlUploadBlock := actionYAML[htmlUpload:htmlLink]
++	for _, want := range []string{
++		"id: upload-diff-html",
++		"path: ${{ steps.run.outputs.diff-html-path }}",
++		"archive: false",
++	} {
++		if !strings.Contains(htmlUploadBlock, want) {
++			t.Fatalf("HTML upload block missing %q:\n%s", want, htmlUploadBlock)
++		}
++	}
++
++	linkBlock := actionYAML[htmlLink:comment]
++	for _, want := range []string{
++		"DRYDOCK_DIFF_COMMENT_PATH: ${{ steps.run.outputs.diff-comment-path }}",
++		"DRYDOCK_DIFF_HTML_ARTIFACT_NAME: ${{ steps.run.outputs.diff-html-artifact-name }}",
++		"DRYDOCK_DIFF_HTML_ARTIFACT_URL: ${{ steps.upload-diff-html.outputs.artifact-url }}",
++		"Full diff report",
++		"artifact-url",
++	} {
++		if !strings.Contains(linkBlock, want) {
++			t.Fatalf("HTML link block missing %q:\n%s", want, linkBlock)
++		}
++	}
++}
+-- 
+2.54.0
+

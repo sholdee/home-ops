@@ -1,0 +1,374 @@
+From c71e02bc355c969a31f5ae0138d91b6fb9b2d437 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:33:01 -0500
+Subject: [PATCH 02/12] feat: add html diff renderer skeleton
+
+---
+ internal/report/diffhtml/render.go      | 221 ++++++++++++++++++++++++
+ internal/report/diffhtml/render_test.go | 126 ++++++++++++++
+ 2 files changed, 347 insertions(+)
+ create mode 100644 internal/report/diffhtml/render.go
+ create mode 100644 internal/report/diffhtml/render_test.go
+
+diff --git a/internal/report/diffhtml/render.go b/internal/report/diffhtml/render.go
+new file mode 100644
+index 0000000..947b5c0
+--- /dev/null
++++ b/internal/report/diffhtml/render.go
+@@ -0,0 +1,221 @@
++package diffhtml
++
++import (
++	"bytes"
++	"fmt"
++	"html"
++	"io"
++	"slices"
++	"strings"
++
++	"github.com/sholdee/drydock/internal/app"
++	"github.com/sholdee/drydock/internal/diagnostic"
++	"github.com/sholdee/drydock/internal/diff"
++)
++
++const defaultTitle = "drydock desired state diff"
++
++type Options struct {
++	Title string
++}
++
++type appGroup struct {
++	id      string
++	entries []groupEntry
++	added   int
++	removed int
++}
++
++type groupEntry struct {
++	index  int
++	result diff.Result
++}
++
++func Render(result app.DiffResult, options Options) ([]byte, error) {
++	title := strings.TrimSpace(options.Title)
++	if title == "" {
++		title = defaultTitle
++	}
++
++	groups := groupedResults(result.Results)
++	added, removed := totalLineChanges(groups)
++
++	var builder bytes.Buffer
++	builder.WriteString("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
++	fmt.Fprintf(&builder, "<title>%s</title>\n", escape(title))
++	builder.WriteString("</head>\n<body>\n")
++	fmt.Fprintf(&builder, "<h1>%s</h1>\n", escape(title))
++	renderSummary(&builder, len(groups), len(result.Results), added, removed)
++	renderDiagnostics(&builder, result.Diagnostics)
++	if len(groups) == 0 {
++		builder.WriteString("<p class=\"no-diff\">No rendered manifest differences detected.</p>\n")
++	} else {
++		renderGroups(&builder, groups)
++	}
++	builder.WriteString("</body>\n</html>\n")
++	return builder.Bytes(), nil
++}
++
++func Write(w io.Writer, result app.DiffResult, options Options) error {
++	data, err := Render(result, options)
++	if err != nil {
++		return err
++	}
++	_, err = w.Write(data)
++	return err
++}
++
++func groupedResults(results []diff.Result) []appGroup {
++	byID := make(map[string]*appGroup)
++	for index, result := range results {
++		id := applicationID(result.Parent)
++		group := byID[id]
++		if group == nil {
++			group = &appGroup{id: id}
++			byID[id] = group
++		}
++		group.entries = append(group.entries, groupEntry{index: index, result: result})
++		added, removed := lineChanges(result.Diff)
++		group.added += added
++		group.removed += removed
++	}
++
++	groups := make([]appGroup, 0, len(byID))
++	for _, group := range byID {
++		groups = append(groups, *group)
++	}
++	slices.SortFunc(groups, func(left, right appGroup) int {
++		leftChanged := left.added + left.removed
++		rightChanged := right.added + right.removed
++		if leftChanged != rightChanged {
++			return rightChanged - leftChanged
++		}
++		return strings.Compare(left.id, right.id)
++	})
++	return groups
++}
++
++func applicationID(parent diff.Parent) string {
++	if parent.Namespace != "" {
++		return parent.Namespace + "/" + parent.Name
++	}
++	return parent.Name
++}
++
++func totalLineChanges(groups []appGroup) (int, int) {
++	var added, removed int
++	for _, group := range groups {
++		added += group.added
++		removed += group.removed
++	}
++	return added, removed
++}
++
++func lineChanges(text string) (int, int) {
++	var added, removed int
++	for line := range strings.SplitSeq(text, "\n") {
++		switch {
++		case strings.HasPrefix(line, "+++") || strings.HasPrefix(line, "---"):
++		case strings.HasPrefix(line, "+"):
++			added++
++		case strings.HasPrefix(line, "-"):
++			removed++
++		}
++	}
++	return added, removed
++}
++
++func renderSummary(builder *bytes.Buffer, apps, resources, added, removed int) {
++	fmt.Fprintf(builder, "<p class=\"summary\">%s, %s, +%d/-%d</p>\n",
++		escape(plural(apps, "app", "apps")),
++		escape(plural(resources, "resource", "resources")),
++		added,
++		removed,
++	)
++}
++
++func renderDiagnostics(builder *bytes.Buffer, diagnostics []diagnostic.Diagnostic) {
++	if len(diagnostics) == 0 {
++		return
++	}
++	builder.WriteString("<section class=\"diagnostics\">\n<h2>Diagnostics</h2>\n<ul>\n")
++	for _, diag := range diagnostics {
++		builder.WriteString("<li>")
++		fmt.Fprintf(builder, "<span class=\"severity\">%s</span>", escape(string(diag.Severity)))
++		if diag.Category != "" {
++			fmt.Fprintf(builder, " <span class=\"category\">%s</span>", escape(diag.Category))
++		}
++		fmt.Fprintf(builder, " <span class=\"message\">%s</span>", escape(singleLine(diag.Message)))
++		builder.WriteString("</li>\n")
++	}
++	builder.WriteString("</ul>\n</section>\n")
++}
++
++func renderGroups(builder *bytes.Buffer, groups []appGroup) {
++	builder.WriteString("<section class=\"applications\">\n")
++	for _, group := range groups {
++		fmt.Fprintf(builder, "<section class=\"application\" data-app-id=\"%s\" data-added=\"%d\" data-removed=\"%d\">\n",
++			escape(group.id),
++			group.added,
++			group.removed,
++		)
++		fmt.Fprintf(builder, "<h2>%s</h2>\n", escape(group.id))
++		fmt.Fprintf(builder, "<p class=\"app-summary\">+%d/-%d, %s</p>\n",
++			group.added,
++			group.removed,
++			escape(plural(len(group.entries), "resource", "resources")),
++		)
++		for _, entry := range group.entries {
++			renderResource(builder, entry)
++		}
++		builder.WriteString("</section>\n")
++	}
++	builder.WriteString("</section>\n")
++}
++
++func renderResource(builder *bytes.Buffer, entry groupEntry) {
++	result := entry.result
++	fmt.Fprintf(builder, "<article class=\"resource\" data-result-index=\"%d\" data-change=\"%s\">\n",
++		entry.index,
++		escape(string(result.Change)),
++	)
++	fmt.Fprintf(builder, "<h3>%s</h3>\n", escape(resourceLabel(result.Resource)))
++	fmt.Fprintf(builder, "<pre class=\"diff\"><code>%s</code></pre>\n", escape(result.Diff))
++	builder.WriteString("</article>\n")
++}
++
++func resourceLabel(resource diff.Resource) string {
++	var parts []string
++	if resource.Group != "" {
++		parts = append(parts, resource.Group)
++	}
++	if resource.Kind != "" {
++		parts = append(parts, resource.Kind)
++	}
++	name := resource.Name
++	if resource.Namespace != "" {
++		name = resource.Namespace + "/" + name
++	}
++	if name != "" {
++		parts = append(parts, name)
++	}
++	return strings.Join(parts, " ")
++}
++
++func plural(count int, singular, multiple string) string {
++	if count == 1 {
++		return fmt.Sprintf("%d %s", count, singular)
++	}
++	return fmt.Sprintf("%d %s", count, multiple)
++}
++
++func singleLine(text string) string {
++	text = strings.ReplaceAll(text, "\r\n", " ")
++	text = strings.ReplaceAll(text, "\n", " ")
++	text = strings.ReplaceAll(text, "\r", " ")
++	return text
++}
++
++func escape(text string) string {
++	return html.EscapeString(text)
++}
+diff --git a/internal/report/diffhtml/render_test.go b/internal/report/diffhtml/render_test.go
+new file mode 100644
+index 0000000..44f201f
+--- /dev/null
++++ b/internal/report/diffhtml/render_test.go
+@@ -0,0 +1,126 @@
++package diffhtml
++
++import (
++	"strings"
++	"testing"
++
++	"github.com/sholdee/drydock/internal/app"
++	"github.com/sholdee/drydock/internal/diagnostic"
++	"github.com/sholdee/drydock/internal/diff"
++)
++
++func TestRenderEscapesDynamicContent(t *testing.T) {
++	out, err := Render(app.DiffResult{
++		Results: []diff.Result{{
++			Parent: diff.Parent{
++				Namespace: "argocd<script>",
++				Name:      "demo&app",
++			},
++			Resource: diff.Resource{
++				Kind: "ConfigMap",
++				Name: "cm<one>",
++			},
++			Change: diff.ChangeModified,
++			Diff:   "--- <old>\n+++ <new>\n-<old>\n+<new>\n",
++		}},
++		Diagnostics: []diagnostic.Diagnostic{{
++			Severity: diagnostic.SeverityWarning,
++			Category: "render<script>",
++			Message:  "message <tag>",
++		}},
++	}, Options{})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	for _, raw := range []string{
++		"argocd<script>/demo&app",
++		"render<script>",
++		"cm<one>",
++		"<old>",
++		"<new>",
++		"<tag>",
++	} {
++		if strings.Contains(text, raw) {
++			t.Fatalf("HTML contains unescaped dynamic value %q:\n%s", raw, text)
++		}
++	}
++	for _, escaped := range []string{
++		"argocd&lt;script&gt;/demo&amp;app",
++		"render&lt;script&gt;",
++		"cm&lt;one&gt;",
++		"&lt;old&gt;",
++		"&lt;new&gt;",
++		"&lt;tag&gt;",
++	} {
++		if !strings.Contains(text, escaped) {
++			t.Fatalf("HTML missing escaped dynamic value %q:\n%s", escaped, text)
++		}
++	}
++}
++
++func TestRenderGroupsAndSummarizesChanges(t *testing.T) {
++	out, err := Render(app.DiffResult{
++		Results: []diff.Result{
++			diffResult("argocd", "small", "cm-one", "-old\n+new\n"),
++			diffResult("argocd", "large", "cm-two", "-old\n+new\n-old2\n+new2\n"),
++			diffResult("argocd", "small", "cm-three", " context\n"),
++		},
++	}, Options{})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	for _, want := range []string{
++		"<title>drydock desired state diff</title>",
++		"2 apps",
++		"3 resources",
++		"+2/-2",
++		"argocd/large",
++		"argocd/small",
++		"cm-one",
++		"cm-two",
++		"cm-three",
++		`data-change="modified"`,
++	} {
++		if !strings.Contains(text, want) {
++			t.Fatalf("HTML missing %q:\n%s", want, text)
++		}
++	}
++	if strings.Index(text, "argocd/large") > strings.Index(text, "argocd/small") {
++		t.Fatalf("HTML did not sort app groups by changed lines descending:\n%s", text)
++	}
++}
++
++func TestRenderEmptyDiff(t *testing.T) {
++	out, err := Render(app.DiffResult{}, Options{})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	for _, want := range []string{
++		"0 apps",
++		"0 resources",
++		"+0/-0",
++		"No rendered manifest differences detected.",
++	} {
++		if !strings.Contains(text, want) {
++			t.Fatalf("HTML missing %q:\n%s", want, text)
++		}
++	}
++}
++
++func diffResult(namespace, appName, resourceName, diffText string) diff.Result {
++	return diff.Result{
++		Parent: diff.Parent{
++			Namespace: namespace,
++			Name:      appName,
++		},
++		Resource: diff.Resource{
++			Kind: "ConfigMap",
++			Name: resourceName,
++		},
++		Change: diff.ChangeModified,
++		Diff:   diffText,
++	}
++}
+-- 
+2.54.0
+

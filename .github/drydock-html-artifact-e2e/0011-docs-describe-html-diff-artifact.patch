@@ -1,0 +1,40 @@
+From c36e83ef3f13e345ada44c32f3fdf5e4550ffd49 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 02:19:02 -0500
+Subject: [PATCH 11/12] docs: describe html diff artifact
+
+---
+ docs/github-actions.md | 9 ++++++++-
+ 1 file changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/docs/github-actions.md b/docs/github-actions.md
+index e1c68c9..6ca7e09 100644
+--- a/docs/github-actions.md
++++ b/docs/github-actions.md
+@@ -99,9 +99,14 @@ By default the action:
+ - writes image diff comments with drydock markdown output, including removed
+   image references when present;
+ - uses drydock source caches under the runner temp directory;
+-- uploads full diff artifacts when differences are found;
++- uploads full raw diff and browser-openable HTML diff artifacts when manifest
++  differences are found;
+ - writes sticky PR comments for trusted same-repository pull requests.
+ 
++The manifest diff comment links to the HTML diff report artifact when artifact
++upload is enabled. The raw unified diff artifact remains available for scripts
++and archival workflows.
++
+ Fork pull requests do not restore or save drydock source caches by default,
+ because source caches can contain private repository or chart material. They
+ also skip PR comments by default. Set `cache-untrusted-restore: "true"` only if
+@@ -201,5 +206,7 @@ passes them as arguments without `eval`, but they still change drydock behavior.
+ | `has-image-diff` | Any image difference was detected, including removed-only diffs. |
+ | `render-status` | `passed`, `failed`, or `skipped`. |
+ | `diff-path` | Local path to the rendered manifest diff file. |
++| `diff-html-path` | Local path to the rendered manifest diff HTML report. |
+ | `images-path` | Local path to the current-only image list. |
++| `diff-html-artifact-name` | Filename used for the rendered manifest diff HTML artifact. |
+ | `trusted-context` | Whether cache save and PR comments were allowed. |
+-- 
+2.54.0
+

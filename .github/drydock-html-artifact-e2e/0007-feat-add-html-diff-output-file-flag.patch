@@ -1,0 +1,241 @@
+From 08f0a824be7ac9a4bad930c7385d621766b387e4 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:59:38 -0500
+Subject: [PATCH 07/12] feat: add html diff output file flag
+
+---
+ internal/cli/diff.go      | 36 +++++++++++++---
+ internal/cli/diff_test.go | 91 +++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 121 insertions(+), 6 deletions(-)
+
+diff --git a/internal/cli/diff.go b/internal/cli/diff.go
+index f304c33..18add51 100644
+--- a/internal/cli/diff.go
++++ b/internal/cli/diff.go
+@@ -10,6 +10,7 @@ import (
+ 	"github.com/sholdee/drydock/internal/app"
+ 	cliformat "github.com/sholdee/drydock/internal/format"
+ 	"github.com/sholdee/drydock/internal/report"
++	"github.com/sholdee/drydock/internal/report/diffhtml"
+ 	"github.com/sholdee/drydock/internal/source"
+ 	"github.com/spf13/cobra"
+ )
+@@ -40,6 +41,7 @@ func newDiffAppsCommand(deps Dependencies) *cobra.Command {
+ 	appsColor := diffColorAuto
+ 	appsMarkdownMaxBytes := report.DefaultMaxBytes
+ 	appsRawOutputFile := ""
++	appsHTMLOutputFile := ""
+ 	apps := &cobra.Command{
+ 		Use:   "apps",
+ 		Short: "Diff all Applications",
+@@ -69,7 +71,7 @@ func newDiffAppsCommand(deps Dependencies) *cobra.Command {
+ 				return err
+ 			}
+ 			diffColor := output == diffOutputUnified && shouldColorDiffOutput(colorMode, deps, cmd.OutOrStdout())
+-			return renderDiffResult(cmd, result, !appsFlags.exitCode, output, diffColor, diagnosticColor, appsRawOutputFile, appsMarkdownMaxBytes)
++			return renderDiffResult(cmd, result, !appsFlags.exitCode, output, diffColor, diagnosticColor, appsRawOutputFile, appsHTMLOutputFile, appsMarkdownMaxBytes)
+ 		},
+ 	}
+ 	bindCommonFlags(apps, &appsFlags)
+@@ -81,7 +83,7 @@ func newDiffAppsCommand(deps Dependencies) *cobra.Command {
+ 	bindChangedOnlyPathFilterFlags(apps, &appsFlags)
+ 	bindShowIgnoredFieldsFlag(apps, &appsFlags)
+ 	bindDiffColorFlag(apps, &appsColor)
+-	bindDiffMarkdownFlags(apps, &appsMarkdownMaxBytes, &appsRawOutputFile)
++	bindDiffReportFileFlags(apps, &appsMarkdownMaxBytes, &appsRawOutputFile, &appsHTMLOutputFile)
+ 
+ 	return apps
+ }
+@@ -91,6 +93,7 @@ func newDiffAppCommand(deps Dependencies) *cobra.Command {
+ 	appColor := diffColorAuto
+ 	appMarkdownMaxBytes := report.DefaultMaxBytes
+ 	appRawOutputFile := ""
++	appHTMLOutputFile := ""
+ 	appCmd := &cobra.Command{
+ 		Use:   "app NAME",
+ 		Short: "Diff one Application",
+@@ -123,7 +126,7 @@ func newDiffAppCommand(deps Dependencies) *cobra.Command {
+ 				return err
+ 			}
+ 			diffColor := output == diffOutputUnified && shouldColorDiffOutput(colorMode, deps, cmd.OutOrStdout())
+-			return renderDiffResult(cmd, result, !appFlags.exitCode, output, diffColor, diagnosticColor, appRawOutputFile, appMarkdownMaxBytes)
++			return renderDiffResult(cmd, result, !appFlags.exitCode, output, diffColor, diagnosticColor, appRawOutputFile, appHTMLOutputFile, appMarkdownMaxBytes)
+ 		},
+ 	}
+ 	bindCommonFlags(appCmd, &appFlags)
+@@ -134,7 +137,7 @@ func newDiffAppCommand(deps Dependencies) *cobra.Command {
+ 	bindDiffRefFlags(appCmd, &appFlags)
+ 	bindShowIgnoredFieldsFlag(appCmd, &appFlags)
+ 	bindDiffColorFlag(appCmd, &appColor)
+-	bindDiffMarkdownFlags(appCmd, &appMarkdownMaxBytes, &appRawOutputFile)
++	bindDiffReportFileFlags(appCmd, &appMarkdownMaxBytes, &appRawOutputFile, &appHTMLOutputFile)
+ 
+ 	return appCmd
+ }
+@@ -203,9 +206,10 @@ func bindDiffColorFlag(cmd *cobra.Command, colorMode *string) {
+ 	cmd.Flags().StringVar(colorMode, "color", *colorMode, "color diff output: auto, always, or never")
+ }
+ 
+-func bindDiffMarkdownFlags(cmd *cobra.Command, markdownMaxBytes *int, rawOutputFile *string) {
++func bindDiffReportFileFlags(cmd *cobra.Command, markdownMaxBytes *int, rawOutputFile, htmlOutputFile *string) {
+ 	bindDiffMarkdownMaxBytesFlag(cmd, markdownMaxBytes)
+ 	cmd.Flags().StringVar(rawOutputFile, "raw-output-file", *rawOutputFile, "write full uncolored unified diff output to this file")
++	cmd.Flags().StringVar(htmlOutputFile, "html-output-file", *htmlOutputFile, "write full static HTML diff report to this file")
+ }
+ 
+ func bindDiffMarkdownMaxBytesFlag(cmd *cobra.Command, markdownMaxBytes *int) {
+@@ -250,7 +254,7 @@ func shouldColorDiffOutput(mode string, deps Dependencies, w io.Writer) bool {
+ 	}
+ }
+ 
+-func renderDiffResult(cmd *cobra.Command, result app.DiffResult, disableDiffExitCode bool, output string, diffColor, diagnosticColor bool, rawOutputFile string, markdownMaxBytes int) error {
++func renderDiffResult(cmd *cobra.Command, result app.DiffResult, disableDiffExitCode bool, output string, diffColor, diagnosticColor bool, rawOutputFile, htmlOutputFile string, markdownMaxBytes int) error {
+ 	if output != diffOutputMarkdown {
+ 		if err := renderDiagnosticsWithColor(cmd.ErrOrStderr(), result.Diagnostics, diagnosticColor); err != nil {
+ 			return err
+@@ -261,6 +265,11 @@ func renderDiffResult(cmd *cobra.Command, result app.DiffResult, disableDiffExit
+ 			return fmt.Errorf("write raw diff output: %w", err)
+ 		}
+ 	}
++	if htmlOutputFile != "" {
++		if err := writeHTMLDiffOutput(htmlOutputFile, result); err != nil {
++			return err
++		}
++	}
+ 	switch output {
+ 	case diffOutputUnified:
+ 		for _, item := range result.Results {
+@@ -290,6 +299,21 @@ func renderDiffResult(cmd *cobra.Command, result app.DiffResult, disableDiffExit
+ 	return nil
+ }
+ 
++func writeHTMLDiffOutput(path string, result app.DiffResult) error {
++	file, err := os.Create(path)
++	if err != nil {
++		return fmt.Errorf("write HTML diff output: %w", err)
++	}
++	if err := diffhtml.Write(file, result, diffhtml.Options{}); err != nil {
++		_ = file.Close()
++		return fmt.Errorf("write HTML diff output: %w", err)
++	}
++	if err := file.Close(); err != nil {
++		return fmt.Errorf("write HTML diff output: %w", err)
++	}
++	return nil
++}
++
+ func renderImageDiffResult(cmd *cobra.Command, result app.ImageDiffResult, disableDiffExitCode bool, output string, diffColor, diagnosticColor bool, markdownMaxBytes int) error {
+ 	if output != diffOutputMarkdown {
+ 		if err := renderDiagnosticsWithColor(cmd.ErrOrStderr(), result.Diagnostics, diagnosticColor); err != nil {
+diff --git a/internal/cli/diff_test.go b/internal/cli/diff_test.go
+index 225fe96..b3a774a 100644
+--- a/internal/cli/diff_test.go
++++ b/internal/cli/diff_test.go
+@@ -196,6 +196,83 @@ func TestDiffAppsMarkdownRawOutputFilePreservesUnifiedDiff(t *testing.T) {
+ 	}
+ }
+ 
++func TestDiffAppsHTMLOutputFilePreservesSelectedStdout(t *testing.T) {
++	htmlPath := filepath.Join(t.TempDir(), "diff.html")
++	recorder := &recordingCLIOrchestrator{
++		diffAppsResult: app.DiffResult{
++			Results: []diff.Result{{
++				Parent: diff.Parent{Namespace: "argocd", Name: "demo"},
++				Resource: diff.Resource{
++					Kind:      "ConfigMap",
++					Namespace: "default",
++					Name:      "demo",
++				},
++				Change: diff.ChangeModified,
++				Diff:   sampleUnifiedDiffForCLI(),
++			}},
++		},
++	}
++
++	result := runCLIWithDependencies(t, Dependencies{Orchestrator: recorder}, "diff", "apps", "--path-orig", "left", "--path", "right", "-o", "markdown", "--html-output-file", htmlPath, "--exit-code=false")
++
++	assertStdoutContainsAll(t, result, "## drydock desired state diff", "```diff\n", "-  value: old", "+  value: new")
++	assertStdoutExcludesAll(t, result, "<!doctype html>", `data-view="side-by-side"`)
++	assertHTMLFileContainsAll(t, htmlPath,
++		"<!doctype html>",
++		"<title>drydock desired state diff</title>",
++		"argocd/demo",
++		"ConfigMap default/demo",
++		`data-view="side-by-side"`,
++	)
++}
++
++func TestDiffAppHTMLOutputFile(t *testing.T) {
++	htmlPath := filepath.Join(t.TempDir(), "diff.html")
++	recorder := &recordingCLIOrchestrator{
++		diffAppResult: app.DiffResult{
++			Results: []diff.Result{{
++				Parent: diff.Parent{Namespace: "argocd", Name: "demo"},
++				Resource: diff.Resource{
++					Kind:      "ConfigMap",
++					Namespace: "default",
++					Name:      "demo",
++				},
++				Change: diff.ChangeModified,
++				Diff:   sampleUnifiedDiffForCLI(),
++			}},
++		},
++	}
++
++	result := runCLIWithDependencies(t, Dependencies{Orchestrator: recorder}, "diff", "app", "demo", "--path-orig", "left", "--path", "right", "--html-output-file", htmlPath, "--exit-code=false")
++
++	assertStdoutContainsAll(t, result, "--- Application: argocd/demo source[0]", "-  value: old", "+  value: new")
++	assertStdoutExcludesAll(t, result, "<!doctype html>")
++	assertHTMLFileContainsAll(t, htmlPath, "ConfigMap default/demo")
++}
++
++func TestDiffAppsHTMLOutputFileWriteError(t *testing.T) {
++	htmlPath := t.TempDir()
++	recorder := &recordingCLIOrchestrator{
++		diffAppsResult: app.DiffResult{
++			Results: []diff.Result{{Diff: sampleUnifiedDiffForCLI()}},
++		},
++	}
++	cmd := NewRootCommandWithDependencies(VersionInfo{}, Dependencies{Orchestrator: recorder})
++	var stdout bytes.Buffer
++	var stderr bytes.Buffer
++	cmd.SetOut(&stdout)
++	cmd.SetErr(&stderr)
++	cmd.SetArgs([]string{"diff", "apps", "--path-orig", "left", "--path", "right", "--html-output-file", htmlPath, "--exit-code=false"})
++
++	err := cmd.Execute()
++	if err == nil {
++		t.Fatal("Execute() error = nil, want HTML output write error")
++	}
++	if !strings.Contains(err.Error(), "write HTML diff output") {
++		t.Fatalf("Execute() error = %v, want write HTML diff output", err)
++	}
++}
++
+ func TestDiffAppsMarkdownRejectsInvalidMaxBytes(t *testing.T) {
+ 	for _, maxBytes := range []string{"-1", "1023"} {
+ 		t.Run(maxBytes, func(t *testing.T) {
+@@ -1251,6 +1328,20 @@ func sampleUnifiedDiffForCLI() string {
+ 		"+  value: new\n"
+ }
+ 
++func assertHTMLFileContainsAll(t *testing.T, path string, wants ...string) {
++	t.Helper()
++	data, err := os.ReadFile(path)
++	if err != nil {
++		t.Fatalf("ReadFile(%s) error = %v", path, err)
++	}
++	text := string(data)
++	for _, want := range wants {
++		if !strings.Contains(text, want) {
++			t.Fatalf("HTML output missing %q:\n%s", want, text)
++		}
++	}
++}
++
+ func writeSimpleAppForCLI(t *testing.T, root, value string) {
+ 	t.Helper()
+ 	writeCLITestFile(t, filepath.Join(root, "apps", "demo.yaml"), `apiVersion: argoproj.io/v1alpha1
+-- 
+2.54.0
+

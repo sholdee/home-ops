@@ -1,0 +1,50 @@
+From 05387af4cb456c22f390bbd52d85001bba08b54b Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:42:02 -0500
+Subject: [PATCH 04/12] fix: preserve hunk rows that resemble file headers
+
+---
+ internal/report/diffhtml/hunk.go      |  2 +-
+ internal/report/diffhtml/hunk_test.go | 13 +++++++++++++
+ 2 files changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/internal/report/diffhtml/hunk.go b/internal/report/diffhtml/hunk.go
+index d8cd49a..d6c072e 100644
+--- a/internal/report/diffhtml/hunk.go
++++ b/internal/report/diffhtml/hunk.go
+@@ -31,7 +31,7 @@ func parseUnifiedDiff(text string) []diffHunk {
+ 			current = &hunks[len(hunks)-1]
+ 			continue
+ 		}
+-		if current == nil || line == "" || strings.HasPrefix(line, "---") || strings.HasPrefix(line, "+++") {
++		if current == nil || line == "" {
+ 			continue
+ 		}
+ 
+diff --git a/internal/report/diffhtml/hunk_test.go b/internal/report/diffhtml/hunk_test.go
+index e4df1ee..39ec5ec 100644
+--- a/internal/report/diffhtml/hunk_test.go
++++ b/internal/report/diffhtml/hunk_test.go
+@@ -41,6 +41,19 @@ func TestParseUnifiedDiffMultipleHunks(t *testing.T) {
+ 	}
+ }
+ 
++func TestParseUnifiedDiffPreservesRowsThatResembleFileHeaders(t *testing.T) {
++	hunks := parseUnifiedDiff("--- old\n+++ new\n@@ -1,1 +1,1 @@\n---removed\n+++added\n")
++
++	if len(hunks) != 1 {
++		t.Fatalf("len(hunks) = %d, want 1", len(hunks))
++	}
++	want := []diffRow{
++		{Kind: "removed", LeftNumber: 1, LeftText: "--removed"},
++		{Kind: "added", RightNumber: 1, RightText: "++added"},
++	}
++	assertDiffRows(t, hunks[0].Rows, want)
++}
++
+ func assertDiffRows(t *testing.T, got, want []diffRow) {
+ 	t.Helper()
+ 
+-- 
+2.54.0
+

@@ -1,0 +1,513 @@
+From c90b7f37fb9a5db2299d0e3409c33edae0a53168 Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:54:04 -0500
+Subject: [PATCH 06/12] feat: render static html diff report
+
+---
+ internal/report/diffhtml/assets.go      | 209 ++++++++++++++++++++++++
+ internal/report/diffhtml/render.go      |  97 ++++++++++-
+ internal/report/diffhtml/render_test.go | 121 +++++++++++++-
+ 3 files changed, 422 insertions(+), 5 deletions(-)
+ create mode 100644 internal/report/diffhtml/assets.go
+
+diff --git a/internal/report/diffhtml/assets.go b/internal/report/diffhtml/assets.go
+new file mode 100644
+index 0000000..4fc16e1
+--- /dev/null
++++ b/internal/report/diffhtml/assets.go
+@@ -0,0 +1,209 @@
++package diffhtml
++
++const reviewStyles = `
++:root {
++	color-scheme: light;
++	font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
++	background: #f7f8fa;
++	color: #1f2933;
++}
++body {
++	margin: 0;
++	background: #f7f8fa;
++}
++.report-header {
++	padding: 20px 24px 16px;
++	border-bottom: 1px solid #d8dee8;
++	background: #ffffff;
++}
++.report-header h1 {
++	margin: 0 0 6px;
++	font-size: 22px;
++	line-height: 1.25;
++}
++.summary, .app-summary, .resource-meta {
++	margin: 0;
++	color: #566575;
++	font-size: 13px;
++}
++.review-layout {
++	display: grid;
++	grid-template-columns: minmax(240px, 320px) minmax(0, 1fr);
++	min-height: calc(100vh - 86px);
++}
++.tree {
++	border-right: 1px solid #d8dee8;
++	background: #ffffff;
++	padding: 16px;
++	overflow: auto;
++}
++.tree-search {
++	box-sizing: border-box;
++	width: 100%;
++	margin: 0 0 14px;
++	padding: 9px 10px;
++	border: 1px solid #cbd5df;
++	border-radius: 6px;
++	font: inherit;
++}
++.tree h2 {
++	margin: 16px 0 6px;
++	font-size: 12px;
++	text-transform: uppercase;
++	color: #637487;
++}
++.tree-resource {
++	display: block;
++	width: 100%;
++	margin: 3px 0;
++	padding: 7px 8px;
++	border: 0;
++	border-radius: 6px;
++	background: transparent;
++	color: #263442;
++	font: inherit;
++	font-size: 13px;
++	text-align: left;
++	cursor: pointer;
++}
++.tree-resource[aria-current="true"] {
++	background: #dbeafe;
++	color: #0f3f7a;
++}
++.review-main {
++	min-width: 0;
++	padding: 18px 22px 28px;
++	overflow: auto;
++}
++.toolbar {
++	display: flex;
++	gap: 8px;
++	margin: 0 0 16px;
++}
++.toolbar button {
++	padding: 7px 10px;
++	border: 1px solid #b8c2cf;
++	border-radius: 6px;
++	background: #ffffff;
++	color: #263442;
++	font: inherit;
++	cursor: pointer;
++}
++.toolbar button[aria-pressed="true"] {
++	background: #1f2933;
++	border-color: #1f2933;
++	color: #ffffff;
++}
++.resource {
++	display: none;
++	margin: 0;
++}
++.resource.is-active {
++	display: block;
++}
++.resource h2 {
++	margin: 0 0 4px;
++	font-size: 18px;
++}
++.diff-table {
++	width: 100%;
++	border-collapse: collapse;
++	margin-top: 14px;
++	background: #ffffff;
++	border: 1px solid #d8dee8;
++	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
++	font-size: 12px;
++	line-height: 1.5;
++}
++.diff-table th {
++	text-align: left;
++}
++.hunk-header th {
++	padding: 5px 8px;
++	background: #eef2f7;
++	color: #4b5f73;
++	font-weight: 600;
++}
++.line-number {
++	width: 1%;
++	min-width: 44px;
++	padding: 2px 8px;
++	border-right: 1px solid #d8dee8;
++	background: #f8fafc;
++	color: #7a8794;
++	text-align: right;
++	user-select: none;
++	vertical-align: top;
++}
++.line-code {
++	padding: 2px 8px;
++	white-space: pre-wrap;
++	word-break: break-word;
++	vertical-align: top;
++}
++.diff-row.added .line-code {
++	background: #ecfdf3;
++}
++.diff-row.removed .line-code {
++	background: #fff1f2;
++}
++body[data-view="side-by-side"] .diff-table.unified,
++body[data-view="unified"] .diff-table.side-by-side {
++	display: none;
++}
++.diagnostics, .no-diff {
++	margin: 0 0 16px;
++}
++`
++
++const reviewScript = `
++(() => {
++	const body = document.body;
++	const resources = Array.from(document.querySelectorAll('[data-resource-id]'));
++	const treeButtons = Array.from(document.querySelectorAll('[data-target-resource]'));
++	const viewButtons = Array.from(document.querySelectorAll('.toolbar button[data-view]'));
++	const searchInput = document.querySelector('[data-tree-search]');
++
++	const selectResource = (id) => {
++		resources.forEach((resource) => {
++			resource.classList.toggle('is-active', resource.dataset.resourceId === id);
++		});
++		treeButtons.forEach((button) => {
++			const selected = button.dataset.targetResource === id;
++			button.setAttribute('aria-current', selected ? 'true' : 'false');
++		});
++	};
++
++	treeButtons.forEach((button) => {
++		button.addEventListener('click', () => selectResource(button.dataset.targetResource));
++	});
++
++	viewButtons.forEach((button) => {
++		button.addEventListener('click', () => {
++			body.dataset.view = button.dataset.view;
++			viewButtons.forEach((candidate) => {
++				candidate.setAttribute('aria-pressed', candidate === button ? 'true' : 'false');
++			});
++		});
++	});
++
++	if (searchInput) {
++		searchInput.addEventListener('input', () => {
++			const query = searchInput.value.trim().toLowerCase();
++			document.querySelectorAll('[data-tree-app]').forEach((app) => {
++				let visible = false;
++				app.querySelectorAll('[data-search-text]').forEach((button) => {
++					const matches = !query || button.dataset.searchText.includes(query);
++					button.hidden = !matches;
++					visible = visible || matches;
++				});
++				app.hidden = !visible;
++			});
++		});
++	}
++
++	if (resources.length > 0) {
++		selectResource(resources[0].dataset.resourceId);
++	}
++})();
++`
+diff --git a/internal/report/diffhtml/render.go b/internal/report/diffhtml/render.go
+index 947b5c0..6fc7a54 100644
+--- a/internal/report/diffhtml/render.go
++++ b/internal/report/diffhtml/render.go
+@@ -43,16 +43,26 @@ func Render(result app.DiffResult, options Options) ([]byte, error) {
+ 	var builder bytes.Buffer
+ 	builder.WriteString("<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n")
+ 	fmt.Fprintf(&builder, "<title>%s</title>\n", escape(title))
+-	builder.WriteString("</head>\n<body>\n")
++	builder.WriteString("<style>")
++	builder.WriteString(reviewStyles)
++	builder.WriteString("</style>\n</head>\n<body data-view=\"side-by-side\">\n")
++	builder.WriteString("<header class=\"report-header\">\n")
+ 	fmt.Fprintf(&builder, "<h1>%s</h1>\n", escape(title))
+ 	renderSummary(&builder, len(groups), len(result.Results), added, removed)
++	builder.WriteString("</header>\n")
++	builder.WriteString("<div class=\"review-layout\">\n")
++	renderTree(&builder, groups)
++	builder.WriteString("<main class=\"review-main\">\n")
+ 	renderDiagnostics(&builder, result.Diagnostics)
+ 	if len(groups) == 0 {
+ 		builder.WriteString("<p class=\"no-diff\">No rendered manifest differences detected.</p>\n")
+ 	} else {
++		renderToolbar(&builder)
+ 		renderGroups(&builder, groups)
+ 	}
+-	builder.WriteString("</body>\n</html>\n")
++	builder.WriteString("</main>\n</div>\n<script>")
++	builder.WriteString(reviewScript)
++	builder.WriteString("</script>\n</body>\n</html>\n")
+ 	return builder.Bytes(), nil
+ }
+ 
+@@ -151,6 +161,37 @@ func renderDiagnostics(builder *bytes.Buffer, diagnostics []diagnostic.Diagnosti
+ 	builder.WriteString("</ul>\n</section>\n")
+ }
+ 
++func renderTree(builder *bytes.Buffer, groups []appGroup) {
++	builder.WriteString("<aside class=\"tree\">\n")
++	builder.WriteString("<input class=\"tree-search\" data-tree-search type=\"search\" placeholder=\"Search changes\" aria-label=\"Search changed resources\">\n")
++	for _, group := range groups {
++		fmt.Fprintf(builder, "<section data-tree-app=\"%s\">\n", escape(group.id))
++		fmt.Fprintf(builder, "<h2>%s</h2>\n", escape(group.id))
++		for _, entry := range group.entries {
++			label := resourceLabel(entry.result.Resource)
++			searchText := strings.ToLower(strings.Join([]string{
++				group.id,
++				label,
++				string(entry.result.Change),
++			}, " "))
++			fmt.Fprintf(builder, "<button class=\"tree-resource\" type=\"button\" data-target-resource=\"resource-%d\" data-search-text=\"%s\">%s</button>\n",
++				entry.index,
++				escape(searchText),
++				escape(label),
++			)
++		}
++		builder.WriteString("</section>\n")
++	}
++	builder.WriteString("</aside>\n")
++}
++
++func renderToolbar(builder *bytes.Buffer) {
++	builder.WriteString("<div class=\"toolbar\" role=\"toolbar\" aria-label=\"Diff view\">\n")
++	builder.WriteString("<button type=\"button\" data-view=\"side-by-side\" aria-pressed=\"true\">Side-by-side</button>\n")
++	builder.WriteString("<button type=\"button\" data-view=\"unified\" aria-pressed=\"false\">Unified</button>\n")
++	builder.WriteString("</div>\n")
++}
++
+ func renderGroups(builder *bytes.Buffer, groups []appGroup) {
+ 	builder.WriteString("<section class=\"applications\">\n")
+ 	for _, group := range groups {
+@@ -175,15 +216,63 @@ func renderGroups(builder *bytes.Buffer, groups []appGroup) {
+ 
+ func renderResource(builder *bytes.Buffer, entry groupEntry) {
+ 	result := entry.result
+-	fmt.Fprintf(builder, "<article class=\"resource\" data-result-index=\"%d\" data-change=\"%s\">\n",
++	hunks := parseUnifiedDiff(result.Diff)
++	fmt.Fprintf(builder, "<article class=\"resource\" data-resource-id=\"resource-%d\" data-result-index=\"%d\" data-change=\"%s\">\n",
++		entry.index,
+ 		entry.index,
+ 		escape(string(result.Change)),
+ 	)
+ 	fmt.Fprintf(builder, "<h3>%s</h3>\n", escape(resourceLabel(result.Resource)))
+-	fmt.Fprintf(builder, "<pre class=\"diff\"><code>%s</code></pre>\n", escape(result.Diff))
++	fmt.Fprintf(builder, "<p class=\"resource-meta\">%s</p>\n", escape(string(result.Change)))
++	renderSideBySideTable(builder, hunks)
++	renderUnifiedTable(builder, hunks)
+ 	builder.WriteString("</article>\n")
+ }
+ 
++func renderSideBySideTable(builder *bytes.Buffer, hunks []diffHunk) {
++	builder.WriteString("<table class=\"diff-table side-by-side\">\n<tbody>\n")
++	for _, hunk := range hunks {
++		fmt.Fprintf(builder, "<tr class=\"hunk-header\"><th colspan=\"4\">%s</th></tr>\n", escape(hunk.Header))
++		for _, row := range hunk.Rows {
++			fmt.Fprintf(builder, "<tr class=\"diff-row %s\">", escape(row.Kind))
++			renderLineNumberCell(builder, row.LeftNumber)
++			fmt.Fprintf(builder, "<td class=\"line-code\">%s</td>", escape(row.LeftText))
++			renderLineNumberCell(builder, row.RightNumber)
++			fmt.Fprintf(builder, "<td class=\"line-code\">%s</td>", escape(row.RightText))
++			builder.WriteString("</tr>\n")
++		}
++	}
++	builder.WriteString("</tbody>\n</table>\n")
++}
++
++func renderUnifiedTable(builder *bytes.Buffer, hunks []diffHunk) {
++	builder.WriteString("<table class=\"diff-table unified\">\n<tbody>\n")
++	for _, hunk := range hunks {
++		fmt.Fprintf(builder, "<tr class=\"hunk-header\"><th colspan=\"2\">%s</th></tr>\n", escape(hunk.Header))
++		for _, row := range hunk.Rows {
++			number := row.RightNumber
++			text := row.RightText
++			if row.Kind == "removed" {
++				number = row.LeftNumber
++				text = row.LeftText
++			}
++			fmt.Fprintf(builder, "<tr class=\"diff-row %s\">", escape(row.Kind))
++			renderLineNumberCell(builder, number)
++			fmt.Fprintf(builder, "<td class=\"line-code\">%s</td>", escape(text))
++			builder.WriteString("</tr>\n")
++		}
++	}
++	builder.WriteString("</tbody>\n</table>\n")
++}
++
++func renderLineNumberCell(builder *bytes.Buffer, number int) {
++	if number == 0 {
++		builder.WriteString("<td class=\"line-number\"></td>")
++		return
++	}
++	fmt.Fprintf(builder, "<td class=\"line-number\">%d</td>", number)
++}
++
+ func resourceLabel(resource diff.Resource) string {
+ 	var parts []string
+ 	if resource.Group != "" {
+diff --git a/internal/report/diffhtml/render_test.go b/internal/report/diffhtml/render_test.go
+index 44f201f..a730edf 100644
+--- a/internal/report/diffhtml/render_test.go
++++ b/internal/report/diffhtml/render_test.go
+@@ -21,7 +21,7 @@ func TestRenderEscapesDynamicContent(t *testing.T) {
+ 				Name: "cm<one>",
+ 			},
+ 			Change: diff.ChangeModified,
+-			Diff:   "--- <old>\n+++ <new>\n-<old>\n+<new>\n",
++			Diff:   "--- <old>\n+++ <new>\n@@ -1,1 +1,1 @@\n-<old>\n+<new>\n",
+ 		}},
+ 		Diagnostics: []diagnostic.Diagnostic{{
+ 			Severity: diagnostic.SeverityWarning,
+@@ -92,6 +92,111 @@ func TestRenderGroupsAndSummarizesChanges(t *testing.T) {
+ 	}
+ }
+ 
++func TestRenderIncludesStaticReviewUI(t *testing.T) {
++	out, err := Render(app.DiffResult{
++		Results: []diff.Result{{
++			Parent: diff.Parent{
++				Namespace: "argocd",
++				Name:      "demo",
++			},
++			Resource: diff.Resource{
++				Kind: "ConfigMap",
++				Name: "cm-one",
++			},
++			Change: diff.ChangeModified,
++			Diff:   "--- old\n+++ new\n@@ -1,1 +1,1 @@\n-old\n+new\n",
++		}},
++	}, Options{Title: "Review"})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	for _, want := range []string{
++		"<style>",
++		`<body data-view="side-by-side">`,
++		"<header",
++		`class="tree"`,
++		`class="tree-search"`,
++		`data-tree-search`,
++		`placeholder="Search changes"`,
++		`aria-label="Search changed resources"`,
++		`data-tree-app`,
++		`data-target-resource="resource-0"`,
++		`data-search-text="argocd/demo configmap cm-one modified"`,
++		`class="toolbar"`,
++		`data-view="side-by-side"`,
++		`data-view="unified"`,
++		`data-resource-id="resource-0"`,
++		`class="diff-table side-by-side"`,
++		`class="diff-table unified"`,
++		`class="line-number"`,
++		`class="line-code"`,
++		`[data-resource-id]`,
++		`[data-tree-search]`,
++	} {
++		if !strings.Contains(text, want) {
++			t.Fatalf("HTML missing %q:\n%s", want, text)
++		}
++	}
++}
++
++func TestRenderTreeTargetsOriginalResourceIndexesAfterGrouping(t *testing.T) {
++	out, err := Render(app.DiffResult{
++		Results: []diff.Result{
++			diffResult("argocd", "small", "cm-small", "@@ -1,1 +1,1 @@\n-old\n+new\n"),
++			diffResult("argocd", "large", "cm-large", "@@ -1,2 +1,2 @@\n-old\n+new\n-old2\n+new2\n"),
++		},
++	}, Options{})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	largeIndex := strings.Index(text, `data-tree-app="argocd/large"`)
++	smallIndex := strings.Index(text, `data-tree-app="argocd/small"`)
++	if largeIndex == -1 || smallIndex == -1 {
++		t.Fatalf("HTML missing expected app groups:\n%s", text)
++	}
++	if largeIndex > smallIndex {
++		t.Fatalf("HTML did not render larger app first:\n%s", text)
++	}
++	assertContainsAfter(t, text, largeIndex, `data-target-resource="resource-1"`)
++	assertContainsAfter(t, text, smallIndex, `data-target-resource="resource-0"`)
++	assertCount(t, text, `data-resource-id="resource-0"`, 1)
++	assertCount(t, text, `data-resource-id="resource-1"`, 1)
++}
++
++func TestRenderSideBySideRowsFromHunks(t *testing.T) {
++	out, err := Render(app.DiffResult{
++		Results: []diff.Result{{
++			Parent: diff.Parent{Name: "demo"},
++			Resource: diff.Resource{
++				Kind: "ConfigMap",
++				Name: "cm-one",
++			},
++			Change: diff.ChangeModified,
++			Diff:   "--- old\n+++ new\n@@ -10,2 +10,2 @@\n context\n-removed\n+added\n",
++		}},
++	}, Options{})
++	if err != nil {
++		t.Fatalf("Render() error = %v", err)
++	}
++	text := string(out)
++	for _, want := range []string{
++		`<tr class="hunk-header"><th colspan="4">@@ -10,2 +10,2 @@</th></tr>`,
++		`<tr class="hunk-header"><th colspan="2">@@ -10,2 +10,2 @@</th></tr>`,
++		`<td class="line-number">10</td><td class="line-code">context</td><td class="line-number">10</td><td class="line-code">context</td>`,
++		`<td class="line-number">11</td><td class="line-code">removed</td><td class="line-number"></td><td class="line-code"></td>`,
++		`<td class="line-number"></td><td class="line-code"></td><td class="line-number">11</td><td class="line-code">added</td>`,
++	} {
++		if !strings.Contains(text, want) {
++			t.Fatalf("HTML missing %q:\n%s", want, text)
++		}
++	}
++	if strings.Contains(text, "--- old") || strings.Contains(text, "+++ new") {
++		t.Fatalf("HTML rendered complete unified file headers instead of hunk rows:\n%s", text)
++	}
++}
++
+ func TestRenderEmptyDiff(t *testing.T) {
+ 	out, err := Render(app.DiffResult{}, Options{})
+ 	if err != nil {
+@@ -110,6 +215,20 @@ func TestRenderEmptyDiff(t *testing.T) {
+ 	}
+ }
+ 
++func assertContainsAfter(t *testing.T, text string, offset int, want string) {
++	t.Helper()
++	if strings.Index(text[offset:], want) == -1 {
++		t.Fatalf("HTML missing %q after offset %d:\n%s", want, offset, text)
++	}
++}
++
++func assertCount(t *testing.T, text, needle string, want int) {
++	t.Helper()
++	if got := strings.Count(text, needle); got != want {
++		t.Fatalf("strings.Count(%q) = %d, want %d\n%s", needle, got, want, text)
++	}
++}
++
+ func diffResult(namespace, appName, resourceName, diffText string) diff.Result {
+ 	return diff.Result{
+ 		Parent: diff.Parent{
+-- 
+2.54.0
+

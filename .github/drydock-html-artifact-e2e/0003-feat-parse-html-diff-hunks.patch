@@ -1,0 +1,170 @@
+From 8e75d4a2c750a3bf8c33b4a6d69b68712a47b6cf Mon Sep 17 00:00:00 2001
+From: Ethan Shold <sholdee@gmail.com>
+Date: Wed, 3 Jun 2026 01:37:56 -0500
+Subject: [PATCH 03/12] feat: parse html diff hunks
+
+---
+ internal/report/diffhtml/hunk.go      | 88 +++++++++++++++++++++++++++
+ internal/report/diffhtml/hunk_test.go | 55 +++++++++++++++++
+ 2 files changed, 143 insertions(+)
+ create mode 100644 internal/report/diffhtml/hunk.go
+ create mode 100644 internal/report/diffhtml/hunk_test.go
+
+diff --git a/internal/report/diffhtml/hunk.go b/internal/report/diffhtml/hunk.go
+new file mode 100644
+index 0000000..d8cd49a
+--- /dev/null
++++ b/internal/report/diffhtml/hunk.go
+@@ -0,0 +1,88 @@
++package diffhtml
++
++import (
++	"strconv"
++	"strings"
++)
++
++type diffHunk struct {
++	Header string
++	Rows   []diffRow
++}
++
++type diffRow struct {
++	Kind        string
++	LeftNumber  int
++	RightNumber int
++	LeftText    string
++	RightText   string
++}
++
++func parseUnifiedDiff(text string) []diffHunk {
++	text = strings.ReplaceAll(text, "\r\n", "\n")
++	var hunks []diffHunk
++	var current *diffHunk
++	var leftNumber, rightNumber int
++
++	for _, line := range strings.Split(text, "\n") {
++		if strings.HasPrefix(line, "@@ ") {
++			leftNumber, rightNumber = parseHunkStart(line)
++			hunks = append(hunks, diffHunk{Header: line})
++			current = &hunks[len(hunks)-1]
++			continue
++		}
++		if current == nil || line == "" || strings.HasPrefix(line, "---") || strings.HasPrefix(line, "+++") {
++			continue
++		}
++
++		prefix := line[0]
++		content := line[1:]
++		switch prefix {
++		case ' ':
++			current.Rows = append(current.Rows, diffRow{
++				Kind:        "context",
++				LeftNumber:  leftNumber,
++				RightNumber: rightNumber,
++				LeftText:    content,
++				RightText:   content,
++			})
++			leftNumber++
++			rightNumber++
++		case '-':
++			current.Rows = append(current.Rows, diffRow{
++				Kind:       "removed",
++				LeftNumber: leftNumber,
++				LeftText:   content,
++			})
++			leftNumber++
++		case '+':
++			current.Rows = append(current.Rows, diffRow{
++				Kind:        "added",
++				RightNumber: rightNumber,
++				RightText:   content,
++			})
++			rightNumber++
++		}
++	}
++
++	return hunks
++}
++
++func parseHunkStart(header string) (int, int) {
++	fields := strings.Fields(header)
++	if len(fields) < 3 {
++		return 0, 0
++	}
++	return parseRangeStart(fields[1]), parseRangeStart(fields[2])
++}
++
++func parseRangeStart(rangeText string) int {
++	rangeText = strings.TrimPrefix(rangeText, "-")
++	rangeText = strings.TrimPrefix(rangeText, "+")
++	start, _, _ := strings.Cut(rangeText, ",")
++	number, err := strconv.Atoi(start)
++	if err != nil {
++		return 0
++	}
++	return number
++}
+diff --git a/internal/report/diffhtml/hunk_test.go b/internal/report/diffhtml/hunk_test.go
+new file mode 100644
+index 0000000..e4df1ee
+--- /dev/null
++++ b/internal/report/diffhtml/hunk_test.go
+@@ -0,0 +1,55 @@
++package diffhtml
++
++import "testing"
++
++func TestParseUnifiedDiffHunksLineNumbers(t *testing.T) {
++	hunks := parseUnifiedDiff("@@ -10,3 +10,4 @@\n context\n-removed\n+added one\n+added two\n")
++
++	if len(hunks) != 1 {
++		t.Fatalf("len(hunks) = %d, want 1", len(hunks))
++	}
++	if hunks[0].Header != "@@ -10,3 +10,4 @@" {
++		t.Fatalf("Header = %q, want %q", hunks[0].Header, "@@ -10,3 +10,4 @@")
++	}
++
++	want := []diffRow{
++		{Kind: "context", LeftNumber: 10, RightNumber: 10, LeftText: "context", RightText: "context"},
++		{Kind: "removed", LeftNumber: 11, LeftText: "removed"},
++		{Kind: "added", RightNumber: 11, RightText: "added one"},
++		{Kind: "added", RightNumber: 12, RightText: "added two"},
++	}
++	assertDiffRows(t, hunks[0].Rows, want)
++}
++
++func TestParseUnifiedDiffMultipleHunks(t *testing.T) {
++	hunks := parseUnifiedDiff("--- old\n+++ new\n@@ -1,1 +1,1 @@\n-old\n+new\n@@ -20,1 +20,1 @@\n-old twenty\n+new twenty\n")
++
++	if len(hunks) != 2 {
++		t.Fatalf("len(hunks) = %d, want 2", len(hunks))
++	}
++	if len(hunks[0].Rows) == 0 {
++		t.Fatal("first hunk has no rows")
++	}
++	if got := hunks[0].Rows[0]; got.Kind != "removed" || got.LeftNumber != 1 {
++		t.Fatalf("first hunk first row = %+v, want removed row at line 1", got)
++	}
++	if len(hunks[1].Rows) == 0 {
++		t.Fatal("second hunk has no rows")
++	}
++	if got := hunks[1].Rows[0]; got.Kind != "removed" || got.LeftNumber != 20 {
++		t.Fatalf("second hunk first row = %+v, want removed row at line 20", got)
++	}
++}
++
++func assertDiffRows(t *testing.T, got, want []diffRow) {
++	t.Helper()
++
++	if len(got) != len(want) {
++		t.Fatalf("len(rows) = %d, want %d\nrows = %+v", len(got), len(want), got)
++	}
++	for index := range want {
++		if got[index] != want[index] {
++			t.Fatalf("row %d = %+v, want %+v", index, got[index], want[index])
++		}
++	}
++}
+-- 
+2.54.0
+
