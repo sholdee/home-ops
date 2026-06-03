@@ -9,8 +9,8 @@ spec:
   selector:
     app: appdaemon
   ports:
-  - protocol: TCP
-    port: 5050
-    targetPort: 5050
-    name: http
+    - protocol: TCP
+      port: 5050
+      targetPort: 5050
+      name: http
   type: ClusterIP

@@ -90,14 +90,7 @@
                     "$comment": "https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#custom-shell"
                   },
                   {
-                    "enum": [
-                      "bash",
-                      "pwsh",
-                      "python",
-                      "sh",
-                      "cmd",
-                      "powershell"
-                    ]
+                    "enum": ["bash", "pwsh", "python", "sh", "cmd", "powershell"]
                   }
                 ]
               },

@@ -79,10 +79,12 @@
     - not (home_ops_github_runner_listener.stat.exists | default(false))
 
 - name: Download GitHub Actions runner
+  vars:
+    home_ops_github_runner_archive_name: "actions-runner-linux-{{ home_ops_github_runner_arch }}-{{ home_ops_github_runner_install_version }}.tar.gz"
+    home_ops_github_runner_release_url: "https://github.com/actions/runner/releases/download/v{{ home_ops_github_runner_install_version }}"
   ansible.builtin.get_url:
-    url: >-
-      https://github.com/actions/runner/releases/download/v{{ home_ops_github_runner_install_version }}/actions-runner-linux-{{ home_ops_github_runner_arch }}-{{ home_ops_github_runner_install_version }}.tar.gz
-    dest: "/tmp/actions-runner-linux-{{ home_ops_github_runner_arch }}-{{ home_ops_github_runner_install_version }}.tar.gz"
+    url: "{{ home_ops_github_runner_release_url }}/{{ home_ops_github_runner_archive_name }}"
+    dest: "/tmp/{{ home_ops_github_runner_archive_name }}"
     owner: root
     group: root
     mode: "0644"
@@ -130,8 +132,10 @@
     - not (home_ops_github_runner_registration.stat.exists | default(false))
 
 - name: Request GitHub Actions runner registration token
+  vars:
+    home_ops_github_runner_repo_path: "{{ home_ops_github_runner_repo_owner }}/{{ home_ops_github_runner_repo_name }}"
   ansible.builtin.uri:
-    url: "{{ home_ops_github_runner_api_url }}/repos/{{ home_ops_github_runner_repo_owner }}/{{ home_ops_github_runner_repo_name }}/actions/runners/registration-token"
+    url: "{{ home_ops_github_runner_api_url }}/repos/{{ home_ops_github_runner_repo_path }}/actions/runners/registration-token"
     method: POST
     status_code: 201
     return_content: true

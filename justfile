@@ -10,10 +10,10 @@ lima_profile_env := "./hack/bootstrap/lima/profile-env.sh"
 default:
     @just --list --unsorted
 
-# Run full local validation, including pre-commit, GitHub workflow validation, and bootstrap script tests.
+# Run full local validation except CI-only Renovate validation.
 [group('core')]
 check:
-    just pre-commit
+    just lint
     just github-test
     just bootstrap-test
 
@@ -22,15 +22,25 @@ check:
 tools:
     mise install --locked --yes
 
-# Run every pre-commit hook against the repository.
+# Run repository validation against all tracked files.
 [group('core')]
-pre-commit:
-    pre-commit run --all-files
+lint:
+    mise exec -- lefthook run pre-commit --all-files --no-auto-install
 
-# Validate GitHub workflow syntax.
+# Install local Git hooks through Lefthook.
+[group('core')]
+hooks-install:
+    mise exec -- lefthook install
+
+# Run changed-file validation through Lefthook.
+[group('core')]
+hooks-run:
+    mise exec -- lefthook run pre-commit --no-auto-install
+
+# Validate GitHub workflow and composite action files.
 [group('core')]
 github-test:
-    actionlint
+    mise exec -- hack/validate/github.sh
 
 # Show current and target cluster status without mutating anything.
 [group('cluster')]
@@ -752,5 +762,5 @@ bootstrap-audit:
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 [group('bootstrap')]
 bootstrap-test:
-    shellcheck -x hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/bats/*.bats hack/bootstrap/tests/helpers/*.bash hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/ansible/lib/*.sh hack/bootstrap/nodes/*.sh hack/bootstrap/nodes/lib/*.sh
-    bats hack/bootstrap/tests/bats
+    mise exec -- shellcheck -x hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/bats/*.bats hack/bootstrap/tests/helpers/*.bash hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/ansible/lib/*.sh hack/bootstrap/nodes/*.sh hack/bootstrap/nodes/lib/*.sh
+    mise exec -- bats hack/bootstrap/tests/bats

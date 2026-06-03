@@ -9,12 +9,12 @@ spec:
   selector:
     app: zwave
   ports:
-  - protocol: TCP
-    port: 8091
-    targetPort: 8091
-    name: http
-  - protocol: TCP
-    port: 3000
-    targetPort: 3000
-    name: websocket
+    - protocol: TCP
+      port: 8091
+      targetPort: 8091
+      name: http
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+      name: websocket
   type: ClusterIP

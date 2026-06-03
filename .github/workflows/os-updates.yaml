@@ -36,6 +36,8 @@ jobs:
         with:
           app-id: "${{ secrets.BOT_APP_ID }}"
           private-key: "${{ secrets.BOT_APP_PRIVATE_KEY }}"
+          permission-contents: write
+          permission-pull-requests: write
 
       - name: Checkout repository
         if: steps.schedule.outputs.should_run == 'true'

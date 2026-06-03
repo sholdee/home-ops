@@ -9,8 +9,8 @@ spec:
   selector:
     app: hass
   ports:
-  - protocol: TCP
-    port: 8123
-    targetPort: 8123
-    name: http
+    - protocol: TCP
+      port: 8123
+      targetPort: 8123
+      name: http
   type: ClusterIP

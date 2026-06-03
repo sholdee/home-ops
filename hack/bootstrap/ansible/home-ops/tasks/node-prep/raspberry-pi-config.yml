@@ -31,7 +31,7 @@
   ansible.builtin.lineinfile:
     path: /boot/firmware/config.txt
     regexp: '^\[all\]$'
-    line: '[all]'
+    line: "[all]"
     insertafter: EOF
   register: home_ops_rpi_config_all_section
 

@@ -47,9 +47,12 @@
   when: home_ops_installed_cilium_cli_version != home_ops_cilium_cli_stable.stdout
   block:
     - name: Download Cilium CLI archive and checksum
+      vars:
+        home_ops_cilium_cli_archive_name: "cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
+        home_ops_cilium_cli_release_url: "https://github.com/cilium/cilium-cli/releases/download/{{ home_ops_cilium_cli_stable.stdout }}"
       ansible.builtin.get_url:
-        url: "https://github.com/cilium/cilium-cli/releases/download/{{ home_ops_cilium_cli_stable.stdout }}/cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
-        dest: "/tmp/home-ops-bootstrap/cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
+        url: "{{ home_ops_cilium_cli_release_url }}/{{ home_ops_cilium_cli_archive_name }}"
+        dest: "/tmp/home-ops-bootstrap/{{ home_ops_cilium_cli_archive_name }}"
         owner: root
         group: root
         mode: "0644"

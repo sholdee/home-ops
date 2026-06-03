@@ -4,104 +4,104 @@ kind: ClusterRole
 metadata:
   name: system-upgrade-controller
 rules:
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - "apiextensions.k8s.io"
-  resources:
-  - customresourcedefinitions
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - patch
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  - nodes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - nodes
-  verbs:
-  - update
-- apiGroups:
-  - ""
-  resources:
-  - events
-  verbs:
-  - get
-  - create
-  - patch
-  - update
-- apiGroups:
-  - "coordination.k8s.io"
-  resources:
-  - leases
-  verbs:
-  - create
-- apiGroups:
-  - "coordination.k8s.io"
-  resources:
-  - leases
-  resourceNames:
-  - "system-upgrade-controller"
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - upgrade.cattle.io
-  resources:
-  - plans
-  - plans/status
-  verbs:
-  - get
-  - list
-  - watch
-  - create
-  - patch
-  - update
-  - delete
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "apiextensions.k8s.io"
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - namespaces
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - create
+      - patch
+      - update
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    verbs:
+      - create
+  - apiGroups:
+      - "coordination.k8s.io"
+    resources:
+      - leases
+    resourceNames:
+      - "system-upgrade-controller"
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - upgrade.cattle.io
+    resources:
+      - plans
+      - plans/status
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - patch
+      - update
+      - delete
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   name: system-upgrade-controller
 rules:
-- apiGroups:
-  - batch
-  resources:
-  - jobs
-  verbs:
-  - create
-  - delete
-  - deletecollection
-  - patch
-  - update
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+    verbs:
+      - create
+      - delete
+      - deletecollection
+      - patch
+      - update
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - list
+      - watch
 ---
 # Borrowed from https://stackoverflow.com/a/63553032
 apiVersion: rbac.authorization.k8s.io/v1
@@ -109,40 +109,40 @@ kind: ClusterRole
 metadata:
   name: system-upgrade-controller-drainer
 rules:
-# Needed to evict pods
-- apiGroups:
-  - ""
-  resources:
-  - "pods/eviction"
-  verbs:
-  - "create"
-# Needed to list/delete pods by Node
-- apiGroups:
-  - ""
-  resources:
-  - "pods"
-  verbs:
-  - "get"
-  - "list"
-  - "delete"
-# Needed to cordon Nodes
-- apiGroups:
-  - ""
-  resources:
-  - "nodes"
-  verbs:
-  - "get"
-  - "patch"
-# Needed to determine Pod owners
-- apiGroups:
-  - "apps"
-  resources:
-  - "statefulsets"
-  - "daemonsets"
-  - "replicasets"
-  verbs:
-  - "get"
-  - "list"
+  # Needed to evict pods
+  - apiGroups:
+      - ""
+    resources:
+      - "pods/eviction"
+    verbs:
+      - "create"
+  # Needed to list/delete pods by Node
+  - apiGroups:
+      - ""
+    resources:
+      - "pods"
+    verbs:
+      - "get"
+      - "list"
+      - "delete"
+  # Needed to cordon Nodes
+  - apiGroups:
+      - ""
+    resources:
+      - "nodes"
+    verbs:
+      - "get"
+      - "patch"
+  # Needed to determine Pod owners
+  - apiGroups:
+      - "apps"
+    resources:
+      - "statefulsets"
+      - "daemonsets"
+      - "replicasets"
+    verbs:
+      - "get"
+      - "list"
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -153,8 +153,8 @@ roleRef:
   kind: ClusterRole
   name: system-upgrade-controller-drainer
 subjects:
-- kind: ServiceAccount
-  name: system-upgrade
+  - kind: ServiceAccount
+    name: system-upgrade
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -165,8 +165,8 @@ roleRef:
   kind: ClusterRole
   name: system-upgrade-controller
 subjects:
-- kind: ServiceAccount
-  name: system-upgrade
+  - kind: ServiceAccount
+    name: system-upgrade
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -177,8 +177,8 @@ roleRef:
   kind: Role
   name: system-upgrade-controller
 subjects:
-- kind: ServiceAccount
-  name: system-upgrade
+  - kind: ServiceAccount
+    name: system-upgrade
 ---
 apiVersion: v1
 kind: Namespace
@@ -236,90 +236,90 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-            - matchExpressions:
-              - key: "kubernetes.io/os"
-                operator: "In"
-                values:
-                - "linux"
-              - key: "node-role.kubernetes.io/control-plane"
-                operator: "DoesNotExist"
+              - matchExpressions:
+                  - key: "kubernetes.io/os"
+                    operator: "In"
+                    values:
+                      - "linux"
+                  - key: "node-role.kubernetes.io/control-plane"
+                    operator: "DoesNotExist"
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-          - topologyKey: "kubernetes.io/hostname"
-            labelSelector:
-              matchExpressions:
-              - key: "app.kubernetes.io/name"
-                operator: "In"
-                values:
-                - "system-upgrade-controller"
+            - topologyKey: "kubernetes.io/hostname"
+              labelSelector:
+                matchExpressions:
+                  - key: "app.kubernetes.io/name"
+                    operator: "In"
+                    values:
+                      - "system-upgrade-controller"
       serviceAccountName: system-upgrade
       tolerations:
-      - key: "CriticalAddonsOnly"
-        operator: "Exists"
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
       containers:
-      - name: system-upgrade-controller
-        image: rancher/system-upgrade-controller:v0.19.2@sha256:34fa058fe453da2e1d6cf9052d2961976d5c7294921f8a6a6fb75098a27b0e89
-        imagePullPolicy: IfNotPresent
-        resources:
-          requests:
-            cpu: 10m
-            memory: 64Mi
-          limits:
-            cpu: 200m
-            memory: 256Mi
-        securityContext:
-          runAsNonRoot: true
-          runAsUser: 65534
-          runAsGroup: 65534
-          allowPrivilegeEscalation: false
-          seccompProfile:
-            type: RuntimeDefault
-          capabilities:
-            drop:
-            - ALL
-        envFrom:
-        - configMapRef:
-            name: default-controller-env
-        env:
-        - name: SYSTEM_UPGRADE_CONTROLLER_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.labels['upgrade.cattle.io/controller']
-        - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        - name: SYSTEM_UPGRADE_CONTROLLER_NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.nodeName
-        volumeMounts:
-        - name: etc-ssl
-          mountPath: /etc/ssl
-          readOnly: true
-        - name: etc-pki
-          mountPath: /etc/pki
-          readOnly: true
-        - name: etc-ca-certificates
-          mountPath: /etc/ca-certificates
-          readOnly: true
-        - name: tmp
-          mountPath: /tmp
+        - name: system-upgrade-controller
+          image: rancher/system-upgrade-controller:v0.19.2@sha256:34fa058fe453da2e1d6cf9052d2961976d5c7294921f8a6a6fb75098a27b0e89
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: default-controller-env
+          env:
+            - name: SYSTEM_UPGRADE_CONTROLLER_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.labels['upgrade.cattle.io/controller']
+            - name: SYSTEM_UPGRADE_CONTROLLER_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: SYSTEM_UPGRADE_CONTROLLER_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: etc-ssl
+              mountPath: /etc/ssl
+              readOnly: true
+            - name: etc-pki
+              mountPath: /etc/pki
+              readOnly: true
+            - name: etc-ca-certificates
+              mountPath: /etc/ca-certificates
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
-      - name: etc-ssl
-        hostPath:
-          path: /etc/ssl
-          type: DirectoryOrCreate
-      - name: etc-pki
-        hostPath:
-          path: /etc/pki
-          type: DirectoryOrCreate
-      - name: etc-ca-certificates
-        hostPath:
-          path: /etc/ca-certificates
-          type: DirectoryOrCreate
-      - name: tmp
-        emptyDir: {}
+        - name: etc-ssl
+          hostPath:
+            path: /etc/ssl
+            type: DirectoryOrCreate
+        - name: etc-pki
+          hostPath:
+            path: /etc/pki
+            type: DirectoryOrCreate
+        - name: etc-ca-certificates
+          hostPath:
+            path: /etc/ca-certificates
+            type: DirectoryOrCreate
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: policy/v1
 kind: PodDisruptionBudget

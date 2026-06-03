@@ -22,46 +22,46 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: unifi-landing
-        image: caddy:2.11.3@sha256:ec18ee54aab3315c22e25f3b2babda73ff8007d39b13b3bd1bfffa2f0444c7d9
-        ports:
-        - containerPort: 80
-          protocol: TCP
-          name: http
-        volumeMounts:
-        - mountPath: /etc/caddy
-          name: unifi-landing
-        - mountPath: /var/www
-          name: unifi-landing-static
-        - mountPath: /config/caddy
-          name: tmp
-          subPath: conf
-        - mountPath: /data/caddy
-          name: tmp
-          subPath: data
-        resources:
-          requests:
-            memory: 10Mi
-            cpu: "5m"
-          limits:
-            memory: 50Mi
-        livenessProbe: &probe
-          httpGet:
-            path: /landing
-            port: http
-        readinessProbe: *probe
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
-            add: ["NET_BIND_SERVICE"]
+        - name: unifi-landing
+          image: caddy:2.11.3@sha256:ec18ee54aab3315c22e25f3b2babda73ff8007d39b13b3bd1bfffa2f0444c7d9
+          ports:
+            - containerPort: 80
+              protocol: TCP
+              name: http
+          volumeMounts:
+            - mountPath: /etc/caddy
+              name: unifi-landing
+            - mountPath: /var/www
+              name: unifi-landing-static
+            - mountPath: /config/caddy
+              name: tmp
+              subPath: conf
+            - mountPath: /data/caddy
+              name: tmp
+              subPath: data
+          resources:
+            requests:
+              memory: 10Mi
+              cpu: "5m"
+            limits:
+              memory: 50Mi
+          livenessProbe: &probe
+            httpGet:
+              path: /landing
+              port: http
+          readinessProbe: *probe
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+              add: ["NET_BIND_SERVICE"]
       volumes:
-      - emptyDir: {}
-        name: tmp
-      - name: unifi-landing
-        configMap:
-          name: unifi-landing
-      - name: unifi-landing-static
-        configMap:
-          name: unifi-landing-static
+        - emptyDir: {}
+          name: tmp
+        - name: unifi-landing
+          configMap:
+            name: unifi-landing
+        - name: unifi-landing-static
+          configMap:
+            name: unifi-landing-static

@@ -26,48 +26,48 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: zwave
-        image: ghcr.io/zwave-js/zwave-js-ui:11.19.1@sha256:944d39fe22d8985ddcbef0849cd22984b8340448f742195821cc34f7a9ca1bb4
-        resources:
-          requests:
-            memory: 300Mi
-            cpu: "10m"
-          limits:
-            memory: 300Mi
-        livenessProbe: &probe
-          httpGet:
-            path: /health/zwave
-            port: http
-          initialDelaySeconds: 10
-        readinessProbe: *probe
-        env:
-        - name: SESSION_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: zwave
-              key: pass
-        - name: ZWAVEJS_EXTERNAL_CONFIG
-          value: /usr/src/app/store/.config-db
-        - name: TRUST_PROXY
-          value: "10.52.0.0/16"
-        - name: TZ
-          value: America/Chicago
-        ports:
-        - containerPort: 8091
-          name: http
-          protocol: TCP
-        - containerPort: 3000
-          name: websocket
-          protocol: TCP
-        volumeMounts:
-        - name: zwave-data
-          mountPath: /usr/src/app/store
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
+        - name: zwave
+          image: ghcr.io/zwave-js/zwave-js-ui:11.19.1@sha256:944d39fe22d8985ddcbef0849cd22984b8340448f742195821cc34f7a9ca1bb4
+          resources:
+            requests:
+              memory: 300Mi
+              cpu: "10m"
+            limits:
+              memory: 300Mi
+          livenessProbe: &probe
+            httpGet:
+              path: /health/zwave
+              port: http
+            initialDelaySeconds: 10
+          readinessProbe: *probe
+          env:
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: zwave
+                  key: pass
+            - name: ZWAVEJS_EXTERNAL_CONFIG
+              value: /usr/src/app/store/.config-db
+            - name: TRUST_PROXY
+              value: "10.52.0.0/16"
+            - name: TZ
+              value: America/Chicago
+          ports:
+            - containerPort: 8091
+              name: http
+              protocol: TCP
+            - containerPort: 3000
+              name: websocket
+              protocol: TCP
+          volumeMounts:
+            - name: zwave-data
+              mountPath: /usr/src/app/store
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
-      - name: zwave-data
-        persistentVolumeClaim:
-          claimName: zwave-pvc
+        - name: zwave-data
+          persistentVolumeClaim:
+            claimName: zwave-pvc

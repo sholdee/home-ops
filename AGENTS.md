@@ -32,11 +32,18 @@ Key files:
 Use the smallest validation that covers the change:
 
 ```bash
-pre-commit run --files <changed-files>
+lefthook run pre-commit --file <changed-file>
+just lint
+just check
 drydock test app <name> --path .
 drydock test apps --path .
 drydock diff apps --repo . --ref HEAD --ref-orig origin/master --skip-secrets --exit-code=false
 ```
+
+Use `lefthook run pre-commit --file <changed-file>` for the smallest
+file-scoped local validation. Use `just lint` for full lint validation,
+`just check` for full local validation, and `just hooks-install` to install
+local hooks. Renovate validation is CI-gated.
 
 `drydock` is the default local and CI renderability/diff tool for steady-state
 ArgoCD GitOps validation. It renders desired state without requiring a live
