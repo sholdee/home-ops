@@ -38,7 +38,8 @@ jobs:
         run: |
           git -C .drydock-under-test config user.name "drydock e2e"
           git -C .drydock-under-test config user.email "drydock-e2e@example.invalid"
-          git -C .drydock-under-test am "$GITHUB_WORKSPACE"/.github/drydock-html-artifact-e2e/*.patch
+          tar -xf "$GITHUB_WORKSPACE/.github/drydock-html-artifact-e2e.tar" -C "$RUNNER_TEMP"
+          git -C .drydock-under-test am "$RUNNER_TEMP"/drydock-html-artifact-e2e/*.patch
 
       - name: Build drydock under test
         run: |
@@ -52,6 +53,7 @@ jobs:
           checkout: "false"
           install: "false"
           drydock-bin: ${{ runner.temp }}/drydock-under-test
+          run-test: "false"
           github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
