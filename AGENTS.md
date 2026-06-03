@@ -106,7 +106,7 @@ just bootstrap-phase argocd
 - CiliumNetworkPolicy enables enforcement for selected pods, so include all required ingress sources: gateway, metrics, database, and operator traffic as applicable
 - Use External Secrets; app credentials use `ClusterSecretStore: onepassword-connect`, while gateway TLS certs use `ClusterSecretStore: gateway`
 - Add `reloader.stakater.com/auto: "true"` to workloads consuming secrets/configmaps
-- Add `# yaml-language-server: $schema=...` only to CRD YAML files, not built-in Kubernetes resources
+- Add `# yaml-language-server: $schema=...` for manifests with generated schemas from `https://kube-schemas.shold.io`, including CRDs, built-in Kubernetes resources, and Kustomize Kustomization/Component files
 - Pin container images to tag plus digest and verify ARM64 support
 - Pin GitHub Actions to full commit SHAs with semver comments and preserve Renovate annotations/custom-manager patterns
 - Add resource requests/limits, restricted security context, and writable `emptyDir` mounts for read-only-rootfs workloads

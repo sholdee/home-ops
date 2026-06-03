@@ -72,13 +72,12 @@ repos:
         entry: kubeconform
         args:
           - "-strict"
-          - "-ignore-missing-schemas"
           - "-schema-location"
-          - "default"
+          - "https://kube-schemas.shold.io/core/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
           - "-schema-location"
           - "https://kube-schemas.shold.io/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
         types: [yaml]
-        exclude: '(kustomization\.yaml|values.*\.yaml|^\.github/|^hack/bootstrap/ansible/|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
+        exclude: '(values.*\.yaml|^\.github/|^hack/bootstrap/ansible/|^hack/bootstrap/kind-three-node\.yaml|kromgo/manifests/config\.yaml|^\.pre-commit-config\.yaml|^\.yamllint\.yaml|^\.markdownlint-cli2\.yaml)'
 
   - repo: https://github.com/shellcheck-py/shellcheck-py
     rev: v0.11.0.1
