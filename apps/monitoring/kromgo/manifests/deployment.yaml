@@ -71,7 +71,7 @@ spec:
               memory: 64Mi
           volumeMounts:
             - name: config-volume
-              mountPath: /kromgo/config.yaml
+              mountPath: /config/config.yaml
               subPath: config.yaml
               readOnly: true
       volumes:
