@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: unifi-landing
-          image: caddy:2.11.3@sha256:ec18ee54aab3315c22e25f3b2babda73ff8007d39b13b3bd1bfffa2f0444c7d9
+          image: caddy:2.11.4@sha256:533f1bff9a76426aee55fb2934636c25a2769aad8fb57f34dd39cca8cd2bab84
           ports:
             - containerPort: 80
               protocol: TCP
