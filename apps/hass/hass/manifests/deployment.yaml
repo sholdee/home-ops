@@ -33,7 +33,7 @@ spec:
                     operator: DoesNotExist
       containers:
         - name: hass
-          image: ghcr.io/home-operations/home-assistant:2026.5.4@sha256:42d1bc5e99ed0ae8f49b72b8994e25e1a6b0f1467ba26c1b959f54ca42541ffd
+          image: ghcr.io/home-operations/home-assistant:2026.6.0@sha256:f89628f4623e2b99f368baa6c8ee4e6ca5856f9ad18fe9c36d0af53fe5d5ee29
           ports:
             - containerPort: 8123
               name: http
