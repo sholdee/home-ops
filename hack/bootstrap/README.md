@@ -21,40 +21,40 @@ For the longer operator runbook, see
 
 ## What Lives Here
 
-| Path | Purpose |
-| --- | --- |
-| `bootstrap.sh` | Phase runner for Kubernetes takeover dependencies. |
-| `phases/` | Idempotent bootstrap phases sourced by `bootstrap.sh`. |
-| `lib/` | Shared bootstrap logging, rendering, apply, and report helpers. |
-| `ansible/` | Live and Lima K3s node convergence wrapper. |
-| `lima/` | Disposable VM harness for foundation and app-profile testing. |
-| `nodes/` | Existing-cluster node lifecycle helpers. |
-| `tests/bats/` | Offline regression tests for parsing, rendering, and helpers. |
-| `.out/` | Disposable local reports, inventories, kubeconfigs, and renders. |
+| Path           | Purpose                                                          |
+| -------------- | ---------------------------------------------------------------- |
+| `bootstrap.sh` | Phase runner for Kubernetes takeover dependencies.               |
+| `phases/`      | Idempotent bootstrap phases sourced by `bootstrap.sh`.           |
+| `lib/`         | Shared bootstrap logging, rendering, apply, and report helpers.  |
+| `ansible/`     | Live and Lima K3s node convergence wrapper.                      |
+| `lima/`        | Disposable VM harness for foundation and app-profile testing.    |
+| `nodes/`       | Existing-cluster node lifecycle helpers.                         |
+| `tests/bats/`  | Offline regression tests for parsing, rendering, and helpers.    |
+| `.out/`        | Disposable local reports, inventories, kubeconfigs, and renders. |
 
 Do not commit `.out/`.
 
 ## Fast Path
 
-| Goal | Recipe |
-| --- | --- |
-| List available commands | `just --list` |
-| Install pinned local tools | `just tools` |
-| Show active cluster status | `just context` |
-| Run full local checks | `just check` |
-| Test bootstrap Bash and offline behavior | `just bootstrap-test` |
-| Recreate kind and bootstrap from scratch | `just kind-fresh` |
-| Show kind status | `just kind-status` |
-| Dry-run an already bootstrapped kind cluster | `just kind-bootstrap-dry-run` |
-| Run Lima foundation bootstrap | `just lima-fresh` |
-| Show Lima status | `just lima-status` |
-| Run Longhorn-focused Lima bootstrap | `just lima-longhorn-fresh` |
-| Run full Lima app-profile bootstrap | `just lima-apps-fresh` |
-| Render live Ansible inventory and vars | `just ansible-plan` |
-| Plan additive-only live node joins | `just node-converge-plan` |
-| Audit active bootstrap/takeover state | `just bootstrap-audit` |
-| Dry-run Kubernetes bootstrap on the active context | `just bootstrap-dry-run` |
-| Run live Ansible plus Kubernetes bootstrap | `just ansible-bootstrap` |
+| Goal                                               | Recipe                        |
+| -------------------------------------------------- | ----------------------------- |
+| List available commands                            | `just --list`                 |
+| Install pinned local tools                         | `just tools`                  |
+| Show active cluster status                         | `just context`                |
+| Run full local checks                              | `just check`                  |
+| Test bootstrap Bash and offline behavior           | `just bootstrap-test`         |
+| Recreate kind and bootstrap from scratch           | `just kind-fresh`             |
+| Show kind status                                   | `just kind-status`            |
+| Dry-run an already bootstrapped kind cluster       | `just kind-bootstrap-dry-run` |
+| Run Lima foundation bootstrap                      | `just lima-fresh`             |
+| Show Lima status                                   | `just lima-status`            |
+| Run Longhorn-focused Lima bootstrap                | `just lima-longhorn-fresh`    |
+| Run full Lima app-profile bootstrap                | `just lima-apps-fresh`        |
+| Render live Ansible inventory and vars             | `just ansible-plan`           |
+| Plan additive-only live node joins                 | `just node-converge-plan`     |
+| Audit active bootstrap/takeover state              | `just bootstrap-audit`        |
+| Dry-run Kubernetes bootstrap on the active context | `just bootstrap-dry-run`      |
+| Run live Ansible plus Kubernetes bootstrap         | `just ansible-bootstrap`      |
 
 Use the smallest validation that proves the change. Most script edits only
 need `just bootstrap-test`; Cilium, Longhorn, VolSync, CNPG, and ArgoCD
@@ -81,25 +81,25 @@ before ArgoCD can take over.
 
 ## Profiles
 
-| Profile | Use |
-| --- | --- |
-| `full` | Real-cluster takeover profile. Applies dependencies, ArgoCD, readiness waits, and audit. |
-| `foundation` | Lima foundation profile. Validates K3s, Cilium takeover, core operators, and ArgoCD without normal apps. |
+| Profile         | Use                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `full`          | Real-cluster takeover profile. Applies dependencies, ArgoCD, readiness waits, and audit.                                   |
+| `foundation`    | Lima foundation profile. Validates K3s, Cilium takeover, core operators, and ArgoCD without normal apps.                   |
 | `lima-longhorn` | Disposable Longhorn lifecycle validation with Longhorn, snapshot controller, storage classes, and a checksum PVC workload. |
-| `lima-apps` | Disposable app-profile validation with a sanitized app allowlist and external-writer guardrails. |
+| `lima-apps`     | Disposable app-profile validation with a sanitized app allowlist and external-writer guardrails.                           |
 
 ## Kind
 
 Kind is the fastest disposable Kubernetes check.
 
-| Goal | Recipe |
-| --- | --- |
-| Create the three-node kind cluster | `just kind-create` |
-| Show kind status | `just kind-status` |
-| Bootstrap the configured kind cluster | `just kind-bootstrap` |
-| Resume from a phase | `just kind-bootstrap-resume bootstrap-crds` |
-| Seed only the 1Password credential | `just kind-bootstrap-seed` |
-| Delete the kind cluster | `just kind-delete` |
+| Goal                                  | Recipe                                      |
+| ------------------------------------- | ------------------------------------------- |
+| Create the three-node kind cluster    | `just kind-create`                          |
+| Show kind status                      | `just kind-status`                          |
+| Bootstrap the configured kind cluster | `just kind-bootstrap`                       |
+| Resume from a phase                   | `just kind-bootstrap-resume bootstrap-crds` |
+| Seed only the 1Password credential    | `just kind-bootstrap-seed`                  |
+| Delete the kind cluster               | `just kind-delete`                          |
 
 When Cilium CRDs are absent, bootstrap omits real-cluster-only resources such
 as the full `ApplicationSet/k3s-apps`, Cilium, Longhorn, and
@@ -113,13 +113,13 @@ Server-side dry-run does not persist CRDs on a clean cluster. Use
 
 Lima is the Apple Silicon VM harness for end-to-end behavior.
 
-| Goal | Foundation Recipe | Longhorn Recipe | App-Profile Recipe |
-| --- | --- | --- | --- |
-| Create VMs | `just lima-create` | `just lima-longhorn-create` | `just lima-apps-create` |
-| Run Ansible | `just lima-ansible` | `just lima-longhorn-ansible` | `just lima-apps-ansible` |
+| Goal                     | Foundation Recipe     | Longhorn Recipe                | App-Profile Recipe         |
+| ------------------------ | --------------------- | ------------------------------ | -------------------------- |
+| Create VMs               | `just lima-create`    | `just lima-longhorn-create`    | `just lima-apps-create`    |
+| Run Ansible              | `just lima-ansible`   | `just lima-longhorn-ansible`   | `just lima-apps-ansible`   |
 | Run Kubernetes bootstrap | `just lima-bootstrap` | `just lima-longhorn-bootstrap` | `just lima-apps-bootstrap` |
-| Validate | `just lima-validate` | `just lima-longhorn-validate` | `just lima-apps-validate` |
-| Full fresh run | `just lima-fresh` | `just lima-longhorn-fresh` | `just lima-apps-fresh` |
+| Validate                 | `just lima-validate`  | `just lima-longhorn-validate`  | `just lima-apps-validate`  |
+| Full fresh run           | `just lima-fresh`     | `just lima-longhorn-fresh`     | `just lima-apps-fresh`     |
 
 Useful maintenance recipes:
 
@@ -191,13 +191,13 @@ setting.
 The live wrapper renders this repo's inventory and GitOps-derived values before
 calling Ansible.
 
-| Goal | Recipe |
-| --- | --- |
-| Render a non-mutating plan | `just ansible-plan` |
-| Import an existing K3s token into 1Password | `just ansible-import-token` |
-| Run live Ansible only | `just ansible-run` |
-| Run Kubernetes bootstrap only on the active context | `just bootstrap` |
-| Run Ansible and Kubernetes bootstrap | `just ansible-bootstrap` |
+| Goal                                                | Recipe                      |
+| --------------------------------------------------- | --------------------------- |
+| Render a non-mutating plan                          | `just ansible-plan`         |
+| Import an existing K3s token into 1Password         | `just ansible-import-token` |
+| Run live Ansible only                               | `just ansible-run`          |
+| Run Kubernetes bootstrap only on the active context | `just bootstrap`            |
+| Run Ansible and Kubernetes bootstrap                | `just ansible-bootstrap`    |
 
 The default Ansible backend is the in-repo `home-ops` backend for
 Debian-family, systemd nodes. The external `../k3s-ansible` backend remains
@@ -255,31 +255,31 @@ NUT client, or Actions runner explicitly.
 Node lifecycle commands operate on an existing cluster and are intentionally
 explicit.
 
-| Goal | Live Recipe | Lima Recipe |
-| --- | --- | --- |
-| List nodes | `just node-list` | `just node-lima-list` |
-| Node status | `just node-status <node>` | `just node-lima-status <node>` |
-| Pods bound to node | `just node-pods <node>` | `just node-lima-pods <node>` |
-| Control-plane status | `just node-control-plane-status <node>` | `just node-lima-control-plane-status <node>` |
-| Control-plane delete preflight | `just node-control-plane-delete-preflight <node>` | `just node-lima-control-plane-delete-preflight <node>` |
-| Discover network reimage identity | `just node-reimage-plan <node>` | n/a |
-| Render network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a |
-| Render network reimage OS source | `just node-reimage-image-source <node>` | n/a |
-| Build network reimage OS artifact | `just node-reimage-build <node>` | n/a |
-| Plan additive-only joins | `just node-converge-plan` | `just node-lima-converge-plan` |
-| Join missing inventory nodes | `just node-converge` | `just node-lima-converge` |
-| Drain | `just node-drain <node>` | `just node-lima-drain <node>` |
-| Reboot a drained node | `just node-reboot <node>` | `just node-lima-reboot <node>` |
-| Evict Longhorn replicas | `just node-longhorn-evict <node>` | `just node-lima-longhorn-evict <node>` |
-| Delete | `just node-delete <node>` | `just node-lima-delete <node>` |
-| Refresh SSH host key | `just node-refresh-ssh-host-key <node>` | `just node-lima-refresh-ssh-host-key <node>` |
-| Join from inventory | `just node-join <node>` | `just node-lima-join <node>` |
-| Remove joining taint and uncordon | `just node-uncordon <node>` | `just node-lima-uncordon <node>` |
-| Serve recorded reimage artifact | `just node-reimage-serve <node> <host>` | n/a |
-| Apply recorded reimage | `just node-reimage-apply <node>` | n/a |
-| Clean up image server | `just node-reimage-cleanup <node>` | n/a |
-| Stage network reimage | `just node-reimage-stage <node> <image-url> <sha256>` | n/a |
-| Reboot into one-shot reimage | `just node-reimage-reboot <node>` | n/a |
+| Goal                              | Live Recipe                                              | Lima Recipe                                            |
+| --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| List nodes                        | `just node-list`                                         | `just node-lima-list`                                  |
+| Node status                       | `just node-status <node>`                                | `just node-lima-status <node>`                         |
+| Pods bound to node                | `just node-pods <node>`                                  | `just node-lima-pods <node>`                           |
+| Control-plane status              | `just node-control-plane-status <node>`                  | `just node-lima-control-plane-status <node>`           |
+| Control-plane delete preflight    | `just node-control-plane-delete-preflight <node>`        | `just node-lima-control-plane-delete-preflight <node>` |
+| Discover network reimage identity | `just node-reimage-plan <node>`                          | n/a                                                    |
+| Render network reimage metadata   | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a                                                    |
+| Render network reimage OS source  | `just node-reimage-image-source <node>`                  | n/a                                                    |
+| Build network reimage OS artifact | `just node-reimage-build <node>`                         | n/a                                                    |
+| Plan additive-only joins          | `just node-converge-plan`                                | `just node-lima-converge-plan`                         |
+| Join missing inventory nodes      | `just node-converge`                                     | `just node-lima-converge`                              |
+| Drain                             | `just node-drain <node>`                                 | `just node-lima-drain <node>`                          |
+| Reboot a drained node             | `just node-reboot <node>`                                | `just node-lima-reboot <node>`                         |
+| Evict Longhorn replicas           | `just node-longhorn-evict <node>`                        | `just node-lima-longhorn-evict <node>`                 |
+| Delete                            | `just node-delete <node>`                                | `just node-lima-delete <node>`                         |
+| Refresh SSH host key              | `just node-refresh-ssh-host-key <node>`                  | `just node-lima-refresh-ssh-host-key <node>`           |
+| Join from inventory               | `just node-join <node>`                                  | `just node-lima-join <node>`                           |
+| Remove joining taint and uncordon | `just node-uncordon <node>`                              | `just node-lima-uncordon <node>`                       |
+| Serve recorded reimage artifact   | `just node-reimage-serve <node> <host>`                  | n/a                                                    |
+| Apply recorded reimage            | `just node-reimage-apply <node>`                         | n/a                                                    |
+| Clean up image server             | `just node-reimage-cleanup <node>`                       | n/a                                                    |
+| Stage network reimage             | `just node-reimage-stage <node> <image-url> <sha256>`    | n/a                                                    |
+| Reboot into one-shot reimage      | `just node-reimage-reboot <node>`                        | n/a                                                    |
 
 For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if

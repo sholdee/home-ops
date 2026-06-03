@@ -49,8 +49,8 @@ Apps needing persistent data backup include two components and apply patches:
 
 ```yaml
 components:
-  - ../../components/volsync        # PVC template
-  - ../../components/volsync/b2     # B2 backup (ExternalSecret + ReplicationSource + ReplicationDestination)
+  - ../../components/volsync # PVC template
+  - ../../components/volsync/b2 # B2 backup (ExternalSecret + ReplicationSource + ReplicationDestination)
 ```
 
 Then patch all four resources to replace generic `app` names with the actual app name:
@@ -140,13 +140,13 @@ metadata:
   namespace: <namespace>
 spec:
   parentRefs:
-    - name: envoy-gateway         # Internal: *.mgmt.sholdee.net
+    - name: envoy-gateway # Internal: *.mgmt.sholdee.net
       namespace: gateway
       # OR
-    - name: external-gateway      # External: *.sholdee.net
+    - name: external-gateway # External: *.sholdee.net
       namespace: gateway
   hostnames:
-    - <app>.mgmt.sholdee.net      # or <app>.sholdee.net
+    - <app>.mgmt.sholdee.net # or <app>.sholdee.net
   rules:
     - backendRefs:
         - name: <service-name>

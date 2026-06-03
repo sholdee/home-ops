@@ -8,14 +8,14 @@ spec:
   selector:
     app: adguard
   ports:
-  - port: 53
-    protocol: UDP
-    targetPort: 53
-    name: dns
-  - port: 53
-    protocol: TCP
-    targetPort: 53
-    name: dnstcp
+    - port: 53
+      protocol: UDP
+      targetPort: 53
+      name: dns
+    - port: 53
+      protocol: TCP
+      targetPort: 53
+      name: dnstcp
   type: LoadBalancer
   loadBalancerIP: 192.168.77.54
   externalTrafficPolicy: Cluster
@@ -31,12 +31,12 @@ spec:
   selector:
     app: adguard
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
-    name: http
-  - port: 8000
-    protocol: TCP
-    targetPort: 8000
-    name: metrics
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+      name: http
+    - port: 8000
+      protocol: TCP
+      targetPort: 8000
+      name: metrics
   type: ClusterIP

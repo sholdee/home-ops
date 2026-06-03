@@ -21,16 +21,16 @@ spec:
           rules:
             http:
               - method: GET
-                path: ^/kubernetes_version$
+                path: '^/badges/kubernetes_version(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_node_count$
+                path: '^/badges/cluster_node_count(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_pod_count$
+                path: '^/badges/cluster_pod_count(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_cpu_usage$
+                path: '^/badges/cluster_cpu_usage(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_memory_usage$
+                path: '^/badges/cluster_memory_usage(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_age_days$
+                path: '^/badges/cluster_age_days(\?format=shields)?$'
               - method: GET
-                path: ^/cluster_uptime_days$
+                path: '^/badges/cluster_uptime_days(\?format=shields)?$'

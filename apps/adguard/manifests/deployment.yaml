@@ -45,12 +45,11 @@ spec:
             runAsGroup: 65532
             allowPrivilegeEscalation: false
           imagePullPolicy: IfNotPresent
-          command:
-            [
+          command: [
               "sh",
               "-c",
               "cp /home/AdGuardHome.yaml /config/AdGuardHome.yaml; chmod 644
-                /config/AdGuardHome.yaml",
+              /config/AdGuardHome.yaml",
             ]
           volumeMounts:
             - mountPath: /home

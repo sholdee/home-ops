@@ -127,7 +127,6 @@ home_ops_agent_args: >-
   --token-file {{ home_ops_k3s_token_file }}
   {{ extra_agent_args | default('') }}
 home_ops_node_taints: []
-
 cilium_iface: auto
 cilium_export_pod_cidr: "false"
 cilium_extra_values_files: []

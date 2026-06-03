@@ -5,7 +5,7 @@ description: Install the locked repository toolchain with mise
 
 inputs:
   profile:
-    description: Tool profile to install. One of all, pre-commit, bootstrap-test, drydock, image, operator.
+    description: Tool profile to install. One of all, validation, bootstrap-test, drydock, image, operator.
     default: all
 
 runs:
@@ -22,16 +22,19 @@ runs:
         case "${MISE_PROFILE}" in
           all)
             tools=(
-              python just pipx pipx:pre-commit shellcheck bats actionlint kubeconform
+              just lefthook oxfmt shellcheck bats actionlint kubeconform jsonschema zizmor gitleaks
               kubectl argocd github:cloudnative-pg/cloudnative-pg kustomize helm yq jq
               github:sholdee/drydock ansible-core pipx:ansible-lint kind lima op gh
             )
             ;;
-          pre-commit)
-            tools=(python pipx pipx:pre-commit shellcheck actionlint kubeconform kustomize helm yq jq)
+          validation)
+            tools=(
+              lefthook oxfmt shellcheck actionlint kubeconform jsonschema zizmor gitleaks
+              kustomize helm yq jq ansible-core pipx:ansible-lint
+            )
             ;;
           bootstrap-test)
-            tools=(python just shellcheck bats actionlint yq jq kustomize helm ansible-core)
+            tools=(python just shellcheck bats actionlint zizmor yq jq kustomize helm ansible-core)
             ;;
           drydock)
             tools=(github:sholdee/drydock jq)
@@ -49,7 +52,6 @@ runs:
         esac
 
         printf 'tools=%s\n' "${tools[*]}" >> "${GITHUB_OUTPUT}"
-        printf 'HOME_OPS_MISE_TOOLS=%s\n' "${tools[*]}" >> "${GITHUB_ENV}"
 
     - name: Restore mise tools cache
       id: mise-cache
@@ -77,6 +79,8 @@ runs:
 
     - name: Install locked toolchain
       shell: bash
+      env:
+        HOME_OPS_MISE_TOOLS: ${{ steps.profile.outputs.tools }}
       run: |
         set -euo pipefail
         read -r -a tools <<< "${HOME_OPS_MISE_TOOLS}"
@@ -107,6 +111,8 @@ runs:
 
     - name: Verify mise toolchain
       shell: bash
+      env:
+        HOME_OPS_MISE_TOOLS: ${{ steps.profile.outputs.tools }}
       run: |
         set -euo pipefail
         read -r -a tools <<< "${HOME_OPS_MISE_TOOLS}"

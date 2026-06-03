@@ -44,97 +44,106 @@ just --list
 
 Common validation:
 
-| Goal | Recipe |
-| --- | --- |
-| Run pre-commit plus bootstrap tests | `just check` |
-| Run only bootstrap ShellCheck and BATS | `just bootstrap-test` |
-| Audit current kube context | `just bootstrap-audit` |
-| Show current and target cluster status | `just context` |
-| List ArgoCD Applications | `just argocd-apps` |
-| List ArgoCD ApplicationSets | `just argocd-appsets` |
-| Show ArgoCD Application sync status | `just argocd-status <app>` |
-| Refresh one ArgoCD Application | `just argocd-refresh <app>` |
-| Hard-refresh one ArgoCD Application | `just argocd-hard-refresh <app>` |
-| Request sync for one ArgoCD Application | `just argocd-sync <app>` |
-| Wait for one ArgoCD Application | `just argocd-wait <app>` |
+Use `lefthook run pre-commit --file <changed-file>` for the smallest
+file-scoped local validation, `just lint` for full lint validation, and
+`just check` for full local validation. Install local hooks with
+`just hooks-install`. Keep using drydock for app and component render/diff
+changes. Renovate validation is CI-gated.
+
+| Goal                                    | Recipe                                          |
+| --------------------------------------- | ----------------------------------------------- |
+| Run file-scoped validation              | `lefthook run pre-commit --file <changed-file>` |
+| Run full lint validation                | `just lint`                                     |
+| Run full local validation               | `just check`                                    |
+| Install local hooks                     | `just hooks-install`                            |
+| Run only bootstrap ShellCheck and BATS  | `just bootstrap-test`                           |
+| Audit current kube context              | `just bootstrap-audit`                          |
+| Show current and target cluster status  | `just context`                                  |
+| List ArgoCD Applications                | `just argocd-apps`                              |
+| List ArgoCD ApplicationSets             | `just argocd-appsets`                           |
+| Show ArgoCD Application sync status     | `just argocd-status <app>`                      |
+| Refresh one ArgoCD Application          | `just argocd-refresh <app>`                     |
+| Hard-refresh one ArgoCD Application     | `just argocd-hard-refresh <app>`                |
+| Request sync for one ArgoCD Application | `just argocd-sync <app>`                        |
+| Wait for one ArgoCD Application         | `just argocd-wait <app>`                        |
 
 Kind:
 
-| Goal | Recipe |
-| --- | --- |
-| Create the kind cluster | `just kind-create` |
-| Show kind status | `just kind-status` |
-| Bootstrap kind | `just kind-bootstrap` |
-| Recreate and bootstrap kind | `just kind-fresh` |
-| Seed only the 1Password credential | `just kind-bootstrap-seed` |
-| Resume kind from a phase | `just kind-bootstrap-resume bootstrap-crds` |
-| Dry-run after CRDs exist | `just kind-bootstrap-dry-run` |
-| Delete kind | `just kind-delete` |
+| Goal                               | Recipe                                      |
+| ---------------------------------- | ------------------------------------------- |
+| Create the kind cluster            | `just kind-create`                          |
+| Show kind status                   | `just kind-status`                          |
+| Bootstrap kind                     | `just kind-bootstrap`                       |
+| Recreate and bootstrap kind        | `just kind-fresh`                           |
+| Seed only the 1Password credential | `just kind-bootstrap-seed`                  |
+| Resume kind from a phase           | `just kind-bootstrap-resume bootstrap-crds` |
+| Dry-run after CRDs exist           | `just kind-bootstrap-dry-run`               |
+| Delete kind                        | `just kind-delete`                          |
 
 Lima foundation:
 
-| Goal | Recipe |
-| --- | --- |
-| Create VMs | `just lima-create` |
-| Run Ansible | `just lima-ansible` |
-| Run Kubernetes bootstrap | `just lima-bootstrap` |
-| Validate foundation state | `just lima-validate` |
-| Full fresh flow | `just lima-fresh` |
-| Show Lima status | `just lima-status` |
-| Refresh kube context and API tunnel | `just lima-context` |
-| Delete VMs | `just lima-delete` |
+| Goal                                | Recipe                |
+| ----------------------------------- | --------------------- |
+| Create VMs                          | `just lima-create`    |
+| Run Ansible                         | `just lima-ansible`   |
+| Run Kubernetes bootstrap            | `just lima-bootstrap` |
+| Validate foundation state           | `just lima-validate`  |
+| Full fresh flow                     | `just lima-fresh`     |
+| Show Lima status                    | `just lima-status`    |
+| Refresh kube context and API tunnel | `just lima-context`   |
+| Delete VMs                          | `just lima-delete`    |
 
 Lima app profile:
 
-| Goal | Recipe |
-| --- | --- |
-| Create Longhorn-focused VMs | `just lima-longhorn-create` |
-| Run Ansible on Longhorn-focused VMs | `just lima-longhorn-ansible` |
-| Run Longhorn-focused bootstrap | `just lima-longhorn-bootstrap` |
-| Validate Longhorn checksum workload | `just lima-longhorn-validate` |
-| Full fresh Longhorn flow | `just lima-longhorn-fresh` |
-| Create app-sized VMs | `just lima-apps-create` |
-| Run Ansible on app-sized VMs | `just lima-apps-ansible` |
-| Run app-profile bootstrap | `just lima-apps-bootstrap` |
-| Validate app-profile safety | `just lima-apps-validate` |
-| Full fresh app flow | `just lima-apps-fresh` |
+| Goal                                | Recipe                         |
+| ----------------------------------- | ------------------------------ |
+| Create Longhorn-focused VMs         | `just lima-longhorn-create`    |
+| Run Ansible on Longhorn-focused VMs | `just lima-longhorn-ansible`   |
+| Run Longhorn-focused bootstrap      | `just lima-longhorn-bootstrap` |
+| Validate Longhorn checksum workload | `just lima-longhorn-validate`  |
+| Full fresh Longhorn flow            | `just lima-longhorn-fresh`     |
+| Create app-sized VMs                | `just lima-apps-create`        |
+| Run Ansible on app-sized VMs        | `just lima-apps-ansible`       |
+| Run app-profile bootstrap           | `just lima-apps-bootstrap`     |
+| Validate app-profile safety         | `just lima-apps-validate`      |
+| Full fresh app flow                 | `just lima-apps-fresh`         |
 
 Ansible and active-context bootstrap:
 
-| Goal | Recipe |
-| --- | --- |
-| Render live Ansible plan | `just ansible-plan` |
-| Import existing K3s token to 1Password | `just ansible-import-token` |
-| Run live Ansible only | `just ansible-run` |
-| Run live Ansible plus Kubernetes bootstrap | `just ansible-bootstrap` |
-| Run Kubernetes bootstrap against the active context | `just bootstrap` |
-| Audit active context state | `just bootstrap-audit` |
-| Dry-run bootstrap against the active context | `just bootstrap-dry-run` |
-| Dry-run one bootstrap phase | `just bootstrap-phase argocd` |
+| Goal                                                | Recipe                        |
+| --------------------------------------------------- | ----------------------------- |
+| Render live Ansible plan                            | `just ansible-plan`           |
+| Import existing K3s token to 1Password              | `just ansible-import-token`   |
+| Run live Ansible only                               | `just ansible-run`            |
+| Run live Ansible plus Kubernetes bootstrap          | `just ansible-bootstrap`      |
+| Run Kubernetes bootstrap against the active context | `just bootstrap`              |
+| Audit active context state                          | `just bootstrap-audit`        |
+| Dry-run bootstrap against the active context        | `just bootstrap-dry-run`      |
+| Dry-run one bootstrap phase                         | `just bootstrap-phase argocd` |
 
 Node lifecycle:
 
-| Goal | Recipe |
-| --- | --- |
-| List live nodes | `just node-list` |
-| Plan additive-only live node joins | `just node-converge-plan` |
-| Join missing live inventory nodes after confirmation | `just node-converge` |
-| Discover live node network reimage identity | `just node-reimage-plan <node>` |
-| Render live node network reimage metadata | `just node-reimage-metadata <node> <image-url> <sha256>` |
-| Render live node Raspberry Pi image source | `just node-reimage-image-source <node>` |
-| Build live node Raspberry Pi image | `just node-reimage-build <node>` |
-| Run full live node reimage through rejoin | `just node-reimage-full <node>` |
-| Reboot a drained live node | `just node-reboot <node>` |
-| Join one explicit live node | `just node-join <node>` |
-| Finalize and uncordon one live node | `just node-uncordon <node>` |
-| Serve recorded live node reimage artifact | `just node-reimage-serve <node> <host>` |
-| Stage, tryboot reboot, and refresh SSH key | `just node-reimage-apply <node>` |
-| Clean up recorded live image server | `just node-reimage-cleanup <node>` |
-| Stage live node network reimage | `just node-reimage-stage <node> <image-url> <sha256>` |
-| Reboot into staged network reimage | `just node-reimage-reboot <node>` |
-| Plan additive-only Lima node joins | `just node-lima-converge-plan` |
-| Join missing Lima inventory nodes after confirmation | `just node-lima-converge` |
-| Join missing Lima inventory nodes without prompting | `just node-lima-converge-yes` |
+| Goal                                                 | Recipe                                                   |
+| ---------------------------------------------------- | -------------------------------------------------------- |
+| List live nodes                                      | `just node-list`                                         |
+| Plan additive-only live node joins                   | `just node-converge-plan`                                |
+| Join missing live inventory nodes after confirmation | `just node-converge`                                     |
+| Discover live node network reimage identity          | `just node-reimage-plan <node>`                          |
+| Render live node network reimage metadata            | `just node-reimage-metadata <node> <image-url> <sha256>` |
+| Render live node Raspberry Pi image source           | `just node-reimage-image-source <node>`                  |
+| Build live node Raspberry Pi image                   | `just node-reimage-build <node>`                         |
+| Run full live node reimage through rejoin            | `just node-reimage-full <node>`                          |
+| Reboot a drained live node                           | `just node-reboot <node>`                                |
+| Join one explicit live node                          | `just node-join <node>`                                  |
+| Finalize and uncordon one live node                  | `just node-uncordon <node>`                              |
+| Serve recorded live node reimage artifact            | `just node-reimage-serve <node> <host>`                  |
+| Stage, tryboot reboot, and refresh SSH key           | `just node-reimage-apply <node>`                         |
+| Clean up recorded live image server                  | `just node-reimage-cleanup <node>`                       |
+| Stage live node network reimage                      | `just node-reimage-stage <node> <image-url> <sha256>`    |
+| Reboot into staged network reimage                   | `just node-reimage-reboot <node>`                        |
+| Plan additive-only Lima node joins                   | `just node-lima-converge-plan`                           |
+| Join missing Lima inventory nodes after confirmation | `just node-lima-converge`                                |
+| Join missing Lima inventory nodes without prompting  | `just node-lima-converge-yes`                            |
 
 ## Validation Ladder
 
@@ -252,15 +261,15 @@ tunnel, and bootstraps with `--profile foundation`.
 
 Defaults:
 
-| Setting | Default |
-| --- | --- |
-| Cluster prefix | `home-ops-k3s-test` |
-| Local context | `lima-home-ops-k3s-test` |
-| Server shape | one VM, `4` CPU, `6GiB` memory |
-| Agent shape | two VMs, `2` CPU, `3GiB` memory |
-| Disk | `30GiB` |
-| Master taint | enabled |
-| Ansible backend | `home-ops` |
+| Setting         | Default                         |
+| --------------- | ------------------------------- |
+| Cluster prefix  | `home-ops-k3s-test`             |
+| Local context   | `lima-home-ops-k3s-test`        |
+| Server shape    | one VM, `4` CPU, `6GiB` memory  |
+| Agent shape     | two VMs, `2` CPU, `3GiB` memory |
+| Disk            | `30GiB`                         |
+| Master taint    | enabled                         |
+| Ansible backend | `home-ops`                      |
 
 Run everything:
 

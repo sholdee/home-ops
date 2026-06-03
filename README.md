@@ -9,7 +9,7 @@
 
 <div align="center">
 
-[![Kubernetes](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fkubernetes_version&style=for-the-badge&logo=kubernetes&logoColor=white&color=blue&label=)](https://k3s.io/)&nbsp;&nbsp;
+[![Kubernetes](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fkubernetes_version%3Fformat%3Dshields&style=for-the-badge&logo=kubernetes&logoColor=white&color=blue&label=)](https://k3s.io/)&nbsp;&nbsp;
 
 </div>
 
@@ -22,12 +22,12 @@
 
 <div align="center">
 
-[![Age-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_age_days&style=flat-square&label=Age)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Uptime-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_uptime_days&style=flat-square&label=Uptime)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Node-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_node_count&style=flat-square&label=Nodes)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Pod-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_pod_count&style=flat-square&label=Pods)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![CPU-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_cpu_usage&style=flat-square&label=CPU)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Memory-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fcluster_memory_usage&style=flat-square&label=Memory)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Age-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_age_days%3Fformat%3Dshields&style=flat-square&label=Age)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Uptime-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_uptime_days%3Fformat%3Dshields&style=flat-square&label=Uptime)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Node-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_node_count%3Fformat%3Dshields&style=flat-square&label=Nodes)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Pod-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_pod_count%3Fformat%3Dshields&style=flat-square&label=Pods)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![CPU-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_cpu_usage%3Fformat%3Dshields&style=flat-square&label=CPU)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Memory-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_memory_usage%3Fformat%3Dshields&style=flat-square&label=Memory)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
 
 </div>
 
@@ -45,7 +45,7 @@ A unified CI pipeline runs on all pull requests, conditionally triggering the ap
 
 - **Drydock GitOps validation** — uses [drydock](https://github.com/sholdee/drydock) to render and test ArgoCD Applications, produce desired-state diffs, and identify newly rendered container images
 - **ARM64 image verification** — pulls drydock-detected new images on a self-hosted ARM64 runner and verifies `linux/arm64` platform support
-- **Pre-commit** — validates YAML syntax, Kubernetes schemas, workflow syntax, shell scripts, Markdown, Renovate config, and code quality
+- **Validation** — runs Lefthook-backed formatting, schema, workflow, secret, shell, and bootstrap lint checks; Renovate config validation is CI-gated
 - **Bootstrap tests** — shellchecks and exercises the offline bootstrap, Ansible, Lima, and node lifecycle test suite
 
 All checks feed into a single required status gate for branch protection and automerge.
@@ -206,12 +206,12 @@ erDiagram
 
 ### Hardware 🖥️
 
-| Node | Role | RAM | Storage |
-| --- | --- | --- | --- |
+| Node         | Role          | RAM  | Storage        |
+| ------------ | ------------- | ---- | -------------- |
 | k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD |
 | k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD |
-| k3s-worker-0 | Worker | 8GB | 512GB NVMe SSD |
-| k3s-worker-1 | Worker | 8GB | 512GB NVMe SSD |
+| k3s-worker-0 | Worker        | 8GB  | 512GB NVMe SSD |
+| k3s-worker-1 | Worker        | 8GB  | 512GB NVMe SSD |
 
 All nodes are Raspberry Pi 5 boards with NVMe SSDs attached via PCIe HAT.

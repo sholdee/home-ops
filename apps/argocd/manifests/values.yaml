@@ -71,12 +71,12 @@ configs:
   cm:
     kustomize.buildOptions: --enable-helm --helm-api-versions grafana.integreatly.org/v1beta1/GrafanaDashboard
     resource.exclusions: |
-     - apiGroups:
-         - cilium.io
-       kinds:
-         - CiliumIdentity
-       clusters:
-         - "*"
+      - apiGroups:
+          - cilium.io
+        kinds:
+          - CiliumIdentity
+        clusters:
+          - "*"
     resource.customizations.health.external-secrets.io_ClusterSecretStore: |
       hs = { status = "Progressing", message = "Waiting for ClusterSecretStore readiness" }
       if obj.status and obj.status.conditions then
@@ -175,4 +175,4 @@ configs:
       return hs
     users.anonymous.enabled: "true"
   rbac:
-    policy.default: 'role:readonly'
+    policy.default: "role:readonly"

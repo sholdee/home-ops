@@ -26,71 +26,71 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: codeserver
-        image: ghcr.io/coder/code-server:4.122.1@sha256:31d3bd4039b9d41fde24ae17cc170a769a025df0782bd3bd99f0ea86f8e415a4
-        env:
-        - name: TZ
-          value: America/Chicago
-        - name: HOME
-          value: /home/coder
-        - name: DEFAULT_WORKSPACE
-          value: /home
-        - name: SHELL
-          value: "/bin/bash"
-        - name: PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: zwave
-              key: pass
-        ports:
-        - containerPort: 8080
-          name: http
-          protocol: TCP
-        volumeMounts:
         - name: codeserver
-          mountPath: /home/coder
-          subPath: config
-        - name: codeserver
-          mountPath: /home/source-repos
-          subPath: repos
-        - name: tmp
-          mountPath: /tmp
-        - name: appdaemon-data
-          mountPath: /home/appdaemon-data
-          subPath: conf
-        - name: hass-data
-          mountPath: /home/hass-data
-        - name: zwave-data
-          mountPath: /home/zwave-data
-        resources:
-          requests:
-            memory: 1Gi
-            cpu: "20m"
-          limits:
-            memory: 1Gi
-        livenessProbe: &probe
-          httpGet:
-            path: /healthz
-            port: http
-          initialDelaySeconds: 10
-        readinessProbe: *probe
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
+          image: ghcr.io/coder/code-server:4.122.1@sha256:31d3bd4039b9d41fde24ae17cc170a769a025df0782bd3bd99f0ea86f8e415a4
+          env:
+            - name: TZ
+              value: America/Chicago
+            - name: HOME
+              value: /home/coder
+            - name: DEFAULT_WORKSPACE
+              value: /home
+            - name: SHELL
+              value: "/bin/bash"
+            - name: PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: zwave
+                  key: pass
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          volumeMounts:
+            - name: codeserver
+              mountPath: /home/coder
+              subPath: config
+            - name: codeserver
+              mountPath: /home/source-repos
+              subPath: repos
+            - name: tmp
+              mountPath: /tmp
+            - name: appdaemon-data
+              mountPath: /home/appdaemon-data
+              subPath: conf
+            - name: hass-data
+              mountPath: /home/hass-data
+            - name: zwave-data
+              mountPath: /home/zwave-data
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: "20m"
+            limits:
+              memory: 1Gi
+          livenessProbe: &probe
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+          readinessProbe: *probe
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
-      - name: codeserver
-        persistentVolumeClaim:
-          claimName: codeserver-pvc
-      - name: appdaemon-data
-        persistentVolumeClaim:
-          claimName: appdaemon-pvc
-      - name: hass-data
-        persistentVolumeClaim:
-          claimName: hass-pvc
-      - name: zwave-data
-        persistentVolumeClaim:
-          claimName: zwave-pvc
-      - name: tmp
-        emptyDir: {}
+        - name: codeserver
+          persistentVolumeClaim:
+            claimName: codeserver-pvc
+        - name: appdaemon-data
+          persistentVolumeClaim:
+            claimName: appdaemon-pvc
+        - name: hass-data
+          persistentVolumeClaim:
+            claimName: hass-pvc
+        - name: zwave-data
+          persistentVolumeClaim:
+            claimName: zwave-pvc
+        - name: tmp
+          emptyDir: {}

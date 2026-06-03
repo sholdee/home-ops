@@ -8,9 +8,9 @@ spec:
   selector:
     app: unifi
   ports:
-  - protocol: TCP
-    port: 8080
-    name: deviceappcomms
+    - protocol: TCP
+      port: 8080
+      name: deviceappcomms
   type: ClusterIP
 ---
 apiVersion: v1
@@ -22,7 +22,7 @@ spec:
   selector:
     app: unifi
   ports:
-  - protocol: TCP
-    port: 8443
-    name: gui
+    - protocol: TCP
+      port: 8443
+      name: gui
   type: ClusterIP

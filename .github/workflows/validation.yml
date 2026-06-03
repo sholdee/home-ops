@@ -1,12 +1,12 @@
 ---
 # yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
-name: Pre-commit
+name: Validation
 
 on:
   workflow_call:
 
 jobs:
-  pre-commit:
+  validation:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -15,7 +15,7 @@ jobs:
       - name: Install mise toolchain
         uses: ./.github/actions/setup-mise
         with:
-          profile: pre-commit
+          profile: validation
 
-      - name: Run pre-commit
-        uses: ./.github/actions/run-pre-commit
+      - name: Run validation
+        run: lefthook run pre-commit --all-files --no-auto-install

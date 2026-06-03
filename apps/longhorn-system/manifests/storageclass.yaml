@@ -8,11 +8,11 @@ metadata:
     storageclass: noreplicas
 parameters:
   dataLocality: best-effort
-  fromBackup: ''
+  fromBackup: ""
   fsType: ext4
-  mkfsParams: '-b 16384'
-  numberOfReplicas: '1'
-  staleReplicaTimeout: '30'
+  mkfsParams: "-b 16384"
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "30"
   unmapMarkSnapChainRemoved: ignored
 provisioner: driver.longhorn.io
 reclaimPolicy: Delete
@@ -27,11 +27,11 @@ metadata:
     storageclass: mongo
 parameters:
   dataLocality: best-effort
-  fromBackup: ''
+  fromBackup: ""
   fsType: xfs
-  mkfsParams: '-b size=16384'
-  numberOfReplicas: '1'
-  staleReplicaTimeout: '30'
+  mkfsParams: "-b size=16384"
+  numberOfReplicas: "1"
+  staleReplicaTimeout: "30"
   unmapMarkSnapChainRemoved: ignored
 provisioner: driver.longhorn.io
 reclaimPolicy: Delete
@@ -46,11 +46,11 @@ metadata:
     storageclass: retain
 parameters:
   dataLocality: best-effort
-  fromBackup: ''
+  fromBackup: ""
   fsType: ext4
-  mkfsParams: '-b 16384'
-  numberOfReplicas: '3'
-  staleReplicaTimeout: '30'
+  mkfsParams: "-b 16384"
+  numberOfReplicas: "3"
+  staleReplicaTimeout: "30"
   unmapMarkSnapChainRemoved: ignored
 provisioner: driver.longhorn.io
 reclaimPolicy: Retain

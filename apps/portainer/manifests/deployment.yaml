@@ -24,46 +24,46 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: portainer
-        image: portainer/portainer-ee:2.39.2@sha256:080cfe9495848fb05904e1aec701f8ef89594d77f0a972e7618fc5efc65ab39a
-        args:
-        - --no-csp
-        - --http-disabled
-        - --tlscert=/certs/tls.crt
-        - --tlskey=/certs/tls.key
-        ports:
-        - containerPort: 9443
-          name: https
-          protocol: TCP
-        volumeMounts:
-        - name: portainer-data
-          mountPath: /data
-        - name: external-wildcard
-          mountPath: /certs
-          readOnly: true
-        resources:
-          requests:
-            memory: 100Mi
-            cpu: 5m
-          limits:
-            memory: 200Mi
-            cpu: 500m
-        livenessProbe: &probe
-          httpGet:
-            path: /api/settings/public
-            port: https
-            scheme: HTTPS
-        readinessProbe: *probe
-        securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            drop: ["ALL"]
+        - name: portainer
+          image: portainer/portainer-ee:2.39.2@sha256:080cfe9495848fb05904e1aec701f8ef89594d77f0a972e7618fc5efc65ab39a
+          args:
+            - --no-csp
+            - --http-disabled
+            - --tlscert=/certs/tls.crt
+            - --tlskey=/certs/tls.key
+          ports:
+            - containerPort: 9443
+              name: https
+              protocol: TCP
+          volumeMounts:
+            - name: portainer-data
+              mountPath: /data
+            - name: external-wildcard
+              mountPath: /certs
+              readOnly: true
+          resources:
+            requests:
+              memory: 100Mi
+              cpu: 5m
+            limits:
+              memory: 200Mi
+              cpu: 500m
+          livenessProbe: &probe
+            httpGet:
+              path: /api/settings/public
+              port: https
+              scheme: HTTPS
+          readinessProbe: *probe
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
       volumes:
-      - name: portainer-data
-        persistentVolumeClaim:
-          claimName: portainer-pvc
-      - name: external-wildcard
-        secret:
-          secretName: external-wildcard
-          defaultMode: 0400
+        - name: portainer-data
+          persistentVolumeClaim:
+            claimName: portainer-pvc
+        - name: external-wildcard
+          secret:
+            secretName: external-wildcard
+            defaultMode: 0400

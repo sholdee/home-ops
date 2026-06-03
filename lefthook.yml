@@ -1,0 +1,24 @@
+---
+# Validation helpers select git-tracked files themselves so all-files runs do
+# not scan ignored bootstrap output.
+pre-commit:
+  parallel: true
+  commands:
+    hygiene:
+      run: mise exec -- hack/validate/hygiene.sh {staged_files}
+    yaml-parse:
+      run: mise exec -- hack/validate/yaml-parse.sh {staged_files}
+    kubeconform:
+      run: mise exec -- hack/validate/kubeconform.sh {staged_files}
+    jsonschema:
+      run: mise exec -- hack/validate/jsonschema.sh {staged_files}
+    shellcheck:
+      run: mise exec -- hack/validate/shellcheck.sh {staged_files}
+    gitleaks:
+      run: mise exec -- hack/validate/gitleaks.sh {staged_files}
+    github:
+      run: mise exec -- hack/validate/github.sh {staged_files}
+    ansible-lint:
+      run: mise exec -- hack/validate/ansible-lint.sh {staged_files}
+    oxfmt:
+      run: mise exec -- hack/validate/oxfmt.sh {staged_files}

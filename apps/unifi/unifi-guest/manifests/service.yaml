@@ -8,9 +8,9 @@ spec:
   selector:
     app: unifi
   ports:
-  - port: 8843
-    protocol: TCP
-    name: guestportaltls
+    - port: 8843
+      protocol: TCP
+      name: guestportaltls
   type: ClusterIP
 ---
 apiVersion: v1
@@ -22,7 +22,7 @@ spec:
   selector:
     app: unifi-landing
   ports:
-  - protocol: TCP
-    port: 80
-    name: http
+    - protocol: TCP
+      port: 80
+      name: http
   type: ClusterIP
