@@ -249,20 +249,20 @@ checksum = "sha256:dca67911095a110c2b5c36e26df6cac860c602033e456c0db47be498cdef1
 url = "https://github.com/kubernetes-sigs/kind/releases/download/v0.32.0/kind-darwin-arm64"
 
 [[tools.kubeconform]]
-version = "0.7.0"
+version = "0.8.0"
 backend = "aqua:yannh/kubeconform"
 
 [tools.kubeconform."platforms.linux-arm64"]
-checksum = "sha256:cc907ccf9e3c34523f0f32b69745265e0a6908ca85b92f41931d4537860eb83c"
-url = "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-arm64.tar.gz"
+checksum = "sha256:1f53fc8e81258197a35e8603054162a5af1de8c5af13746c71ab680d9534ed87"
+url = "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-arm64.tar.gz"
 
 [tools.kubeconform."platforms.linux-x64"]
-checksum = "sha256:c31518ddd122663b3f3aa874cfe8178cb0988de944f29c74a0b9260920d115d3"
-url = "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz"
+checksum = "sha256:9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883"
+url = "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz"
 
 [tools.kubeconform."platforms.macos-arm64"]
-checksum = "sha256:b5d32b2cb77f9c781c976b20a85e2d0bc8f9184d5d1cfe665a2f31a19f99eeb9"
-url = "https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-darwin-arm64.tar.gz"
+checksum = "sha256:f84f4dfbebf4a6b0b230385fa065a39ea35e02608c2b50d025dcf64775a69d67"
+url = "https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-darwin-arm64.tar.gz"
 
 [[tools.kubectl]]
 version = "1.36.1"
