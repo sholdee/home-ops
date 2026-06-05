@@ -19,6 +19,7 @@ jobs:
     outputs:
       authorized: ${{ steps.author.outputs.authorized }}
       gitops: ${{ steps.paths.outputs.gitops }}
+      drydock-toolchain: ${{ steps.paths.outputs.drydock-toolchain }}
       renovate: ${{ steps.paths.outputs.renovate }}
     steps:
       - name: Check PR author
@@ -47,6 +48,10 @@ jobs:
               - '.github/workflows/drydock-gitops.yml'
               - 'apps/**'
               - 'components/**'
+            drydock-toolchain:
+              - '.github/actions/setup-mise/action.yml'
+              - 'mise.toml'
+              - 'mise.lock'
             renovate:
               - '.github/renovate.json5'
 
@@ -55,6 +60,22 @@ jobs:
 
   bootstrap-test:
     uses: ./.github/workflows/bootstrap-test.yml
+
+  drydock-toolchain:
+    needs: detect
+    if: needs.detect.outputs.drydock-toolchain == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+
+      - name: Install drydock mise profile
+        uses: ./.github/actions/setup-mise
+        with:
+          profile: drydock
+
+      - name: Verify drydock version
+        run: drydock version
 
   renovate:
     needs: detect
@@ -88,19 +109,20 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     if: always()
-    needs: [detect, validation, bootstrap-test, renovate, drydock-gitops]
+    needs: [detect, validation, bootstrap-test, drydock-toolchain, renovate, drydock-gitops]
     steps:
       - name: Evaluate results
         run: |
           DETECT="${{ needs.detect.result }}"
           VALIDATION="${{ needs.validation.result }}"
           BOOTSTRAP="${{ needs.bootstrap-test.result }}"
+          DRYDOCK_TOOLCHAIN="${{ needs.drydock-toolchain.result }}"
           RENOVATE="${{ needs.renovate.result }}"
           DRYDOCK="${{ needs.drydock-gitops.result }}"
 
-          echo "detect=$DETECT validation=$VALIDATION bootstrap-test=$BOOTSTRAP renovate=$RENOVATE drydock-gitops=$DRYDOCK"
+          echo "detect=$DETECT validation=$VALIDATION bootstrap-test=$BOOTSTRAP drydock-toolchain=$DRYDOCK_TOOLCHAIN renovate=$RENOVATE drydock-gitops=$DRYDOCK"
 
-          if [[ "$DETECT" == "failure" || "$VALIDATION" == "failure" || "$BOOTSTRAP" == "failure" || "$RENOVATE" == "failure" || "$DRYDOCK" == "failure" ]]; then
+          if [[ "$DETECT" == "failure" || "$VALIDATION" == "failure" || "$BOOTSTRAP" == "failure" || "$DRYDOCK_TOOLCHAIN" == "failure" || "$RENOVATE" == "failure" || "$DRYDOCK" == "failure" ]]; then
             echo "CI failed"
             exit 1
           fi
