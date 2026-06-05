@@ -12,6 +12,16 @@
       "/apps/argocd/manifests/cilium-preflight\\.ya?ml$/",
     ],
   },
+  mise: {
+    postUpgradeTasks: {
+      commands: ["mise lock --yes github:sholdee/drydock"],
+      fileFilters: ["mise.lock"],
+      executionMode: "branch",
+      installTools: {
+        mise: {},
+      },
+    },
+  },
   packageRules: [
     {
       description: "Separate PRs for cilium",

@@ -27,8 +27,10 @@ spec:
       value: "s3://renovate-cache"
     - name: RENOVATE_CUSTOM_ENV_VARIABLES
       value: '{"MISE_TRUSTED_CONFIG_PATHS":"/tmp/repos/github/sholdee"}'
+    - name: RENOVATE_ALLOWED_UNSAFE_EXECUTIONS
+      value: '["mise"]'
     - name: RENOVATE_ALLOWED_COMMANDS
-      value: '["^go run \\./scripts/sync-argocd-gitops-engine\\.go$"]'
+      value: '["^go run \\./scripts/sync-argocd-gitops-engine\\.go$","^mise lock --yes github:sholdee/drydock$"]'
     - name: AWS_REGION
       value: garage
     - name: AWS_ENDPOINT_URL
