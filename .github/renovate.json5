@@ -9,6 +9,8 @@
     executionMode: "branch",
     installTools: {
       mise: {},
+      node: {},
+      npm: {},
     },
   },
   kubernetes: {
