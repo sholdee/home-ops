@@ -3,6 +3,14 @@
   extends: ["config:recommended", "docker:enableMajor", ":semanticCommits"],
   platformAutomerge: true,
   dependencyDashboardTitle: "Dependency Dashboard :robot:",
+  postUpgradeTasks: {
+    commands: ["mise lock --yes"],
+    fileFilters: ["mise.lock"],
+    executionMode: "branch",
+    installTools: {
+      mise: {},
+    },
+  },
   kubernetes: {
     managerFilePatterns: ["/apps/.*\\.ya?ml$/", "/components/.*\\.ya?ml$/"],
   },
@@ -11,16 +19,6 @@
       "/apps/argocd/manifests/apps\\.ya?ml$/",
       "/apps/argocd/manifests/cilium-preflight\\.ya?ml$/",
     ],
-  },
-  mise: {
-    postUpgradeTasks: {
-      commands: ["mise lock --yes"],
-      fileFilters: ["mise.lock"],
-      executionMode: "branch",
-      installTools: {
-        mise: {},
-      },
-    },
   },
   packageRules: [
     {
