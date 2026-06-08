@@ -14,10 +14,14 @@ NODE_REIMAGE_BUILDER_MODE="${NODE_REIMAGE_BUILDER_MODE:-auto}"
 NODE_REIMAGE_DEFAULT_PORT="${NODE_REIMAGE_DEFAULT_PORT:-18080}"
 NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_DOWN_TIMEOUT_SECONDS:-180}"
 NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_SSH_UP_TIMEOUT_SECONDS:-1800}"
+NODE_REIMAGE_PORT_DOWN_POLL_SECONDS="${NODE_REIMAGE_PORT_DOWN_POLL_SECONDS:-5}"
+NODE_REIMAGE_PORT_UP_POLL_SECONDS="${NODE_REIMAGE_PORT_UP_POLL_SECONDS:-10}"
+NODE_REIMAGE_SSH_AUTH_POLL_SECONDS="${NODE_REIMAGE_SSH_AUTH_POLL_SECONDS:-10}"
 NODE_REIMAGE_APPLY_OBSERVE_PING="${NODE_REIMAGE_APPLY_OBSERVE_PING:-true}"
 NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_DOWN_TIMEOUT_SECONDS:-300}"
 NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_UP_TIMEOUT_SECONDS:-900}"
 NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS="${NODE_REIMAGE_PING_FINAL_DOWN_TIMEOUT_SECONDS:-120}"
+NODE_REIMAGE_PING_POLL_SECONDS="${NODE_REIMAGE_PING_POLL_SECONDS:-5}"
 NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS="${NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS:-300}"
 NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS="${NODE_REIMAGE_FIRSTBOOT_POLL_SECONDS:-10}"
 NODE_REIMAGE_OS_PLAN_MANIFEST="${NODE_REIMAGE_OS_PLAN_MANIFEST:-${REPO_ROOT}/apps/system-upgrade/manifests/os-plan.yaml}"
@@ -810,7 +814,7 @@ node_reimage_wait_port_down() {
     if ! nc -z -w 5 "$host" "$port" >/dev/null 2>&1; then
       return 0
     fi
-    sleep 5
+    sleep "$NODE_REIMAGE_PORT_DOWN_POLL_SECONDS"
   done
   node_die "timed out waiting for ${host}:${port} to go down"
 }
@@ -826,7 +830,7 @@ node_reimage_wait_port_up() {
     if nc -z -w 5 "$host" "$port" >/dev/null 2>&1; then
       return 0
     fi
-    sleep 10
+    sleep "$NODE_REIMAGE_PORT_UP_POLL_SECONDS"
   done
   node_die "timed out waiting for ${host}:${port} to come up"
 }
@@ -863,7 +867,7 @@ node_reimage_wait_ping_down() {
       return 2
     fi
     ((SECONDS >= deadline)) && return 1
-    sleep 5
+    sleep "$NODE_REIMAGE_PING_POLL_SECONDS"
   done
 }
 
@@ -878,7 +882,7 @@ node_reimage_wait_ping_up() {
       return 0
     fi
     ((SECONDS >= deadline)) && return 1
-    sleep 5
+    sleep "$NODE_REIMAGE_PING_POLL_SECONDS"
   done
 }
 
@@ -942,7 +946,7 @@ node_reimage_wait_ssh_auth() {
     if node_reimage_ssh_ok "$profile" "$inventory_node"; then
       return 0
     fi
-    sleep 10
+    sleep "$NODE_REIMAGE_SSH_AUTH_POLL_SECONDS"
   done
   node_die "timed out waiting for SSH authentication on ${inventory_node}"
 }

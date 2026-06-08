@@ -22,7 +22,7 @@ runs:
         case "${MISE_PROFILE}" in
           all)
             tools=(
-              just lefthook oxfmt shellcheck bats actionlint kubeconform jsonschema zizmor gitleaks
+              just lefthook oxfmt shellcheck bats rush actionlint kubeconform jsonschema zizmor gitleaks
               kubectl argocd github:cloudnative-pg/cloudnative-pg kustomize helm yq jq
               github:sholdee/drydock ansible-core pipx:ansible-lint kind lima op gh
             )
@@ -34,7 +34,7 @@ runs:
             )
             ;;
           bootstrap-test)
-            tools=(python just shellcheck bats actionlint zizmor yq jq kustomize helm ansible-core)
+            tools=(python just shellcheck bats rush actionlint zizmor yq jq kustomize helm ansible-core)
             ;;
           drydock)
             tools=(github:sholdee/drydock jq)
