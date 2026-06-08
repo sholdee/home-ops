@@ -128,25 +128,25 @@ url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/a
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
 
 [[tools."github:sholdee/drydock"]]
-version = "0.1.18"
+version = "0.1.19"
 backend = "github:sholdee/drydock"
 
 [tools."github:sholdee/drydock"."platforms.linux-arm64"]
-checksum = "sha256:9c106572138dce81086a7a9c89f9709f85893d9254ab38782e643a57c7a92536"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.18/drydock_linux-arm64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441215470"
+checksum = "sha256:d59a64b5ce217fca87704b1d343409da8ea0508b5274d044eacfb5b528c4aad9"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.19/drydock_linux-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441930471"
 provenance = "github-attestations"
 
 [tools."github:sholdee/drydock"."platforms.linux-x64"]
-checksum = "sha256:b353ffb5eb061a840b89955d18db447ae89045464d7020afdbf8c8e455730299"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.18/drydock_linux-amd64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441215466"
+checksum = "sha256:d8ab7de62caf83002180d14eae2de676a2e40623d1d34513426333e24351644e"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.19/drydock_linux-amd64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441930464"
 provenance = "github-attestations"
 
 [tools."github:sholdee/drydock"."platforms.macos-arm64"]
-checksum = "sha256:6124fcd1f272bd212281ba4b744ee61bde198ff4c6714f29ae5f639774db9ee2"
-url = "https://github.com/sholdee/drydock/releases/download/v0.1.18/drydock_darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441215460"
+checksum = "sha256:b27c2dbf70dca379a5786100fa6ab88d5bce3b3c75d526d4255c184a82a0aabe"
+url = "https://github.com/sholdee/drydock/releases/download/v0.1.19/drydock_darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/441930453"
 provenance = "github-attestations"
 
 [[tools.gitleaks]]
