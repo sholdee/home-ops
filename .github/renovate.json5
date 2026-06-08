@@ -14,7 +14,7 @@
   },
   mise: {
     postUpgradeTasks: {
-      commands: ["mise lock --yes github:sholdee/drydock"],
+      commands: ["mise lock --yes"],
       fileFilters: ["mise.lock"],
       executionMode: "branch",
       installTools: {

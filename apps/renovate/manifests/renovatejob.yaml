@@ -21,6 +21,11 @@ spec:
         secretKeyRef:
           name: renovate-dragonfly-auth
           key: RENOVATE_REDIS_URL
+    - name: GITHUB_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: renovate-secret
+          key: RENOVATE_TOKEN
     - name: RENOVATE_REPOSITORY_CACHE
       value: enabled
     - name: RENOVATE_REPOSITORY_CACHE_TYPE
@@ -30,7 +35,7 @@ spec:
     - name: RENOVATE_ALLOWED_UNSAFE_EXECUTIONS
       value: '["mise"]'
     - name: RENOVATE_ALLOWED_COMMANDS
-      value: '["^go run \\./scripts/sync-argocd-gitops-engine\\.go$","^mise lock --yes github:sholdee/drydock$"]'
+      value: '["^go run \\./scripts/sync-argocd-gitops-engine\\.go$","^mise lock --yes$"]'
     - name: AWS_REGION
       value: garage
     - name: AWS_ENDPOINT_URL

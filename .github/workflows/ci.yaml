@@ -19,7 +19,7 @@ jobs:
     outputs:
       authorized: ${{ steps.author.outputs.authorized }}
       gitops: ${{ steps.paths.outputs.gitops }}
-      drydock-toolchain: ${{ steps.paths.outputs.drydock-toolchain }}
+      mise-toolchain: ${{ steps.paths.outputs.mise-toolchain }}
       renovate: ${{ steps.paths.outputs.renovate }}
     steps:
       - name: Check PR author
@@ -48,7 +48,7 @@ jobs:
               - '.github/workflows/drydock-gitops.yml'
               - 'apps/**'
               - 'components/**'
-            drydock-toolchain:
+            mise-toolchain:
               - '.github/actions/setup-mise/action.yml'
               - 'mise.toml'
               - 'mise.lock'
@@ -61,21 +61,36 @@ jobs:
   bootstrap-test:
     uses: ./.github/workflows/bootstrap-test.yml
 
-  drydock-toolchain:
+  mise-toolchain:
     needs: detect
-    if: needs.detect.outputs.drydock-toolchain == 'true'
+    if: needs.detect.outputs.mise-toolchain == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
-      - name: Install drydock mise profile
+      - name: Setup mise
+        uses: jdx/mise-action@dba19683ed58901619b14f395a24841710cb4925 # v4
+        with:
+          install: false
+          cache: false
+          experimental: true
+          github_token: ${{ github.token }}
+
+      - name: Update mise binary
+        run: mise self-update --yes --no-plugins
+
+      - name: Verify mise lockfile is current
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mise lock --yes
+          git diff --exit-code -- mise.lock
+
+      - name: Install full locked mise toolchain
         uses: ./.github/actions/setup-mise
         with:
-          profile: drydock
-
-      - name: Verify drydock version
-        run: drydock version
+          profile: all
 
   renovate:
     needs: detect
@@ -109,20 +124,20 @@ jobs:
   gate:
     runs-on: ubuntu-latest
     if: always()
-    needs: [detect, validation, bootstrap-test, drydock-toolchain, renovate, drydock-gitops]
+    needs: [detect, validation, bootstrap-test, mise-toolchain, renovate, drydock-gitops]
     steps:
       - name: Evaluate results
         run: |
           DETECT="${{ needs.detect.result }}"
           VALIDATION="${{ needs.validation.result }}"
           BOOTSTRAP="${{ needs.bootstrap-test.result }}"
-          DRYDOCK_TOOLCHAIN="${{ needs.drydock-toolchain.result }}"
+          MISE_TOOLCHAIN="${{ needs.mise-toolchain.result }}"
           RENOVATE="${{ needs.renovate.result }}"
           DRYDOCK="${{ needs.drydock-gitops.result }}"
 
-          echo "detect=$DETECT validation=$VALIDATION bootstrap-test=$BOOTSTRAP drydock-toolchain=$DRYDOCK_TOOLCHAIN renovate=$RENOVATE drydock-gitops=$DRYDOCK"
+          echo "detect=$DETECT validation=$VALIDATION bootstrap-test=$BOOTSTRAP mise-toolchain=$MISE_TOOLCHAIN renovate=$RENOVATE drydock-gitops=$DRYDOCK"
 
-          if [[ "$DETECT" == "failure" || "$VALIDATION" == "failure" || "$BOOTSTRAP" == "failure" || "$DRYDOCK_TOOLCHAIN" == "failure" || "$RENOVATE" == "failure" || "$DRYDOCK" == "failure" ]]; then
+          if [[ "$DETECT" == "failure" || "$VALIDATION" == "failure" || "$BOOTSTRAP" == "failure" || "$MISE_TOOLCHAIN" == "failure" || "$RENOVATE" == "failure" || "$DRYDOCK" == "failure" ]]; then
             echo "CI failed"
             exit 1
           fi
