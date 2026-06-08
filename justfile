@@ -759,8 +759,16 @@ lima-apps-fresh:
 bootstrap-audit:
     ./hack/bootstrap/bootstrap.sh --audit-only
 
+# Run shellcheck for bootstrap scripts and tests.
+[group('bootstrap')]
+bootstrap-shellcheck:
+    mise exec -- hack/bootstrap/tests/bootstrap-test.sh shellcheck
+
+# Run offline bootstrap parsing/rendering tests.
+[group('bootstrap')]
+bootstrap-bats:
+    mise exec -- hack/bootstrap/tests/bootstrap-test.sh bats
+
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 [group('bootstrap')]
-bootstrap-test:
-    mise exec -- shellcheck -x hack/bootstrap/bootstrap.sh hack/bootstrap/lib/*.sh hack/bootstrap/phases/*.sh hack/bootstrap/tests/bats/*.bats hack/bootstrap/tests/helpers/*.bash hack/bootstrap/lima/*.sh hack/bootstrap/ansible/*.sh hack/bootstrap/ansible/lib/*.sh hack/bootstrap/nodes/*.sh hack/bootstrap/nodes/lib/*.sh
-    mise exec -- bats hack/bootstrap/tests/bats
+bootstrap-test: bootstrap-shellcheck bootstrap-bats
