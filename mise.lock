@@ -201,20 +201,20 @@ url = "https://github.com/jqlang/jq/releases/download/jq-1.8.1/jq-macos-arm64"
 provenance = "github-attestations"
 
 [[tools.jsonschema]]
-version = "15.8.0"
+version = "15.9.0"
 backend = "aqua:sourcemeta/jsonschema"
 
 [tools.jsonschema."platforms.linux-arm64"]
-checksum = "sha256:8ba0698ecaf516b3f8463e62a0e94744aa511a2eac3e64ecd32dfa33f226eb84"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.8.0/jsonschema-15.8.0-linux-arm64.zip"
+checksum = "sha256:1d8d632e71c530cdb0892921fe0a7cbcef470aca015a02d747ea375749810fd5"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.9.0/jsonschema-15.9.0-linux-arm64.zip"
 
 [tools.jsonschema."platforms.linux-x64"]
-checksum = "sha256:764f93ad8189bd2890893a0e8a29fe0b4d8f818ec25a0bc588cd8c2ff00bfd92"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.8.0/jsonschema-15.8.0-linux-x86_64.zip"
+checksum = "sha256:631bcc2517b75deb032c96d0cbc5f5db0c4dc6a732dd3d949646b2a198ca35d7"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.9.0/jsonschema-15.9.0-linux-x86_64.zip"
 
 [tools.jsonschema."platforms.macos-arm64"]
-checksum = "sha256:f009a51464f67116b77b50a142f6aa0c178e686dcaa587113ef5279590e59467"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.8.0/jsonschema-15.8.0-darwin-arm64.zip"
+checksum = "sha256:82ba197cdfc0d2a09b3f2c5fff8779108300f1bec3b044de9d600f7a1d295aad"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v15.9.0/jsonschema-15.9.0-darwin-arm64.zip"
 
 [[tools.just]]
 version = "1.51.0"
