@@ -30,8 +30,10 @@ spec:
       value: enabled
     - name: RENOVATE_REPOSITORY_CACHE_TYPE
       value: "s3://renovate-cache"
+    - name: RENOVATE_SECRETS
+      value: '{"MISE_GITHUB_TOKEN":"$(GITHUB_TOKEN)"}'
     - name: RENOVATE_CUSTOM_ENV_VARIABLES
-      value: '{"MISE_TRUSTED_CONFIG_PATHS":"/tmp/repos/github/sholdee"}'
+      value: '{"MISE_TRUSTED_CONFIG_PATHS":"/tmp/repos/github/sholdee","MISE_GITHUB_TOKEN":"{{ secrets.MISE_GITHUB_TOKEN }}"}'
     - name: RENOVATE_ALLOWED_UNSAFE_EXECUTIONS
       value: '["mise"]'
     - name: RENOVATE_ALLOWED_COMMANDS
