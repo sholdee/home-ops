@@ -340,7 +340,7 @@ spec:
   source:
     chart: snapshot-controller
     repoURL: ghcr.io/piraeusdatastore/helm-charts
-    targetRevision: 5.0.4
+    targetRevision: 5.1.0
     helm:
       releaseName: snapshot-controller
       valuesObject:
