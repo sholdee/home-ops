@@ -8,7 +8,7 @@ metadata:
     app: dragonfly
 spec:
   replicas: 2
-  image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0@sha256:ebe131bf4f36aa30702433ffa0f1258a75b16e5ef36dc5daa12c52b0bf474bc5
+  image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.39.0@sha256:0fa01a2b929e704c7a9300d23e7f52002ebd39e90996fb8bb63826aed92fa06f
   imagePullPolicy: IfNotPresent
   args:
     - --maxmemory=256mb
