@@ -14,6 +14,7 @@ prometheus:
   prometheusSpec:
     replicas: 2
     image:
+      # renovate: datasource=docker depName=ghcr.io/deckhouse/prompp digest=sha256:31b2b76059cc9eab4e62445d1c8c4913b9e16939dc88590b0e270fa9825b4a76
       registry: ghcr.io
       repository: deckhouse/prompp
       tag: "0.8.0"
