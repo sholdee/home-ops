@@ -14,10 +14,10 @@ prometheus:
   prometheusSpec:
     replicas: 2
     image:
-      registry: docker.io
-      repository: sholdee/prompp
-      tag: "0.7.10-jemalloc-aarch64-fix-arm64"
-      sha: df1285d2da16952348de8b094f5332cb68b8241399941b6c2c7c3dc03b284481
+      registry: ghcr.io
+      repository: deckhouse/prompp
+      tag: "0.8.0"
+      sha: 31b2b76059cc9eab4e62445d1c8c4913b9e16939dc88590b0e270fa9825b4a76
       pullPolicy: IfNotPresent
     version: v3.11.3
     serviceMonitorSelectorNilUsesHelmValues: false
