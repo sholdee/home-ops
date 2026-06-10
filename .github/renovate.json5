@@ -69,6 +69,13 @@
       automerge: true,
     },
     {
+      description: "Use the custom manager for Prom++ tag and kube-prometheus-stack sha",
+      matchManagers: ["helm-values"],
+      matchFileNames: ["apps/monitoring/values.yaml"],
+      matchPackageNames: ["ghcr.io/deckhouse/prompp", "deckhouse/prompp"],
+      enabled: false,
+    },
+    {
       description: "Exclude apps with Recreate strategy and no health probes from automerge",
       matchDatasources: ["docker"],
       matchPackageNames: ["/home-assistant/", "/appdaemon/", "/goofball222\/unifi/"],
@@ -128,6 +135,18 @@
       depNameTemplate: "{{depName}}",
       versioningTemplate: "docker",
       datasourceTemplate: "docker",
+    },
+    {
+      customType: "regex",
+      description: ["Process Prom++ image tag and kube-prometheus-stack sha"],
+      managerFilePatterns: ["/^apps/monitoring/values\\.ya?ml$/"],
+      matchStrings: [
+        '(?<indentation>[ \\t]*)# renovate: datasource=docker depName=ghcr\\.io/deckhouse/prompp digest=(?<currentDigest>sha256:[a-f0-9]{64})\\n\\s+registry: ghcr\\.io\\n\\s+repository: deckhouse/prompp\\n\\s+tag: "(?<currentValue>[^"]+)"\\n\\s+sha: [a-f0-9]{64}',
+      ],
+      depNameTemplate: "ghcr.io/deckhouse/prompp",
+      datasourceTemplate: "docker",
+      versioningTemplate: "docker",
+      autoReplaceStringTemplate: '{{{indentation}}}# renovate: datasource=docker depName=ghcr.io/deckhouse/prompp digest={{#if newDigest}}{{{newDigest}}}{{else}}{{{currentDigest}}}{{/if}}\n{{{indentation}}}registry: ghcr.io\n{{{indentation}}}repository: deckhouse/prompp\n{{{indentation}}}tag: "{{{newValue}}}"\n{{{indentation}}}sha: {{#if newDigest}}{{replace "^sha256:" "" newDigest}}{{else}}{{replace "^sha256:" "" currentDigest}}{{/if}}',
     },
     {
       customType: "regex",
