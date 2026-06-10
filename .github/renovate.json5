@@ -98,6 +98,12 @@
       enabled: false,
     },
     {
+      description: "Wait for mise Python standalone artifacts",
+      matchManagers: ["mise"],
+      matchPackageNames: ["python"],
+      minimumReleaseAge: "3 days",
+    },
+    {
       description: "Automerge mise-managed tool minor/patch updates",
       matchManagers: ["mise"],
       matchUpdateTypes: ["minor", "patch"],
