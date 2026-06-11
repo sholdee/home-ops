@@ -21,7 +21,7 @@ helm = "3.21.0"
 yq = "4.53.3"
 jq = "1.8.1"
 "aqua:sholdee/crd-schema-publisher" = "2026.609.12656"
-"github:sholdee/drydock[exe=drydock]" = "v0.1.20"
+"github:sholdee/drydock[exe=drydock]" = "v0.1.21"
 
 # Bootstrap, node lifecycle, and operator workflow CLIs.
 python = "3.14"
