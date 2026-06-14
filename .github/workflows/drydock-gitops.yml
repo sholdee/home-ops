@@ -48,6 +48,7 @@ jobs:
           install: "false"
           drydock-bin: drydock
           cache-mode: local
+          cache-path: ${{ runner.tool_cache }}/drydock-cache
           github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
@@ -153,3 +154,20 @@ jobs:
           message-id: "${{ github.event.pull_request.number }}/pull-results"
           message: |
             ${{ env.IMAGE_PULL_COMMENT }}
+
+      # Age out cache entries not used within the window. Source caches (Git,
+      # charts, remote Kustomize) have no automatic eviction, so this bounds
+      # their growth. The render cache is use-based LRU (and 512Mi-capped), so
+      # active renders stay fresh and only stale entries age out. Best-effort:
+      # never fails the job.
+      - name: Prune stale local caches
+        if: always()
+        continue-on-error: true
+        env:
+          CACHE_ROOT: ${{ runner.tool_cache }}/drydock-cache
+        run: |
+          drydock cache prune --older-than 720h --yes \
+            --git-cache-dir "${CACHE_ROOT}/git" \
+            --chart-cache-dir "${CACHE_ROOT}/charts" \
+            --remote-cache-dir "${CACHE_ROOT}/remotes" \
+            --render-cache-dir "${CACHE_ROOT}/renders"
