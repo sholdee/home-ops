@@ -13,17 +13,20 @@ on:
         required: false
 
 jobs:
+  # Render diff and the conditional image-pull verification run in one job on
+  # the persistent self-hosted runners. drydock keeps its render cache on local
+  # disk (cache-mode: local), so it warms across pull requests without
+  # actions/cache round-trips, and the image pull reads the rendered image list
+  # directly instead of via an artifact handoff.
   drydock-diff:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]
     permissions:
       contents: read
       pull-requests: write
       issues: write
-    outputs:
-      HAS_DIFF: ${{ steps.drydock.outputs.has-diff }}
-      HAS_IMAGES: ${{ steps.drydock.outputs.has-images }}
-      DIFF_ARTIFACT_NAME: ${{ steps.drydock.outputs.diff-artifact-name }}
-      IMAGE_ARTIFACT_NAME: ${{ steps.drydock.outputs.image-artifact-name }}
+    env:
+      HAS_BOT_APP_CLIENT_ID: ${{ secrets.BOT_APP_CLIENT_ID != '' }}
+      HAS_BOT_APP_ID: ${{ secrets.BOT_APP_ID != '' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -44,6 +47,7 @@ jobs:
           checkout: "false"
           install: "false"
           drydock-bin: drydock
+          cache-mode: local
           github-app-client-id: ${{ secrets.BOT_APP_CLIENT_ID }}
           github-app-id: ${{ secrets.BOT_APP_ID }}
           github-app-private-key: ${{ secrets.BOT_APP_PRIVATE_KEY }}
@@ -52,32 +56,10 @@ jobs:
             components/**
           comment-mode: diff
 
-  verify-new-images:
-    needs: drydock-diff
-    if: needs.drydock-diff.outputs.HAS_IMAGES == 'true'
-    runs-on: [self-hosted, Linux, ARM64, home-ops, image-pull]
-    permissions:
-      contents: read
-      pull-requests: write
-      issues: write
-    env:
-      HAS_BOT_APP_CLIENT_ID: ${{ secrets.BOT_APP_CLIENT_ID != '' }}
-      HAS_BOT_APP_ID: ${{ secrets.BOT_APP_ID != '' }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
-
-      - name: Download rendered image diff
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: ${{ needs.drydock-diff.outputs.IMAGE_ARTIFACT_NAME }}
-
-      - name: Install mise toolchain
-        uses: ./.github/actions/setup-mise
-        with:
-          profile: image
-
       - name: Attempt to pull images and verify platform
+        if: steps.drydock.outputs.has-images == 'true'
+        env:
+          IMAGES_FILE: ${{ steps.drydock.outputs.images-path }}
         run: |
           : > pull_results.txt
           PULL_FAILED=0
@@ -115,14 +97,14 @@ jobs:
             fi
 
             printf "%s\t%s\t%s\n" "${PULL_STATUS}" "${PLATFORM_STATUS}" "${IMAGE_FULL}" >> pull_results.txt
-          done < added-images.txt
+          done < "${IMAGES_FILE}"
 
           if [ "${PULL_FAILED}" -ne 0 ]; then
             exit 1
           fi
 
       - name: Format image pull status
-        if: always()
+        if: always() && steps.drydock.outputs.has-images == 'true'
         run: |
           if [ ! -s pull_results.txt ]; then
             echo "No image pull results were produced. Skipping PR comment."
@@ -140,7 +122,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Generate Token
-        if: always() && env.IMAGE_PULL_COMMENT != ''
+        if: always() && steps.drydock.outputs.has-images == 'true' && env.IMAGE_PULL_COMMENT != ''
           && env.HAS_BOT_APP_CLIENT_ID == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token-client
@@ -151,7 +133,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Generate Token from legacy App ID
-        if: always() && env.IMAGE_PULL_COMMENT != ''
+        if: always() && steps.drydock.outputs.has-images == 'true' && env.IMAGE_PULL_COMMENT != ''
           && env.HAS_BOT_APP_CLIENT_ID != 'true'
           && env.HAS_BOT_APP_ID == 'true'
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
@@ -163,7 +145,7 @@ jobs:
           permission-pull-requests: write
 
       - name: Add image pull comment
-        if: always() && env.IMAGE_PULL_COMMENT != ''
+        if: always() && steps.drydock.outputs.has-images == 'true' && env.IMAGE_PULL_COMMENT != ''
         continue-on-error: true
         uses: mshick/add-pr-comment@8e4927817251f1ff60c001f04568532b38e0b4a0 # v3.11
         with:
