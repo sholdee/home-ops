@@ -7,6 +7,12 @@ inputs:
   profile:
     description: Tool profile to install. One of all, validation, bootstrap-test, drydock, image, operator.
     default: all
+  cache:
+    description: >-
+      Restore and save the mise tools cache via actions/cache. Set to "false" on
+      persistent self-hosted runners, where the toolchain already persists on
+      local disk and the remote cache restore is redundant.
+    default: "true"
 
 runs:
   using: composite
@@ -55,6 +61,7 @@ runs:
 
     - name: Restore mise tools cache
       id: mise-cache
+      if: inputs.cache == 'true'
       uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |
@@ -101,7 +108,7 @@ runs:
         mise reshim
 
     - name: Save mise tools cache
-      if: steps.mise-cache.outputs.cache-hit != 'true'
+      if: inputs.cache == 'true' && steps.mise-cache.outputs.cache-hit != 'true'
       uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: |

@@ -39,6 +39,9 @@ jobs:
         uses: ./.github/actions/setup-mise
         with:
           profile: drydock
+          # Persistent self-hosted runners keep the toolchain on local disk, so
+          # the remote actions/cache restore is redundant; rely on local mise.
+          cache: "false"
 
       - name: Run drydock pull request validation
         id: drydock
