@@ -4,6 +4,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: AppProject
 metadata:
   name: k3s
+  namespace: argocd
 spec:
   clusterResourceWhitelist:
     - group: "*"
