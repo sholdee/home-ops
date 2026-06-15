@@ -43,6 +43,20 @@ jobs:
           # the remote actions/cache restore is redundant; rely on local mise.
           cache: "false"
 
+      # STOPGAP — remove once pinned to drydock pr-action >= v0.2.1. The v0.2.0
+      # fetch-base step updates refs/remotes/origin/<base> with a non-forced
+      # refspec. On these persistent runners a prior run leaves that ref at a
+      # stale, shallow tip, so the depth-1 fetch is rejected as non-fast-forward
+      # and every PR fails. Deleting the ref lets fetch-base recreate it fresh.
+      # Fixed upstream in drydock fetch-base.sh via a force ('+') refspec.
+      - name: Clear stale base remote-tracking ref (drydock fetch-base stopgap)
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          if [ -n "${BASE_REF}" ]; then
+            git update-ref -d "refs/remotes/origin/${BASE_REF}" 2>/dev/null || true
+          fi
+
       - name: Run drydock pull request validation
         id: drydock
         uses: sholdee/drydock/pr-action@45f1cb9d648370f27a791b1f019b7d093dd23969 # v0.2.0
