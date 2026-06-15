@@ -4,6 +4,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: cilium
+  namespace: argocd
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
@@ -109,6 +110,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: crd-schema-publisher
+  namespace: argocd
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
@@ -161,6 +163,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: dragonfly-operator
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
@@ -210,6 +213,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: grafana-operator
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
@@ -254,6 +258,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: longhorn
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
@@ -303,6 +308,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: reloader
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
@@ -330,6 +336,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: snapshot-controller
+  namespace: argocd
   annotations:
     argocd.argoproj.io/compare-options: ServerSideDiff=true
 spec:
@@ -379,6 +386,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: volsync
+  namespace: argocd
 spec:
   destination:
     name: in-cluster
