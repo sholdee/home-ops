@@ -65,9 +65,13 @@ home_ops_k3s_registry_mirrors:
   quay.io:
   registry.k8s.io:
 home_ops_remote_kubeconfig: /tmp/home-ops-kubeconfig
-home_ops_cilium_values_file: /tmp/home-ops-cilium-values.yaml
-home_ops_cilium_checksum_file: /var/lib/rancher/k3s/server/home-ops-cilium-bootstrap.sha256
 home_ops_cilium_rollout_timeout: 20m
+home_ops_repo_root: "{{ playbook_dir }}/../../../.."
+home_ops_drydock_cache: >-
+  {{
+    (lookup('ansible.builtin.env', 'XDG_CACHE_HOME') or (lookup('ansible.builtin.env', 'HOME') ~ '/.cache'))
+    ~ '/home-ops-bootstrap-drydock'
+  }}
 # Empty means derive the upstream etcdctl base version from the K3s release's
 # embedded Etcd version, such as K3s Etcd v3.6.7-k3s1 -> etcdctl v3.6.7.
 home_ops_etcdctl_version_override: ""

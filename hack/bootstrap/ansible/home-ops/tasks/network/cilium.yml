@@ -7,77 +7,67 @@
     group: root
     mode: "0755"
 
-- name: Check installed Cilium CLI version
-  ansible.builtin.command: cilium version
-  register: home_ops_cilium_cli_version
-  failed_when: false
+- name: Require drydock >= 0.2.1 on the controller
+  delegate_to: localhost
+  run_once: true
+  become: false
+  ansible.builtin.shell:
+    cmd: |
+      set -euo pipefail
+      v="$(mise x -- drydock version | awk '/^version:/{print $2}' | sed 's/^v//')"
+      [ "$(printf '%s\n%s\n' 0.2.1 "$v" | sort -V | head -n1)" = 0.2.1 ] || { echo "drydock >= v0.2.1 required, found v$v" >&2; exit 1; }
+    executable: /bin/bash
   changed_when: false
 
-- name: Download Cilium CLI stable version marker
-  ansible.builtin.get_url:
-    url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
-    dest: /tmp/home-ops-bootstrap/cilium-cli-stable.txt
-    owner: root
-    group: root
-    mode: "0644"
-  register: home_ops_cilium_cli_stable_download
-  until: home_ops_cilium_cli_stable_download is succeeded
-  retries: 5
-  delay: 10
-
-- name: Read Cilium CLI stable version
-  ansible.builtin.command: cat /tmp/home-ops-bootstrap/cilium-cli-stable.txt
-  register: home_ops_cilium_cli_stable
-  changed_when: false
-
-- name: Set Cilium CLI architecture
-  ansible.builtin.set_fact:
-    home_ops_cilium_cli_arch: "{{ 'arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64' }}"
-    home_ops_installed_cilium_cli_version: >-
-      {{-
-        home_ops_cilium_cli_version.stdout_lines
-        | default([])
-        | join(' ')
-        | regex_findall('cilium-cli: (v[0-9]+\.[0-9]+\.[0-9]+)')
-        | first
-        | default('')
-      -}}
-
-- name: Install or update Cilium CLI
-  when: home_ops_installed_cilium_cli_version != home_ops_cilium_cli_stable.stdout
+- name: Render cilium-bootstrap manifests with drydock (controller-side)
+  delegate_to: localhost
+  run_once: true
+  become: false
+  vars:
+    # drydock --discover-kustomize requires a repo-relative path, so render into
+    # the gitignored hack/bootstrap/.out tree under the repo root (not /tmp).
+    home_ops_cilium_render_rel: hack/bootstrap/.out/cilium-bootstrap-render
+    home_ops_cilium_render_abs: "{{ home_ops_repo_root }}/hack/bootstrap/.out/cilium-bootstrap-render"
   block:
-    - name: Download Cilium CLI archive and checksum
-      vars:
-        home_ops_cilium_cli_archive_name: "cilium-linux-{{ home_ops_cilium_cli_arch }}{{ item }}"
-        home_ops_cilium_cli_release_url: "https://github.com/cilium/cilium-cli/releases/download/{{ home_ops_cilium_cli_stable.stdout }}"
-      ansible.builtin.get_url:
-        url: "{{ home_ops_cilium_cli_release_url }}/{{ home_ops_cilium_cli_archive_name }}"
-        dest: "/tmp/home-ops-bootstrap/{{ home_ops_cilium_cli_archive_name }}"
-        owner: root
-        group: root
+    - name: Ensure the controller render dir exists
+      ansible.builtin.file:
+        path: "{{ home_ops_cilium_render_abs }}"
+        state: directory
+        mode: "0755"
+
+    - name: Ensure drydock cache dirs exist
+      ansible.builtin.file:
+        path: "{{ home_ops_drydock_cache }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop: [git, charts, remotes, render]
+
+    - name: Copy the cilium-bootstrap kustomization
+      ansible.builtin.copy:
+        src: "{{ home_ops_repo_root }}/hack/bootstrap/cilium-bootstrap/kustomization.yaml"
+        dest: "{{ home_ops_cilium_render_abs }}/kustomization.yaml"
         mode: "0644"
-      loop:
-        - .tar.gz
-        - .tar.gz.sha256sum
-      register: home_ops_cilium_cli_archive_download
-      until: home_ops_cilium_cli_archive_download is succeeded
-      retries: 5
-      delay: 10
 
-    - name: Verify Cilium CLI archive
-      ansible.builtin.shell: |
-        set -euo pipefail
-        cd /tmp/home-ops-bootstrap
-        sha256sum --check cilium-linux-{{ home_ops_cilium_cli_arch }}.tar.gz.sha256sum
-      args:
-        executable: /bin/bash
+    - name: Render the cilium-bootstrap Application (per-env values + injected version)
+      ansible.builtin.template:
+        src: cilium-bootstrap-application.yaml.j2
+        dest: "{{ home_ops_cilium_render_abs }}/application.yaml"
+        mode: "0644"
+
+    - name: Render cilium manifests with drydock
+      ansible.builtin.command:
+        cmd: >-
+          mise x -- drydock build app cilium-bootstrap
+          --path .
+          --discover-kustomize {{ home_ops_cilium_render_rel }}
+          --output yaml
+          --git-cache-dir {{ home_ops_drydock_cache }}/git
+          --chart-cache-dir {{ home_ops_drydock_cache }}/charts
+          --remote-cache-dir {{ home_ops_drydock_cache }}/remotes
+          --render-cache-dir {{ home_ops_drydock_cache }}/render
+        chdir: "{{ home_ops_repo_root }}"
+      register: home_ops_cilium_render
       changed_when: false
-
-    - name: Extract Cilium CLI
-      ansible.builtin.unarchive:
-        src: "/tmp/home-ops-bootstrap/cilium-linux-{{ home_ops_cilium_cli_arch }}.tar.gz"
-        dest: /usr/local/bin
-        remote_src: true
 
 - name: Check existing Cilium DaemonSet
   ansible.builtin.command: "{{ k3s_kubectl_binary }} -n kube-system get daemonset/cilium"
@@ -85,44 +75,42 @@
   failed_when: false
   changed_when: false
 
-- name: Render Cilium bootstrap values
-  ansible.builtin.template:
-    src: templates/cilium-values.yaml.j2
-    dest: "{{ home_ops_cilium_values_file }}"
-    owner: root
-    group: root
-    mode: "0644"
-
-- name: Calculate Cilium bootstrap checksum
-  ansible.builtin.shell: |
-    set -euo pipefail
-    {
-      printf '%s\n' {{ cilium_tag | quote }}
-      cat {{ home_ops_cilium_values_file | quote }}
-    } | sha256sum | awk '{print $1}'
-  args:
-    executable: /bin/bash
-  register: home_ops_cilium_checksum
-  changed_when: false
-
 - name: Install bootstrap Cilium when absent
-  ansible.builtin.command: >-
-    cilium install
-    --version {{ cilium_tag }}
-    --values {{ home_ops_cilium_values_file }}
-  environment:
-    KUBECONFIG: "{{ home_ops_k3s_kubeconfig }}"
-  register: home_ops_cilium_install
-  changed_when: home_ops_cilium_install.rc == 0
   when: home_ops_cilium_daemonset.rc != 0
+  block:
+    - name: Write rendered cilium manifests to the node
+      ansible.builtin.copy:
+        content: "{{ home_ops_cilium_render.stdout }}\n"
+        dest: /tmp/home-ops-bootstrap/cilium-bootstrap.yaml
+        owner: root
+        group: root
+        mode: "0600"
 
-- name: Persist Cilium bootstrap checksum
-  ansible.builtin.copy:
-    content: "{{ home_ops_cilium_checksum.stdout }}\n"
-    dest: "{{ home_ops_cilium_checksum_file }}"
-    owner: root
-    group: root
-    mode: "0644"
+    # cilium 1.19 renders RBAC scoped to the cilium-secrets namespace, but a
+    # single kubectl apply does not guarantee the Namespace is created before the
+    # resources in it. Pre-create it server-side with the same field manager so
+    # the bundle applies in one pass and ArgoCD adopts it cleanly later. This
+    # mirrors bootstrap.sh's ensure_namespace ordering helper.
+    - name: Pre-create the cilium-secrets namespace
+      ansible.builtin.command:
+        cmd: "{{ k3s_kubectl_binary }} apply --server-side --field-manager argocd-controller -f -"
+        stdin: |
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cilium-secrets
+      environment:
+        KUBECONFIG: "{{ home_ops_k3s_kubeconfig }}"
+      register: home_ops_cilium_secrets_ns
+      changed_when: home_ops_cilium_secrets_ns.rc == 0
+
+    - name: Apply rendered cilium manifests
+      ansible.builtin.command:
+        cmd: "{{ k3s_kubectl_binary }} apply --server-side --field-manager argocd-controller -f /tmp/home-ops-bootstrap/cilium-bootstrap.yaml"
+      environment:
+        KUBECONFIG: "{{ home_ops_k3s_kubeconfig }}"
+      register: home_ops_cilium_apply
+      changed_when: home_ops_cilium_apply.rc == 0
 
 - name: Wait for Cilium operator
   ansible.builtin.command: >-

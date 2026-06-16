@@ -77,7 +77,7 @@ the repository:
 7. Narrow ArgoCD dependencies.
 8. Canonical `apps/argocd` render.
 9. ArgoCD readiness gates.
-10. Helm takeover cleanup and audit.
+10. Audit.
 
 Normal workloads should stay out of `hack/bootstrap/` unless they are required
 before ArgoCD can take over.

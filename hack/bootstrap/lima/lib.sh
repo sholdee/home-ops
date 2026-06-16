@@ -84,13 +84,29 @@ lima_is_server_instance() {
   return 1
 }
 
+# Lima stores each instance as a directory under LIMA_HOME (default ~/.lima), and
+# that directory is the signal `limactl create` itself trips on. Use it as the
+# source of truth for existence and enumeration: `limactl list` has proven flaky
+# here, intermittently returning empty output (with its errors swallowed by
+# `2>/dev/null`), which made delete.sh skip running instances and report "no
+# instances found" while create.sh then collided on the still-present dir.
+lima_home_dir() {
+  printf '%s\n' "${LIMA_HOME:-${HOME}/.lima}"
+}
+
 lima_cluster_instance_names() {
-  limactl list --format='{{.Name}}' 2>/dev/null |
-    grep -E "^${LIMA_CLUSTER_NAME}-(server|agent)-[0-9]+$" || true
+  local home dir name
+  home="$(lima_home_dir)"
+  [[ -d "$home" ]] || return 0
+  for dir in "$home/${LIMA_CLUSTER_NAME}"-server-* "$home/${LIMA_CLUSTER_NAME}"-agent-*; do
+    [[ -d "$dir" ]] || continue
+    name="$(basename "$dir")"
+    [[ "$name" =~ ^${LIMA_CLUSTER_NAME}-(server|agent)-[0-9]+$ ]] && printf '%s\n' "$name"
+  done
 }
 
 lima_instance_exists() {
-  limactl list --format='{{.Name}}' 2>/dev/null | grep -Fxq "$1"
+  [[ -d "$(lima_home_dir)/$1" ]]
 }
 
 lima_install_guest_prereqs() {

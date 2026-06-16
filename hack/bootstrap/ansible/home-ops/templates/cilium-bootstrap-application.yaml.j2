@@ -1,0 +1,52 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cilium-bootstrap
+  namespace: argocd
+spec:
+  # Matches the GitOps cilium Application's project (apps/argocd/manifests/apps.yaml).
+  project: k3s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  source:
+    repoURL: https://helm.cilium.io/
+    chart: cilium
+    # cilium_tag is GitOps-derived (lib/repo-facts.sh reads the cilium app's
+    # targetRevision); strip the leading "v" for the Helm chart version.
+    targetRevision: "{{ cilium_tag | regex_replace('^v', '') }}"
+    helm:
+      releaseName: cilium
+      valuesObject:
+        operator:
+          replicas: 1
+{% if cilium_iface != 'auto' %}
+        devices: "{{ cilium_iface }}"
+{% endif %}
+        ipam:
+          operator:
+            clusterPoolIPv4PodCIDRList:
+              - "{{ cluster_cidr }}"
+{% if cilium_mode == "native" or (cilium_bgp | bool and (cilium_export_pod_cidr | default('false') | string) != 'false') %}
+        ipv4NativeRoutingCIDR: "{{ cluster_cidr }}"
+{% endif %}
+        k8sServiceHost: "127.0.0.1"
+        k8sServicePort: "6444"
+        routingMode: "{{ cilium_mode }}"
+        autoDirectNodeRoutes: {{ (cilium_mode == "native") | ternary('true', 'false') }}
+        kubeProxyReplacement: {{ (kube_proxy_replacement | bool) | ternary('true', 'false') }}
+        bpf:
+          masquerade: {{ (enable_bpf_masquerade | bool) | ternary('true', 'false') }}
+{% if cilium_datapath_mode | default('') | length > 0 %}
+          datapathMode: "{{ cilium_datapath_mode }}"
+{% endif %}
+        bgpControlPlane:
+          enabled: {{ (cilium_bgp | default(false) | bool) | ternary('true', 'false') }}
+        hubble:
+          enabled: false
+{% if kube_proxy_replacement is not false %}
+        loadBalancer:
+          algorithm: "{{ bpf_lb_algorithm }}"
+          mode: "{{ bpf_lb_mode }}"
+{% endif %}

@@ -76,8 +76,7 @@ Phase order:
 8. `argocd-dependencies`
 9. `argocd`
 10. `wait-argocd`
-11. `takeover-cleanup`
-12. `audit`
+11. `audit`
 
 Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
 `docs/cluster-operations.md`.

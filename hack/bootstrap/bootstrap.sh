@@ -22,7 +22,6 @@ PHASES=(
   argocd-dependencies
   argocd
   wait-argocd
-  takeover-cleanup
   audit
 )
 
