@@ -21,12 +21,17 @@
 - name: Render cilium-bootstrap manifests with drydock (controller-side)
   delegate_to: localhost
   run_once: true
+  vars:
+    # drydock --discover-kustomize requires a repo-relative path, so render into
+    # the gitignored hack/bootstrap/.out tree under the repo root (not /tmp).
+    home_ops_cilium_render_rel: hack/bootstrap/.out/cilium-bootstrap-render
+    home_ops_cilium_render_abs: "{{ home_ops_repo_root }}/hack/bootstrap/.out/cilium-bootstrap-render"
   block:
-    - name: Create controller render temp dir
-      ansible.builtin.tempfile:
+    - name: Ensure the controller render dir exists
+      ansible.builtin.file:
+        path: "{{ home_ops_cilium_render_abs }}"
         state: directory
-        suffix: cilium-bootstrap
-      register: home_ops_cilium_render_dir
+        mode: "0755"
 
     - name: Ensure drydock cache dirs exist
       ansible.builtin.file:
@@ -38,21 +43,21 @@
     - name: Copy the cilium-bootstrap kustomization
       ansible.builtin.copy:
         src: "{{ home_ops_repo_root }}/hack/bootstrap/cilium-bootstrap/kustomization.yaml"
-        dest: "{{ home_ops_cilium_render_dir.path }}/kustomization.yaml"
+        dest: "{{ home_ops_cilium_render_abs }}/kustomization.yaml"
         mode: "0644"
 
     - name: Render the cilium-bootstrap Application (per-env values + injected version)
       ansible.builtin.template:
         src: cilium-bootstrap-application.yaml.j2
-        dest: "{{ home_ops_cilium_render_dir.path }}/application.yaml"
+        dest: "{{ home_ops_cilium_render_abs }}/application.yaml"
         mode: "0644"
 
     - name: Render cilium manifests with drydock
       ansible.builtin.command:
         cmd: >-
           mise x -- drydock build app cilium-bootstrap
-          --path {{ home_ops_repo_root }}
-          --discover-kustomize {{ home_ops_cilium_render_dir.path }}
+          --path .
+          --discover-kustomize {{ home_ops_cilium_render_rel }}
           --output yaml
           --git-cache-dir {{ home_ops_drydock_cache }}/git
           --chart-cache-dir {{ home_ops_drydock_cache }}/charts
