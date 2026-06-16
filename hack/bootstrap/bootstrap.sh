@@ -236,6 +236,15 @@ main() {
   setup_report_dir
   exec > >(tee -a "${REPORT_DIR}/bootstrap.log") 2>&1
 
+  # Persistent drydock cache root for offline-capable, reproducible renders.
+  : "${BOOTSTRAP_DRYDOCK_CACHE:=${BOOTSTRAP_DIR}/.out/drydock-cache}"
+  export BOOTSTRAP_DRYDOCK_CACHE
+  mkdir -p \
+    "${BOOTSTRAP_DRYDOCK_CACHE}/git" \
+    "${BOOTSTRAP_DRYDOCK_CACHE}/charts" \
+    "${BOOTSTRAP_DRYDOCK_CACHE}/remotes" \
+    "${BOOTSTRAP_DRYDOCK_CACHE}/render"
+
   export BOOTSTRAP_DIR REPO_ROOT TMP_DIR REPORT_DIR
   export KUBECONFIG_PATH KUBE_CONTEXT OP_VAULT OP_ITEM OP_FIELD BOOTSTRAP_OP_ACCOUNT SEED_SECRET_STDIN FIELD_MANAGER
   export BOOTSTRAP_PROFILE

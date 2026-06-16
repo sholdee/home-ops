@@ -19,6 +19,22 @@ render_kustomize_app() {
   kustomize build --enable-helm "${REPO_ROOT}/${app_path}"
 }
 
+# Render an ArgoCD Application's desired state with drydock, apply-ready.
+# Mirrors what ArgoCD will reconcile to (hooks stripped, tracking-id stamped),
+# which the hand-rolled renders did not. Secrets and CRDs are intentionally
+# emitted (no --skip-*): the bootstrap applies chart-templated Secrets (e.g.
+# webhook CAs) and needs CRDs present.
+drydock_app() {
+  local app_name="$1"
+  drydock build app "${app_name}" \
+    --path "${REPO_ROOT}" \
+    --output yaml \
+    --git-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/git" \
+    --chart-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/charts" \
+    --remote-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/remotes" \
+    --render-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/render"
+}
+
 is_oci_repo() {
   local repo="$1"
   [[ "$repo" == oci://* || "$repo" == ghcr.io/* ]]

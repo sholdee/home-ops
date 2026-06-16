@@ -56,6 +56,29 @@ EOF
   assert_file_contains "$log_file" 'apply --server-side --force-conflicts --dry-run=server --field-manager=argocd-controller -f -'
 }
 
+@test "drydock_app builds the expected drydock command" {
+  cat > "${tmp}/drydock" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "$*"
+exit 0
+EOF
+  chmod +x "${tmp}/drydock"
+
+  run env PATH="${tmp}:${PATH}" \
+    REPO_ROOT="/repo" \
+    BOOTSTRAP_DRYDOCK_CACHE="/cache" \
+    bash -c "source '${ROOT}/hack/bootstrap/lib/render.sh'; drydock_app argocd"
+  assert_success
+  assert_output_contains "build app argocd"
+  assert_output_contains "--output yaml"
+  assert_output_contains "--path /repo"
+  assert_output_contains "--git-cache-dir /cache/git"
+  assert_output_contains "--chart-cache-dir /cache/charts"
+  assert_output_contains "--remote-cache-dir /cache/remotes"
+  assert_output_contains "--render-cache-dir /cache/render"
+}
+
 @test "render helpers normalize Helm chart references and repo args" {
   run env REPO_ROOT="$ROOT" \
     bash -c "source '${ROOT}/hack/bootstrap/lib/render.sh'; helm_chart_ref oci://ghcr.io/example chart"
