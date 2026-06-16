@@ -114,7 +114,7 @@ apply_k3s_apps_appset() {
   local stage="${1:-full}"
   render="${TMP_DIR}/argocd-k3s-apps-render.yaml"
   appset="${TMP_DIR}/argocd-k3s-apps.yaml"
-  render_kustomize_app apps/argocd > "$render"
+  drydock_app argocd > "$render"
   yq '
     select(
       .apiVersion == "argoproj.io/v1alpha1" and
