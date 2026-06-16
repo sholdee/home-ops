@@ -79,6 +79,37 @@ EOF
   assert_output_contains "--render-cache-dir /cache/render"
 }
 
+@test "require_drydock_version rejects a drydock older than the required floor" {
+  cat > "${tmp}/drydock" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'version: v0.2.0\ncommit: deadbeef\n'
+exit 0
+EOF
+  chmod +x "${tmp}/drydock"
+
+  run env PATH="${tmp}:${PATH}" \
+    bash -c "source '${ROOT}/hack/bootstrap/lib/common.sh'; require_drydock_version 0.2.1"
+  assert_failure
+  assert_output_contains "drydock >= v0.2.1 required"
+}
+
+@test "require_drydock_version accepts the required version and newer" {
+  for ver in v0.2.1 v0.3.0 v0.10.0; do
+    cat > "${tmp}/drydock" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'version: ${ver}\ncommit: deadbeef\n'
+exit 0
+EOF
+    chmod +x "${tmp}/drydock"
+
+    run env PATH="${tmp}:${PATH}" \
+      bash -c "source '${ROOT}/hack/bootstrap/lib/common.sh'; require_drydock_version 0.2.1"
+    assert_success
+  done
+}
+
 @test "render helpers normalize Helm chart references and repo args" {
   run env REPO_ROOT="$ROOT" \
     bash -c "source '${ROOT}/hack/bootstrap/lib/render.sh'; helm_chart_ref oci://ghcr.io/example chart"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-tools=(bash kubectl helm kustomize yq jq git)
+tools=(bash kubectl helm kustomize yq jq git drydock)
 if ! bool "$SEED_SECRET_STDIN"; then
   tools+=(op)
 fi
@@ -8,6 +8,10 @@ fi
 for tool in "${tools[@]}"; do
   require_tool "$tool"
 done
+
+# drydock renders every bootstrap app; require the version with the cert-manager
+# leaderelection fix (#152) and the capability/scope/serialization hardening.
+require_drydock_version 0.2.1
 
 for path in \
   apps/argocd/kustomization.yaml \
