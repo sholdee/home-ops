@@ -18,22 +18,6 @@
     executable: /bin/bash
   changed_when: false
 
-- name: Read cilium chart version and project from the GitOps app
-  delegate_to: localhost
-  run_once: true
-  ansible.builtin.command:
-    cmd: >-
-      yq -r 'select(.kind == "Application" and .metadata.name == "cilium") |
-      [.spec.source.targetRevision, .spec.project] | join(" ")'
-      {{ home_ops_repo_root }}/apps/argocd/manifests/apps.yaml
-  register: home_ops_cilium_gitops
-  changed_when: false
-
-- name: Set cilium version and project facts
-  ansible.builtin.set_fact:
-    cilium_version: "{{ home_ops_cilium_gitops.stdout.split(' ')[0] }}"
-    cilium_app_project: "{{ home_ops_cilium_gitops.stdout.split(' ')[1] }}"
-
 - name: Render cilium-bootstrap manifests with drydock (controller-side)
   delegate_to: localhost
   run_once: true

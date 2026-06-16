@@ -5,14 +5,17 @@ metadata:
   name: cilium-bootstrap
   namespace: argocd
 spec:
-  project: "{{ cilium_app_project }}"
+  # Matches the GitOps cilium Application's project (apps/argocd/manifests/apps.yaml).
+  project: k3s
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
   source:
     repoURL: https://helm.cilium.io/
     chart: cilium
-    targetRevision: "{{ cilium_version }}"
+    # cilium_tag is GitOps-derived (lib/repo-facts.sh reads the cilium app's
+    # targetRevision); strip the leading "v" for the Helm chart version.
+    targetRevision: "{{ cilium_tag | regex_replace('^v', '') }}"
     helm:
       releaseName: cilium
       valuesObject:
