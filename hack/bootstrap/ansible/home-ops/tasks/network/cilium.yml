@@ -10,6 +10,7 @@
 - name: Require drydock >= 0.2.1 on the controller
   delegate_to: localhost
   run_once: true
+  become: false
   ansible.builtin.shell:
     cmd: |
       set -euo pipefail
@@ -21,6 +22,7 @@
 - name: Render cilium-bootstrap manifests with drydock (controller-side)
   delegate_to: localhost
   run_once: true
+  become: false
   vars:
     # drydock --discover-kustomize requires a repo-relative path, so render into
     # the gitignored hack/bootstrap/.out tree under the repo root (not /tmp).
