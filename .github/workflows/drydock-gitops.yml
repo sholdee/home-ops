@@ -59,7 +59,7 @@ jobs:
 
       - name: Run drydock pull request validation
         id: drydock
-        uses: sholdee/drydock/pr-action@45f1cb9d648370f27a791b1f019b7d093dd23969 # v0.2.0
+        uses: sholdee/drydock/pr-action@5205bad7e816d3ae060b53b136779848c12a15c8 # v0.2.1
         with:
           checkout: "false"
           install: "false"
