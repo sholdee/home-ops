@@ -3,17 +3,24 @@
 namespace="$(app_value dragonfly-operator '.spec.destination.namespace')"
 ensure_namespace "$namespace"
 
-values="${TMP_DIR}/dragonfly-operator-values.yaml"
 render="${TMP_DIR}/dragonfly-operator.yaml"
-write_app_values dragonfly-operator "$values"
+drydock_app dragonfly-operator > "$render"
 if [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
-  log "foundation profile: disabling Dragonfly operator monitoring and dashboard resources"
+  log "foundation profile: dropping Dragonfly operator monitoring and dashboard resources"
+  # drydock renders the chart's monitoring/dashboard resources (gated on chart values,
+  # not cluster capability), but the foundation profile has no Prometheus/Grafana
+  # operator. Drop the exact set helm omits when serviceMonitor.enabled=false and
+  # grafanaDashboard.enabled=false: the ServiceMonitor, GrafanaDashboard, the dashboard
+  # ConfigMap, and the metrics-reader ClusterRoleBinding.
   yq -i '
-    .serviceMonitor.enabled = false |
-    .grafanaDashboard.enabled = false
-  ' "$values"
+    select(
+      .kind != "ServiceMonitor" and
+      .kind != "GrafanaDashboard" and
+      (.kind != "ConfigMap" or .metadata.name != "dashboard-dragonfly-operator-grafana-dashboard") and
+      (.kind != "ClusterRoleBinding" or .metadata.name != "dragonfly-operator-metrics-reader-clusterrolebinding")
+    )
+  ' "$render"
 fi
-helm_template_app dragonfly-operator "$values" > "$render"
 apply_file "$render"
 save_render_if_safe dragonfly-operator "$render"
 
