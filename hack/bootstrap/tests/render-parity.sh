@@ -27,13 +27,10 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
 GOLDEN_DIR="${SCRIPT_DIR}/render-parity"
 
-# Stable drydock cache dir.
-# The render-cache-dir MUST be outside the repository root (drydock requirement).
-# Default to ~/.cache/home-ops-drydock so all four sub-dirs are outside the repo.
-# bootstrap.sh sets BOOTSTRAP_DRYDOCK_CACHE to hack/bootstrap/.out/drydock-cache which
-# is ALSO outside the repo (checked: drydock only rejects render inside the worktree).
-# When run standalone (not via bootstrap.sh), fall back to ~/.cache/home-ops-drydock.
-BOOTSTRAP_DRYDOCK_CACHE="${BOOTSTRAP_DRYDOCK_CACHE:-${HOME}/.cache/home-ops-drydock}"
+# Stable drydock cache dir. The render-cache-dir MUST be outside the repository
+# root (drydock rejects an in-repo render cache). Reuse BOOTSTRAP_DRYDOCK_CACHE if
+# bootstrap.sh exported it; otherwise default to the same out-of-repo XDG location.
+BOOTSTRAP_DRYDOCK_CACHE="${BOOTSTRAP_DRYDOCK_CACHE:-${XDG_CACHE_HOME:-${HOME}/.cache}/home-ops-bootstrap-drydock}"
 export BOOTSTRAP_DRYDOCK_CACHE
 mkdir -p \
   "${BOOTSTRAP_DRYDOCK_CACHE}/git" \

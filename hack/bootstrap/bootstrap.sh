@@ -237,7 +237,9 @@ main() {
   exec > >(tee -a "${REPORT_DIR}/bootstrap.log") 2>&1
 
   # Persistent drydock cache root for offline-capable, reproducible renders.
-  : "${BOOTSTRAP_DRYDOCK_CACHE:=${BOOTSTRAP_DIR}/.out/drydock-cache}"
+  # drydock REQUIRES its render cache dir to live OUTSIDE the repository root, so
+  # default under the XDG cache (overridable via BOOTSTRAP_DRYDOCK_CACHE) -- not .out/.
+  : "${BOOTSTRAP_DRYDOCK_CACHE:=${XDG_CACHE_HOME:-${HOME}/.cache}/home-ops-bootstrap-drydock}"
   export BOOTSTRAP_DRYDOCK_CACHE
   mkdir -p \
     "${BOOTSTRAP_DRYDOCK_CACHE}/git" \
