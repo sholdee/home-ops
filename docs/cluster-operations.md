@@ -738,7 +738,6 @@ just bootstrap-phase dragonfly-operator
 just bootstrap-phase argocd-dependencies
 just bootstrap-phase argocd
 just bootstrap-phase wait-argocd
-just bootstrap-phase takeover-cleanup
 ```
 
 Managed-field conflicts in live dry-run are drift to investigate. They are not
@@ -808,8 +807,7 @@ Bootstrap phases run in this order:
 8. `argocd-dependencies`
 9. `argocd`
 10. `wait-argocd`
-11. `takeover-cleanup`
-12. `audit`
+11. `audit`
 
 For live phase debugging, use:
 
