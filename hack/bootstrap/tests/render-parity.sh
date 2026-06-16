@@ -49,7 +49,7 @@ source "${REPO_ROOT}/hack/bootstrap/lib/render.sh"
 #   - Cluster-scoped: no namespace semantically.
 #   - ServiceMonitor: helm emits without .metadata.namespace; ArgoCD injects it.
 # Extend here if future renders surface additional namespace-injection divergences.
-CLUSTER_SCOPED_KINDS=(
+NAMESPACE_TOLERANT_KINDS=(
   APIService
   ClusterIssuer
   ClusterRole
@@ -66,21 +66,21 @@ CLUSTER_SCOPED_KINDS=(
   ValidatingWebhookConfiguration
 )
 
-# _cluster_scoped_pattern — emit an awk-compatible alternation of cluster-scoped kind names.
-_cluster_scoped_pattern() {
+# _namespace_tolerant_pattern — emit an awk-compatible alternation of the kind names.
+_namespace_tolerant_pattern() {
   local pattern
-  pattern="$(printf '%s|' "${CLUSTER_SCOPED_KINDS[@]}")"
+  pattern="$(printf '%s|' "${NAMESPACE_TOLERANT_KINDS[@]}")"
   printf '%s' "${pattern%|}"
 }
 
-# blank_cluster_scoped_namespaces <kind-pattern>
+# blank_tolerant_namespaces <kind-pattern>
 # stdin: sorted key lines (apiVersion/kind/namespace/name)
-# stdout: same lines with namespace blanked for cluster-scoped kinds.
+# stdout: same lines with namespace blanked for the namespace-tolerant kinds.
 #
 # Key format: <apiVersion>/<kind>/<namespace>/<name>
 # apiVersion may itself contain one slash (e.g. apps/v1), so we split from
 # the right: name=last field, namespace=second-to-last, kind=third-to-last.
-blank_cluster_scoped_namespaces() {
+blank_tolerant_namespaces() {
   local pat="$1"
   awk -v pat="$pat" '
     {
@@ -132,7 +132,7 @@ keys() {
 # apply_tolerance <kind-pattern>
 # stdin: sorted key lines -> stdout: lines with cluster-scoped namespace blanked.
 apply_tolerance() {
-  blank_cluster_scoped_namespaces "$1"
+  blank_tolerant_namespaces "$1"
 }
 
 # ---- Update mode ----
@@ -143,9 +143,18 @@ update_goldens() {
   local app
   for app in "${BOOTSTRAP_APPS[@]}"; do
     printf '  [%s] running drydock_app...\n' "$app" >&2
-    drydock_app "$app" | keys > "${GOLDEN_DIR}/${app}.keys"
-    local count
-    count="$(wc -l < "${GOLDEN_DIR}/${app}.keys" | tr -d ' ')"
+    # Render to a temp file first so a silent empty render never clobbers a
+    # committed golden (an empty golden would make assert_parity spuriously pass).
+    local tmp count
+    tmp="$(mktemp)"
+    drydock_app "$app" | keys > "$tmp"
+    count="$(wc -l < "$tmp" | tr -d ' ')"
+    if [[ "$count" -eq 0 ]]; then
+      rm -f "$tmp"
+      printf 'ERROR: [%s] drydock produced zero keys -- refusing to write an empty golden\n' "$app" >&2
+      return 1
+    fi
+    mv "$tmp" "${GOLDEN_DIR}/${app}.keys"
     printf '  [%s] wrote %s keys\n' "$app" "$count" >&2
   done
   printf 'Golden key-sets updated in %s\n' "$GOLDEN_DIR" >&2
@@ -164,7 +173,7 @@ assert_parity() {
   fi
 
   local pat
-  pat="$(_cluster_scoped_pattern)"
+  pat="$(_namespace_tolerant_pattern)"
 
   # Step 1 — drydock side FIRST (worktree must be clean; no apps/<app>/charts present)
   printf '[%s] rendering via drydock...\n' "$app" >&2
