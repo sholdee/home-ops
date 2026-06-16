@@ -25,14 +25,15 @@ wait_deployment external-secrets external-secrets-cert-controller
 wait_deployment external-secrets onepassword-connect
 
 render="${TMP_DIR}/external-secrets.yaml"
-render_kustomize_app apps/external-secrets > "$render"
+drydock_app external-secrets > "$render"
 apply_file "$render"
 save_render_if_safe external-secrets "$render"
 
 wait_clustersecretstore_ready onepassword-connect
 
 cert_render="${TMP_DIR}/cert-manager-full.yaml"
-render_kustomize_app apps/cert-manager > "$cert_render"
+# drydock strips the startupapicheck post-install hook (Job, SA, Role, RoleBinding); readiness gated by wait_deployment below.
+drydock_app cert-manager > "$cert_render"
 if [[ "$BOOTSTRAP_PROFILE" =~ ^lima-(apps|longhorn)$ ]]; then
   cert_lima_render="${TMP_DIR}/cert-manager-lima-apps.yaml"
   yq '
