@@ -86,6 +86,24 @@
         group: root
         mode: "0600"
 
+    # cilium 1.19 renders RBAC scoped to the cilium-secrets namespace, but a
+    # single kubectl apply does not guarantee the Namespace is created before the
+    # resources in it. Pre-create it server-side with the same field manager so
+    # the bundle applies in one pass and ArgoCD adopts it cleanly later. This
+    # mirrors bootstrap.sh's ensure_namespace ordering helper.
+    - name: Pre-create the cilium-secrets namespace
+      ansible.builtin.command:
+        cmd: "{{ k3s_kubectl_binary }} apply --server-side --field-manager argocd-controller -f -"
+        stdin: |
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: cilium-secrets
+      environment:
+        KUBECONFIG: "{{ home_ops_k3s_kubeconfig }}"
+      register: home_ops_cilium_secrets_ns
+      changed_when: home_ops_cilium_secrets_ns.rc == 0
+
     - name: Apply rendered cilium manifests
       ansible.builtin.command:
         cmd: "{{ k3s_kubectl_binary }} apply --server-side --field-manager argocd-controller -f /tmp/home-ops-bootstrap/cilium-bootstrap.yaml"

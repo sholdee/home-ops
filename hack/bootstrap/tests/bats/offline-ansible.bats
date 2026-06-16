@@ -374,6 +374,7 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'when: home_ops_cilium_daemonset.rc != 0'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'drydock build app cilium-bootstrap'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'field-manager argocd-controller'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'name: cilium-secrets'
   assert_file_not_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'cilium upgrade'
   assert_file_not_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/network/cilium.yml" 'cilium install'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/k3s/reset-server-db.yml" 'db-before-rejoin'
