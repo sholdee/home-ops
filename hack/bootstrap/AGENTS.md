@@ -23,6 +23,11 @@ normal app graph.
 - `bootstrap.sh`: generic Kubernetes bootstrap runner and phase dispatcher.
 - `lib/`: shared bootstrap runner helpers for logging, Kubernetes commands,
   rendering, repo-derived facts, runtime defaults, and local run reports.
+  App rendering uses `drydock build app` via the `drydock_app` helper in
+  `lib/render.sh`. The retained `helm_*` and overlay helpers handle CRD-first
+  rendering, the external-secrets charts-only pre-render, and the minimal
+  cert-manager/argocd-dependency bundles. drydock >= v0.2.1 is required and
+  is provided on PATH via mise; the preflight phase enforces the version.
 - `phases/`: idempotent bootstrap phases sourced by `bootstrap.sh`.
 - `ansible/`: physical-node and Lima K3s convergence wrapper, inventory
   rendering, token/kubeconfig handling, and the in-repo `home-ops` Ansible
@@ -39,7 +44,11 @@ normal app graph.
   orchestrator may compose the proven drain/evict/delete/apply/join path for
   one live node, but final uncordon must remain an explicit operator gate.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
-  construction, node lifecycle helpers, and bootstrap library helpers.
+  construction, node lifecycle helpers, and bootstrap library helpers. The
+  render-parity smoke (`render-parity.bats`) is part of this suite but tagged
+  `network`; it skips in the standard offline run (`just bootstrap-test`/
+  `just bootstrap-bats`) and is run on demand with `just bootstrap-parity`
+  (requires network to fetch charts via drydock).
 - `tests/helpers/`: BATS fixture and assertion helpers.
 - `.out/`: disposable local output, reports, rendered non-secret manifests,
   generated inventories, and Lima runtime state.
@@ -151,8 +160,10 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   must pass secret values through stdin, environment, or memory and never log
   them.
 - Validate script changes with `just bootstrap-test`; it runs ShellCheck and
-  the offline BATS suite. For app-profile changes, also use the relevant Lima
-  validation recipe.
+  the offline BATS suite (render-parity tests skip, no network needed). Use
+  `just bootstrap-parity` to run the render-parity smoke on demand when
+  rendering logic in `lib/render.sh` changes. For app-profile changes, also
+  use the relevant Lima validation recipe.
 - Validation ladder:
   `just bootstrap-test` for Bash and offline behavior,
   `just kind-fresh` for disposable Kubernetes bootstrap behavior,
