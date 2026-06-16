@@ -11,11 +11,14 @@ if [[ "$BOOTSTRAP_PROFILE" == foundation ]]; then
   # not cluster capability), but the foundation profile has no Prometheus/Grafana
   # operator. Drop the exact set helm omits when serviceMonitor.enabled=false and
   # grafanaDashboard.enabled=false: the ServiceMonitor, GrafanaDashboard, the dashboard
-  # ConfigMap, and the metrics-reader ClusterRoleBinding.
+  # ConfigMap, and the metrics-reader ClusterRoleBinding. The grafana dashboard chart
+  # template emits a ConfigMapList; drop that kind too so the dashboard is removed
+  # whether drydock surfaces it as a bare ConfigMap or keeps the list wrapper.
   yq -i '
     select(
       .kind != "ServiceMonitor" and
       .kind != "GrafanaDashboard" and
+      .kind != "ConfigMapList" and
       (.kind != "ConfigMap" or .metadata.name != "dashboard-dragonfly-operator-grafana-dashboard") and
       (.kind != "ClusterRoleBinding" or .metadata.name != "dragonfly-operator-metrics-reader-clusterrolebinding")
     )
