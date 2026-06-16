@@ -764,10 +764,15 @@ bootstrap-audit:
 bootstrap-shellcheck:
     mise exec -- hack/bootstrap/tests/bootstrap-test.sh shellcheck
 
-# Run offline bootstrap parsing/rendering tests.
+# Run offline bootstrap parsing/rendering tests (network/parity tests skipped).
 [group('bootstrap')]
 bootstrap-bats:
-    mise exec -- hack/bootstrap/tests/bootstrap-test.sh bats
+    mise exec -- env BOOTSTRAP_SKIP_NETWORK_TESTS=1 hack/bootstrap/tests/bootstrap-test.sh bats
+
+# Run render-parity smoke on demand (requires network; fetches charts via drydock).
+[group('bootstrap')]
+bootstrap-parity:
+    mise exec -- bats hack/bootstrap/tests/bats/render-parity.bats
 
 # Run shellcheck and offline bootstrap parsing/rendering tests.
 [group('bootstrap')]
