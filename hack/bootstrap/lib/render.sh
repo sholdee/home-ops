@@ -14,11 +14,6 @@ app_value() {
     "${REPO_ROOT}/apps/argocd/manifests/apps.yaml"
 }
 
-render_kustomize_app() {
-  local app_path="$1"
-  kustomize build --enable-helm "${REPO_ROOT}/${app_path}"
-}
-
 # Render an ArgoCD Application's desired state with drydock, apply-ready.
 # Mirrors what ArgoCD will reconcile to (hooks stripped, tracking-id stamped),
 # which the hand-rolled renders did not. Secrets and CRDs are intentionally
@@ -131,6 +126,10 @@ helm_template_kustomization_chart() {
   helm_template_chart "$release" "$chart" "$repo" "$version" "$namespace" "$values_file"
 }
 
+# helm_template_app + write_app_values are retained for the render-parity smoke's
+# dragonfly raw-render side (its app is a bare helm chart, so there is no
+# kustomization to `kustomize build`). No bootstrap phase calls them since the
+# drydock_app swap superseded the hand-rolled renders.
 helm_template_app() {
   local app_name="$1"
   local values_file="$2"
