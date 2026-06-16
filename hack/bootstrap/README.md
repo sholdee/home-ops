@@ -29,7 +29,7 @@ For the longer operator runbook, see
 | `ansible/`     | Live and Lima K3s node convergence wrapper.                                                                                                                                                                                                                                                                     |
 | `lima/`        | Disposable VM harness for foundation and app-profile testing.                                                                                                                                                                                                                                                   |
 | `nodes/`       | Existing-cluster node lifecycle helpers.                                                                                                                                                                                                                                                                        |
-| `tests/bats/`  | Offline regression tests for parsing, rendering, and helpers. The render-parity smoke (`render-parity.bats`) compares drydock output to raw renders and to committed golden key-sets; it skips in the standard offline run and is run on demand with `just bootstrap-parity`.                                   |
+| `tests/bats/`  | Offline regression tests for parsing, rendering, and helpers.                                                                                                                                                                                                                                                   |
 | `.out/`        | Disposable local reports, inventories, kubeconfigs, and renders.                                                                                                                                                                                                                                                |
 
 Do not commit `.out/`.
@@ -43,7 +43,6 @@ Do not commit `.out/`.
 | Show active cluster status                         | `just context`                |
 | Run full local checks                              | `just check`                  |
 | Test bootstrap Bash and offline behavior           | `just bootstrap-test`         |
-| Run render-parity smoke (requires network)         | `just bootstrap-parity`       |
 | Recreate kind and bootstrap from scratch           | `just kind-fresh`             |
 | Show kind status                                   | `just kind-status`            |
 | Dry-run an already bootstrapped kind cluster       | `just kind-bootstrap-dry-run` |
@@ -61,10 +60,8 @@ Use the smallest validation that proves the change. Most script edits only
 need `just bootstrap-test`; Cilium, Longhorn, VolSync, CNPG, and ArgoCD
 behavior need Lima or live dry-run/audit validation.
 
-`just bootstrap-parity` runs the render-parity smoke on demand. It fetches
-charts via drydock and compares drydock output to raw kustomize/helm renders
-and to committed golden key-sets. drydock >= v0.2.1 is required and is
-provided on PATH via mise; the preflight phase enforces the version at runtime.
+drydock >= v0.2.1 is required for app rendering and is provided on PATH via
+mise; the preflight phase enforces the version at runtime.
 
 ## Bootstrap Scope
 

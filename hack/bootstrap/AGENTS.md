@@ -44,11 +44,7 @@ normal app graph.
   orchestrator may compose the proven drain/evict/delete/apply/join path for
   one live node, but final uncordon must remain an explicit operator gate.
 - `tests/bats/`: offline BATS tests for parsing, rendering, Ansible command
-  construction, node lifecycle helpers, and bootstrap library helpers. The
-  render-parity smoke (`render-parity.bats`) is part of this suite but tagged
-  `network`; it skips in the standard offline run (`just bootstrap-test`/
-  `just bootstrap-bats`) and is run on demand with `just bootstrap-parity`
-  (requires network to fetch charts via drydock).
+  construction, node lifecycle helpers, and bootstrap library helpers.
 - `tests/helpers/`: BATS fixture and assertion helpers.
 - `.out/`: disposable local output, reports, rendered non-secret manifests,
   generated inventories, and Lima runtime state.
@@ -160,10 +156,8 @@ Keep this list in sync with `PHASES` in `bootstrap.sh` and the phase list in
   must pass secret values through stdin, environment, or memory and never log
   them.
 - Validate script changes with `just bootstrap-test`; it runs ShellCheck and
-  the offline BATS suite (render-parity tests skip, no network needed). Use
-  `just bootstrap-parity` to run the render-parity smoke on demand when
-  rendering logic in `lib/render.sh` changes. For app-profile changes, also
-  use the relevant Lima validation recipe.
+  the offline BATS suite. For app-profile changes, also use the relevant Lima
+  validation recipe.
 - Validation ladder:
   `just bootstrap-test` for Bash and offline behavior,
   `just kind-fresh` for disposable Kubernetes bootstrap behavior,

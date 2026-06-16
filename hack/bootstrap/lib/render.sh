@@ -126,29 +126,6 @@ helm_template_kustomization_chart() {
   helm_template_chart "$release" "$chart" "$repo" "$version" "$namespace" "$values_file"
 }
 
-# helm_template_app + write_app_values are retained for the render-parity smoke's
-# dragonfly raw-render side (its app is a bare helm chart, so there is no
-# kustomization to `kustomize build`). No bootstrap phase calls them since the
-# drydock_app swap superseded the hand-rolled renders.
-helm_template_app() {
-  local app_name="$1"
-  local values_file="$2"
-  local chart repo version release namespace
-  chart="$(app_value "$app_name" '.spec.source.chart')"
-  repo="$(app_value "$app_name" '.spec.source.repoURL')"
-  version="$(app_value "$app_name" '.spec.source.targetRevision')"
-  release="$(app_value "$app_name" '.spec.source.helm.releaseName // .metadata.name')"
-  namespace="$(app_value "$app_name" '.spec.destination.namespace')"
-  helm_template_chart "$release" "$chart" "$repo" "$version" "$namespace" "$values_file"
-}
-
-write_app_values() {
-  local app_name="$1"
-  local output="$2"
-  yq "select(.kind == \"Application\" and .metadata.name == \"${app_name}\") | .spec.source.helm.valuesObject // {}" \
-    "${REPO_ROOT}/apps/argocd/manifests/apps.yaml" > "$output"
-}
-
 write_cert_manager_chart_overlay() {
   local dir="$1"
   local version repo
