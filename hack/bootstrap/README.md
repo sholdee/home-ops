@@ -21,16 +21,16 @@ For the longer operator runbook, see
 
 ## What Lives Here
 
-| Path           | Purpose                                                          |
-| -------------- | ---------------------------------------------------------------- |
-| `bootstrap.sh` | Phase runner for Kubernetes takeover dependencies.               |
-| `phases/`      | Idempotent bootstrap phases sourced by `bootstrap.sh`.           |
-| `lib/`         | Shared bootstrap logging, rendering, apply, and report helpers.  |
-| `ansible/`     | Live and Lima K3s node convergence wrapper.                      |
-| `lima/`        | Disposable VM harness for foundation and app-profile testing.    |
-| `nodes/`       | Existing-cluster node lifecycle helpers.                         |
-| `tests/bats/`  | Offline regression tests for parsing, rendering, and helpers.    |
-| `.out/`        | Disposable local reports, inventories, kubeconfigs, and renders. |
+| Path           | Purpose                                                                                                                                                                                                                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bootstrap.sh` | Phase runner for Kubernetes takeover dependencies.                                                                                                                                                                                                                                                              |
+| `phases/`      | Idempotent bootstrap phases sourced by `bootstrap.sh`.                                                                                                                                                                                                                                                          |
+| `lib/`         | Shared bootstrap logging, rendering, apply, and report helpers. App rendering uses `drydock build app` via the `drydock_app` helper; the retained `helm_*` and overlay helpers handle CRD-first rendering, the external-secrets charts-only pre-render, and the minimal cert-manager/argocd-dependency bundles. |
+| `ansible/`     | Live and Lima K3s node convergence wrapper.                                                                                                                                                                                                                                                                     |
+| `lima/`        | Disposable VM harness for foundation and app-profile testing.                                                                                                                                                                                                                                                   |
+| `nodes/`       | Existing-cluster node lifecycle helpers.                                                                                                                                                                                                                                                                        |
+| `tests/bats/`  | Offline regression tests for parsing, rendering, and helpers.                                                                                                                                                                                                                                                   |
+| `.out/`        | Disposable local reports, inventories, kubeconfigs, and renders.                                                                                                                                                                                                                                                |
 
 Do not commit `.out/`.
 
@@ -59,6 +59,9 @@ Do not commit `.out/`.
 Use the smallest validation that proves the change. Most script edits only
 need `just bootstrap-test`; Cilium, Longhorn, VolSync, CNPG, and ArgoCD
 behavior need Lima or live dry-run/audit validation.
+
+drydock >= v0.2.1 is required for app rendering and is provided on PATH via
+mise; the preflight phase enforces the version at runtime.
 
 ## Bootstrap Scope
 

@@ -5,7 +5,7 @@ wait_crd applicationsets.argoproj.io
 wait_crd appprojects.argoproj.io
 
 render="${TMP_DIR}/argocd.yaml"
-render_kustomize_app apps/argocd > "$render"
+drydock_app argocd > "$render"
 
 prepare_hubble_takeover() {
   log "applying Hubble cert-manager issuer chain before Cilium takeover"

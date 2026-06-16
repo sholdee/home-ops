@@ -14,9 +14,20 @@ app_value() {
     "${REPO_ROOT}/apps/argocd/manifests/apps.yaml"
 }
 
-render_kustomize_app() {
-  local app_path="$1"
-  kustomize build --enable-helm "${REPO_ROOT}/${app_path}"
+# Render an ArgoCD Application's desired state with drydock, apply-ready.
+# Mirrors what ArgoCD will reconcile to (hooks stripped, tracking-id stamped),
+# which the hand-rolled renders did not. Secrets and CRDs are intentionally
+# emitted (no --skip-*): the bootstrap applies chart-templated Secrets (e.g.
+# webhook CAs) and needs CRDs present.
+drydock_app() {
+  local app_name="$1"
+  drydock build app "${app_name}" \
+    --path "${REPO_ROOT}" \
+    --output yaml \
+    --git-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/git" \
+    --chart-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/charts" \
+    --remote-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/remotes" \
+    --render-cache-dir "${BOOTSTRAP_DRYDOCK_CACHE}/render"
 }
 
 is_oci_repo() {
@@ -113,25 +124,6 @@ helm_template_kustomization_chart() {
   fi
 
   helm_template_chart "$release" "$chart" "$repo" "$version" "$namespace" "$values_file"
-}
-
-helm_template_app() {
-  local app_name="$1"
-  local values_file="$2"
-  local chart repo version release namespace
-  chart="$(app_value "$app_name" '.spec.source.chart')"
-  repo="$(app_value "$app_name" '.spec.source.repoURL')"
-  version="$(app_value "$app_name" '.spec.source.targetRevision')"
-  release="$(app_value "$app_name" '.spec.source.helm.releaseName // .metadata.name')"
-  namespace="$(app_value "$app_name" '.spec.destination.namespace')"
-  helm_template_chart "$release" "$chart" "$repo" "$version" "$namespace" "$values_file"
-}
-
-write_app_values() {
-  local app_name="$1"
-  local output="$2"
-  yq "select(.kind == \"Application\" and .metadata.name == \"${app_name}\") | .spec.source.helm.valuesObject // {}" \
-    "${REPO_ROOT}/apps/argocd/manifests/apps.yaml" > "$output"
 }
 
 write_cert_manager_chart_overlay() {

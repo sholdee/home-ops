@@ -11,7 +11,7 @@ case "$BOOTSTRAP_PROFILE" in
     render="${TMP_DIR}/gateway-cert-seed-render.yaml"
     seed="${TMP_DIR}/gateway-cert-seed.yaml"
 
-    render_kustomize_app apps/gateway > "$render"
+    drydock_app gateway > "$render"
     yq '
   select(
     (.apiVersion == "external-secrets.io/v1" and .kind == "ClusterSecretStore" and .metadata.name == "gateway-cert-backups") or
