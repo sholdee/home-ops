@@ -9,7 +9,7 @@
 
 <div align="center">
 
-[![Kubernetes](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fkubernetes_version%3Fformat%3Dshields&style=for-the-badge&logo=kubernetes&logoColor=white&color=blue&label=)](https://k3s.io/)&nbsp;&nbsp;
+[![Kubernetes](https://kromgo.sholdee.net:8443/badges/kubernetes_version)](https://k3s.io/)&nbsp;&nbsp;
 
 </div>
 
@@ -22,12 +22,12 @@
 
 <div align="center">
 
-[![Age-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_age_days%3Fformat%3Dshields&style=flat-square&label=Age)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Uptime-Days](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_uptime_days%3Fformat%3Dshields&style=flat-square&label=Uptime)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Node-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_node_count%3Fformat%3Dshields&style=flat-square&label=Nodes)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Pod-Count](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_pod_count%3Fformat%3Dshields&style=flat-square&label=Pods)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![CPU-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_cpu_usage%3Fformat%3Dshields&style=flat-square&label=CPU)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
-[![Memory-Usage](https://img.shields.io/endpoint?url=https%3A%2F%2Fkromgo.sholdee.net%3A8443%2Fbadges%2Fcluster_memory_usage%3Fformat%3Dshields&style=flat-square&label=Memory)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Age-Days](https://kromgo.sholdee.net:8443/badges/cluster_age_days)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Uptime-Days](https://kromgo.sholdee.net:8443/badges/cluster_uptime_days)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Node-Count](https://kromgo.sholdee.net:8443/badges/cluster_node_count)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Pod-Count](https://kromgo.sholdee.net:8443/badges/cluster_pod_count)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![CPU-Usage](https://kromgo.sholdee.net:8443/badges/cluster_cpu_usage)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
+[![Memory-Usage](https://kromgo.sholdee.net:8443/badges/cluster_memory_usage)](https://github.com/home-operations/kromgo/)&nbsp;&nbsp;
 
 </div>
 

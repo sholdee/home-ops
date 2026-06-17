@@ -11,27 +11,48 @@ badges:
   - id: kubernetes_version
     query: max by(git_version) (kubernetes_build_info{job="k3s-server"})
     valueExpr: 'labels[?"git_version"].orValue("unknown")'
+    colorExpr: '"blue"'
+    style: for-the-badge
+    icon: si:kubernetes
   - id: cluster_node_count
     query: count(kube_node_info)
     valueExpr: "humanizeCommas(result)"
     colorExpr: '"green"'
+    style: flat-square
+    title: Nodes
+    icon: mdi:server
   - id: cluster_pod_count
     query: sum(kube_pod_info)
     valueExpr: "humanizeCommas(result)"
     colorExpr: '"green"'
+    style: flat-square
+    title: Pods
+    icon: mdi:cube-outline
   - id: cluster_cpu_usage
     query: round(avg(100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100), 0.01)
     valueExpr: 'humanizeFloat(result) + "%"'
     colorExpr: 'result <= 35.0 ? "green" : result <= 75.0 ? "orange" : "red"'
+    style: flat-square
+    title: CPU
+    icon: mdi:cpu-64-bit
   - id: cluster_memory_usage
     query: round((sum(node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / sum(node_memory_MemTotal_bytes)) * 100, 0.1)
     valueExpr: 'humanizeFloat(result) + "%"'
     colorExpr: 'result <= 75.0 ? "green" : result <= 85.0 ? "orange" : "red"'
+    style: flat-square
+    title: Memory
+    icon: mdi:memory
   - id: cluster_age_days
     query: round((time() - max(kube_namespace_created{namespace="kube-system"})) / 86400)
     valueExpr: 'humanizeFloat(result) + "d"'
     colorExpr: '"green"'
+    style: flat-square
+    title: Age
+    icon: mdi:calendar-clock
   - id: cluster_uptime_days
     query: round(avg(node_time_seconds - node_boot_time_seconds) / 86400)
     valueExpr: 'humanizeFloat(result) + "d"'
     colorExpr: 'result <= 180.0 ? "green" : result <= 360.0 ? "orange" : "red"'
+    style: flat-square
+    title: Uptime
+    icon: mdi:timer-outline
