@@ -20,7 +20,7 @@ url = "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_
 provenance = "github-attestations"
 
 [[tools.ansible-core]]
-version = "2.21.0"
+version = "2.21.1"
 backend = "pipx:ansible-core"
 
 [[tools."aqua:sholdee/crd-schema-publisher"]]
