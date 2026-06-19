@@ -1,10 +1,19 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/home-operations/kromgo/0.14.0/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/home-operations/kromgo/0.14.10/config.schema.json
 cache:
   enabled: true
   maxAge: 60
 defaults:
   badge:
+    gallery:
+      hidden: true
+  graph:
+    theme: catppuccin-latte
+    width: 600
+    height: 180
+    legend: false
+    fill: true
+    maxDuration: 30d
     gallery:
       hidden: true
 badges:
@@ -56,3 +65,74 @@ badges:
     style: flat-square
     title: Uptime
     icon: mdi:timer-outline
+  - id: argocd_health
+    query: count(argocd_app_info{health_status!="Healthy", name!="cilium-preflight"}) or vector(0)
+    valueExpr: 'result == 0.0 ? "healthy" : humanizeFloat(result) + " degraded"'
+    colorExpr: 'result == 0.0 ? "green" : "red"'
+    style: flat-square
+    title: Apps
+    icon: si:argo
+  - id: alerts_firing
+    query: count(ALERTS{alertstate="firing", alertname!~"Watchdog|InfoInhibitor"}) or vector(0)
+    valueExpr: 'result == 0.0 ? "0 firing" : humanizeFloat(result) + " firing"'
+    colorExpr: 'result == 0.0 ? "green" : "red"'
+    style: flat-square
+    title: Alerts
+    icon: mdi:bell-alert
+  - id: cert_expiry
+    query: round((min(certmanager_certificate_expiration_timestamp_seconds) - time()) / 86400)
+    valueExpr: 'humanizeFloat(result) + "d"'
+    colorExpr: 'colorScale(result, [7.0, 21.0], ["red", "orange", "green"])'
+    style: flat-square
+    title: Certs
+    icon: mdi:certificate
+  - id: storage_usage
+    query: round(sum(longhorn_node_storage_usage_bytes) / sum(longhorn_node_storage_capacity_bytes) * 100, 0.1)
+    valueExpr: 'humanizeFloat(result) + "%"'
+    colorExpr: 'colorScale(result, [70.0, 85.0], ["green", "orange", "red"])'
+    style: flat-square
+    title: Storage
+    icon: mdi:harddisk
+  - id: node_temp_k3s_master_0
+    query: round(max(node_hwmon_temp_celsius * on(instance) group_left() node_uname_info{nodename="k3s-master-0"}))
+    valueExpr: 'humanizeFloat(result) + "°C"'
+    colorExpr: 'colorScale(result, [65.0, 80.0], ["green", "orange", "red"])'
+    style: flat-square
+    icon: mdi:thermometer
+  - id: node_temp_k3s_master_1
+    query: round(max(node_hwmon_temp_celsius * on(instance) group_left() node_uname_info{nodename="k3s-master-1"}))
+    valueExpr: 'humanizeFloat(result) + "°C"'
+    colorExpr: 'colorScale(result, [65.0, 80.0], ["green", "orange", "red"])'
+    style: flat-square
+    icon: mdi:thermometer
+  - id: node_temp_k3s_master_2
+    query: round(max(node_hwmon_temp_celsius * on(instance) group_left() node_uname_info{nodename="k3s-master-2"}))
+    valueExpr: 'humanizeFloat(result) + "°C"'
+    colorExpr: 'colorScale(result, [65.0, 80.0], ["green", "orange", "red"])'
+    style: flat-square
+    icon: mdi:thermometer
+  - id: node_temp_k3s_worker_0
+    query: round(max(node_hwmon_temp_celsius * on(instance) group_left() node_uname_info{nodename="k3s-worker-0"}))
+    valueExpr: 'humanizeFloat(result) + "°C"'
+    colorExpr: 'colorScale(result, [65.0, 80.0], ["green", "orange", "red"])'
+    style: flat-square
+    icon: mdi:thermometer
+  - id: node_temp_k3s_worker_1
+    query: round(max(node_hwmon_temp_celsius * on(instance) group_left() node_uname_info{nodename="k3s-worker-1"}))
+    valueExpr: 'humanizeFloat(result) + "°C"'
+    colorExpr: 'colorScale(result, [65.0, 80.0], ["green", "orange", "red"])'
+    style: flat-square
+    icon: mdi:thermometer
+graphs:
+  - id: cpu_trend
+    query: avg(100 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) by (instance) * 100)
+    title: CPU Usage
+    valueExpr: 'string(int(result)) + "%"'
+    yMin: 0
+    yMax: 100
+    markLine: [average]
+  - id: pods_trend
+    query: sum(kube_pod_status_phase{phase="Running"})
+    title: Running Pods
+    valueExpr: "string(int(result))"
+    markLine: [average]
