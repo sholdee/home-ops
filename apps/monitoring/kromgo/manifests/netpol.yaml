@@ -34,3 +34,28 @@ spec:
                 path: '^/badges/cluster_age_days(\?format=shields)?$'
               - method: GET
                 path: '^/badges/cluster_uptime_days(\?format=shields)?$'
+              # health badges
+              - method: GET
+                path: "^/badges/argocd_health$"
+              - method: GET
+                path: "^/badges/alerts_firing$"
+              - method: GET
+                path: "^/badges/cert_expiry$"
+              - method: GET
+                path: "^/badges/storage_usage$"
+              # per-node temperature badges
+              - method: GET
+                path: "^/badges/node_temp_k3s_master_0$"
+              - method: GET
+                path: "^/badges/node_temp_k3s_master_1$"
+              - method: GET
+                path: "^/badges/node_temp_k3s_master_2$"
+              - method: GET
+                path: "^/badges/node_temp_k3s_worker_0$"
+              - method: GET
+                path: "^/badges/node_temp_k3s_worker_1$"
+              # 7-day trend graphs (range queries; allow ?last=…&theme=… params)
+              - method: GET
+                path: '^/graphs/cpu_trend(\?.*)?$'
+              - method: GET
+                path: '^/graphs/pods_trend(\?.*)?$'

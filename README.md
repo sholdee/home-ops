@@ -31,6 +31,35 @@
 
 </div>
 
+<div align="center">
+
+[![Apps](https://kromgo.sholdee.net:8443/badges/argocd_health)](https://github.com/argoproj/argo-cd)&nbsp;&nbsp;
+[![Alerts](https://kromgo.sholdee.net:8443/badges/alerts_firing)](https://github.com/prometheus/alertmanager)&nbsp;&nbsp;
+[![Certs](https://kromgo.sholdee.net:8443/badges/cert_expiry)](https://github.com/cert-manager/cert-manager)&nbsp;&nbsp;
+[![Storage](https://kromgo.sholdee.net:8443/badges/storage_usage)](https://github.com/longhorn/longhorn)&nbsp;&nbsp;
+
+</div>
+
+<div align="center">
+
+<details>
+<summary>📈 7-day trends</summary>
+<br />
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://kromgo.sholdee.net:8443/graphs/cpu_trend?last=7d&amp;theme=catppuccin-mocha">
+  <img alt="CPU Usage — 7 days" src="https://kromgo.sholdee.net:8443/graphs/cpu_trend?last=7d&amp;theme=catppuccin-latte">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://kromgo.sholdee.net:8443/graphs/pods_trend?last=7d&amp;theme=catppuccin-mocha">
+  <img alt="Running Pods — 7 days" src="https://kromgo.sholdee.net:8443/graphs/pods_trend?last=7d&amp;theme=catppuccin-latte">
+</picture>
+
+</details>
+
+</div>
+
 ## Overview 📔
 
 This repository defines my Raspberry Pi K3s self-hosting platform, including
@@ -206,12 +235,12 @@ erDiagram
 
 ### Hardware 🖥️
 
-| Node         | Role          | RAM  | Storage        |
-| ------------ | ------------- | ---- | -------------- |
-| k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD |
-| k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD |
-| k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD |
-| k3s-worker-0 | Worker        | 8GB  | 512GB NVMe SSD |
-| k3s-worker-1 | Worker        | 8GB  | 512GB NVMe SSD |
+| Node         | Role          | RAM  | Storage        | Temp                                                               |
+| ------------ | ------------- | ---- | -------------- | ------------------------------------------------------------------ |
+| k3s-master-0 | Control plane | 16GB | 512GB NVMe SSD | ![](https://kromgo.sholdee.net:8443/badges/node_temp_k3s_master_0) |
+| k3s-master-1 | Control plane | 16GB | 512GB NVMe SSD | ![](https://kromgo.sholdee.net:8443/badges/node_temp_k3s_master_1) |
+| k3s-master-2 | Control plane | 16GB | 512GB NVMe SSD | ![](https://kromgo.sholdee.net:8443/badges/node_temp_k3s_master_2) |
+| k3s-worker-0 | Worker        | 8GB  | 512GB NVMe SSD | ![](https://kromgo.sholdee.net:8443/badges/node_temp_k3s_worker_0) |
+| k3s-worker-1 | Worker        | 8GB  | 512GB NVMe SSD | ![](https://kromgo.sholdee.net:8443/badges/node_temp_k3s_worker_1) |
 
 All nodes are Raspberry Pi 5 boards with NVMe SSDs attached via PCIe HAT.

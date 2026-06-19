@@ -47,7 +47,7 @@ run_jsonschema() {
 
 if validate_has_file apps/monitoring/kromgo/manifests/config.yaml; then
   if ! run_jsonschema \
-    'https://raw.githubusercontent.com/home-operations/kromgo/0.14.0/config.schema.json' \
+    'https://raw.githubusercontent.com/home-operations/kromgo/0.14.10/config.schema.json' \
     apps/monitoring/kromgo/manifests/config.yaml; then
     failed=1
   fi
