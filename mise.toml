@@ -9,7 +9,7 @@ rush = "0.9.0"
 actionlint = "1.7.12"
 kubeconform = "0.8.0"
 jsonschema = "16.0.0"
-zizmor = "1.25.2"
+zizmor = "1.26.1"
 gitleaks = "8.30.1"
 
 # Kubernetes and GitOps CLIs.
