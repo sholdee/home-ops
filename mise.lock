@@ -376,18 +376,18 @@ version = "3.14.6"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:9124d5c41739d78a446f1f29c1953bf41071abcbf18e6daec201a27608648195"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260610/cpython-3.14.6+20260610-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:f177d40ca931df03f660fc006f86ad8cd2ac6e7d6b5d54edbc625103464fc4aa"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:0881fbde2c78605720fb2e240d1a6df38652a896e40a5fce2e10908dbee5f5b7"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260610/cpython-3.14.6+20260610-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:c172314f4a8ec137a8f605289010c3d19c8b56867d968f0095074cc68efa1d29"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:875516e13be36296f8f7dd0972b22ba3bed069ed08d27d5f0069caf227522921"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260610/cpython-3.14.6+20260610-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:35d774f61d63c1fd4f1bc9495a7ada92e500dc4382a0df8a9910eb87ea48e8cf"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260623/cpython-3.14.6+20260623-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rush]]
