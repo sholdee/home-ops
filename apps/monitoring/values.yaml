@@ -20,7 +20,12 @@ prometheus:
       tag: "0.8.0"
       sha: 31b2b76059cc9eab4e62445d1c8c4913b9e16939dc88590b0e270fa9825b4a76
       pullPolicy: IfNotPresent
-    version: v3.11.3
+    # Keep < 3.11.0: at >= 3.11.0 prometheus-operator writes storage.tsdb.retention into
+    # the config file, but prompp 0.8.0's parser has no such field (err: "field retention
+    # not found in type config.plain") -- below 3.11.0 the operator uses the
+    # --storage.tsdb.retention.time flag instead, which prompp accepts. Revisit if a
+    # prompp release adds storage.tsdb.retention config support.
+    version: v3.10.0
     serviceMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
