@@ -176,3 +176,8 @@ configs:
     users.anonymous.enabled: "true"
   rbac:
     policy.default: "role:readonly"
+  params:
+    # Serialize repo-server manifest generation. With unlimited parallelism, two
+    # concurrent `kustomize build --enable-helm` renders of the same app race on the
+    # shared `helm pull --untar` dir (err: ".../charts/<chart>/<chart> already exists").
+    reposerver.parallelism.limit: 1
