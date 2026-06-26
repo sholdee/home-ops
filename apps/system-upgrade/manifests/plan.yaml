@@ -11,7 +11,7 @@ spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
   exclusive: true
   postCompleteDelay: "1m30s"
-  version: v1.35.5+k3s1
+  version: v1.36.2+k3s1
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
@@ -37,7 +37,7 @@ spec:
   concurrency: 1 # Batch size (roughly maps to maximum number of unschedulable nodes)
   exclusive: true
   postCompleteDelay: "1m30s"
-  version: v1.35.5+k3s1
+  version: v1.36.2+k3s1
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
