@@ -100,32 +100,32 @@ url = "https://github.com/cli/cli/releases/download/v2.95.0/gh_2.95.0_macOS_arm6
 provenance = "github-attestations"
 
 [[tools."github:cloudnative-pg/cloudnative-pg"]]
-version = "1.29.1"
+version = "1.30.0"
 backend = "github:cloudnative-pg/cloudnative-pg"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-arm64"]
-checksum = "sha256:77e5e2e9d21be1a6a1ddecb210c63026ecd4fbd1b086d8a886af3404db5b23b2"
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332108"
+checksum = "sha256:633eec5eb13ec640284804338e64c09d3bdbf907734675dea9e30689eb77654a"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/kubectl-cnpg_1.30.0_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/461307825"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-arm64".provenance.slsa]
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/multiple.intoto.jsonl"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-x64"]
-checksum = "sha256:2a550d5ee2224e5bb66b95602f8052fc50da50485f59f97b817a0c3b44b58581"
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_linux_x86_64.tar.gz"
-url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332109"
+checksum = "sha256:33784dc3b61edb0ddb1a68db6ef045bd32daace5db2ec1f0a02e0e8185eef7eb"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/kubectl-cnpg_1.30.0_linux_x86_64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/461307823"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.linux-x64".provenance.slsa]
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/multiple.intoto.jsonl"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64"]
-checksum = "sha256:d26019d8cb4deac553a6d5c31203a6332b71c2eddf76d762f5179fe4cac8624c"
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/kubectl-cnpg_1.29.1_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/415332105"
+checksum = "sha256:88bb6da8ca5b63b5a4e60dae88b320bdcba3a8843536ad86e0fe077765ff2bbc"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/kubectl-cnpg_1.30.0_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/461307837"
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64".provenance.slsa]
-url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.29.1/multiple.intoto.jsonl"
+url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/multiple.intoto.jsonl"
 
 [[tools."github:sholdee/drydock"]]
 version = "0.2.1"
