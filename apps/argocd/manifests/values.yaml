@@ -1,5 +1,7 @@
 global:
   domain: argocd.sholdee.net
+  networkPolicy:
+    create: false
 redis:
   enabled: false
 redis-ha:
