@@ -1,5 +1,7 @@
 global:
   domain: argocd.sholdee.net
+  networkPolicy:
+    create: false
 redis:
   enabled: false
 redis-ha:
@@ -10,8 +12,6 @@ externalRedis:
   host: dragonfly.argocd.svc.cluster.local
   port: 6379
   existingSecret: argocd-dragonfly-auth
-networkPolicy:
-  create: false
 server:
   replicas: 2
   env:
