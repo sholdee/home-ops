@@ -368,7 +368,7 @@ checksum = "sha256:6b6e1b016bf7df9debee590ca32204a85ff18a87514e6a3b4413d8ad7ff73
 url = "https://github.com/pypa/pipx/releases/download/1.15.0/pipx.pyz"
 
 [[tools."pipx:ansible-lint"]]
-version = "26.4.0"
+version = "26.6.0"
 backend = "pipx:ansible-lint"
 
 [[tools.python]]
