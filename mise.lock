@@ -352,25 +352,25 @@ url_api = "https://api.github.com/repos/evilmartians/lefthook/releases/assets/43
 provenance = "github-attestations"
 
 [[tools.lima]]
-version = "2.1.3"
+version = "2.1.4"
 backend = "aqua:lima-vm/lima"
 
 [tools.lima."platforms.linux-arm64"]
-checksum = "sha256:2c8150972c1b70e2a58e058e5b7acbcf25c17ad14924509135561d277e8237c4"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.3/lima-2.1.3-Linux-aarch64.tar.gz"
-url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/452148537"
+checksum = "sha256:3bda2db2972e3dae25d0205fbb9b74f89b0e849f77e2de3ebcbc57e48acd681b"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.4/lima-2.1.4-Linux-aarch64.tar.gz"
+url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/464870645"
 provenance = "github-attestations"
 
 [tools.lima."platforms.linux-x64"]
-checksum = "sha256:150938b8c38d3e4a1dd1d5846d8505ba4ff3406cf40e8d73032eb85fe78ce8be"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.3/lima-2.1.3-Linux-x86_64.tar.gz"
-url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/452148536"
+checksum = "sha256:78da175634c38beab62a6618d16b9c7aeeabdbb5d99ed5c9a03bac212c786bfa"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.4/lima-2.1.4-Linux-x86_64.tar.gz"
+url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/464870647"
 provenance = "github-attestations"
 
 [tools.lima."platforms.macos-arm64"]
-checksum = "sha256:52bcf0780fcb28128ac9f6924d4410a6bc7c92fa80c9a858d89ae34ec3ce4f35"
-url = "https://github.com/lima-vm/lima/releases/download/v2.1.3/lima-2.1.3-Darwin-arm64.tar.gz"
-url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/452148534"
+checksum = "sha256:14c5b283f1c5eb4078e5a300b8d241f69197a3e41326dfc685a69c9455917acf"
+url = "https://github.com/lima-vm/lima/releases/download/v2.1.4/lima-2.1.4-Darwin-arm64.tar.gz"
+url_api = "https://api.github.com/repos/lima-vm/lima/releases/assets/464870649"
 provenance = "github-attestations"
 
 [[tools.op]]
