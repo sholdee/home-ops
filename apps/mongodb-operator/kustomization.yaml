@@ -12,6 +12,7 @@ helmCharts:
     version: 1.9.1
     releaseName: mongodb-kubernetes-operator
     namespace: mongodb-operator
+    includeCRDs: true
     valuesInline:
       operator:
         replicas: 1
