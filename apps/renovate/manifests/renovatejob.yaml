@@ -11,7 +11,7 @@ spec:
     ]
   extraEnv:
     - name: LOG_LEVEL
-      value: debug
+      value: info
     - name: RENOVATE_PLATFORM_COMMIT
       value: "true"
     - name: NODE_OPTIONS
@@ -46,7 +46,7 @@ spec:
       value: "true"
   provider:
     name: github
-  image: renovate/renovate:43.233.3@sha256:498de63b02c02b49c34dfe0119b59da8e5232e701c813960bcbee80760b148dd
+  image: renovate/renovate:43.256.2@sha256:39182d1ab9fbf428bd702cb737c49197aa18930de666d7d57336468c5ecb8d63
   parallelism: 3
   schedule: "0 * * * *"
   secretRef: renovate-secret
