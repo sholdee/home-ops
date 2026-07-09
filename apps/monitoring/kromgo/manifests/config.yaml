@@ -1,5 +1,5 @@
 ---
-# yaml-language-server: $schema=https://raw.githubusercontent.com/home-operations/kromgo/0.14.10/config.schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/home-operations/kromgo/0.15.0/config.schema.json
 cache:
   enabled: true
   maxAge: 60

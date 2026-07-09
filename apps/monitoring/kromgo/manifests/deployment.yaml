@@ -36,29 +36,25 @@ spec:
         - name: kromgo
           image: ghcr.io/home-operations/kromgo:0.15.0@sha256:f3c01a0624c95db0f50a65ef901661774da5d2922a3187a2741e7149dee45f2a
           env:
-            - name: PROMETHEUS_URL
+            - name: KROMGO_PROMETHEUS_URL
               value: "http://kube-prometheus-stack-prometheus.monitoring.svc.cluster.local:9090"
-            - name: SERVER_HOST
+            - name: KROMGO_SERVER_HOST
               value: "0.0.0.0"
-            - name: SERVER_PORT
+            - name: KROMGO_SERVER_PORT
               value: "80"
-            - name: HEALTH_HOST
-              value: "0.0.0.0"
-            - name: HEALTH_PORT
-              value: "88"
+            - name: KROMGO_METRICS_ENABLED
+              value: "false"
           ports:
             - containerPort: 80
               name: http
-            - containerPort: 88
-              name: health
           livenessProbe:
             httpGet:
               path: /healthz
-              port: health
+              port: http
           readinessProbe:
             httpGet:
               path: /readyz
-              port: health
+              port: http
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
