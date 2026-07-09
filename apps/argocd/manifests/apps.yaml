@@ -149,7 +149,7 @@ spec:
                 - inputName: DS_PROMETHEUS
                   datasourceName: Prometheus
     repoURL: ghcr.io/sholdee/charts
-    targetRevision: 2026.609.12656
+    targetRevision: 2026.709.164532
   syncPolicy:
     automated:
       prune: true
