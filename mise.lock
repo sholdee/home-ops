@@ -82,12 +82,15 @@ backend = "aqua:bats-core/bats-core"
 
 [tools.bats."platforms.linux-arm64"]
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.13.0"
 
 [tools.bats."platforms.linux-x64"]
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.13.0"
 
 [tools.bats."platforms.macos-arm64"]
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.13.0.tar.gz"
+url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.13.0"
 
 [[tools.gh]]
 version = "2.96.0"
