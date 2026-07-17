@@ -91,11 +91,11 @@ spec:
               mountPath: /opt/adguardhome/conf
           resources:
             requests:
-              memory: 300Mi
+              memory: 600Mi
               cpu: "15m"
             limits:
               cpu: 500m
-              memory: 1Gi
+              memory: 1500Mi
           livenessProbe: &probe
             exec:
               command:
