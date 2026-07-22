@@ -258,7 +258,7 @@ spec:
           operator: "Exists"
       containers:
         - name: system-upgrade-controller
-          image: rancher/system-upgrade-controller:v0.20.0@sha256:c47e2e839e3ea7c622e76e0f406071518885dbc6791062615cfa24798104a268
+          image: rancher/system-upgrade-controller:v0.20.1@sha256:aaf4dbf640579a6abfa6390aab927ee664f06814e33c371e69df9dd451ca153a
           imagePullPolicy: IfNotPresent
           resources:
             requests:
