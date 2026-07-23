@@ -54,9 +54,11 @@ spec:
         - CREATE INDEX IF NOT EXISTS domainidindex ON cryptokeys(domain_id)
         - CREATE TABLE IF NOT EXISTS tsigkeys (id SERIAL PRIMARY KEY, name VARCHAR(255), algorithm VARCHAR(50), secret VARCHAR(255), CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
         - CREATE UNIQUE INDEX IF NOT EXISTS namealgoindex ON tsigkeys(name, algorithm)
-        # -- Poweradmin schema --
+        # -- Poweradmin schema (v4.4.0 parity — update alongside poweradmin image bumps that ship a sql/poweradmin-pgsql-update-to-X.sql) --
         - CREATE SEQUENCE IF NOT EXISTS log_users_id_seq1 INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
         - CREATE TABLE IF NOT EXISTS log_users (id integer DEFAULT nextval('log_users_id_seq1') NOT NULL PRIMARY KEY, event character varying(2048), created_at timestamp DEFAULT CURRENT_TIMESTAMP, priority integer)
+        - CREATE SEQUENCE IF NOT EXISTS log_api_id_seq1 INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
+        - CREATE TABLE IF NOT EXISTS log_api (id integer DEFAULT nextval('log_api_id_seq1') NOT NULL PRIMARY KEY, event character varying(2048), created_at timestamp DEFAULT CURRENT_TIMESTAMP, priority integer)
         - CREATE SEQUENCE IF NOT EXISTS log_zones_id_seq1 INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
         - CREATE TABLE IF NOT EXISTS log_zones (id integer DEFAULT nextval('log_zones_id_seq1') NOT NULL PRIMARY KEY, event character varying(2048), created_at timestamp DEFAULT CURRENT_TIMESTAMP, priority integer, zone_id integer)
         - CREATE INDEX IF NOT EXISTS idx_log_zones_zone_id ON log_zones (zone_id)
@@ -83,38 +85,39 @@ spec:
         - CREATE INDEX IF NOT EXISTS idx_records_zone_templ_domain_id ON records_zone_templ (domain_id)
         - CREATE INDEX IF NOT EXISTS idx_records_zone_templ_zone_templ_id ON records_zone_templ (zone_templ_id)
         - CREATE SEQUENCE IF NOT EXISTS users_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS users (id integer DEFAULT nextval('users_id_seq') NOT NULL PRIMARY KEY, username character varying(64), password character varying(128), fullname character varying(255), email character varying(255), description character varying(1024), perm_templ integer, active integer, use_ldap integer, auth_method character varying(20) DEFAULT 'sql' NOT NULL)
+        - CREATE TABLE IF NOT EXISTS users (id integer DEFAULT nextval('users_id_seq') NOT NULL PRIMARY KEY, username character varying(64), password character varying(128), fullname character varying(255), email character varying(255), description character varying(1024), perm_templ integer, perm_templ_source character varying(20) DEFAULT 'admin' NOT NULL, active integer, use_ldap integer, auth_method character varying(20) DEFAULT 'sql' NOT NULL)
         - CREATE INDEX IF NOT EXISTS idx_users_perm_templ ON users (perm_templ)
         - CREATE SEQUENCE IF NOT EXISTS login_attempts_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS login_attempts (id integer DEFAULT nextval('login_attempts_id_seq') NOT NULL PRIMARY KEY, user_id integer NULL REFERENCES users(id) ON DELETE SET NULL, ip_address character varying(45) NOT NULL, timestamp integer NOT NULL, successful boolean NOT NULL)
+        - CREATE TABLE IF NOT EXISTS login_attempts (id integer DEFAULT nextval('login_attempts_id_seq') NOT NULL PRIMARY KEY, user_id integer NULL, ip_address character varying(45) NOT NULL, timestamp integer NOT NULL, successful boolean NOT NULL, CONSTRAINT fk_login_attempts_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL)
         - CREATE INDEX IF NOT EXISTS idx_login_attempts_user_id ON login_attempts (user_id)
         - CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_address ON login_attempts (ip_address)
         - CREATE INDEX IF NOT EXISTS idx_login_attempts_timestamp ON login_attempts (timestamp)
         - CREATE SEQUENCE IF NOT EXISTS zone_templ_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS zone_templ (id integer DEFAULT nextval('zone_templ_id_seq') NOT NULL PRIMARY KEY, name character varying(128), descr character varying(1024), owner integer, created_by integer REFERENCES users(id) ON DELETE SET NULL)
+        - CREATE TABLE IF NOT EXISTS zone_templ (id integer DEFAULT nextval('zone_templ_id_seq') NOT NULL PRIMARY KEY, name character varying(128), descr character varying(1024), owner integer, created_by integer, is_default boolean DEFAULT false NOT NULL, CONSTRAINT fk_zone_templ_users FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL)
         - CREATE INDEX IF NOT EXISTS idx_zone_templ_owner ON zone_templ (owner)
         - CREATE INDEX IF NOT EXISTS idx_zone_templ_created_by ON zone_templ (created_by)
         - CREATE SEQUENCE IF NOT EXISTS zone_templ_records_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
         - CREATE TABLE IF NOT EXISTS zone_templ_records (id integer DEFAULT nextval('zone_templ_records_id_seq') NOT NULL PRIMARY KEY, zone_templ_id integer, name character varying(255), type character varying(6), content character varying(2048), ttl integer, prio integer)
         - CREATE INDEX IF NOT EXISTS idx_zone_templ_records_zone_templ_id ON zone_templ_records (zone_templ_id)
         - CREATE SEQUENCE IF NOT EXISTS zones_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS zones (id integer DEFAULT nextval('zones_id_seq') NOT NULL PRIMARY KEY, domain_id integer, owner integer DEFAULT NULL, comment character varying(1024), zone_templ_id integer)
+        - CREATE TABLE IF NOT EXISTS zones (id integer DEFAULT nextval('zones_id_seq') NOT NULL PRIMARY KEY, domain_id integer, owner integer DEFAULT NULL, comment character varying(1024), zone_templ_id integer, zone_name character varying(255) DEFAULT NULL, zone_type character varying(8) DEFAULT NULL, zone_master character varying(255) DEFAULT NULL)
         - CREATE INDEX IF NOT EXISTS idx_zones_domain_id ON zones (domain_id)
         - CREATE INDEX IF NOT EXISTS idx_zones_owner ON zones (owner)
         - CREATE INDEX IF NOT EXISTS idx_zones_zone_templ_id ON zones (zone_templ_id)
+        - CREATE UNIQUE INDEX IF NOT EXISTS idx_zones_zone_name ON zones (zone_name)
         - CREATE SEQUENCE IF NOT EXISTS api_keys_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS api_keys (id integer DEFAULT nextval('api_keys_id_seq') NOT NULL PRIMARY KEY, name character varying(255) NOT NULL, secret_key character varying(255) NOT NULL, created_by integer REFERENCES users(id) ON DELETE SET NULL, created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, last_used_at timestamp, disabled boolean DEFAULT false NOT NULL, expires_at timestamp)
+        - CREATE TABLE IF NOT EXISTS api_keys (id integer DEFAULT nextval('api_keys_id_seq') NOT NULL PRIMARY KEY, name character varying(255) NOT NULL, secret_key character varying(255) NOT NULL, created_by integer, created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, last_used_at timestamp, disabled boolean DEFAULT false NOT NULL, expires_at timestamp, CONSTRAINT fk_api_keys_users FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL)
         - CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_secret_key ON api_keys (secret_key)
         - CREATE INDEX IF NOT EXISTS idx_api_keys_created_by ON api_keys (created_by)
         - CREATE INDEX IF NOT EXISTS idx_api_keys_disabled ON api_keys (disabled)
         - CREATE SEQUENCE IF NOT EXISTS user_mfa_id_seq INCREMENT 1 MINVALUE 1 MAXVALUE 2147483647 CACHE 1
-        - CREATE TABLE IF NOT EXISTS user_mfa (id integer DEFAULT nextval('user_mfa_id_seq') NOT NULL PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, enabled boolean DEFAULT false NOT NULL, secret character varying(255), recovery_codes text, type character varying(20) DEFAULT 'app' NOT NULL, last_used_at timestamp, created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at timestamp, verification_data text)
+        - CREATE TABLE IF NOT EXISTS user_mfa (id integer DEFAULT nextval('user_mfa_id_seq') NOT NULL PRIMARY KEY, user_id integer NOT NULL, enabled boolean DEFAULT false NOT NULL, secret character varying(255), recovery_codes text, type character varying(20) DEFAULT 'app' NOT NULL, last_used_at timestamp, created_at timestamp DEFAULT CURRENT_TIMESTAMP NOT NULL, updated_at timestamp, verification_data text, CONSTRAINT fk_user_mfa_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)
         - CREATE UNIQUE INDEX IF NOT EXISTS idx_user_mfa_user_id ON user_mfa (user_id)
         - CREATE INDEX IF NOT EXISTS idx_user_mfa_enabled ON user_mfa (enabled)
-        - CREATE TABLE IF NOT EXISTS user_preferences (id serial NOT NULL PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, preference_key character varying(100) NOT NULL, preference_value text)
+        - CREATE TABLE IF NOT EXISTS user_preferences (id serial NOT NULL PRIMARY KEY, user_id integer NOT NULL, preference_key character varying(100) NOT NULL, preference_value text, CONSTRAINT fk_user_preferences_users FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)
         - CREATE UNIQUE INDEX IF NOT EXISTS idx_user_preferences_user_key ON user_preferences (user_id, preference_key)
         - CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON user_preferences (user_id)
-        - CREATE TABLE IF NOT EXISTS zone_template_sync (id serial NOT NULL PRIMARY KEY, zone_id integer NOT NULL, zone_templ_id integer NOT NULL, last_synced timestamp, template_last_modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, needs_sync boolean NOT NULL DEFAULT false, created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP)
+        - CREATE TABLE IF NOT EXISTS zone_template_sync (id serial NOT NULL PRIMARY KEY, zone_id integer NOT NULL, zone_templ_id integer NOT NULL, last_synced timestamp, template_last_modified timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, needs_sync boolean NOT NULL DEFAULT false, created_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT fk_zone_template_sync_zone FOREIGN KEY (zone_id) REFERENCES zones(id) ON DELETE CASCADE, CONSTRAINT fk_zone_template_sync_templ FOREIGN KEY (zone_templ_id) REFERENCES zone_templ(id) ON DELETE CASCADE)
         - CREATE UNIQUE INDEX IF NOT EXISTS idx_zone_template_unique ON zone_template_sync (zone_id, zone_templ_id)
         - CREATE INDEX IF NOT EXISTS idx_zone_templ_id ON zone_template_sync (zone_templ_id)
         - CREATE INDEX IF NOT EXISTS idx_needs_sync ON zone_template_sync (needs_sync)
@@ -126,7 +129,7 @@ spec:
         - CREATE INDEX IF NOT EXISTS idx_urr_email ON username_recovery_requests (email)
         - CREATE INDEX IF NOT EXISTS idx_urr_ip ON username_recovery_requests (ip_address)
         - CREATE INDEX IF NOT EXISTS idx_urr_created ON username_recovery_requests (created_at)
-        - CREATE TABLE IF NOT EXISTS user_agreements (id serial PRIMARY KEY, user_id integer NOT NULL REFERENCES users(id) ON DELETE CASCADE, agreement_version character varying(50) NOT NULL, accepted_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address character varying(45) DEFAULT NULL, user_agent text DEFAULT NULL)
+        - CREATE TABLE IF NOT EXISTS user_agreements (id serial PRIMARY KEY, user_id integer NOT NULL, agreement_version character varying(50) NOT NULL, accepted_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, ip_address character varying(45) DEFAULT NULL, user_agent text DEFAULT NULL, CONSTRAINT fk_user_agreements_user FOREIGN KEY (user_id) REFERENCES users(id) ON UPDATE CASCADE ON DELETE CASCADE)
         - CREATE UNIQUE INDEX IF NOT EXISTS unique_user_agreement ON user_agreements (user_id, agreement_version)
         - CREATE INDEX IF NOT EXISTS idx_user_agreements_user_id ON user_agreements (user_id)
         - CREATE INDEX IF NOT EXISTS idx_user_agreements_version ON user_agreements (agreement_version)
@@ -151,7 +154,7 @@ spec:
         - CREATE TABLE IF NOT EXISTS zones_groups (id serial PRIMARY KEY, domain_id integer NOT NULL, group_id integer NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE, created_at timestamp DEFAULT CURRENT_TIMESTAMP, UNIQUE (domain_id, group_id))
         - CREATE INDEX IF NOT EXISTS idx_zones_groups_domain ON zones_groups (domain_id)
         - CREATE INDEX IF NOT EXISTS idx_zones_groups_group ON zones_groups (group_id)
-        - CREATE TABLE IF NOT EXISTS record_comment_links (record_id integer NOT NULL PRIMARY KEY, comment_id integer NOT NULL UNIQUE)
+        - CREATE TABLE IF NOT EXISTS record_comment_links (record_id character varying(4096) NOT NULL PRIMARY KEY, comment_id integer NOT NULL UNIQUE)
         - CREATE INDEX IF NOT EXISTS idx_record_comment_links_comment ON record_comment_links (comment_id)
         # -- Forward zones (SOA + NS) --
         - INSERT INTO domains (name, type) VALUES ('sholdee.net', 'NATIVE'), ('mgmt.sholdee.net', 'NATIVE'), ('guest.sholdee.net', 'NATIVE'), ('dmz.sholdee.net', 'NATIVE'), ('lan.sholdee.net', 'NATIVE') ON CONFLICT DO NOTHING
