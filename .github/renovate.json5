@@ -82,6 +82,12 @@
       automerge: false,
     },
     {
+      description: "Exclude poweradmin from automerge - releases can require manual DB migrations (no auto-migrate on pgsql)",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["/poweradmin/"],
+      automerge: false,
+    },
+    {
       matchManagers: ["github-actions"],
       matchDatasources: ["github-tags"],
       matchUpdateTypes: ["minor", "patch", "digest"],
