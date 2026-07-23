@@ -13,7 +13,7 @@ zizmor = "1.28.0"
 gitleaks = "8.30.1"
 
 # Kubernetes and GitOps CLIs.
-kubectl = "1.36.2"
+kubectl = "1.36.3"
 argocd = "3.4.5"
 "github:cloudnative-pg/cloudnative-pg[exe=kubectl-cnpg]" = "v1.30.0"
 kustomize = "5.8.1"
