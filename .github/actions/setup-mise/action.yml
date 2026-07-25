@@ -72,7 +72,7 @@ runs:
           mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-
 
     - name: Setup mise
-      uses: jdx/mise-action@f10502fc09dadecfefb962fff68ce77213930204 # v4
+      uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
       with:
         install: false
         install_args: ${{ steps.profile.outputs.tools }}
