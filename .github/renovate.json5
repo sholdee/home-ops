@@ -24,15 +24,6 @@
   },
   packageRules: [
     {
-      description: "Separate PRs for cilium",
-      matchFileNames: ["**/apps.yaml"],
-      matchManagers: ["argocd"],
-      matchPackageNames: ["cilium"],
-      additionalBranchPrefix: "cilium-",
-      commitMessageSuffix: " [cilium]",
-      automerge: false,
-    },
-    {
       description: "Separate PRs for cilium-preflight",
       matchFileNames: ["**/cilium-preflight.yaml"],
       matchManagers: ["argocd"],
@@ -74,6 +65,19 @@
       matchFileNames: ["apps/monitoring/values.yaml"],
       matchPackageNames: ["ghcr.io/deckhouse/prompp", "deckhouse/prompp"],
       enabled: false,
+    },
+    // Automerge exclusions below must stay AFTER the blanket automerge rules above:
+    // later packageRules win, so an exclusion placed earlier is silently overridden
+    // (the cilium exclusion added in 2026-04 sat above the blanket rule and was
+    // overridden from day one, until relocated here in 2026-07).
+    {
+      description: "Separate PRs for cilium; never automerge the CNI app",
+      matchFileNames: ["**/apps.yaml"],
+      matchManagers: ["argocd"],
+      matchPackageNames: ["cilium"],
+      additionalBranchPrefix: "cilium-",
+      commitMessageSuffix: " [cilium]",
+      automerge: false,
     },
     {
       description: "Exclude apps with Recreate strategy and no health probes from automerge",
