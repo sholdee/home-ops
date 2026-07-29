@@ -13,6 +13,14 @@
       npm: {},
     },
   },
+  // Pin the mise that postUpgradeTasks installs to the SAME version CI pins in
+  // .github/actions/setup-mise/action.yml — the two mise.lock writers must not
+  // skew or the lockfile drift check fails on every renovate PR. The custom
+  // regex manager bumps both sites in one PR.
+  constraints: {
+    // renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
+    mise: "2026.7.16",
+  },
   kubernetes: {
     managerFilePatterns: ["/apps/.*\\.ya?ml$/", "/components/.*\\.ya?ml$/"],
   },
@@ -218,10 +226,14 @@
     },
     {
       customType: "regex",
-      description: ["Process mise installer version in setup action"],
-      managerFilePatterns: ["/^\\.github/actions/setup-mise/action\\.ya?ml$/"],
+      description: ["Process mise installer version in setup action and renovate constraints"],
+      managerFilePatterns: [
+        "/^\\.github/actions/setup-mise/action\\.ya?ml$/",
+        "/^\\.github/renovate\\.json5$/",
+      ],
       matchStrings: [
-        "# renovate: datasource=(?<datasource>[\\w-]+) depName=(?<depName>[\\w./-]+) extractVersion=(?<extractVersion>[^\\s]+)\\n\\s+default: '(?<currentValue>[\\d.]+)'",
+        "# renovate: datasource=(?<datasource>[\\w-]+) depName=(?<depName>[\\w./-]+) extractVersion=(?<extractVersion>[^\\s]+)\\n\\s+default: ['\"](?<currentValue>[\\d.]+)['\"]",
+        "// renovate: datasource=(?<datasource>[\\w-]+) depName=(?<depName>[\\w./-]+) extractVersion=(?<extractVersion>[^\\s]+)\\n\\s+mise: ['\"](?<currentValue>[\\d.]+)['\"]",
       ],
       versioningTemplate: "semver-coerced",
       extractVersionTemplate: "{{{extractVersion}}}",
