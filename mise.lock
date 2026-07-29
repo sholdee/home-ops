@@ -138,6 +138,7 @@ url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.
 checksum = "sha256:88bb6da8ca5b63b5a4e60dae88b320bdcba3a8843536ad86e0fe077765ff2bbc"
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/kubectl-cnpg_1.30.0_darwin_arm64.tar.gz"
 url_api = "https://api.github.com/repos/cloudnative-pg/cloudnative-pg/releases/assets/461307837"
+provenance_verified = true
 
 [tools."github:cloudnative-pg/cloudnative-pg"."platforms.macos-arm64".provenance.slsa]
 url = "https://github.com/cloudnative-pg/cloudnative-pg/releases/download/v1.30.0/multiple.intoto.jsonl"
@@ -163,6 +164,7 @@ checksum = "sha256:961769d4af345972ac6ab4cf7f806d25bb854e36137c4d7900a917bf59e5f
 url = "https://github.com/sholdee/drydock/releases/download/v0.2.8/drydock_darwin-arm64.tar.gz"
 url_api = "https://api.github.com/repos/sholdee/drydock/releases/assets/486247514"
 provenance = "github-attestations"
+provenance_verified = true
 
 [[tools.gitleaks]]
 version = "8.30.1"
@@ -421,18 +423,18 @@ version = "3.14.6"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:c2a2caa03aa9beb77a5bbb5a009c8fe77b96a56925da2dba18095237e30faf04"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6+20260718-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:44f86d58f3bbc1aa6c95ee90f03226e0fdbd22475a98c4410e5a20042b7f40d3"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260728/cpython-3.14.6+20260728-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:86bf107f65fc30b56f2b263b26797fcbb1661f5315910cdbf27f733eb8738b74"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6+20260718-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:d6254462d5fe066810a472d286861f6a18f66400008bfa9688e202a5672e88cb"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260728/cpython-3.14.6+20260728-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:5e8e0746cb0108d138f510cfbb28c4b031b9ed63bbbe3e43a34c77d4663c4fa1"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260718/cpython-3.14.6+20260718-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:f4b47659e2da4b97f38cefdf5ad19f0042946099d843cde60de308708e5b1ac5"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260728/cpython-3.14.6+20260728-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rush]]
