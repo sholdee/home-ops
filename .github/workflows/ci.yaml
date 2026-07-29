@@ -69,28 +69,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup mise
-        uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
+      - name: Install full locked mise toolchain
+        uses: ./.github/actions/setup-mise
         with:
-          install: false
-          cache: false
-          experimental: true
-          github_token: ${{ github.token }}
+          profile: all
 
-      - name: Update mise binary
-        run: mise self-update --yes --no-plugins
-
+      # provenance_verified stamps are host-platform-dependent (mise verifies only
+      # the current platform's artifact at lock time), so the renovate container
+      # (linux-arm64) and this runner (linux-x64) can never produce identical
+      # stamps — exclude them from the drift check.
       - name: Verify mise lockfile is current
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           mise lock --yes
-          git diff --exit-code -- mise.lock
-
-      - name: Install full locked mise toolchain
-        uses: ./.github/actions/setup-mise
-        with:
-          profile: all
+          git diff -I '^provenance_verified = ' --exit-code -- mise.lock
 
   renovate:
     needs: detect

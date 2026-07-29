@@ -4,6 +4,10 @@ name: Setup mise toolchain
 description: Install the locked repository toolchain with mise
 
 inputs:
+  mise-version:
+    description: mise version
+    # renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
+    default: "2026.7.16"
   profile:
     description: Tool profile to install. One of all, validation, bootstrap-test, drydock, image, operator.
     default: all
@@ -67,22 +71,19 @@ runs:
         path: |
           ~/.cache/mise
           ~/.local/share/mise
-        key: mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-${{ hashFiles('mise.toml', 'mise.lock', '.github/actions/setup-mise/action.yml') }}
+        key: mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-v${{ inputs.mise-version }}-${{ hashFiles('mise.toml', 'mise.lock', '.github/actions/setup-mise/action.yml') }}
         restore-keys: |
-          mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-
+          mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-v${{ inputs.mise-version }}-
 
     - name: Setup mise
       uses: jdx/mise-action@9e7f7633ff6f6d6048a9418a68d48f288f50eb14 # v4
       with:
+        version: ${{ inputs.mise-version }}
         install: false
         install_args: ${{ steps.profile.outputs.tools }}
         cache: false
         experimental: true
         github_token: ${{ github.token }}
-
-    - name: Update mise binary
-      shell: bash
-      run: mise self-update --yes --no-plugins
 
     - name: Install locked toolchain
       shell: bash
@@ -114,7 +115,7 @@ runs:
         path: |
           ~/.cache/mise
           ~/.local/share/mise
-        key: mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-${{ hashFiles('mise.toml', 'mise.lock', '.github/actions/setup-mise/action.yml') }}
+        key: mise-${{ runner.os }}-${{ runner.arch }}-${{ inputs.profile }}-v${{ inputs.mise-version }}-${{ hashFiles('mise.toml', 'mise.lock', '.github/actions/setup-mise/action.yml') }}
 
     - name: Verify mise toolchain
       shell: bash
