@@ -226,23 +226,23 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012783"
 provenance = "github-attestations"
 
 [[tools.jsonschema]]
-version = "16.3.1"
+version = "16.4.0"
 backend = "aqua:sourcemeta/jsonschema"
 
 [tools.jsonschema."platforms.linux-arm64"]
-checksum = "sha256:d70d4fc12e7c43abf6739adecc575a839e3494c58ea53cbbf1ae1d035aebc077"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.3.1/jsonschema-16.3.1-linux-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499275389"
+checksum = "sha256:7771332799a8769a57649992eb089aa6442d9e434982ac96d956800e38033f22"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.4.0/jsonschema-16.4.0-linux-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499456313"
 
 [tools.jsonschema."platforms.linux-x64"]
-checksum = "sha256:ad06e4fd916d5b145a94c17c6ff7882ea25a93ab1448054c98d3fe88fe228ef0"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.3.1/jsonschema-16.3.1-linux-x86_64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499275394"
+checksum = "sha256:f94edd5f930a6264f260bbd82b27a4f81ad032000a15a7e9cdf124d769d10fa7"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.4.0/jsonschema-16.4.0-linux-x86_64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499456323"
 
 [tools.jsonschema."platforms.macos-arm64"]
-checksum = "sha256:76948bd72704f7bc1345b0f17dc45608bd3b7a5f3b17ee3b95da5219434336ff"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.3.1/jsonschema-16.3.1-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499275387"
+checksum = "sha256:0938108bb8f4e6a7f94a57eac2453a261ff8de85f6c0347735a9b90d714c52c7"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.4.0/jsonschema-16.4.0-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/499456316"
 
 [[tools.just]]
 version = "1.57.0"
