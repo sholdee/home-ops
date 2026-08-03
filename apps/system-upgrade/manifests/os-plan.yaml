@@ -12,7 +12,7 @@ spec:
   exclusive: true
   jobActiveDeadlineSecs: 7200
   postCompleteDelay: "5m"
-  version: trixie-2026-07-05
+  version: trixie-2026-08-02
   nodeSelector:
     matchExpressions:
       - key: plan.upgrade.cattle.io/raspios-trixie
