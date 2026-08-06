@@ -421,22 +421,22 @@ version = "26.6.0"
 backend = "pipx:ansible-lint"
 
 [[tools.python]]
-version = "3.14.6"
+version = "3.14.7"
 backend = "core:python"
 
 [tools.python."platforms.linux-arm64"]
-checksum = "sha256:8ad1ec529cd1708245e8661a463245fc1479c43cbfd66e58b095456ebf77180a"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:f278d66c15e81f6c77719892e3eb32ff4bca5fc4ab424e171d14bc12bb88b4ee"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260805/cpython-3.14.7+20260805-aarch64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.linux-x64"]
-checksum = "sha256:ba960817e542642021135db330d875f410f4e14c64a62e2ae5faf3697ada08b2"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+checksum = "sha256:a3a4e4b81b138960c7c546694df8a77578c0b6aa46d47e96f49b9e10e8f860c9"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260805/cpython-3.14.7+20260805-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [tools.python."platforms.macos-arm64"]
-checksum = "sha256:e0d4e5066aef3248c22e08a07546bfd5edeaca904c91fadc296be720998ec2ec"
-url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260804/cpython-3.14.6+20260804-aarch64-apple-darwin-install_only_stripped.tar.gz"
+checksum = "sha256:abbf6e8530a283ed795fa91fd6bcf4501e2b1fa287b2cb1c15b70d3028f3a7c9"
+url = "https://github.com/astral-sh/python-build-standalone/releases/download/20260805/cpython-3.14.7+20260805-aarch64-apple-darwin-install_only_stripped.tar.gz"
 provenance = "github-attestations"
 
 [[tools.rush]]

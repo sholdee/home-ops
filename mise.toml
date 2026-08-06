@@ -24,7 +24,7 @@ jq = "1.8.2"
 "github:sholdee/drydock[exe=drydock]" = "v0.2.8"
 
 # Bootstrap, node lifecycle, and operator workflow CLIs.
-python = "3.14.6"
+python = "3.14.7"
 pipx = "1.16.6"
 ansible-core = "2.21.2"
 "pipx:ansible-lint" = "26.6.0"
