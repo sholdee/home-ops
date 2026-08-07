@@ -32,3 +32,10 @@ kind = "0.32.0"
 lima = "2.2.0"
 op = "2.34.0"
 gh = "2.97.0"
+
+[tool_alias]
+# The registry default for op is the vfox-1password plugin, whose plugin-clone
+# step is not concurrency-safe: parallel `mise exec` lefthook tasks race the
+# clone and fail with "module 'metadata' not found". The aqua backend has no
+# plugin step and installs safely in parallel.
+op = "aqua:1password/cli"
