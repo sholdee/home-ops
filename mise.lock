@@ -49,32 +49,32 @@ url_api = "https://api.github.com/repos/sholdee/crd-schema-publisher/releases/as
 provenance = "github-attestations"
 
 [[tools.argocd]]
-version = "3.5.0"
+version = "3.5.1"
 backend = "aqua:argoproj/argo-cd"
 
 [tools.argocd."platforms.linux-arm64"]
-checksum = "sha256:8192c7bffdadb6e17711146e602837f9d2a75abd005ddea20b322208d32a1086"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-linux-arm64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/501097806"
+checksum = "sha256:7d5e175b2299924459d8d6c9a766da0875449d00d687a06a17b8210117c0a431"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-linux-arm64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/511531267"
 
 [tools.argocd."platforms.linux-arm64".provenance.slsa]
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-cli.intoto.jsonl"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-cli.intoto.jsonl"
 
 [tools.argocd."platforms.linux-x64"]
-checksum = "sha256:82f2ffe3f3df32baed1229963f0866e9a8a3c74e136e9e5f36646d9004332cc5"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-linux-amd64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/501097954"
+checksum = "sha256:0a66b7150608e3f8ae07c521d56c9f34244033cf88a83e0953f7337a3799035e"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-linux-amd64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/511531269"
 
 [tools.argocd."platforms.linux-x64".provenance.slsa]
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-cli.intoto.jsonl"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-cli.intoto.jsonl"
 
 [tools.argocd."platforms.macos-arm64"]
-checksum = "sha256:842740ce687e738f2bb5be9e48e74cd1ee51549bdbecc7490a534cdb4ddd7e72"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-darwin-arm64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/501097945"
+checksum = "sha256:3607c5891028bf0c7505284afb54df350f0c67585f32d688ad03e3856ba58b1f"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-darwin-arm64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/511531399"
 
 [tools.argocd."platforms.macos-arm64".provenance.slsa]
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.0/argocd-cli.intoto.jsonl"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.5.1/argocd-cli.intoto.jsonl"
 
 [[tools.bats]]
 version = "1.14.0"
