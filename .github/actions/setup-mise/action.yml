@@ -7,7 +7,7 @@ inputs:
   mise-version:
     description: mise version
     # renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
-    default: "2026.8.8"
+    default: "2026.8.9"
   profile:
     description: Tool profile to install. One of all, validation, bootstrap-test, drydock, image, operator.
     default: all
