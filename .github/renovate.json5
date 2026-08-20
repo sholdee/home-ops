@@ -19,7 +19,7 @@
   // regex manager bumps both sites in one PR.
   constraints: {
     // renovate: datasource=github-releases depName=jdx/mise extractVersion=^v(?<version>.+)$
-    mise: "v2026.8.9",
+    mise: "v2026.8.10",
   },
   kubernetes: {
     managerFilePatterns: ["/apps/.*\\.ya?ml$/", "/components/.*\\.ya?ml$/"],
