@@ -17,7 +17,7 @@ prometheus:
       # renovate: datasource=docker depName=ghcr.io/deckhouse/prompp digest=sha256:49e437533a87afac089f920933a2c777f7d53e9676e6ba52eab786c7de5c6b2f
       registry: ghcr.io
       repository: deckhouse/prompp
-      tag: "0.8.10"
+      tag: "3.8.14"
       sha: 49e437533a87afac089f920933a2c777f7d53e9676e6ba52eab786c7de5c6b2f
       pullPolicy: IfNotPresent
     # Keep < 3.11.0: at >= 3.11.0 prometheus-operator writes storage.tsdb.retention into
