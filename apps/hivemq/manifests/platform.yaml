@@ -35,7 +35,7 @@ spec:
                     -XX:MaxDirectMemorySize=128m
                     -XX:MaxMetaspaceSize=128m
                     -XX:+ExitOnOutOfMemoryError
-              image: "docker.io/hivemq/hivemq4:4.54.0@sha256:5e253faf87ac7fddb63c3c02b3deb89818fc7ff97a3f1776fbe6fb49b5bce689"
+              image: "docker.io/hivemq/hivemq4:4.55.0@sha256:bb46ce919ec32f7c19016cc2215f76465b5926775c9c6dd6406d23c16090ad78"
               imagePullPolicy: IfNotPresent
               resources:
                 requests:
