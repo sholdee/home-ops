@@ -31,7 +31,7 @@ ansible-core = "2.21.3"
 kind = "0.33.0"
 lima = "2.2.0"
 op = "2.34.0"
-gh = "2.98.0"
+gh = "2.99.0"
 
 [tool_alias]
 # The registry default for op is the vfox-1password plugin, whose plugin-clone
