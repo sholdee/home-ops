@@ -123,7 +123,7 @@ spec:
             capabilities:
               drop: ["ALL"]
         - name: backup-cleaner
-          image: ghcr.io/home-operations/k8s-sidecar:2.11.1@sha256:2dce54e06b1a79d1abed2089933551dd2c02a6e3d45fb5ab1ee1bc6bb6cc5834
+          image: ghcr.io/home-operations/k8s-sidecar:2.11.2@sha256:2e18fa6af75c94fb9aff610fba3386e7d518b0d639ecf0948aecaa071b126be0
           command: ["/usr/local/bin/cleanup.sh"]
           volumeMounts:
             - name: unifi-data
