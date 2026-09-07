@@ -225,23 +225,23 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012783"
 provenance = "github-attestations"
 
 [[tools.jsonschema]]
-version = "16.9.0"
+version = "16.10.0"
 backend = "aqua:sourcemeta/jsonschema"
 
 [tools.jsonschema."platforms.linux-arm64"]
-checksum = "sha256:7cd58798e98918604b2d521784348af6c4826bb8b183c20b2fd5d5c9a8bb12e5"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.9.0/jsonschema-16.9.0-linux-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/540366786"
+checksum = "sha256:c0986168308b198c5cb528ac2ce56c3f7689704702011f9c3ef47163d5de7257"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.10.0/jsonschema-16.10.0-linux-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/549333701"
 
 [tools.jsonschema."platforms.linux-x64"]
-checksum = "sha256:e8ebe082e0bbc6d5e785c7633f9f09a297a1d195c8ba21f22db76be9aa955f57"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.9.0/jsonschema-16.9.0-linux-x86_64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/540366796"
+checksum = "sha256:eab681420accd3a893fffb52ab658e1f7e84780f73c7b6d3a251c8f26a953403"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.10.0/jsonschema-16.10.0-linux-x86_64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/549333706"
 
 [tools.jsonschema."platforms.macos-arm64"]
-checksum = "sha256:e8ef75e48dbabe9b193cea099f5151e21e9c738ffc494644e8fcd66fd5227bd4"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.9.0/jsonschema-16.9.0-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/540366784"
+checksum = "sha256:2b161a91c5d92565f4fb9d9f6016ded8bd5df70fb77f0629b18b938c000e29e7"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.10.0/jsonschema-16.10.0-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/549333700"
 
 [[tools.just]]
 version = "1.58.0"
