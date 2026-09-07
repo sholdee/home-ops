@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: poweradmin
-          image: ghcr.io/poweradmin/poweradmin:4.4.0@sha256:bada816915836c91334b75364cb61f8b5d8c6c827d90fb6589e470a962e291ef
+          image: ghcr.io/poweradmin/poweradmin:4.4.1@sha256:612ca40271cd3d5f00e0174dbfa5cd2b1b39e9f94fd591dbf37a7b89efd82c24
           env:
             - name: DB_TYPE
               value: pgsql
