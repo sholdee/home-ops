@@ -381,7 +381,7 @@ provenance = "github-attestations"
 
 [[tools.op]]
 version = "2.34.0"
-backend = "vfox:op"
+backend = "aqua:1password/cli"
 
 [tools.op."platforms.linux-arm64"]
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_arm64_v2.34.0.zip"
