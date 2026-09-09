@@ -44,7 +44,7 @@ runs:
             )
             ;;
           bootstrap-test)
-            tools=(python just shellcheck bats rush actionlint zizmor yq jq kustomize helm ansible-core)
+            tools=(python pipx just shellcheck bats rush actionlint zizmor yq jq kustomize helm ansible-core)
             ;;
           drydock)
             tools=(github:sholdee/drydock jq)
