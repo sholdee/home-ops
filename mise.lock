@@ -187,20 +187,20 @@ url = "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8
 url_api = "https://api.github.com/repos/gitleaks/gitleaks/releases/assets/378332059"
 
 [[tools.helm]]
-version = "3.21.4"
+version = "3.22.0"
 backend = "aqua:helm/helm"
 
 [tools.helm."platforms.linux-arm64"]
-checksum = "sha256:b54c04b4e0b2540bbdc08c17a121dab70e9a2ed0de5705528fec68a5fd3b85a7"
-url = "https://get.helm.sh/helm-v3.21.4-linux-arm64.tar.gz"
+checksum = "sha256:f14e804dfee240f55525b667488fe9adca349e63e00c9af634c0beb1421ac310"
+url = "https://get.helm.sh/helm-v3.22.0-linux-arm64.tar.gz"
 
 [tools.helm."platforms.linux-x64"]
-checksum = "sha256:61f88ab166748cb19604d7884cb100ae9ccb13804ddeb98e08af167eacbb6a14"
-url = "https://get.helm.sh/helm-v3.21.4-linux-amd64.tar.gz"
+checksum = "sha256:1e4ab49e429626cf6c6958d914248b78c9730803c2751b87627e171dc800e7bb"
+url = "https://get.helm.sh/helm-v3.22.0-linux-amd64.tar.gz"
 
 [tools.helm."platforms.macos-arm64"]
-checksum = "sha256:6e0bf5eb6daafc2b1ec34bb5ba04ef103f3afc16192fb19805c2924d7ea1033f"
-url = "https://get.helm.sh/helm-v3.21.4-darwin-arm64.tar.gz"
+checksum = "sha256:4c9982a6cdeb458b60258df66b55398ca5b19293f6877faffe2909ad6f23dfe0"
+url = "https://get.helm.sh/helm-v3.22.0-darwin-arm64.tar.gz"
 
 [[tools.jq]]
 version = "1.8.2"
