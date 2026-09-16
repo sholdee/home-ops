@@ -25,7 +25,7 @@ spec:
       daily: 14
       hourly: 24
     storageClassName: longhorn
-    unlock: u2
+    unlock: u3
     volumeSnapshotClassName: longhorn
   sourcePVC: app-pvc
   trigger:
