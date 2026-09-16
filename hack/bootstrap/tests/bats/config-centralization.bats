@@ -76,3 +76,9 @@ assert_scan_has_no_matches() {
   run env ROOT="$ROOT" bash -c "$(declare -f runtime_shell_files assert_scan_has_no_matches); runtime_shell_files | grep -v '/hack/bootstrap/lib/config.sh$' | assert_scan_has_no_matches '/(etc|var/lib)/rancher/k3s'"
   assert_success
 }
+
+@test "reimage image rendering reads Raspberry Pi boot defaults instead of hardcoding them" {
+  [[ -f "${ROOT}/hack/bootstrap/nodes/lib/reimage-image.sh" ]]
+  printf '%s\n' "${ROOT}/hack/bootstrap/nodes/lib/reimage-image.sh" |
+    assert_scan_has_no_matches 'pcie_port_pm=off|nvme_core\.default_ps_max_latency_us=0|dtparam=pciex1_gen=3|dtoverlay=cma,cma-96'
+}

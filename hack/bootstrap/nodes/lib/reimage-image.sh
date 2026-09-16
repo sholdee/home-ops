@@ -158,6 +158,41 @@ node_reimage_image_render_config() {
     "$NODE_YQ_BIN" -P >"${output_dir}/config/home-ops-node.yaml"
 }
 
+# The image seeds the same Raspberry Pi boot settings that Ansible node-prep
+# enforces later, read from the Ansible defaults (inventory overrides of these
+# keys are not supported). Values are rendered into shell hooks: cmdline args
+# must be plain tokens and firmware config lines must be key=value, which also
+# keeps a line from ending the hook's EOCONFIG heredoc early.
+node_reimage_image_boot_cmdline_args() {
+  local defaults="$NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE"
+  local args arg
+  local arg_re='^[A-Za-z0-9_./,:=@+-]+$'
+
+  [[ -f "$defaults" ]] || node_die "Ansible defaults file not found: ${defaults}"
+  args="$("$NODE_YQ_BIN" -r '.home_ops_raspberry_pi_cmdline_args // [] | .[]' "$defaults")" ||
+    node_die "could not read home_ops_raspberry_pi_cmdline_args from ${defaults}"
+  [[ -n "$args" ]] || node_die "home_ops_raspberry_pi_cmdline_args is empty in ${defaults}"
+  while IFS= read -r arg; do
+    [[ "$arg" =~ $arg_re ]] || node_die "unsafe Raspberry Pi cmdline arg in ${defaults}: ${arg}"
+  done <<<"$args"
+  printf '%s\n' "${args//$'\n'/ }"
+}
+
+node_reimage_image_boot_config_block() {
+  local defaults="$NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE"
+  local block line
+  local line_re='^[A-Za-z0-9_.-]+=[A-Za-z0-9_.,:=-]*$'
+
+  [[ -f "$defaults" ]] || node_die "Ansible defaults file not found: ${defaults}"
+  block="$("$NODE_YQ_BIN" -r '.home_ops_raspberry_pi_config_block // ""' "$defaults")" ||
+    node_die "could not read home_ops_raspberry_pi_config_block from ${defaults}"
+  [[ -n "$block" ]] || node_die "home_ops_raspberry_pi_config_block is empty in ${defaults}"
+  while IFS= read -r line; do
+    [[ "$line" =~ $line_re ]] || node_die "unsafe Raspberry Pi config line in ${defaults}: ${line:-<blank line>}"
+  done <<<"$block"
+  printf '%s\n' "$block"
+}
+
 node_reimage_image_render_layer() {
   local output_dir="$1"
   local hostname="$2"
@@ -167,6 +202,14 @@ node_reimage_image_render_layer() {
   local dns="$6"
   local iface="$7"
   local timezone="$8"
+
+  local cmdline_args config_block
+
+  cmdline_args="$(node_reimage_image_boot_cmdline_args)" ||
+    node_die "could not render Raspberry Pi cmdline args"
+  config_block="$(node_reimage_image_boot_config_block)" ||
+    node_die "could not render Raspberry Pi firmware config"
+  config_block="      ${config_block//$'\n'/$'\n'      }"
 
   cat >"${output_dir}/layer/home-ops-node-bootstrap.yaml" <<EOF
 # METABEGIN
@@ -195,13 +238,7 @@ mmdebstrap:
       cmdline_file=\$1/boot/firmware/cmdline.txt
       if [ -f "\$cmdline_file" ]; then
         cmdline="\$(cat "\$cmdline_file")"
-        for arg in \
-          cgroup_enable=cpuset \
-          cgroup_memory=1 \
-          cgroup_enable=memory \
-          nvme_core.default_ps_max_latency_us=0 \
-          pcie_aspm=off \
-          pcie_port_pm=off; do
+        for arg in ${cmdline_args}; do
           case " \$cmdline " in
             *" \$arg "*)
               ;;
@@ -220,14 +257,7 @@ mmdebstrap:
 
       [all]
       # BEGIN ANSIBLE MANAGED BLOCK home-ops raspberry pi config
-      dtparam=pciex1
-      dtparam=nvme
-      dtparam=pciex1_gen=3
-      dtoverlay=cma,cma-96
-      dtparam=audio=off
-      dtoverlay=disable-wifi
-      dtoverlay=disable-bt
-      arm_boost=1
+${config_block}
       # END ANSIBLE MANAGED BLOCK home-ops raspberry pi config
       EOCONFIG
       fi

@@ -424,6 +424,63 @@ EOF
   assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
 }
 
+@test "node reimage image source renders boot config from Ansible defaults" {
+  local output_dir public_key defaults layer marker
+  output_dir="${tmp}/image-source-boot-config"
+  public_key="${tmp}/ansiblekey.pub"
+  defaults="${tmp}/defaults.yml"
+  layer="${output_dir}/layer/home-ops-node-bootstrap.yaml"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  cp "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml" "$defaults"
+  yq -i '.home_ops_raspberry_pi_cmdline_args = ["cgroup_enable=cpuset", "home_ops_test_arg=1"]' "$defaults"
+  BLOCK=$'dtparam=home_ops_test\narm_boost=1\n' yq -i '.home_ops_raspberry_pi_config_block = strenv(BLOCK)' "$defaults"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live \
+      --output-dir "$output_dir" \
+      --ssh-public-key "$public_key" \
+      k3s-worker-0
+  assert_success
+  assert_file_contains "$layer" 'for arg in cgroup_enable=cpuset home_ops_test_arg=1; do'
+  assert_file_contains "$layer" 'dtparam=home_ops_test'
+  run yq -r '.mmdebstrap.customize-hooks[] | select(test("EOCONFIG"))' "$layer"
+  assert_success
+  [[ "$output" == *$'# BEGIN ANSIBLE MANAGED BLOCK home-ops raspberry pi config\ndtparam=home_ops_test\narm_boost=1\n# END ANSIBLE MANAGED BLOCK home-ops raspberry pi config\nEOCONFIG'* ]]
+  assert_file_not_contains "$layer" 'pcie_port_pm=off'
+  assert_file_not_contains "$layer" 'dtoverlay=disable-wifi'
+
+  marker="$(yq -r '.[] | select(has("ansible.builtin.blockinfile")) | .["ansible.builtin.blockinfile"].marker' \
+    "${ROOT}/hack/bootstrap/ansible/home-ops/tasks/node-prep/raspberry-pi-config.yml" | sed -n '1p')"
+  [[ -n "$marker" ]]
+  assert_file_contains "$layer" "${marker/\{mark\}/BEGIN}"
+  assert_file_contains "$layer" "${marker/\{mark\}/END}"
+}
+
+@test "node reimage image source rejects unsafe boot values from Ansible defaults" {
+  local output_dir public_key defaults
+  output_dir="${tmp}/image-source-unsafe-boot"
+  public_key="${tmp}/ansiblekey.pub"
+  defaults="${tmp}/defaults.yml"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  cp "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml" "$defaults"
+  yq -i '.home_ops_raspberry_pi_cmdline_args = ["cgroup_enable=cpuset", "quiet;reboot"]' "$defaults"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
+  assert_failure
+  assert_output_contains 'unsafe Raspberry Pi cmdline arg'
+
+  cp "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml" "$defaults"
+  BLOCK=$'dtparam=pciex1\nEOCONFIG\nreboot\n' yq -i '.home_ops_raspberry_pi_config_block = strenv(BLOCK)' "$defaults"
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
+  assert_failure
+  assert_output_contains 'unsafe Raspberry Pi config line'
+}
+
 @test "node reimage image source derives public key from inventory private key" {
   local fake_ssh_keygen output_dir test_home
   output_dir="${tmp}/image-source-derived"
