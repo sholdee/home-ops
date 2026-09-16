@@ -117,6 +117,12 @@
       allowedVersions: "<4",
     },
     {
+      description: "Hold cilium below 1.20.2 until nodes run a BTF-enabled kernel - 1.20.2 socket-LB programs need kernel BTF (cilium/cilium#48778)",
+      matchManagers: ["argocd"],
+      matchPackageNames: ["cilium"],
+      allowedVersions: "<1.20.2",
+    },
+    {
       description: "Keep 1Password CLI pinned until Renovate can resolve its mise backend cleanly",
       matchManagers: ["mise"],
       matchPackageNames: ["1password/cli", "op"],
