@@ -15,9 +15,11 @@ file hashes) for just node-kernel-build.
 Options:
   --keyring FILE         Keyring that signs the archive. Defaults to
                          ../rpi-image-gen/keydir/raspberrypi-archive-keyring.gpg.
-  --build-suffix SUFFIX  Package version suffix for the rebuild, such as +btf2.
-                         Defaults to the current lock's suffix when the source
-                         version is unchanged, otherwise +btf1.
+  --build-suffix SUFFIX  Package version suffix +btfN for the rebuild, such as
+                         +btf2. For an unchanged source version, N must be
+                         greater than the current lock's suffix. Defaults to
+                         the current lock's suffix when the source version is
+                         unchanged, otherwise +btf1.
   --output FILE          Lock file. Defaults to hack/bootstrap/nodes/kernel/source.yaml.
   -h, --help             Show help.
 EOF

@@ -124,7 +124,7 @@ node_kernel_lock_source() {
   local name_re='^[A-Za-z0-9][A-Za-z0-9.+~_-]*$'
   local sha_re='^[0-9a-f]{64}$'
   local size_re='^[0-9]+$'
-  local suffix_re='^\+[a-z][a-z0-9]*$'
+  local suffix_re='^\+btf[1-9][0-9]*$'
 
   keyring="$(cd "$(dirname "$keyring")" && pwd)/$(basename "$keyring")"
   node_log "verifying ${base}/dists/${suite}/InRelease"
@@ -182,6 +182,13 @@ node_kernel_lock_source() {
     suffix="+btf1"
   fi
   [[ "$suffix" =~ $suffix_re ]] || node_die "invalid kernel build suffix: ${suffix}"
+  # A build suffix names one kernel build per source version: moving to another
+  # suffix must move forward, or two different builds share a package version.
+  if [[ "$locked_version" == "$version" && "$locked_suffix" != "$suffix" ]]; then
+    [[ "$locked_suffix" =~ $suffix_re ]] || node_die "invalid buildSuffix in ${output}: ${locked_suffix}"
+    ((${suffix#+btf} > ${locked_suffix#+btf})) ||
+      node_die "build suffix ${suffix} must be greater than ${locked_suffix} for ${version}"
+  fi
   if [[ "$locked_version" == "$version" && "$locked_suffix" == "$suffix" && "$locked_delta_sha" != "$delta_sha" ]]; then
     node_die "config.2712.delta changed since ${output} pinned ${version}${suffix}; rerun with --build-suffix and a new suffix"
   fi
@@ -240,7 +247,7 @@ node_kernel_require_inputs() {
   local field value
   local name sha
   local version_re='^[0-9]+:[0-9][A-Za-z0-9.+~-]*$'
-  local suffix_re='^\+[a-z][a-z0-9]*$'
+  local suffix_re='^\+btf[1-9][0-9]*$'
   local release_re="^[0-9][A-Za-z0-9.+_-]*-${NODE_KERNEL_FLAVOUR}\$"
   local name_re='^[A-Za-z0-9][A-Za-z0-9.+~_-]*$'
   local sha_re='^[0-9a-f]{64}$'

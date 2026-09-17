@@ -112,6 +112,63 @@ run_kernel_source_lock() {
   assert_output_contains '+btf4'
 }
 
+@test "kernel source lock requires a greater build suffix for the same source version" {
+  local lock="${tmp}/source.yaml"
+  write_kernel_test_lock "$lock"
+  yq -i '.buildSuffix = "+btf2"' "$lock"
+
+  run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+    --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix +btf1
+  assert_failure
+  assert_output_contains "build suffix +btf1 must be greater than +btf2 for ${KERNEL_TEST_SOURCE_VERSION}"
+  run yq -r '.buildSuffix' "$lock"
+  assert_output_contains '+btf2'
+
+  # A changed delta cannot reuse a lower suffix either.
+  yq -i '.configDeltaSha256 = "0000000000000000000000000000000000000000000000000000000000000000"' "$lock"
+  run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+    --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix +btf1
+  assert_failure
+  assert_output_contains 'build suffix +btf1 must be greater than +btf2'
+
+  write_kernel_test_lock "$lock"
+  yq -i '.buildSuffix = "+btf2"' "$lock"
+  run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+    --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix +btf2
+  assert_success
+
+  # Suffixes compare numerically: +btf10 follows +btf9.
+  yq -i '.buildSuffix = "+btf9"' "$lock"
+  run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+    --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix +btf10
+  assert_success
+  run yq -r '.buildSuffix' "$lock"
+  assert_output_contains '+btf10'
+}
+
+@test "kernel source lock and inputs reject a build suffix that is not +btf<N>" {
+  local lock="${tmp}/source.yaml"
+  local suffix
+  for suffix in +rebuild +btf0 +btf02 +btf2a btf2; do
+    run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+      --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix "$suffix"
+    assert_failure
+    assert_output_contains "invalid kernel build suffix: ${suffix}"
+    [[ ! -f "$lock" ]]
+  done
+
+  write_kernel_test_lock "$lock"
+  yq -i '.buildSuffix = "+rebuild"' "$lock"
+  run_kernel_source_lock "${BATS_FILE_TMPDIR}/archive" \
+    --keyring "${BATS_FILE_TMPDIR}/archive-keyring.gpg" --output "$lock" --build-suffix +btf2
+  assert_failure
+  assert_output_contains "invalid buildSuffix in ${lock}: +rebuild"
+
+  run env NODE_KERNEL_SOURCE_LOCK="$lock" bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_inputs"
+  assert_failure
+  assert_output_contains 'invalid buildSuffix'
+}
+
 @test "kernel source lock refuses a changed config delta under the same version and suffix" {
   local lock="${tmp}/source.yaml"
   write_kernel_test_lock "$lock"
