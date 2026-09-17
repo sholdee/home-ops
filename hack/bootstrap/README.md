@@ -329,7 +329,8 @@ rerunning the already-applied revision. `node-reimage-cleanup` removes the
 node-specific remote hosting directory. By default the payload is built on the
 target from its current
 Raspberry Pi initramfs, so it keeps the matching kernel modules and
-boot-network tooling.
+boot-network tooling. Images carry the home-ops BTF kernel build; run
+`just node-kernel-build` first (see `reimage/README.md`).
 
 ## Secrets
 

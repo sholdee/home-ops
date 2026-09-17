@@ -683,9 +683,10 @@ recovery when the API is unavailable.
 under `hack/bootstrap/.out/reimage/` from inventory. The rendered config uses
 the inventory hostname, Ansible user, `ansible_host` static IP, public SSH key
 derived from the inventory SSH key, passwordless sudo for the Ansible user, and
-a small first-boot systemd-networkd/systemd layer. The layer also seeds the
-same Raspberry Pi cmdline and firmware config defaults that Ansible later
-enforces. It defaults to the `trixie-minbase` base layer; pass `--base-layer`,
+a small first-boot systemd-networkd/systemd layer. The layer renders the
+Raspberry Pi cmdline args and firmware config from
+`hack/bootstrap/ansible/home-ops/vars/defaults.yml`, the same values Ansible
+node-prep enforces. It defaults to the `trixie-minbase` base layer; pass `--base-layer`,
 `--interface`, `--prefix`, `--gateway`, `--dns`, or `--ssh-public-key` when the
 defaults do not match the target node.
 
@@ -701,6 +702,27 @@ controllers should recover from healthy peers, but a stale local-path PVC may
 need a narrow operator cleanup after the node rejoins. For CNPG, verify the
 failed instance is not primary and the cluster has healthy peers before
 deleting only the failed pod/PVC so the operator can rebuild a fresh replica.
+
+#### Custom Kernel
+
+Node images use the home-ops BTF kernel build instead of the stock Raspberry Pi
+kernel. Before the first `node-reimage-build`, and after changing
+`hack/bootstrap/nodes/kernel/`, run:
+
+```sh
+just node-kernel-source-lock   # only to move to a newer archive kernel
+just node-kernel-build
+```
+
+After reimaging, confirm the label and the running kernel:
+
+```sh
+kubectl get nodes -L node.home-ops.sh/kernel-build
+ssh <node> 'sudo /usr/local/sbin/home-ops-verify-kernel-build && ls /sys/kernel/btf/vmlinux /proc/pressure'
+```
+
+See `hack/bootstrap/reimage/README.md` (Custom Kernel) for the design and the
+apt pin that keeps OS updates from replacing the kernel.
 
 ## Live Validation
 
