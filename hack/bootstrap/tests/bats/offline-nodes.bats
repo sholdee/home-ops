@@ -241,8 +241,11 @@ EOF
   [[ "$output" == "k3s-master-0,k3s-master-1,k3s-master-2" ]]
 }
 
-@test "node reimage full orchestrates through join and leaves uncordon manual" {
-  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh
+# write_reimage_full_fakes creates the inventory identity, fake kubectl and
+# ansible, and one fake script per reimage-full phase. It assigns calls and the
+# fake_* paths in the caller's scope for run_reimage_full.
+write_reimage_full_fakes() {
+  local spec path label
   add_reimage_identity k3s-master-0 10000000deadbeef nvme-deadbeef
   write_reimage_full_kubectl
   write_fake_ansible
@@ -304,7 +307,11 @@ printf '${label} %s\n' "\$*" >>"\${CALLS_FILE:?}"
 EOF
   done
   chmod +x "$fake_plan" "$fake_preflight" "$fake_build" "$fake_serve" "$fake_drain" "$fake_evict" "$fake_delete" "$fake_apply" "$fake_join" "$fake_host_services" "$fake_cleanup" "$fake_ssh"
+}
 
+# run_reimage_full runs reimage-full.sh against the fakes from
+# write_reimage_full_fakes. Extra VAR=value arguments are passed to env.
+run_reimage_full() {
   run env PATH="${tmp}:${PATH}" \
     NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" \
@@ -327,7 +334,15 @@ EOF
     HOME_OPS_NUT_MONITOR_USER=upsmon \
     HOME_OPS_NUT_MONITOR_PASSWORD=password \
     CALLS_FILE="$calls" \
+    "$@" \
     "${ROOT}/hack/bootstrap/nodes/reimage-full.sh" --profile live --context test --yes k3s-master-0
+}
+
+@test "node reimage full orchestrates through join and leaves uncordon manual" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh cleanup_line kernel_label_line
+  write_reimage_full_fakes
+
+  run_reimage_full
   assert_success
   assert_output_contains 'selected image serve host: k3s-master-1'
   assert_output_contains 'phase: os-plan-adopt'
@@ -351,6 +366,24 @@ EOF
   assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
   assert_file_not_contains "$calls" 'uncordon'
   [[ -f "${tmp}/reimage-out/live/k3s-master-0/state/full.json" ]]
+  cleanup_line="$(grep -n -m1 'phase: cleanup$' <<<"$output" | cut -d: -f1)"
+  kernel_label_line="$(grep -n -m1 'phase: kernel-build-label$' <<<"$output" | cut -d: -f1)"
+  [[ -n "$cleanup_line" && -n "$kernel_label_line" ]]
+  ((cleanup_line < kernel_label_line))
+}
+
+@test "node reimage full runs host services and cleanup before failing kernel build verification" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh
+  write_reimage_full_fakes
+
+  run_reimage_full FAKE_KERNEL_BUILD_VERIFIED=false
+  assert_failure
+  assert_output_contains 'kernel build verification failed on k3s-master-0'
+  assert_output_not_contains 'next='
+  assert_file_contains "$calls" 'host-services --yes k3s-master-0'
+  assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
+  assert_file_not_contains "$calls" 'node.home-ops.sh/kernel-build'
+  [[ ! -f "${tmp}/reimage-out/live/k3s-master-0/state/full.json" ]]
 }
 
 @test "node reimage metadata renders stage-compatible image metadata" {
@@ -1182,6 +1215,17 @@ EOF
   assert_success
 }
 
+# refute_kernel_build_label_call fails when a kernel-build label call was
+# recorded; an absent calls file means no label call was made.
+refute_kernel_build_label_call() {
+  local calls_file="$1"
+  if [[ -f "$calls_file" ]] && grep -Fq -- 'node.home-ops.sh/kernel-build' "$calls_file"; then
+    printf 'expected no kernel build label call in %s\n' "$calls_file" >&2
+    cat "$calls_file" >&2
+    return 1
+  fi
+}
+
 @test "node reimage kernel build label refuses a node that fails kernel verification" {
   write_fake_ansible
   write_reimage_full_kubectl
@@ -1191,11 +1235,26 @@ EOF
     FAKE_KERNEL_BUILD_VERIFIED=false \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
   assert_failure
-  assert_output_contains 'k3s-worker-0 is not running the home-ops kernel build'
+  assert_output_contains 'kernel build verification failed on k3s-worker-0'
+  assert_output_contains 'must stay cordoned'
   assert_output_contains 'expected installed 1:6.18.50-1+rpt1+btf1'
-  if [[ -f "${tmp}/label-calls" ]]; then
-    assert_file_not_contains "${tmp}/label-calls" 'node.home-ops.sh/kernel-build'
-  fi
+  refute_kernel_build_label_call "${tmp}/label-calls"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls-empty-id" \
+    FAKE_KERNEL_BUILD_ID= \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+  assert_failure
+  assert_output_contains 'returned an invalid build id: <empty>'
+  refute_kernel_build_label_call "${tmp}/label-calls-empty-id"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls-label-failure" \
+    FAKE_KUBECTL_LABEL_FAIL_KEY=node.home-ops.sh/kernel-build \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+  assert_success
+  assert_output_contains 'kernel build label failed'
+  assert_output_contains 'retry with: kubectl --context test label node/k3s-worker-0 node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1 --overwrite'
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls" \
@@ -1205,9 +1264,13 @@ EOF
 }
 
 @test "node reimage firstboot probe reports the kernel build check and firstboot log" {
-  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" "printf 'kernel_release='"
-  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" '/usr/local/sbin/home-ops-verify-kernel-build 2>&1'
-  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'journalctl -u home-ops-firstboot.service'
+  local orchestrate="${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh"
+  run grep -Fx -- "printf 'kernel_release='" "$orchestrate"
+  assert_success
+  run grep -Fx -- "/usr/local/sbin/home-ops-verify-kernel-build 2>&1 | sed 's/^/  /' || true" "$orchestrate"
+  assert_success
+  run grep -Fx -- "journalctl -u home-ops-firstboot.service -n 20 --no-pager -o cat 2>/dev/null | sed 's/^/  /' || true" "$orchestrate"
+  assert_success
 }
 
 @test "node reimage cleanup removes recorded serve state" {

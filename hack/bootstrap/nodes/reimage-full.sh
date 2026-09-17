@@ -215,9 +215,6 @@ node_log "phase: join"
 node_log "phase: os-plan-adopt"
 node_reimage_adopt_system_upgrade_plan "$context" "$kubernetes_node"
 
-node_log "phase: kernel-build-label"
-node_reimage_label_kernel_build "$profile" "$context" "$inventory_node" "$kubernetes_node"
-
 host_services_status=0
 node_log "phase: host-services"
 if "$NODE_ANSIBLE_HOST_SERVICES_BIN" --yes "$inventory_node"; then
@@ -230,6 +227,9 @@ fi
 node_log "phase: cleanup"
 "$NODE_REIMAGE_CLEANUP_BIN" --profile "$profile" --yes "$inventory_node"
 cleanup_completed=true
+
+node_log "phase: kernel-build-label"
+node_reimage_label_kernel_build "$profile" "$context" "$inventory_node" "$kubernetes_node"
 
 if [[ "$host_services_status" -eq 0 ]]; then
   full_status=complete

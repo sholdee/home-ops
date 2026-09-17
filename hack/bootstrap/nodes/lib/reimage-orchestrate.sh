@@ -762,22 +762,19 @@ node_reimage_label_kernel_build() {
   local context="$2"
   local inventory_node="$3"
   local node="$4"
-  local output build_id label_output
+  local output build_id label_output guidance
 
-  if ! output="$(node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$NODE_KERNEL_VERIFY_BIN" 2>&1)"; then
-    {
-      printf 'kernel_build_probe:\n'
-      node_indent_block <<<"$output"
-    } >&2
-    node_die "${inventory_node} is not running the home-ops kernel build"
+  guidance="${node} is joined but must stay cordoned until the kernel build is verified. An unreachable host is not a kernel mismatch: rerun just node-cmd ${inventory_node} sudo ${NODE_KERNEL_VERIFY_BIN}, then label it with kubectl --context ${context} label node/${node} ${NODE_KERNEL_BUILD_LABEL_KEY}=<kernel_build_id> --overwrite"
+  if ! output="$(node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "${NODE_KERNEL_VERIFY_BIN} 2>&1")"; then
+    node_die "kernel build verification failed on ${inventory_node}. ${guidance}"
   fi
   build_id="$(sed -n 's/^kernel_build_id=//p' <<<"$output" | sed -n '1p')"
   node_kernel_build_id_valid "$build_id" ||
-    node_die "kernel build probe on ${inventory_node} returned an invalid build id: ${build_id:-<empty>}"
+    node_die "kernel build probe on ${inventory_node} returned an invalid build id: ${build_id:-<empty>}. ${guidance}"
 
   node_log "labeling ${node} with ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}"
   if ! label_output="$(node_kubectl "$context" label "node/${node}" "${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}" --overwrite 2>&1)"; then
-    node_warn "kernel build label failed: ${label_output}"
+    node_warn "kernel build label failed: ${label_output}; retry with: kubectl --context ${context} label node/${node} ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id} --overwrite"
     return 0
   fi
   printf '%s\n' "$label_output"
