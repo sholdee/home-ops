@@ -164,10 +164,8 @@ node_reimage_lima_instance_running() {
     awk -v instance="$instance" '$1 == instance && $2 == "Running" {found = 1} END {exit found ? 0 : 1}'
 }
 
-node_reimage_ensure_lima_builder() {
+node_reimage_start_lima_builder() {
   local builder_name="$1"
-  local rpi_image_gen_dir="$2"
-  local source_root="$3"
 
   node_require_tool limactl
   if ! node_reimage_lima_instance_exists "$builder_name"; then
@@ -183,6 +181,14 @@ node_reimage_ensure_lima_builder() {
     node_log "starting Lima image builder ${builder_name}"
     limactl start --tty=false "$builder_name"
   fi
+}
+
+node_reimage_ensure_lima_builder() {
+  local builder_name="$1"
+  local rpi_image_gen_dir="$2"
+  local source_root="$3"
+
+  node_reimage_start_lima_builder "$builder_name"
 
   node_log "validating Lima image builder mounts"
   # shellcheck disable=SC2016
@@ -316,6 +322,8 @@ node_reimage_write_build_state() {
   local build_dir="$8"
   local artifact_path="$9"
   local sha256="${10}"
+  local kernel_build_id="${11}"
+  local kernel_package_version="${12}"
   local state_file
 
   state_file="$(node_reimage_build_state_file "$profile" "$inventory_node")"
@@ -334,6 +342,8 @@ node_reimage_write_build_state() {
     --arg buildDir "$build_dir" \
     --arg artifactPath "$artifact_path" \
     --arg sha256 "$sha256" \
+    --arg kernelBuildId "$kernel_build_id" \
+    --arg kernelPackageVersion "$kernel_package_version" \
     '{
       schemaVersion: $schema,
       builtAt: $builtAt,
@@ -346,7 +356,9 @@ node_reimage_write_build_state() {
       sourceDir: $sourceDir,
       buildDir: $buildDir,
       artifactPath: $artifactPath,
-      sha256: $sha256
+      sha256: $sha256,
+      kernelBuildId: $kernelBuildId,
+      kernelPackageVersion: $kernelPackageVersion
     }' > "$state_file"
   printf '%s\n' "$state_file"
 }
@@ -742,6 +754,36 @@ node_reimage_adopt_system_upgrade_plan() {
   printf '%s\n' "$output"
 }
 
+# node_reimage_label_kernel_build runs the image's kernel verifier on a joined
+# node and records the verified build as a node label. A failed verification, or
+# a build other than EXPECTED_BUILD_ID (the image just built), is fatal: the node
+# must not be uncordoned on the wrong kernel.
+node_reimage_label_kernel_build() {
+  local profile="$1"
+  local context="$2"
+  local inventory_node="$3"
+  local node="$4"
+  local expected_build_id="$5"
+  local output build_id label_output guidance
+
+  guidance="${node} is joined but must stay cordoned until the kernel build is verified. An unreachable host is not a kernel mismatch: rerun just node-cmd ${inventory_node} sudo ${NODE_KERNEL_VERIFY_BIN}, then label it with kubectl --context ${context} label node/${node} ${NODE_KERNEL_BUILD_LABEL_KEY}=<kernel_build_id> --overwrite"
+  if ! output="$(node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "${NODE_KERNEL_VERIFY_BIN} 2>&1")"; then
+    node_die "kernel build verification failed on ${inventory_node}. ${guidance}"
+  fi
+  build_id="$(sed -n 's/^kernel_build_id=//p' <<<"$output" | sed -n '1p')"
+  node_kernel_build_id_valid "$build_id" ||
+    node_die "kernel build probe on ${inventory_node} returned an invalid build id: ${build_id:-<empty>}. ${guidance}"
+  [[ "$build_id" == "$expected_build_id" ]] ||
+    node_die "kernel build probe on ${inventory_node} reported ${build_id}, but the image was built with ${expected_build_id}. ${guidance}"
+
+  node_log "labeling ${node} with ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}"
+  if ! label_output="$(node_kubectl "$context" label "node/${node}" "${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}" --overwrite 2>&1)"; then
+    node_warn "kernel build label failed: ${label_output}; retry with: kubectl --context ${context} label node/${node} ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id} --overwrite"
+    return 0
+  fi
+  printf '%s\n' "$label_output"
+}
+
 node_reimage_ansible_copy() {
   local profile="$1"
   local inventory_node="$2"
@@ -972,6 +1014,12 @@ printf 'firstboot_service_state='
 systemctl is-active home-ops-firstboot.service 2>/dev/null || true
 printf 'os_release='
 sed -n 's/^PRETTY_NAME=//p' /etc/os-release 2>/dev/null | sed -n '1p' || true
+printf 'kernel_release='
+uname -r 2>/dev/null || true
+printf 'kernel_build_check:\n'
+/usr/local/sbin/home-ops-verify-kernel-build 2>&1 | sed 's/^/  /' || true
+printf 'firstboot_log:\n'
+journalctl -u home-ops-firstboot.service -n 20 --no-pager -o cat 2>/dev/null | sed 's/^/  /' || true
 EOF
 
   deadline=$((SECONDS + NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS))

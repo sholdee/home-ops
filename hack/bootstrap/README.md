@@ -268,6 +268,8 @@ explicit.
 | Discover network reimage identity | `just node-reimage-plan <node>`                          | n/a                                                    |
 | Render network reimage metadata   | `just node-reimage-metadata <node> <image-url> <sha256>` | n/a                                                    |
 | Render network reimage OS source  | `just node-reimage-image-source <node>`                  | n/a                                                    |
+| Pin the kernel source package     | `just node-kernel-source-lock`                           | n/a                                                    |
+| Build the BTF kernel packages     | `just node-kernel-build`                                 | n/a                                                    |
 | Build network reimage OS artifact | `just node-reimage-build <node>`                         | n/a                                                    |
 | Plan additive-only joins          | `just node-converge-plan`                                | `just node-lima-converge-plan`                         |
 | Join missing inventory nodes      | `just node-converge`                                     | `just node-lima-converge`                              |
@@ -325,11 +327,15 @@ tryboot-reboots the deleted node from recorded serve state, and
 waits for SSH plus the generated-image firstboot marker before reporting
 success. The full reimage flow labels the rejoined node with the current
 system-upgrade Plan hash so it is adopted by future OS updates without
-rerunning the already-applied revision. `node-reimage-cleanup` removes the
+rerunning the already-applied revision. Its last phase labels the node with its
+verified kernel build (`node.home-ops.sh/kernel-build`) and fails, leaving the
+node cordoned, if the node does not run the image's kernel build.
+`node-reimage-cleanup` removes the
 node-specific remote hosting directory. By default the payload is built on the
 target from its current
 Raspberry Pi initramfs, so it keeps the matching kernel modules and
-boot-network tooling.
+boot-network tooling. Images carry the home-ops BTF kernel build; run
+`just node-kernel-build` first (see `reimage/README.md`).
 
 ## Secrets
 

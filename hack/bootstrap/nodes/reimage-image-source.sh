@@ -20,6 +20,8 @@ Options:
   --prefix BITS         IPv4 prefix length. Defaults to 24.
   --gateway IP          IPv4 gateway. Defaults to ansible_host's /24 .1.
   --dns IP              IPv4 DNS server. Defaults to gateway.
+  --kernel-build-state FILE  Kernel build state to bake in. Defaults to the
+                        build matching kernel/source.yaml and config.2712.delta.
   -h, --help            Show help.
 EOF
 }
@@ -32,6 +34,7 @@ network_iface="$NODE_REIMAGE_IMAGE_DEFAULT_INTERFACE"
 network_prefix="$NODE_REIMAGE_IMAGE_DEFAULT_PREFIX"
 network_gateway=""
 network_dns=""
+kernel_build_state=""
 positional=()
 
 while [[ $# -gt 0 ]]; do
@@ -68,6 +71,10 @@ while [[ $# -gt 0 ]]; do
       network_dns="${2:?missing value for --dns}"
       shift 2
       ;;
+    --kernel-build-state)
+      kernel_build_state="${2:?missing value for --kernel-build-state}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -100,6 +107,10 @@ read -r inventory_node inventory_role < <(node_resolve_inventory_node "$profile"
 [[ "$inventory_role" == master || "$inventory_role" == node ]] ||
   node_die "node is not present in ${profile} inventory: ${positional[0]}"
 
+if [[ -z "$kernel_build_state" ]]; then
+  kernel_build_state="$(node_kernel_require_current_build)"
+fi
+
 node_reimage_image_render_source \
   "$profile" \
   "$inventory_node" \
@@ -109,4 +120,5 @@ node_reimage_image_render_source \
   "$network_iface" \
   "$network_prefix" \
   "$network_gateway" \
-  "$network_dns"
+  "$network_dns" \
+  "$kernel_build_state"

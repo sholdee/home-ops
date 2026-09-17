@@ -1,0 +1,22 @@
+## home-ops kernel config delta. kernel/build-guest.sh appends the non-comment
+## lines to debian/config/arm64/rpi/config.2712 of the Raspberry Pi OS kernel
+## source package and fails the build unless each line survives oldconfig
+## verbatim. After changing this file, run
+## just node-kernel-source-lock --build-suffix +btfN (a new suffix).
+## Do not add MODULE_SIG_ALL, MODULE_SIG_KEY, SYSTEM_TRUSTED_KEYS or BUILD_SALT
+## lines: the packaged /boot/config drops them, so the post-build check fails.
+##
+## Kernel BTF (/sys/kernel/btf/vmlinux). Cilium 1.20.2+ socket-LB programs need
+## it for CO-RE relocations (cilium/cilium#48778).
+# CONFIG_DEBUG_INFO_NONE is not set
+CONFIG_DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT=y
+CONFIG_DEBUG_INFO_BTF=y
+CONFIG_DEBUG_INFO_BTF_MODULES=y
+## /proc/config.gz without loading the configs module.
+CONFIG_IKCONFIG=y
+CONFIG_IKCONFIG_PROC=y
+## Pressure stall information on by default (/proc/pressure).
+# CONFIG_PSI_DEFAULT_DISABLED is not set
+## uprobe and fprobe tracing for BPF tools (pwru, bpftrace, Inspektor Gadget).
+CONFIG_UPROBE_EVENTS=y
+CONFIG_FPROBE=y

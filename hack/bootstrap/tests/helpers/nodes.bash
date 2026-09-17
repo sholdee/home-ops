@@ -694,6 +694,15 @@ if [[ "$joined_args" == *"firstboot-complete"* ]]; then
   exit 2
 fi
 
+if [[ "${!#}" == "/usr/local/sbin/home-ops-verify-kernel-build 2>&1" ]]; then
+  if [[ "${FAKE_KERNEL_BUILD_VERIFIED:-true}" == true ]]; then
+    printf 'kernel_build_id=%s\n' "${FAKE_KERNEL_BUILD_ID-6.18.50-1-rpt1-btf1}"
+    exit 0
+  fi
+  printf 'home-ops-verify-kernel-build: linux-image-6.18.50+rpt-rpi-2712 is installed 1:6.18.50-1+rpt1, expected installed 1:6.18.50-1+rpt1+btf1\n'
+  exit 2
+fi
+
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
@@ -906,6 +915,10 @@ fi
 if [[ "${1:-}" == "label" && "${2:-}" =~ ^node/k3s- && "${4:-}" == "--overwrite" ]]; then
   if [[ -n "${CALLS_FILE:-}" ]]; then
     printf 'kubectl %s\n' "$*" >>"$CALLS_FILE"
+  fi
+  if [[ -n "${FAKE_KUBECTL_LABEL_FAIL_KEY:-}" && "${3:-}" == "${FAKE_KUBECTL_LABEL_FAIL_KEY}="* ]]; then
+    printf 'error: simulated label failure\n' >&2
+    exit 1
   fi
   printf '%s labeled\n' "$2"
   exit 0

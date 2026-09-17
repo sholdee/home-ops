@@ -23,6 +23,8 @@ Options:
   --gateway IP               Static image gateway. Defaults to host /24 .1.
   --dns IP                   Static image DNS. Defaults to gateway.
   --ssh-public-key FILE      Public SSH key to bake into the image.
+  --kernel-build-state FILE  Kernel build state to bake in. Defaults to the
+                             build matching kernel/source.yaml and config.2712.delta.
   -h, --help                 Show help.
 EOF
 }
@@ -37,6 +39,7 @@ prefix="$NODE_REIMAGE_IMAGE_DEFAULT_PREFIX"
 gateway=""
 dns=""
 public_key_file=""
+kernel_build_state=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -80,6 +83,10 @@ while [[ $# -gt 0 ]]; do
       public_key_file="$2"
       shift 2
       ;;
+    --kernel-build-state)
+      kernel_build_state="${2:?missing value for --kernel-build-state}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -119,6 +126,9 @@ source_dir="${node_dir}/source"
 build_dir="${node_dir}/build"
 mkdir -p "$node_dir" "$(node_reimage_state_dir "$profile" "$inventory_node")"
 
+if [[ -z "$kernel_build_state" ]]; then
+  kernel_build_state="$(node_kernel_require_current_build)"
+fi
 node_log "rendering rpi-image-gen source for ${inventory_node}"
 render_output="$(
   node_reimage_image_render_source \
@@ -130,10 +140,14 @@ render_output="$(
     "$iface" \
     "$prefix" \
     "$gateway" \
-    "$dns"
+    "$dns" \
+    "$kernel_build_state"
 )"
 printf '%s\n' "$render_output"
 image_name="$(awk -F= '$1 == "image_name" {print $2; exit}' <<<"$render_output")"
+kernel_build_id="$(awk -F= '$1 == "kernel_build_id" {print $2; exit}' <<<"$render_output")"
+kernel_package_version="$(awk -F= '$1 == "kernel_package_version" {print $2; exit}' <<<"$render_output")"
+[[ -n "$kernel_build_id" && -n "$kernel_package_version" ]] || node_die "could not determine rendered kernel build"
 [[ -n "$image_name" ]] || node_die "could not determine rendered image name"
 
 rpi_image_gen_dir="${rpi_image_gen_dir%/}"
@@ -157,7 +171,9 @@ state_file="$(node_reimage_write_build_state \
   "$source_dir" \
   "$build_dir" \
   "$artifact_path" \
-  "$sha256")"
+  "$sha256" \
+  "$kernel_build_id" \
+  "$kernel_package_version")"
 
 printf 'artifact=%s\n' "$artifact_path"
 printf 'sha256=%s\n' "$sha256"

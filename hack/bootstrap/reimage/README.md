@@ -91,6 +91,92 @@ The image first boot layer expands the root filesystem, disables
 that marker before installing packages so a newly imaged node fails early if
 root growth did not complete.
 
+Image builds require a kernel build that matches the committed kernel inputs;
+see Custom Kernel below. `node-reimage-full` also verifies the kernel build on
+the joined node and labels it `node.home-ops.sh/kernel-build=<build-id>`.
+
+## Custom Kernel
+
+Node images run a rebuild of the Raspberry Pi OS kernel with kernel BTF, pressure
+stall information enabled by default, a built-in `/proc/config.gz`, and uprobe
+and fprobe tracing. Cilium 1.20.2 and later need kernel BTF, which the stock
+Raspberry Pi kernel does not provide (cilium/cilium#48778).
+
+The inputs are committed under `hack/bootstrap/nodes/kernel/`:
+
+- `source.yaml` pins the Raspberry Pi OS `linux` source package: version, file
+  hashes, and the `buildSuffix` added to the package version.
+- `config.2712.delta` holds the kernel config lines added to the Raspberry Pi 5
+  flavour. The build fails if any line does not survive `oldconfig` verbatim.
+
+Refresh the pin to the archive's current kernel source. The script verifies the
+archive `InRelease` signature with rpi-image-gen's keyring, and that the signed
+release is for the `trixie` suite, before trusting any hash:
+
+```sh
+just node-kernel-source-lock
+```
+
+Build the packages in the Lima image builder (roughly 15 minutes on an Apple
+Silicon Mac):
+
+```sh
+just node-kernel-build
+```
+
+The build rebuilds only the `rpi-2712` flavour, keeps the stock package names
+and `uname -r`, and records the four packages under
+`hack/bootstrap/.out/kernel/<build-id>/`. Image builds for every node reuse that
+build; rerunning `just node-kernel-build` is a no-op while the build still
+matches the committed inputs (`--force` rebuilds). The build is local to this
+checkout, so a fresh clone compiles once. After changing `config.2712.delta`, run
+`just node-kernel-source-lock --build-suffix +btfN` with `N` greater than the
+current `buildSuffix` so nodes see a new package version; the lock refuses a
+lower suffix, and builds refuse a delta that does not match the lock.
+
+`hack/bootstrap/.out/kernel/<build-id>/` is the only copy of the packages that
+reimaged nodes run. It is gitignored, and the Raspberry Pi archive may stop
+serving the pinned source once a newer kernel ships, so a lost build may not be
+reproducible. Back it up before reimaging, and restore it to the same checkout
+path: the build state records absolute package paths, and image builds refuse a
+build whose packages are missing or changed. Durable artifact storage for kernel
+builds is a planned follow-up.
+
+`node-reimage-build` bakes that build into the image instead of the stock
+kernel:
+
+- a `home-ops-rpi5` device layer replaces rpi-image-gen's `rpi5` layer, which
+  would install the stock archive kernel;
+- the four packages install through the config `packages` section;
+- `/etc/apt/preferences.d/90-home-ops-kernel` pins Raspberry Pi archive
+  `rpi-2712` kernel packages to priority -1, so the monthly OS update keeps the
+  rebuilt kernel. Kernel updates are rebuilds: pin a new source, build, reimage;
+- `/etc/home-ops/kernel-build` records the build, and
+  `/usr/local/sbin/home-ops-verify-kernel-build` checks the running release,
+  the running build version (`uname -v`), the installed package state and
+  version, `/sys/kernel/btf/vmlinux`, and `CONFIG_DEBUG_INFO_BTF=y` in
+  `/proc/config.gz`.
+
+`home-ops-firstboot` runs the verifier before anything else. On the wrong kernel
+the firstboot marker is never written, so `node-reimage-apply` and node-prep stop
+with the verifier output in `firstboot_probe`.
+
+The image build holds the four kernel packages with `apt-mark hold`, as an
+rpi-image-gen `cleanup-hooks` step that runs after the config `packages`
+section installs them. The pin keeps archive kernels out, but it cannot stop
+`apt-get full-upgrade` and `autoremove --purge` from removing the rebuilt kernel
+if an archive package ever declares a `Breaks` against it. With the packages
+held, the monthly OS update cannot remove or replace them: apt keeps the
+conflicting update back or the upgrade job fails, and the node keeps its kernel.
+An in-place kernel update would need `apt-mark unhold` on those packages first;
+reimaging installs a new build without it.
+
+List the kernel build on each node with:
+
+```sh
+kubectl get nodes -L node.home-ops.sh/kernel-build
+```
+
 ## Host The Image
 
 The node must be able to reach the image URL from the initramfs network path.
