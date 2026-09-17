@@ -276,7 +276,15 @@ printf 'preflight_result: pass\n'
 EOF
   cat > "$fake_build" <<'EOF'
 #!/usr/bin/env bash
+set -euo pipefail
 printf 'build %s\n' "$*" >>"${CALLS_FILE:?}"
+node="${!#}"
+state_dir="${NODE_REIMAGE_OUTPUT_ROOT:?}/live/${node}/state"
+mkdir -p "$state_dir"
+jq -n \
+  --arg kernelBuildId "${FAKE_BUILD_KERNEL_BUILD_ID-6.18.50-1-rpt1-btf1}" \
+  '{schemaVersion:"home-ops.node-reimage-build/v1", kernelBuildId:$kernelBuildId}' \
+  > "${state_dir}/build.json"
 EOF
   cat > "$fake_serve" <<'EOF'
 #!/usr/bin/env bash
@@ -384,6 +392,37 @@ run_reimage_full() {
   assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
   assert_file_not_contains "$calls" 'node.home-ops.sh/kernel-build'
   [[ ! -f "${tmp}/reimage-out/live/k3s-master-0/state/full.json" ]]
+}
+
+@test "node reimage full refuses a node kernel build that differs from the built image" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh cleanup_line kernel_label_line
+  write_reimage_full_fakes
+
+  run_reimage_full FAKE_BUILD_KERNEL_BUILD_ID=6.18.50-1-rpt1-btf2
+  assert_failure
+  assert_output_contains 'kernel build probe on k3s-master-0 reported 6.18.50-1-rpt1-btf1, but the image was built with 6.18.50-1-rpt1-btf2'
+  assert_output_contains 'must stay cordoned'
+  assert_output_not_contains 'next='
+  assert_file_contains "$calls" 'host-services --yes k3s-master-0'
+  assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
+  assert_file_not_contains "$calls" 'node.home-ops.sh/kernel-build'
+  [[ ! -f "${tmp}/reimage-out/live/k3s-master-0/state/full.json" ]]
+  cleanup_line="$(grep -n -m1 'phase: cleanup$' <<<"$output" | cut -d: -f1)"
+  kernel_label_line="$(grep -n -m1 'phase: kernel-build-label$' <<<"$output" | cut -d: -f1)"
+  [[ -n "$cleanup_line" && -n "$kernel_label_line" ]]
+  ((cleanup_line < kernel_label_line))
+}
+
+@test "node reimage full stops before serving when the image build records no kernel build" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh
+  write_reimage_full_fakes
+
+  run_reimage_full FAKE_BUILD_KERNEL_BUILD_ID=
+  assert_failure
+  assert_output_contains 'records no valid kernelBuildId: <empty>'
+  assert_file_contains "$calls" 'build --profile live k3s-master-0'
+  assert_file_not_contains "$calls" 'serve '
+  assert_file_not_contains "$calls" 'drain '
 }
 
 @test "node reimage metadata renders stage-compatible image metadata" {
@@ -1238,7 +1277,7 @@ refute_kernel_build_label_call() {
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls" \
     FAKE_KERNEL_BUILD_VERIFIED=false \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0 6.18.50-1-rpt1-btf1"
   assert_failure
   assert_output_contains 'kernel build verification failed on k3s-worker-0'
   assert_output_contains 'must stay cordoned'
@@ -1248,22 +1287,30 @@ refute_kernel_build_label_call() {
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls-empty-id" \
     FAKE_KERNEL_BUILD_ID= \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0 6.18.50-1-rpt1-btf1"
   assert_failure
   assert_output_contains 'returned an invalid build id: <empty>'
   refute_kernel_build_label_call "${tmp}/label-calls-empty-id"
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls-mismatch" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0 6.18.50-1-rpt1-btf2"
+  assert_failure
+  assert_output_contains 'kernel build probe on k3s-worker-0 reported 6.18.50-1-rpt1-btf1, but the image was built with 6.18.50-1-rpt1-btf2'
+  assert_output_contains 'must stay cordoned'
+  refute_kernel_build_label_call "${tmp}/label-calls-mismatch"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls-label-failure" \
     FAKE_KUBECTL_LABEL_FAIL_KEY=node.home-ops.sh/kernel-build \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0 6.18.50-1-rpt1-btf1"
   assert_success
   assert_output_contains 'kernel build label failed'
   assert_output_contains 'retry with: kubectl --context test label node/k3s-worker-0 node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1 --overwrite'
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0 6.18.50-1-rpt1-btf1"
   assert_success
   assert_file_contains "${tmp}/label-calls" 'kubectl label node/k3s-worker-0 node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1 --overwrite'
 }

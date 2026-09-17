@@ -755,13 +755,15 @@ node_reimage_adopt_system_upgrade_plan() {
 }
 
 # node_reimage_label_kernel_build runs the image's kernel verifier on a joined
-# node and records the verified build as a node label. A failed verification is
-# fatal: the node must not be uncordoned on the wrong kernel.
+# node and records the verified build as a node label. A failed verification, or
+# a build other than EXPECTED_BUILD_ID (the image just built), is fatal: the node
+# must not be uncordoned on the wrong kernel.
 node_reimage_label_kernel_build() {
   local profile="$1"
   local context="$2"
   local inventory_node="$3"
   local node="$4"
+  local expected_build_id="$5"
   local output build_id label_output guidance
 
   guidance="${node} is joined but must stay cordoned until the kernel build is verified. An unreachable host is not a kernel mismatch: rerun just node-cmd ${inventory_node} sudo ${NODE_KERNEL_VERIFY_BIN}, then label it with kubectl --context ${context} label node/${node} ${NODE_KERNEL_BUILD_LABEL_KEY}=<kernel_build_id> --overwrite"
@@ -771,6 +773,8 @@ node_reimage_label_kernel_build() {
   build_id="$(sed -n 's/^kernel_build_id=//p' <<<"$output" | sed -n '1p')"
   node_kernel_build_id_valid "$build_id" ||
     node_die "kernel build probe on ${inventory_node} returned an invalid build id: ${build_id:-<empty>}. ${guidance}"
+  [[ "$build_id" == "$expected_build_id" ]] ||
+    node_die "kernel build probe on ${inventory_node} reported ${build_id}, but the image was built with ${expected_build_id}. ${guidance}"
 
   node_log "labeling ${node} with ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}"
   if ! label_output="$(node_kubectl "$context" label "node/${node}" "${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}" --overwrite 2>&1)"; then

@@ -171,6 +171,12 @@ node_log "selected image serve host: ${serve_host}"
 
 node_log "phase: build"
 "$NODE_REIMAGE_BUILD_BIN" --profile "$profile" "$inventory_node"
+# The kernel-build-label phase requires the joined node to run this build.
+build_state="$(node_reimage_build_state_file "$profile" "$inventory_node")"
+expected_kernel_build_id="$("$NODE_JQ_BIN" -r '.kernelBuildId // ""' "$build_state")" ||
+  node_die "could not read kernelBuildId from image build state ${build_state}"
+node_kernel_build_id_valid "$expected_kernel_build_id" ||
+  node_die "image build state ${build_state} records no valid kernelBuildId: ${expected_kernel_build_id:-<empty>}"
 
 node_log "phase: serve"
 "$NODE_REIMAGE_SERVE_BIN" --profile "$profile" --port "$port" --yes "$inventory_node" "$serve_host"
@@ -229,7 +235,7 @@ node_log "phase: cleanup"
 cleanup_completed=true
 
 node_log "phase: kernel-build-label"
-node_reimage_label_kernel_build "$profile" "$context" "$inventory_node" "$kubernetes_node"
+node_reimage_label_kernel_build "$profile" "$context" "$inventory_node" "$kubernetes_node" "$expected_kernel_build_id"
 
 if [[ "$host_services_status" -eq 0 ]]; then
   full_status=complete
