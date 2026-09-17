@@ -322,6 +322,8 @@ node_reimage_write_build_state() {
   local build_dir="$8"
   local artifact_path="$9"
   local sha256="${10}"
+  local kernel_build_id="${11}"
+  local kernel_package_version="${12}"
   local state_file
 
   state_file="$(node_reimage_build_state_file "$profile" "$inventory_node")"
@@ -340,6 +342,8 @@ node_reimage_write_build_state() {
     --arg buildDir "$build_dir" \
     --arg artifactPath "$artifact_path" \
     --arg sha256 "$sha256" \
+    --arg kernelBuildId "$kernel_build_id" \
+    --arg kernelPackageVersion "$kernel_package_version" \
     '{
       schemaVersion: $schema,
       builtAt: $builtAt,
@@ -352,7 +356,9 @@ node_reimage_write_build_state() {
       sourceDir: $sourceDir,
       buildDir: $buildDir,
       artifactPath: $artifactPath,
-      sha256: $sha256
+      sha256: $sha256,
+      kernelBuildId: $kernelBuildId,
+      kernelPackageVersion: $kernelPackageVersion
     }' > "$state_file"
   printf '%s\n' "$state_file"
 }

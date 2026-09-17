@@ -1,9 +1,10 @@
 #!/usr/bin/env bats
 # shellcheck shell=bash
-# shellcheck disable=SC2154
+# shellcheck disable=SC2016,SC2154
 
 load '../helpers/common.bash'
 load '../helpers/nodes.bash'
+load '../helpers/kernel.bash'
 
 setup_file() {
   require_tools yq jq
@@ -374,11 +375,12 @@ EOF
 
 @test "node reimage image source renders rpi-image-gen config and first-boot layer" {
   local output_dir public_key
+  create_fake_kernel_build
   output_dir="${tmp}/image-source"
   public_key="${tmp}/ansiblekey.pub"
   printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
 
-  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
       --profile live \
       --output-dir "$output_dir" \
@@ -389,7 +391,6 @@ EOF
   assert_output_contains 'base_layer=trixie-minbase'
   assert_output_contains 'network_interface=eth0'
   assert_output_contains 'network_gateway=192.168.99.1'
-  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'layer: rpi5'
   assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'base: trixie-minbase'
   assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'custom: home-ops-node-bootstrap'
   assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'hostname: k3s-worker-0'
@@ -430,10 +431,33 @@ EOF
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'tcpdump'
   assert_file_not_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'NetworkManager'
   assert_file_contains "${output_dir}/README.md" 'rpi-image-gen'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" 'layer: home-ops-rpi5'
+  assert_file_not_contains "${output_dir}/config/home-ops-node.yaml" 'layer: rpi5'
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" "kernel_1: kernel/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+  assert_file_contains "${output_dir}/config/home-ops-node.yaml" "kernel_4: kernel/linux-base-rpi-2712_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+  [[ -f "${output_dir}/kernel/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_DEB_VERSION}_arm64.deb" ]]
+  [[ "$(find "${output_dir}/kernel" -name '*.deb' | wc -l | tr -d ' ')" == 4 ]]
+  assert_file_contains "${output_dir}/layer/home-ops-rpi5.yaml" 'X-Env-Layer-Requires: rpi-device-base,home-ops-linux-2712'
+  assert_file_contains "${output_dir}/layer/home-ops-rpi5.yaml" 'X-Env-Layer-Provides: rpi-device'
+  assert_file_contains "${output_dir}/layer/home-ops-rpi5.yaml" 'X-Env-Var-assetdir: ${DIRECTORY}'
+  assert_file_not_contains "${output_dir}/layer/home-ops-rpi5.yaml" 'rpi-linux-2712'
+  assert_file_contains "${output_dir}/layer/home-ops-linux-2712.yaml" 'X-Env-Var-page_size-Set: force'
+  assert_file_contains "${output_dir}/layer/home-ops-linux-2712.yaml" 'INITRD: "No"'
+  assert_file_contains "${output_dir}/layer/home-ops-linux-2712.yaml" 'mmdebstrap:'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Package: /^linux-(image|base|headers)-(.+-)?rpi-2712$/'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Pin: origin "archive.raspberrypi.com"'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'Pin-Priority: -1'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_BUILD_ID=${KERNEL_TEST_BUILD_ID}"
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_PACKAGE_VERSION=${KERNEL_TEST_PACKAGE_VERSION}"
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_RELEASE=${KERNEL_TEST_RELEASE}"
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'cat > $1/usr/local/sbin/home-ops-verify-kernel-build'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'home-ops-verify-kernel-build: %s'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" '    - bpftool'
 }
 
 @test "node reimage image source renders boot config from Ansible defaults" {
   local output_dir public_key defaults layer marker
+  create_fake_kernel_build
   output_dir="${tmp}/image-source-boot-config"
   public_key="${tmp}/ansiblekey.pub"
   defaults="${tmp}/defaults.yml"
@@ -443,7 +467,7 @@ EOF
   yq -i '.home_ops_raspberry_pi_cmdline_args = ["cgroup_enable=cpuset", "home_ops_test_arg=1"]' "$defaults"
   BLOCK=$'dtparam=home_ops_test\narm_boost=1\n' yq -i '.home_ops_raspberry_pi_config_block = strenv(BLOCK)' "$defaults"
 
-  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
       --profile live \
       --output-dir "$output_dir" \
@@ -467,6 +491,7 @@ EOF
 
 @test "node reimage image source rejects unsafe boot values from Ansible defaults" {
   local output_dir public_key defaults
+  create_fake_kernel_build
   output_dir="${tmp}/image-source-unsafe-boot"
   public_key="${tmp}/ansiblekey.pub"
   defaults="${tmp}/defaults.yml"
@@ -474,7 +499,7 @@ EOF
   cp "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml" "$defaults"
   yq -i '.home_ops_raspberry_pi_cmdline_args = ["cgroup_enable=cpuset", "quiet;reboot"]' "$defaults"
 
-  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
       --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
   assert_failure
@@ -482,7 +507,7 @@ EOF
 
   cp "${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml" "$defaults"
   BLOCK=$'dtparam=pciex1\nEOCONFIG\nreboot\n' yq -i '.home_ops_raspberry_pi_config_block = strenv(BLOCK)' "$defaults"
-  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" \
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="$defaults" NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
       --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
   assert_failure
@@ -491,6 +516,7 @@ EOF
 
 @test "node reimage image source derives public key from inventory private key" {
   local fake_ssh_keygen output_dir test_home
+  create_fake_kernel_build
   output_dir="${tmp}/image-source-derived"
   test_home="${tmp}/home"
   fake_ssh_keygen="${tmp}/ssh-keygen"
@@ -503,7 +529,7 @@ printf '%s\n' 'ssh-rsa AAAAFakeDerivedHomeOpsKey ethan@ansible'
 EOF
   chmod +x "$fake_ssh_keygen"
 
-  run env HOME="$test_home" PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+  run env HOME="$test_home" PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
       --profile live \
       --output-dir "$output_dir" \
@@ -514,6 +540,7 @@ EOF
 
 @test "node reimage build records artifact state from a local builder" {
   local fake_rpi public_key state artifact
+  create_fake_kernel_build
   fake_rpi="${tmp}/rpi-image-gen"
   public_key="${tmp}/ansiblekey.pub"
   mkdir -p "$fake_rpi"
@@ -544,7 +571,7 @@ printf 'fake image\n' > "${build_dir}/image-home-ops-k3s-worker-0/home-ops-k3s-w
 EOF
   chmod +x "${fake_rpi}/rpi-image-gen"
 
-  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" NODE_REIMAGE_BUILDER_MODE=local \
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" NODE_REIMAGE_OUTPUT_ROOT="${tmp}/reimage-out" NODE_REIMAGE_BUILDER_MODE=local NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     "${ROOT}/hack/bootstrap/nodes/reimage-build.sh" \
       --profile live \
       --rpi-image-gen-dir "$fake_rpi" \
@@ -565,6 +592,78 @@ EOF
   assert_output_contains 'local'
   assert_output_contains 'home-ops-k3s-worker-0'
   assert_output_contains "$artifact"
+  [[ "$(jq -r '.kernelBuildId' "$state")" == "$KERNEL_TEST_BUILD_ID" ]]
+  [[ "$(jq -r '.kernelPackageVersion' "$state")" == "$KERNEL_TEST_PACKAGE_VERSION" ]]
+}
+
+@test "node reimage image source requires a kernel build for the committed kernel inputs" {
+  local public_key
+  public_key="${tmp}/ansiblekey.pub"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  write_kernel_test_lock "${tmp}/kernel/source.yaml"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KERNEL_SOURCE_LOCK="${tmp}/kernel/source.yaml" NODE_KERNEL_OUTPUT_ROOT="${tmp}/no-kernel-builds" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "${tmp}/image-source-no-kernel" --ssh-public-key "$public_key" k3s-worker-0
+  assert_failure
+  assert_output_contains "no kernel build for ${KERNEL_TEST_BUILD_ID}; run: just node-kernel-build"
+  [[ ! -f "${tmp}/image-source-no-kernel/config/home-ops-node.yaml" ]]
+}
+
+@test "node reimage image source rejects an inconsistent kernel build state before writing" {
+  local public_key state bad_state output_dir
+  create_fake_kernel_build
+  state="${kernel_test_output_root}/${KERNEL_TEST_BUILD_ID}/state/kernel-build.json"
+  bad_state="${tmp}/bad-kernel-build.json"
+  output_dir="${tmp}/image-source-bad-kernel"
+  public_key="${tmp}/ansiblekey.pub"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+  jq '.packageVersion = "1:6.18.51-1+rpt1+btf9"' "$state" >"$bad_state"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" \
+      --kernel-build-state "$bad_state" k3s-worker-0
+  assert_failure
+  assert_output_contains 'does not match packageVersion 1:6.18.51-1+rpt1+btf9'
+  [[ ! -e "$output_dir" ]]
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" \
+      --kernel-build-state "$state" k3s-worker-0
+  assert_success
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_BUILD_ID=${KERNEL_TEST_BUILD_ID}"
+}
+
+@test "node reimage image firstboot verifies the kernel build before normalizing the node" {
+  local output_dir public_key layer verify_line hostname_line script_line
+  create_fake_kernel_build
+  output_dir="${tmp}/image-source-firstboot"
+  public_key="${tmp}/ansiblekey.pub"
+  layer="${output_dir}/layer/home-ops-node-bootstrap.yaml"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
+  assert_success
+
+  verify_line="$(grep -n '^      /usr/local/sbin/home-ops-verify-kernel-build$' "$layer" | cut -d: -f1)"
+  hostname_line="$(grep -n "hostnamectl set-hostname 'k3s-worker-0'" "$layer" | cut -d: -f1)"
+  script_line="$(grep -n 'cat > $1/usr/local/sbin/home-ops-verify-kernel-build' "$layer" | cut -d: -f1)"
+  [[ -n "$verify_line" && -n "$hostname_line" && -n "$script_line" ]]
+  ((verify_line < hostname_line))
+
+  # The embedded verifier is byte-identical to the committed script once the
+  # YAML block indentation is removed.
+  yq -r '.mmdebstrap.customize-hooks[] | select(test("home-ops-verify-kernel-build <<"))' "$layer" |
+    awk '/<<.EOVERIFY.$/ {inside = 1; next} /^EOVERIFY$/ {inside = 0} inside {print}' >"${tmp}/embedded-verify.sh"
+  cmp "${tmp}/embedded-verify.sh" "${ROOT}/hack/bootstrap/nodes/kernel/verify-kernel-build.sh"
 }
 
 @test "node reimage lima builder writes to guest-local workroot and copies artifacts back" {

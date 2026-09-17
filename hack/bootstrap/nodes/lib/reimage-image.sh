@@ -117,6 +117,122 @@ node_reimage_image_public_key() {
   node_die "missing SSH public key for image; pass --ssh-public-key"
 }
 
+# node_reimage_image_kernel_values STATE prints the validated kernel build id,
+# package version, release and config delta sha256, tab separated, or nothing
+# (after node_die) when the state is unusable.
+node_reimage_image_kernel_values() {
+  local kernel_state="$1"
+  local build_id version release delta_sha
+  local name file
+  local version_re='^[0-9]+:[0-9][A-Za-z0-9.+~-]*$'
+  local release_re="^[0-9][A-Za-z0-9.+_-]*-${NODE_KERNEL_FLAVOUR}\$"
+  local sha_re='^[0-9a-f]{64}$'
+
+  node_kernel_verify_build_state "$kernel_state"
+  build_id="$("$NODE_JQ_BIN" -r '.buildId // ""' "$kernel_state")"
+  version="$("$NODE_JQ_BIN" -r '.packageVersion // ""' "$kernel_state")"
+  release="$("$NODE_JQ_BIN" -r '.kernelRelease // ""' "$kernel_state")"
+  delta_sha="$("$NODE_JQ_BIN" -r '.configDeltaSha256 // ""' "$kernel_state")"
+  node_kernel_build_id_valid "$build_id" || node_die "invalid kernel build id in ${kernel_state}: ${build_id}"
+  [[ "$version" =~ $version_re ]] || node_die "invalid kernel package version in ${kernel_state}: ${version}"
+  [[ "$release" =~ $release_re ]] || node_die "invalid kernel release in ${kernel_state}: ${release}"
+  [[ "$delta_sha" =~ $sha_re ]] || node_die "invalid kernel config delta sha256 in ${kernel_state}"
+  [[ "$(node_kernel_build_id_for_version "$version")" == "$build_id" ]] ||
+    node_die "kernel build state ${kernel_state} buildId ${build_id} does not match packageVersion ${version}"
+  [[ "$(node_kernel_release_for_version "$version")" == "$release" ]] ||
+    node_die "kernel build state ${kernel_state} kernelRelease ${release} does not match packageVersion ${version}"
+  while IFS=$'\t' read -r name file; do
+    [[ "$(basename "$file")" == "${name}_${version#*:}_arm64.deb" ]] ||
+      node_die "kernel build state ${kernel_state} lists ${file} for ${name} ${version}"
+  done < <("$NODE_JQ_BIN" -r '.packages[] | [.name, .file] | @tsv' "$kernel_state")
+  printf '%s\t%s\t%s\t%s\n' "$build_id" "$version" "$release" "$delta_sha"
+}
+
+node_reimage_image_stage_kernel_packages() {
+  local kernel_state="$1"
+  local kernel_dir="$2"
+  local packages file sha staged
+
+  packages="$("$NODE_JQ_BIN" -r '.packages[] | [.file, .sha256] | @tsv' "$kernel_state")" ||
+    node_die "could not read kernel packages from ${kernel_state}"
+  [[ "$(grep -c . <<<"$packages")" == 4 ]] || node_die "kernel build state must list four packages: ${kernel_state}"
+  mkdir -p "$kernel_dir" || node_die "could not create ${kernel_dir}"
+  rm -f "${kernel_dir}"/*.deb
+  while IFS=$'\t' read -r file sha; do
+    staged="${kernel_dir}/$(basename "$file")"
+    cp "$file" "$staged" || node_die "could not stage kernel package ${file}"
+    [[ "$(node_reimage_sha256_file "$staged")" == "$sha" ]] ||
+      node_die "staged kernel package does not match the kernel build state: ${staged}"
+  done <<<"$packages"
+}
+
+# rpi-image-gen's rpi5 device layer requires rpi-linux-2712, which installs the
+# stock archive kernel. These layers keep everything else about rpi5 and leave
+# the kernel to the config packages section (the home-ops kernel build).
+node_reimage_image_render_kernel_layers() {
+  local output_dir="$1"
+
+  cat >"${output_dir}/layer/home-ops-rpi5.yaml" <<'EOF' || node_die "could not write ${output_dir}/layer/home-ops-rpi5.yaml"
+# METABEGIN
+# X-Env-Layer-Name: home-ops-rpi5
+# X-Env-Layer-Category: device
+# X-Env-Layer-Desc: Raspberry Pi 5 device layer that installs the home-ops
+#  kernel build instead of the stock Raspberry Pi archive kernel.
+# X-Env-Layer-Version: 1.0.0
+# X-Env-Layer-Requires: rpi-device-base,home-ops-linux-2712
+# X-Env-Layer-Provides: rpi-device
+#
+# X-Env-VarPrefix: device
+#
+# X-Env-Var-class: pi5
+# X-Env-Var-class-Desc: Device class
+# X-Env-Var-class-Required: n
+# X-Env-Var-class-Valid: keywords:pi5
+# X-Env-Var-class-Set: y
+#
+# X-Env-Var-storage_type: sd
+# X-Env-Var-storage_type-Desc: Storage media the image is intended for, as seen
+#  by the OS.
+# X-Env-Var-storage_type-Required: n
+# X-Env-Var-storage_type-Valid: sd,nvme,usb
+# X-Env-Var-storage_type-Set: y
+#
+# X-Env-Var-assetdir: ${DIRECTORY}
+# X-Env-Var-assetdir-Desc: Device specific asset directory
+# X-Env-Var-assetdir-Required: n
+# X-Env-Var-assetdir-Valid: string
+# X-Env-Var-assetdir-Set: y
+# METAEND
+---
+EOF
+
+  cat >"${output_dir}/layer/home-ops-linux-2712.yaml" <<'EOF' || node_die "could not write ${output_dir}/layer/home-ops-linux-2712.yaml"
+# METABEGIN
+# X-Env-Layer-Name: home-ops-linux-2712
+# X-Env-Layer-Category: kernel
+# X-Env-Layer-Desc: Raspberry Pi 2712 kernel environment for the home-ops
+#  kernel build, whose packages come from the config packages section.
+# X-Env-Layer-Version: 1.0.0
+# X-Env-Layer-Requires: linux-base
+#
+# X-Env-VarPrefix: linux
+#
+# X-Env-Var-page_size: 16384
+# X-Env-Var-page_size-Desc: 2712 uses a 16K page size kernel
+# X-Env-Var-page_size-Valid: int:16384-16384
+# X-Env-Var-page_size-Set: force
+# METAEND
+---
+# rpi-image-gen only hands layers with an mmdebstrap mapping to bdebstrap, and
+# the INITRD env below must reach the kernel install and initramfs hooks.
+env:
+  INITRD: "No"
+mmdebstrap:
+  architectures:
+    - arm64
+EOF
+}
+
 node_reimage_image_render_config() {
   local output_dir="$1"
   local base_layer="$2"
@@ -124,6 +240,7 @@ node_reimage_image_render_config() {
   local user="$4"
   local image_name="$5"
   local public_key="$6"
+  local kernel_state="$7"
 
   # shellcheck disable=SC2016
   "$NODE_JQ_BIN" -n \
@@ -132,9 +249,10 @@ node_reimage_image_render_config() {
     --arg user "$user" \
     --arg imageName "$image_name" \
     --arg publicKey "$public_key" \
+    --slurpfile kernel "$kernel_state" \
     '{
       device: {
-        layer: "rpi5",
+        layer: "home-ops-rpi5",
         hostname: $hostname,
         user1: $user,
         user1sudo: "nopasswd"
@@ -153,9 +271,16 @@ node_reimage_image_render_config() {
       layer: {
         base: $base,
         custom: "home-ops-node-bootstrap"
-      }
+      },
+      packages: (
+        $kernel[0].packages
+        | to_entries
+        | map({key: "kernel_\(.key + 1)", value: ("kernel/" + (.value.file | split("/") | last))})
+        | from_entries
+      )
     }' |
-    "$NODE_YQ_BIN" -P >"${output_dir}/config/home-ops-node.yaml"
+    "$NODE_YQ_BIN" -P >"${output_dir}/config/home-ops-node.yaml" ||
+    node_die "could not write ${output_dir}/config/home-ops-node.yaml"
 }
 
 # The image seeds the same Raspberry Pi boot settings that Ansible node-prep
@@ -202,16 +327,23 @@ node_reimage_image_render_layer() {
   local dns="$6"
   local iface="$7"
   local timezone="$8"
-
-  local cmdline_args config_block
+  local kernel_state="$9"
+  local cmdline_args config_block verify_script kernel_values
+  local kernel_build_id kernel_package_version kernel_release kernel_config_delta_sha256
 
   cmdline_args="$(node_reimage_image_boot_cmdline_args)" ||
     node_die "could not render Raspberry Pi cmdline args"
   config_block="$(node_reimage_image_boot_config_block)" ||
     node_die "could not render Raspberry Pi firmware config"
   config_block="      ${config_block//$'\n'/$'\n'      }"
+  kernel_values="$(node_reimage_image_kernel_values "$kernel_state")" ||
+    node_die "could not render kernel build values from ${kernel_state}"
+  IFS=$'\t' read -r kernel_build_id kernel_package_version kernel_release kernel_config_delta_sha256 <<<"$kernel_values"
+  [[ -f "$NODE_KERNEL_VERIFY_SCRIPT" ]] || node_die "kernel verifier not found: ${NODE_KERNEL_VERIFY_SCRIPT}"
+  verify_script="$(sed 's/^/      /' "$NODE_KERNEL_VERIFY_SCRIPT")" ||
+    node_die "could not read ${NODE_KERNEL_VERIFY_SCRIPT}"
 
-  cat >"${output_dir}/layer/home-ops-node-bootstrap.yaml" <<EOF
+  cat >"${output_dir}/layer/home-ops-node-bootstrap.yaml" <<EOF || node_die "could not write ${output_dir}/layer/home-ops-node-bootstrap.yaml"
 # METABEGIN
 # X-Env-Layer-Name: home-ops-node-bootstrap
 # X-Env-Layer-Desc: Minimal first-boot settings for a home-ops K3s node.
@@ -261,7 +393,29 @@ ${config_block}
       # END ANSIBLE MANAGED BLOCK home-ops raspberry pi config
       EOCONFIG
       fi
-    - install -d -m 0755 \$1/etc/systemd/system/multi-user.target.wants \$1/usr/local/sbin
+    - install -d -m 0755 \$1/etc/systemd/system/multi-user.target.wants \$1/usr/local/sbin \$1/etc/apt/preferences.d \$1/etc/home-ops
+    - |
+      cat > \$1/usr/local/sbin/home-ops-verify-kernel-build <<'EOVERIFY'
+${verify_script}
+      EOVERIFY
+      chmod 0755 \$1/usr/local/sbin/home-ops-verify-kernel-build
+    - |
+      cat > \$1/etc/apt/preferences.d/90-home-ops-kernel <<'EOPIN'
+      Explanation: home-ops runs its own BTF-enabled rebuild of the Raspberry Pi kernel
+      Explanation: (hack/bootstrap/nodes/kernel in home-ops). Never install kernel
+      Explanation: packages from the Raspberry Pi archive over it; kernel updates
+      Explanation: are rebuilds.
+      Package: /^linux-(image|base|headers)-(.+-)?rpi-2712\$/
+      Pin: origin "archive.raspberrypi.com"
+      Pin-Priority: -1
+      EOPIN
+    - |
+      cat > \$1/etc/home-ops/kernel-build <<'EOKERNEL'
+      KERNEL_BUILD_ID=${kernel_build_id}
+      KERNEL_PACKAGE_VERSION=${kernel_package_version}
+      KERNEL_RELEASE=${kernel_release}
+      KERNEL_CONFIG_DELTA_SHA256=${kernel_config_delta_sha256}
+      EOKERNEL
     - |
       cat > \$1/usr/local/sbin/home-ops-firstboot <<'EOSCRIPT'
       #!/usr/bin/env bash
@@ -297,6 +451,9 @@ ${config_block}
         resize2fs "\$root_dev"
       }
 
+      # Fail closed before touching the node: a wrong kernel leaves no
+      # firstboot-complete marker, which stops node-prep and reimage-apply.
+      /usr/local/sbin/home-ops-verify-kernel-build
       hostnamectl set-hostname '${hostname}'
       timedatectl set-timezone '${timezone}' || true
       systemctl disable --now dphys-swapfile 2>/dev/null || true
@@ -324,6 +481,7 @@ ${config_block}
       ln -sf /etc/systemd/system/home-ops-firstboot.service \$1/etc/systemd/system/multi-user.target.wants/home-ops-firstboot.service
   packages:
     - bash
+    - bpftool
     - busybox-static
     - ca-certificates
     - conntrack
@@ -386,8 +544,12 @@ node_reimage_image_render_source() {
   local prefix="$7"
   local gateway="$8"
   local dns="$9"
+  local kernel_state="${10}"
   local role ansible_host user public_key image_name timezone
 
+  [[ -f "$kernel_state" ]] || node_die "kernel build state not found: ${kernel_state}"
+  node_reimage_image_kernel_values "$kernel_state" >/dev/null ||
+    node_die "invalid kernel build state: ${kernel_state}"
   role="$(node_inventory_role "$profile" "$inventory_node")"
   [[ "$role" == master || "$role" == node ]] ||
     node_die "node is not present in ${profile} inventory: ${inventory_node}"
@@ -423,11 +585,13 @@ node_reimage_image_render_source() {
   if [[ -z "$output_dir" ]]; then
     output_dir="$(node_reimage_image_output_root)/${profile}/${inventory_node}/source"
   fi
-  mkdir -p "${output_dir}/config" "${output_dir}/layer"
+  mkdir -p "${output_dir}/config" "${output_dir}/layer" "${output_dir}/kernel"
+  node_reimage_image_stage_kernel_packages "$kernel_state" "${output_dir}/kernel"
 
   image_name="home-ops-${inventory_node}"
-  node_reimage_image_render_config "$output_dir" "$base_layer" "$inventory_node" "$user" "$image_name" "$public_key"
-  node_reimage_image_render_layer "$output_dir" "$inventory_node" "$ansible_host" "$prefix" "$gateway" "$dns" "$iface" "$timezone"
+  node_reimage_image_render_config "$output_dir" "$base_layer" "$inventory_node" "$user" "$image_name" "$public_key" "$kernel_state"
+  node_reimage_image_render_kernel_layers "$output_dir"
+  node_reimage_image_render_layer "$output_dir" "$inventory_node" "$ansible_host" "$prefix" "$gateway" "$dns" "$iface" "$timezone" "$kernel_state"
   node_reimage_image_render_readme "$output_dir" "$inventory_node" "$image_name"
 
   printf 'source_dir=%s\n' "$output_dir"
@@ -440,4 +604,7 @@ node_reimage_image_render_source() {
   printf 'network_interface=%s\n' "$iface"
   printf 'network_cidr=%s/%s\n' "$ansible_host" "$prefix"
   printf 'network_gateway=%s\n' "$gateway"
+  printf 'kernel_build_id=%s\n' "$("$NODE_JQ_BIN" -r '.buildId' "$kernel_state")"
+  printf 'kernel_package_version=%s\n' "$("$NODE_JQ_BIN" -r '.packageVersion' "$kernel_state")"
+  printf 'kernel_build_state=%s\n' "$kernel_state"
 }
