@@ -161,8 +161,9 @@ kernel:
 the firstboot marker is never written, so `node-reimage-apply` and node-prep stop
 with the verifier output in `firstboot_probe`.
 
-After the verifier passes, firstboot holds the four kernel packages with
-`apt-mark hold`. The pin keeps archive kernels out, but it cannot stop
+The image build holds the four kernel packages with `apt-mark hold`, as an
+rpi-image-gen `cleanup-hooks` step that runs after the config `packages`
+section installs them. The pin keeps archive kernels out, but it cannot stop
 `apt-get full-upgrade` and `autoremove --purge` from removing the rebuilt kernel
 if an archive package ever declares a `Breaks` against it. With the packages
 held, the monthly OS update cannot remove or replace them: apt keeps the

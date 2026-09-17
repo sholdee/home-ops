@@ -714,8 +714,8 @@ EOF
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_BUILD_ID=${KERNEL_TEST_BUILD_ID}"
 }
 
-@test "node reimage image firstboot verifies and holds the kernel build before normalizing the node" {
-  local output_dir public_key layer verify_line hold_line hostname_line script_line
+@test "node reimage image firstboot verifies the kernel build before normalizing the node" {
+  local output_dir public_key layer verify_line hostname_line script_line
   create_fake_kernel_build
   output_dir="${tmp}/image-source-firstboot"
   public_key="${tmp}/ansiblekey.pub"
@@ -734,16 +734,39 @@ EOF
   [[ -n "$verify_line" && -n "$hostname_line" && -n "$script_line" ]]
   ((verify_line < hostname_line))
 
-  # Held packages make a full-upgrade that would remove the kernel fail instead.
-  hold_line="$(grep -nFx -- "      apt-mark hold linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE} linux-image-rpi-2712 linux-base-rpi-2712 >/dev/null" "$layer" | cut -d: -f1)"
-  [[ -n "$hold_line" ]]
-  ((verify_line < hold_line && hold_line < hostname_line))
+  # apt-mark needs the dpkg lock: holding at firstboot let a first-boot apt
+  # timer stall the reimage. The firstboot script must not touch apt-mark.
+  yq -r '.mmdebstrap.customize-hooks[] | select(test("home-ops-firstboot <<"))' "$layer" |
+    awk '/<<.EOSCRIPT.$/ {inside = 1; next} /^EOSCRIPT$/ {inside = 0} inside {print}' >"${tmp}/embedded-firstboot.sh"
+  assert_file_not_contains "${tmp}/embedded-firstboot.sh" 'apt-mark'
 
   # The embedded verifier is byte-identical to the committed script once the
   # YAML block indentation is removed.
   yq -r '.mmdebstrap.customize-hooks[] | select(test("home-ops-verify-kernel-build <<"))' "$layer" |
     awk '/<<.EOVERIFY.$/ {inside = 1; next} /^EOVERIFY$/ {inside = 0} inside {print}' >"${tmp}/embedded-verify.sh"
   cmp "${tmp}/embedded-verify.sh" "${ROOT}/hack/bootstrap/nodes/kernel/verify-kernel-build.sh"
+}
+
+@test "node reimage image build holds the kernel packages after installing them" {
+  local output_dir public_key layer hold_hooks
+  create_fake_kernel_build
+  output_dir="${tmp}/image-source-hold"
+  public_key="${tmp}/ansiblekey.pub"
+  layer="${output_dir}/layer/home-ops-node-bootstrap.yaml"
+  printf 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeHomeOpsKey home-ops-test\n' >"$public_key"
+
+  run env NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    "${ROOT}/hack/bootstrap/nodes/reimage-image-source.sh" \
+      --profile live --output-dir "$output_dir" --ssh-public-key "$public_key" k3s-worker-0
+  assert_success
+
+  # rpi-image-gen (via bdebstrap) runs every mmdebstrap cleanup-hook after all
+  # customize-hooks, including the one that installs the local kernel debs
+  # (scripts/bdebstrap/customize20-packages), so holding here is guaranteed to
+  # run after the packages are installed.
+  hold_hooks="$(yq -r '.mmdebstrap.cleanup-hooks[]' "$layer")"
+  [[ "$hold_hooks" == "chroot \$1 apt-mark hold linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE} linux-image-rpi-2712 linux-base-rpi-2712" ]]
 }
 
 @test "node reimage lima builder writes to guest-local workroot and copies artifacts back" {
