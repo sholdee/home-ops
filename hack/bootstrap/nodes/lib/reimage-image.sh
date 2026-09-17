@@ -454,6 +454,9 @@ ${verify_script}
       # Fail closed before touching the node: a wrong kernel leaves no
       # firstboot-complete marker, which stops node-prep and reimage-apply.
       /usr/local/sbin/home-ops-verify-kernel-build
+      # The apt pin keeps archive kernels out but cannot stop full-upgrade from
+      # removing this kernel for a Breaks; holding the packages does.
+      apt-mark hold linux-image-${kernel_release} linux-base-${kernel_release} linux-image-${NODE_KERNEL_FLAVOUR} linux-base-${NODE_KERNEL_FLAVOUR} >/dev/null
       hostnamectl set-hostname '${hostname}'
       timedatectl set-timezone '${timezone}' || true
       systemctl disable --now dphys-swapfile 2>/dev/null || true

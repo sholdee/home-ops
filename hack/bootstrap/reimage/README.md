@@ -152,6 +152,15 @@ kernel:
 the firstboot marker is never written, so `node-reimage-apply` and node-prep stop
 with the verifier output in `firstboot_probe`.
 
+After the verifier passes, firstboot holds the four kernel packages with
+`apt-mark hold`. The pin keeps archive kernels out, but it cannot stop
+`apt-get full-upgrade` and `autoremove --purge` from removing the rebuilt kernel
+if an archive package ever declares a `Breaks` against it. With the packages
+held, the monthly OS update cannot remove or replace them: apt keeps the
+conflicting update back or the upgrade job fails, and the node keeps its kernel.
+An in-place kernel update would need `apt-mark unhold` on those packages first;
+reimaging installs a new build without it.
+
 List the kernel build on each node with:
 
 ```sh

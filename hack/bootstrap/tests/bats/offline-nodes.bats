@@ -675,8 +675,8 @@ EOF
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" "KERNEL_BUILD_ID=${KERNEL_TEST_BUILD_ID}"
 }
 
-@test "node reimage image firstboot verifies the kernel build before normalizing the node" {
-  local output_dir public_key layer verify_line hostname_line script_line
+@test "node reimage image firstboot verifies and holds the kernel build before normalizing the node" {
+  local output_dir public_key layer verify_line hold_line hostname_line script_line
   create_fake_kernel_build
   output_dir="${tmp}/image-source-firstboot"
   public_key="${tmp}/ansiblekey.pub"
@@ -694,6 +694,11 @@ EOF
   script_line="$(grep -n 'cat > $1/usr/local/sbin/home-ops-verify-kernel-build' "$layer" | cut -d: -f1)"
   [[ -n "$verify_line" && -n "$hostname_line" && -n "$script_line" ]]
   ((verify_line < hostname_line))
+
+  # Held packages make a full-upgrade that would remove the kernel fail instead.
+  hold_line="$(grep -nFx -- "      apt-mark hold linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE} linux-image-rpi-2712 linux-base-rpi-2712 >/dev/null" "$layer" | cut -d: -f1)"
+  [[ -n "$hold_line" ]]
+  ((verify_line < hold_line && hold_line < hostname_line))
 
   # The embedded verifier is byte-identical to the committed script once the
   # YAML block indentation is removed.
