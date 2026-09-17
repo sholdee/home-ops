@@ -429,3 +429,119 @@ EOF
   run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_inputs"
   assert_success
 }
+
+write_kernel_verify_fixture() {
+  verify_root="${tmp}/verify"
+  mkdir -p "${verify_root}/bin"
+  cat >"${verify_root}/kernel-build" <<EOF
+KERNEL_BUILD_ID=${KERNEL_TEST_BUILD_ID}
+KERNEL_PACKAGE_VERSION=${KERNEL_TEST_PACKAGE_VERSION}
+KERNEL_RELEASE=${KERNEL_TEST_RELEASE}
+KERNEL_CONFIG_DELTA_SHA256=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+EOF
+  printf 'btf\n' >"${verify_root}/vmlinux"
+  printf 'CONFIG_BPF_SYSCALL=y\nCONFIG_DEBUG_INFO_BTF=y\nCONFIG_PSI=y\n' | gzip -n -c >"${verify_root}/config.gz"
+  cat >"${verify_root}/bin/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  -r) printf '%s\n' "${FAKE_UNAME_R:?}" ;;
+  -v) printf '%s\n' "${FAKE_UNAME_V:?}" ;;
+  *) exit 2 ;;
+esac
+EOF
+  cat >"${verify_root}/bin/dpkg-query" <<'EOF'
+#!/usr/bin/env bash
+[[ $# == 3 && "$1" == -W && "$2" == '-f=${db:Status-Status} ${Version}' && "$3" == "${FAKE_DPKG_PACKAGE:?}" ]] || exit 2
+[[ -n "${FAKE_DPKG_VERSION:-}" ]] || exit 1
+printf '%s %s' "${FAKE_DPKG_STATUS:-installed}" "$FAKE_DPKG_VERSION"
+EOF
+  chmod +x "${verify_root}/bin/uname" "${verify_root}/bin/dpkg-query"
+}
+
+run_kernel_verify() {
+  run env PATH="${verify_root}/bin:${PATH}" \
+    HOME_OPS_KERNEL_BUILD_MARKER="${verify_root}/kernel-build" \
+    HOME_OPS_KERNEL_BTF="${verify_root}/vmlinux" \
+    HOME_OPS_KERNEL_PROC_CONFIG="${verify_root}/config.gz" \
+    FAKE_DPKG_PACKAGE="linux-image-${KERNEL_TEST_RELEASE}" \
+    FAKE_UNAME_V="#1 SMP PREEMPT Debian ${KERNEL_TEST_PACKAGE_VERSION} (2026-09-11)" \
+    "$@" \
+    "${ROOT}/hack/bootstrap/nodes/kernel/verify-kernel-build.sh"
+}
+
+@test "kernel verifier accepts the home-ops kernel build" {
+  write_kernel_verify_fixture
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_success
+  assert_output_contains "kernel_build_id=${KERNEL_TEST_BUILD_ID}"
+}
+
+@test "kernel verifier rejects the stock kernel that shares the release string" {
+  write_kernel_verify_fixture
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_SOURCE_VERSION"
+  assert_failure
+  assert_output_contains "linux-image-${KERNEL_TEST_RELEASE} is installed ${KERNEL_TEST_SOURCE_VERSION}, expected installed ${KERNEL_TEST_PACKAGE_VERSION}"
+  assert_output_not_contains 'kernel_build_id='
+}
+
+@test "kernel verifier rejects a running kernel without BTF" {
+  write_kernel_verify_fixture
+  rm "${verify_root}/vmlinux"
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains 'kernel BTF is missing'
+
+  write_kernel_verify_fixture
+  printf 'CONFIG_BPF_SYSCALL=y\n# CONFIG_DEBUG_INFO_BTF is not set\n' | gzip -n -c >"${verify_root}/config.gz"
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains 'running kernel config lacks CONFIG_DEBUG_INFO_BTF=y'
+
+  write_kernel_verify_fixture
+  rm "${verify_root}/config.gz"
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains 'running kernel config is not exposed'
+}
+
+@test "kernel verifier rejects another release, an uninstalled package, and a missing marker" {
+  write_kernel_verify_fixture
+  run_kernel_verify FAKE_UNAME_R='6.18.39+rpt-rpi-2712' FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains "running kernel 6.18.39+rpt-rpi-2712 is not the home-ops kernel ${KERNEL_TEST_RELEASE}"
+
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE"
+  assert_failure
+  assert_output_contains 'is not installed'
+
+  rm "${verify_root}/kernel-build"
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains 'kernel build marker is missing'
+
+  write_kernel_verify_fixture
+  sed -i.bak '/^KERNEL_BUILD_ID=/d' "${verify_root}/kernel-build"
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION"
+  assert_failure
+  assert_output_contains 'kernel build marker is incomplete'
+}
+
+@test "kernel verifier rejects a removed package that dpkg still lists" {
+  write_kernel_verify_fixture
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION" FAKE_DPKG_STATUS=config-files
+  assert_failure
+  assert_output_contains "is config-files ${KERNEL_TEST_PACKAGE_VERSION}, expected installed ${KERNEL_TEST_PACKAGE_VERSION}"
+}
+
+@test "kernel verifier rejects a running kernel from another build of the same release" {
+  write_kernel_verify_fixture
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION" \
+    FAKE_UNAME_V='#1 SMP PREEMPT Debian 1:6.18.50-1+rpt1+btf2 (2026-09-20)'
+  assert_failure
+  assert_output_contains "is not ${KERNEL_TEST_PACKAGE_VERSION}"
+
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION" \
+    FAKE_UNAME_V="#1 SMP PREEMPT Debian ${KERNEL_TEST_SOURCE_VERSION} (2026-09-11)"
+  assert_failure
+  assert_output_contains "is not ${KERNEL_TEST_PACKAGE_VERSION}"
+}
