@@ -164,10 +164,8 @@ node_reimage_lima_instance_running() {
     awk -v instance="$instance" '$1 == instance && $2 == "Running" {found = 1} END {exit found ? 0 : 1}'
 }
 
-node_reimage_ensure_lima_builder() {
+node_reimage_start_lima_builder() {
   local builder_name="$1"
-  local rpi_image_gen_dir="$2"
-  local source_root="$3"
 
   node_require_tool limactl
   if ! node_reimage_lima_instance_exists "$builder_name"; then
@@ -183,6 +181,14 @@ node_reimage_ensure_lima_builder() {
     node_log "starting Lima image builder ${builder_name}"
     limactl start --tty=false "$builder_name"
   fi
+}
+
+node_reimage_ensure_lima_builder() {
+  local builder_name="$1"
+  local rpi_image_gen_dir="$2"
+  local source_root="$3"
+
+  node_reimage_start_lima_builder "$builder_name"
 
   node_log "validating Lima image builder mounts"
   # shellcheck disable=SC2016

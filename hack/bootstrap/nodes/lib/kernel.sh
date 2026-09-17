@@ -193,3 +193,197 @@ node_kernel_lock_source() {
   printf 'kernel_release=%s\n' "$release"
   printf 'source_lock=%s\n' "$output"
 }
+
+node_kernel_lock_field() {
+  "$NODE_YQ_BIN" -r ".${1} // \"\"" "$NODE_KERNEL_SOURCE_LOCK"
+}
+
+node_kernel_lock_files() {
+  "$NODE_YQ_BIN" -r '[.files[] | .name + ":" + .sha256] | join(";")' "$NODE_KERNEL_SOURCE_LOCK"
+}
+
+node_kernel_package_version() {
+  printf '%s%s\n' "$(node_kernel_lock_field version)" "$(node_kernel_lock_field buildSuffix)"
+}
+
+# Build ids are Kubernetes label values: no epoch, and + or ~ become -.
+node_kernel_build_id_for_version() {
+  local id="${1#*:}"
+  id="${id//+/-}"
+  id="${id//\~/-}"
+  printf '%s\n' "$id"
+}
+
+node_kernel_build_id_valid() {
+  local id_re='^[A-Za-z0-9]([A-Za-z0-9._-]{0,61}[A-Za-z0-9])?$'
+  [[ "$1" =~ $id_re ]]
+}
+
+node_kernel_current_build_id() {
+  node_kernel_build_id_for_version "$(node_kernel_package_version)"
+}
+
+node_kernel_build_dir() {
+  printf '%s/%s\n' "${NODE_KERNEL_OUTPUT_ROOT%/}" "$1"
+}
+
+node_kernel_package_names() {
+  local release="$1"
+  printf '%s\n' \
+    "linux-image-${release}" \
+    "linux-base-${release}" \
+    "linux-image-${NODE_KERNEL_FLAVOUR}" \
+    "linux-base-${NODE_KERNEL_FLAVOUR}"
+}
+
+node_kernel_require_inputs() {
+  local field value
+  local name sha
+  local version_re='^[0-9]+:[0-9][A-Za-z0-9.+~-]*$'
+  local suffix_re='^\+[a-z][a-z0-9]*$'
+  local release_re="^[0-9][A-Za-z0-9.+_-]*-${NODE_KERNEL_FLAVOUR}\$"
+  local name_re='^[A-Za-z0-9][A-Za-z0-9.+~_-]*$'
+  local sha_re='^[0-9a-f]{64}$'
+  local directory_re='^pool/[A-Za-z0-9/._+-]+$'
+  local url_re='^(https?|file)://[^[:space:];]+$'
+
+  [[ -f "$NODE_KERNEL_SOURCE_LOCK" ]] ||
+    node_die "kernel source lock not found: ${NODE_KERNEL_SOURCE_LOCK}; run: just node-kernel-source-lock"
+  [[ -f "$NODE_KERNEL_CONFIG_DELTA" ]] || node_die "kernel config delta not found: ${NODE_KERNEL_CONFIG_DELTA}"
+  for field in version buildSuffix configDeltaSha256 kernelRelease archiveUrl directory; do
+    value="$(node_kernel_lock_field "$field")"
+    [[ -n "$value" ]] || node_die "kernel source lock is missing ${field}: ${NODE_KERNEL_SOURCE_LOCK}"
+  done
+  [[ "$(node_kernel_lock_field version)" =~ $version_re ]] ||
+    node_die "invalid kernel source version in ${NODE_KERNEL_SOURCE_LOCK}"
+  [[ "$(node_kernel_lock_field buildSuffix)" =~ $suffix_re ]] ||
+    node_die "invalid buildSuffix in ${NODE_KERNEL_SOURCE_LOCK}"
+  [[ "$(node_kernel_lock_field kernelRelease)" =~ $release_re ]] ||
+    node_die "invalid kernelRelease in ${NODE_KERNEL_SOURCE_LOCK}"
+  [[ "$(node_kernel_lock_field directory)" =~ $directory_re && "$(node_kernel_lock_field directory)" != *..* ]] ||
+    node_die "invalid directory in ${NODE_KERNEL_SOURCE_LOCK}"
+  [[ "$(node_kernel_lock_field archiveUrl)" =~ $url_re ]] ||
+    node_die "invalid archiveUrl in ${NODE_KERNEL_SOURCE_LOCK}"
+  while IFS=$'\t' read -r name sha; do
+    [[ "$name" =~ $name_re ]] || node_die "invalid source file name in ${NODE_KERNEL_SOURCE_LOCK}: ${name}"
+    [[ "$sha" =~ $sha_re ]] || node_die "invalid sha256 for ${name} in ${NODE_KERNEL_SOURCE_LOCK}"
+  done < <("$NODE_YQ_BIN" -r '.files[] | [.name, .sha256] | @tsv' "$NODE_KERNEL_SOURCE_LOCK")
+  [[ "$("$NODE_YQ_BIN" -r '[.files[] | select(.name | test("\\.dsc$"))] | length' "$NODE_KERNEL_SOURCE_LOCK")" == 1 ]] ||
+    node_die "kernel source lock must pin exactly one .dsc: ${NODE_KERNEL_SOURCE_LOCK}"
+  [[ "$(node_kernel_lock_field configDeltaSha256)" == "$(node_reimage_sha256_file "$NODE_KERNEL_CONFIG_DELTA")" ]] ||
+    node_die "${NODE_KERNEL_CONFIG_DELTA} does not match configDeltaSha256 in ${NODE_KERNEL_SOURCE_LOCK}; run: just node-kernel-source-lock --build-suffix <new suffix>"
+  node_kernel_build_id_valid "$(node_kernel_current_build_id)" ||
+    node_die "kernel build id is not a valid label value: $(node_kernel_current_build_id)"
+}
+
+node_kernel_guard_build_reuse() {
+  local state_file="$1"
+  local build_id="$2"
+  local recorded
+
+  [[ -f "$state_file" ]] || return 0
+  recorded="$("$NODE_JQ_BIN" -r '.configDeltaSha256 // ""' "$state_file" 2>/dev/null)" || recorded=""
+  [[ -n "$recorded" ]] ||
+    node_die "kernel build state ${state_file} is unreadable or records no configDeltaSha256; remove it only if no node runs ${build_id}, then rerun"
+  [[ "$recorded" == "$(node_reimage_sha256_file "$NODE_KERNEL_CONFIG_DELTA")" ]] ||
+    node_die "kernel build ${build_id} already exists with a different config delta; bump buildSuffix in ${NODE_KERNEL_SOURCE_LOCK} so nodes see a new package version"
+}
+
+node_kernel_write_build_state() {
+  local build_id="$1"
+  local build_dir="$2"
+  local release version deb_version pkg file packages_json state_file config_file sha lock_sha delta_sha
+  local sha_re='^[0-9a-f]{64}$'
+
+  release="$(node_kernel_lock_field kernelRelease)"
+  version="$(node_kernel_package_version)"
+  deb_version="${version#*:}"
+  packages_json='[]'
+  while IFS= read -r pkg; do
+    file="${build_dir}/packages/${pkg}_${deb_version}_arm64.deb"
+    [[ -f "$file" ]] || node_die "kernel build did not produce ${file}"
+    sha="$(node_reimage_sha256_file "$file")"
+    [[ "$sha" =~ $sha_re ]] || node_die "could not hash kernel package ${file}"
+    # shellcheck disable=SC2016
+    packages_json="$(
+      "$NODE_JQ_BIN" -c \
+        --arg name "$pkg" \
+        --arg file "$file" \
+        --arg sha256 "$sha" \
+        '. + [{name: $name, file: $file, sha256: $sha256}]' <<<"$packages_json"
+    )" || node_die "could not record kernel package ${file}"
+  done < <(node_kernel_package_names "$release")
+  config_file="${build_dir}/packages/config-${release}"
+  [[ -f "$config_file" ]] || node_die "kernel build did not produce ${config_file}"
+
+  lock_sha="$(node_reimage_sha256_file "$NODE_KERNEL_SOURCE_LOCK")"
+  delta_sha="$(node_reimage_sha256_file "$NODE_KERNEL_CONFIG_DELTA")"
+  [[ "$lock_sha" =~ $sha_re && "$delta_sha" =~ $sha_re ]] || node_die "could not hash the kernel build inputs"
+  state_file="${build_dir}/state/kernel-build.json"
+  # shellcheck disable=SC2016
+  "$NODE_JQ_BIN" -n \
+    --arg schema "$NODE_KERNEL_BUILD_SCHEMA" \
+    --arg builtAt "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    --arg buildId "$build_id" \
+    --arg sourceVersion "$(node_kernel_lock_field version)" \
+    --arg packageVersion "$version" \
+    --arg kernelRelease "$release" \
+    --arg lockSha256 "$lock_sha" \
+    --arg configDeltaSha256 "$delta_sha" \
+    --arg kernelConfig "$config_file" \
+    --argjson packages "$packages_json" \
+    '{
+      schemaVersion: $schema,
+      builtAt: $builtAt,
+      buildId: $buildId,
+      sourceVersion: $sourceVersion,
+      packageVersion: $packageVersion,
+      kernelRelease: $kernelRelease,
+      lockSha256: $lockSha256,
+      configDeltaSha256: $configDeltaSha256,
+      kernelConfig: $kernelConfig,
+      packages: $packages
+    }' >"${state_file}.tmp" || {
+    rm -f "${state_file}.tmp"
+    node_die "could not write kernel build state ${state_file}"
+  }
+  mv "${state_file}.tmp" "$state_file" || node_die "could not write kernel build state ${state_file}"
+  printf '%s\n' "$state_file"
+}
+
+node_kernel_verify_build_state() {
+  local state="$1"
+  local schema release expected_names recorded_names file sha
+  local sha_re='^[0-9a-f]{64}$'
+
+  [[ -f "$state" ]] || node_die "kernel build state not found: ${state}"
+  schema="$("$NODE_JQ_BIN" -r '.schemaVersion // ""' "$state")"
+  [[ "$schema" == "$NODE_KERNEL_BUILD_SCHEMA" ]] || node_die "unsupported kernel build state schema in ${state}: ${schema}"
+  release="$("$NODE_JQ_BIN" -r '.kernelRelease // ""' "$state")"
+  expected_names="$(node_kernel_package_names "$release" | paste -sd, -)"
+  recorded_names="$("$NODE_JQ_BIN" -r '.packages | map(.name) | join(",")' "$state")"
+  [[ "$recorded_names" == "$expected_names" ]] ||
+    node_die "kernel build state ${state} records ${recorded_names}, expected ${expected_names}"
+  while IFS=$'\t' read -r file sha; do
+    [[ "$sha" =~ $sha_re ]] || node_die "kernel build state ${state} records an invalid sha256 for ${file}"
+    [[ -f "$file" ]] || node_die "kernel package missing: ${file}"
+    [[ "$(node_reimage_sha256_file "$file")" == "$sha" ]] || node_die "kernel package changed since build: ${file}"
+  done < <("$NODE_JQ_BIN" -r '.packages[] | [.file, .sha256] | @tsv' "$state")
+}
+
+# node_kernel_require_current_build prints the state file of the kernel build
+# that matches the committed source lock and config delta.
+node_kernel_require_current_build() {
+  local build_id state
+
+  node_kernel_require_inputs
+  build_id="$(node_kernel_current_build_id)"
+  state="$(node_kernel_build_dir "$build_id")/state/kernel-build.json"
+  [[ -f "$state" ]] || node_die "no kernel build for ${build_id}; run: just node-kernel-build"
+  [[ "$("$NODE_JQ_BIN" -r '.lockSha256 // ""' "$state")" == "$(node_reimage_sha256_file "$NODE_KERNEL_SOURCE_LOCK")" ]] ||
+    node_die "kernel build ${build_id} was built from a different source lock; run: just node-kernel-build"
+  [[ "$("$NODE_JQ_BIN" -r '.configDeltaSha256 // ""' "$state")" == "$(node_reimage_sha256_file "$NODE_KERNEL_CONFIG_DELTA")" ]] ||
+    node_die "kernel build ${build_id} was built from a different config delta; bump buildSuffix and run: just node-kernel-build"
+  node_kernel_verify_build_state "$state"
+  printf '%s\n' "$state"
+}

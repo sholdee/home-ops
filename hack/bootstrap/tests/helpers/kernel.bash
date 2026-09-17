@@ -91,3 +91,36 @@ files:
     sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 EOF
 }
+
+write_fake_kernel_guest() {
+  fake_kernel_guest="${tmp}/fake-kernel-guest.sh"
+  cat >"$fake_kernel_guest" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+env | grep '^KERNEL_' | sort >"${FAKE_KERNEL_GUEST_ENV_FILE:?}"
+deb_version="${KERNEL_PACKAGE_VERSION#*:}"
+mkdir -p "$KERNEL_OUT_DIR"
+for pkg in "linux-image-${KERNEL_RELEASE}" "linux-base-${KERNEL_RELEASE}" "linux-image-${KERNEL_FLAVOUR}" "linux-base-${KERNEL_FLAVOUR}"; do
+  if [[ "$pkg" == "${FAKE_KERNEL_GUEST_SKIP_PACKAGE:-}" ]]; then
+    continue
+  fi
+  printf 'fake %s %s\n' "$pkg" "$KERNEL_PACKAGE_VERSION" >"${KERNEL_OUT_DIR}/${pkg}_${deb_version}_arm64.deb"
+done
+grep -v '^##' "$KERNEL_CONFIG_DELTA" >"${KERNEL_OUT_DIR}/config-${KERNEL_RELEASE}"
+EOF
+  chmod +x "$fake_kernel_guest"
+}
+
+# create_fake_kernel_build builds a kernel build state from a test lock and the
+# fake guest. Sets kernel_test_lock and kernel_test_output_root.
+create_fake_kernel_build() {
+  kernel_test_lock="${tmp}/kernel/source.yaml"
+  kernel_test_output_root="${tmp}/kernel-out"
+  write_kernel_test_lock "$kernel_test_lock"
+  write_fake_kernel_guest
+  NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
+    NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    NODE_KERNEL_BUILD_GUEST_SCRIPT="$fake_kernel_guest" \
+    FAKE_KERNEL_GUEST_ENV_FILE="${tmp}/kernel-guest.env" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-build.sh" --builder-mode local --jobs 1 >/dev/null
+}

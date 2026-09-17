@@ -39,6 +39,7 @@ run_shellcheck() {
     hack/bootstrap/ansible/lib/*.sh
     hack/bootstrap/nodes/*.sh
     hack/bootstrap/nodes/lib/*.sh
+    hack/bootstrap/nodes/kernel/*.sh
   )
 
   printf 'running ShellCheck with %s jobs\n' "$jobs" >&2
