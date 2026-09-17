@@ -131,6 +131,8 @@ Node lifecycle:
 | Discover live node network reimage identity          | `just node-reimage-plan <node>`                          |
 | Render live node network reimage metadata            | `just node-reimage-metadata <node> <image-url> <sha256>` |
 | Render live node Raspberry Pi image source           | `just node-reimage-image-source <node>`                  |
+| Pin the Raspberry Pi kernel source package           | `just node-kernel-source-lock`                           |
+| Build the home-ops BTF kernel packages               | `just node-kernel-build`                                 |
 | Build live node Raspberry Pi image                   | `just node-reimage-build <node>`                         |
 | Run full live node reimage through rejoin            | `just node-reimage-full <node>`                          |
 | Reboot a drained live node                           | `just node-reboot <node>`                                |
@@ -575,10 +577,12 @@ just node-refresh-ssh-host-key k3s-worker-0
 just node-join k3s-worker-0
 just node-uncordon k3s-worker-0
 just node-reimage-plan k3s-worker-0
+just node-kernel-build
 just node-reimage-full k3s-worker-0
 just node-uncordon k3s-worker-0
 
 # Primitive/debug flow:
+just node-kernel-build
 just node-reimage-build k3s-worker-0
 just node-reimage-serve k3s-worker-0 k3s-master-0
 just node-reimage-apply k3s-worker-0
@@ -642,8 +646,11 @@ builds the image before node downtime, automatically selects a healthy serve
 host, verifies the target can reach the image URL, drains, evicts Longhorn,
 deletes the Kubernetes Node, applies the one-shot network reimage, rejoins the
 node, labels it with the current system-upgrade Plan hash, runs host services,
-and cleans up the image server. It intentionally leaves the final uncordon
-manual.
+and cleans up the image server. Its last phase, `kernel-build-label`, runs the
+kernel verifier on the node and labels it
+`node.home-ops.sh/kernel-build=<build-id>`; it fails with the node still
+cordoned when verification fails or the node runs a different kernel build than
+the image it just built. It intentionally leaves the final uncordon manual.
 
 The primitive/debug path is build, serve, drain, Longhorn eviction when needed,
 `node-delete`, `node-reimage-apply`, `node-join`, `node-uncordon`, and
@@ -710,7 +717,9 @@ kernel. Before the first `node-reimage-build`, and after changing
 `hack/bootstrap/nodes/kernel/`, run:
 
 ```sh
-just node-kernel-source-lock   # only to move to a newer archive kernel
+# Only to move to a newer archive kernel, or after changing config.2712.delta
+# with --build-suffix +btfN (N greater than the current buildSuffix).
+just node-kernel-source-lock
 just node-kernel-build
 ```
 
@@ -721,8 +730,9 @@ kubectl get nodes -L node.home-ops.sh/kernel-build
 ssh <node> 'sudo /usr/local/sbin/home-ops-verify-kernel-build && ls /sys/kernel/btf/vmlinux /proc/pressure'
 ```
 
-See `hack/bootstrap/reimage/README.md` (Custom Kernel) for the design and the
-apt pin that keeps OS updates from replacing the kernel.
+See `hack/bootstrap/reimage/README.md` (Custom Kernel) for the design, the apt
+pin and package hold that keep OS updates from replacing the kernel, and backing
+up `hack/bootstrap/.out/kernel/` before reimaging.
 
 ## Live Validation
 

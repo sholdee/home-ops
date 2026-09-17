@@ -130,8 +130,17 @@ and `uname -r`, and records the four packages under
 build; rerunning `just node-kernel-build` is a no-op while the build still
 matches the committed inputs (`--force` rebuilds). The build is local to this
 checkout, so a fresh clone compiles once. After changing `config.2712.delta`, run
-`just node-kernel-source-lock --build-suffix +btfN` with a new suffix so nodes
-see a new package version; builds refuse a delta that does not match the lock.
+`just node-kernel-source-lock --build-suffix +btfN` with `N` greater than the
+current `buildSuffix` so nodes see a new package version; the lock refuses a
+lower suffix, and builds refuse a delta that does not match the lock.
+
+`hack/bootstrap/.out/kernel/<build-id>/` is the only copy of the packages that
+reimaged nodes run. It is gitignored, and the Raspberry Pi archive may stop
+serving the pinned source once a newer kernel ships, so a lost build may not be
+reproducible. Back it up before reimaging, and restore it to the same checkout
+path: the build state records absolute package paths, and image builds refuse a
+build whose packages are missing or changed. Durable artifact storage for kernel
+builds is a planned follow-up.
 
 `node-reimage-build` bakes that build into the image instead of the stock
 kernel:
