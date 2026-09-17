@@ -424,3 +424,8 @@ EOF
   assert_failure
   assert_output_contains 'invalid directory'
 }
+
+@test "committed kernel source lock matches the committed kernel config delta" {
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_inputs"
+  assert_success
+}
