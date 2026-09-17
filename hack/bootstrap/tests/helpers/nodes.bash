@@ -694,6 +694,15 @@ if [[ "$joined_args" == *"firstboot-complete"* ]]; then
   exit 2
 fi
 
+if [[ "$joined_args" == *"home-ops-verify-kernel-build"* ]]; then
+  if [[ "${FAKE_KERNEL_BUILD_VERIFIED:-true}" == true ]]; then
+    printf 'kernel_build_id=6.18.50-1-rpt1-btf1\n'
+    exit 0
+  fi
+  printf 'home-ops-verify-kernel-build: linux-image-6.18.50+rpt-rpi-2712 is installed 1:6.18.50-1+rpt1, expected installed 1:6.18.50-1+rpt1+btf1\n'
+  exit 2
+fi
+
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"

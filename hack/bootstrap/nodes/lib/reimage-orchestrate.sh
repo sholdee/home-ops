@@ -754,6 +754,35 @@ node_reimage_adopt_system_upgrade_plan() {
   printf '%s\n' "$output"
 }
 
+# node_reimage_label_kernel_build runs the image's kernel verifier on a joined
+# node and records the verified build as a node label. A failed verification is
+# fatal: the node must not be uncordoned on the wrong kernel.
+node_reimage_label_kernel_build() {
+  local profile="$1"
+  local context="$2"
+  local inventory_node="$3"
+  local node="$4"
+  local output build_id label_output
+
+  if ! output="$(node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$NODE_KERNEL_VERIFY_BIN" 2>&1)"; then
+    {
+      printf 'kernel_build_probe:\n'
+      node_indent_block <<<"$output"
+    } >&2
+    node_die "${inventory_node} is not running the home-ops kernel build"
+  fi
+  build_id="$(sed -n 's/^kernel_build_id=//p' <<<"$output" | sed -n '1p')"
+  node_kernel_build_id_valid "$build_id" ||
+    node_die "kernel build probe on ${inventory_node} returned an invalid build id: ${build_id:-<empty>}"
+
+  node_log "labeling ${node} with ${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}"
+  if ! label_output="$(node_kubectl "$context" label "node/${node}" "${NODE_KERNEL_BUILD_LABEL_KEY}=${build_id}" --overwrite 2>&1)"; then
+    node_warn "kernel build label failed: ${label_output}"
+    return 0
+  fi
+  printf '%s\n' "$label_output"
+}
+
 node_reimage_ansible_copy() {
   local profile="$1"
   local inventory_node="$2"
@@ -984,6 +1013,12 @@ printf 'firstboot_service_state='
 systemctl is-active home-ops-firstboot.service 2>/dev/null || true
 printf 'os_release='
 sed -n 's/^PRETTY_NAME=//p' /etc/os-release 2>/dev/null | sed -n '1p' || true
+printf 'kernel_release='
+uname -r 2>/dev/null || true
+printf 'kernel_build_check:\n'
+/usr/local/sbin/home-ops-verify-kernel-build 2>&1 | sed 's/^/  /' || true
+printf 'firstboot_log:\n'
+journalctl -u home-ops-firstboot.service -n 20 --no-pager -o cat 2>/dev/null | sed 's/^/  /' || true
 EOF
 
   deadline=$((SECONDS + NODE_REIMAGE_FIRSTBOOT_TIMEOUT_SECONDS))

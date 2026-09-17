@@ -332,6 +332,8 @@ EOF
   assert_output_contains 'selected image serve host: k3s-master-1'
   assert_output_contains 'phase: os-plan-adopt'
   assert_output_contains 'adopting k3s-master-0 into system-upgrade Plan system-upgrade/raspios-trixie (trixie-2026-05-14)'
+  assert_output_contains 'phase: kernel-build-label'
+  assert_output_contains 'labeling k3s-master-0 with node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1'
   assert_output_contains 'final_uncordon: operator-run'
   assert_output_contains 'next=just node-status k3s-master-0 && just node-uncordon k3s-master-0'
   assert_file_contains "$calls" 'plan --profile live --context test k3s-master-0'
@@ -344,6 +346,7 @@ EOF
   assert_file_contains "$calls" 'apply --profile live --context test --yes k3s-master-0'
   assert_file_contains "$calls" 'join --profile live --context test --yes k3s-master-0'
   assert_file_contains "$calls" 'kubectl label node/k3s-master-0 plan.upgrade.cattle.io/raspios-trixie=e602e6d2122f6d49ec99bf659b5495436f6fdb75792a18f7ba1420a0 --overwrite'
+  assert_file_contains "$calls" 'kubectl label node/k3s-master-0 node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1 --overwrite'
   assert_file_contains "$calls" 'host-services --yes k3s-master-0'
   assert_file_contains "$calls" 'cleanup --profile live --yes k3s-master-0'
   assert_file_not_contains "$calls" 'uncordon'
@@ -1177,6 +1180,34 @@ EOF
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_verify_generated_image_booted live k3s-worker-0"
   assert_success
+}
+
+@test "node reimage kernel build label refuses a node that fails kernel verification" {
+  write_fake_ansible
+  write_reimage_full_kubectl
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls" \
+    FAKE_KERNEL_BUILD_VERIFIED=false \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+  assert_failure
+  assert_output_contains 'k3s-worker-0 is not running the home-ops kernel build'
+  assert_output_contains 'expected installed 1:6.18.50-1+rpt1+btf1'
+  if [[ -f "${tmp}/label-calls" ]]; then
+    assert_file_not_contains "${tmp}/label-calls" 'node.home-ops.sh/kernel-build'
+  fi
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_reimage_full_kubectl" CALLS_FILE="${tmp}/label-calls" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_reimage_label_kernel_build live test k3s-worker-0 k3s-worker-0"
+  assert_success
+  assert_file_contains "${tmp}/label-calls" 'kubectl label node/k3s-worker-0 node.home-ops.sh/kernel-build=6.18.50-1-rpt1-btf1 --overwrite'
+}
+
+@test "node reimage firstboot probe reports the kernel build check and firstboot log" {
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" "printf 'kernel_release='"
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" '/usr/local/sbin/home-ops-verify-kernel-build 2>&1'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage-orchestrate.sh" 'journalctl -u home-ops-firstboot.service'
 }
 
 @test "node reimage cleanup removes recorded serve state" {
