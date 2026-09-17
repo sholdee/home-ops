@@ -50,3 +50,5 @@ source "${NODE_LIB_DIR}/reimage.sh"
 source "${NODE_LIB_DIR}/reimage-image.sh"
 # shellcheck source=hack/bootstrap/nodes/lib/reimage-orchestrate.sh
 source "${NODE_LIB_DIR}/reimage-orchestrate.sh"
+# shellcheck source=hack/bootstrap/nodes/lib/kernel.sh
+source "${NODE_LIB_DIR}/kernel.sh"

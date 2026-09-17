@@ -163,6 +163,14 @@ EOF
   run just --dry-run node-reimage-cleanup k3s-worker-0 --yes
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/reimage-cleanup.sh --profile live 'k3s-worker-0' --yes"
+
+  run just --dry-run node-kernel-source-lock --build-suffix +btf2
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/kernel-source-lock.sh --build-suffix +btf2"
+
+  run just --dry-run node-kernel-build --jobs 4
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/kernel-build.sh --jobs 4"
 }
 
 @test "node cmd helper tolerates an accidental extra separator before the remote command" {

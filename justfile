@@ -451,6 +451,16 @@ node-reimage-build node +args='':
 node-reimage-full node:
     ./hack/bootstrap/nodes/reimage-full.sh --profile live --context default '{{ node }}'
 
+# Verify the Raspberry Pi archive signature and pin the current kernel source package.
+[group('node-reimage')]
+node-kernel-source-lock +args='':
+    ./hack/bootstrap/nodes/kernel-source-lock.sh {{ args }}
+
+# Build the home-ops BTF kernel packages from the pinned kernel source.
+[group('node-reimage')]
+node-kernel-build +args='':
+    ./hack/bootstrap/nodes/kernel-build.sh {{ args }}
+
 # Plan additive-only live node convergence from inventory.
 [group('node')]
 node-converge-plan:
