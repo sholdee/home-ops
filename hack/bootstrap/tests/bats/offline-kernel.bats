@@ -597,6 +597,12 @@ run_kernel_verify() {
   assert_failure
   assert_output_contains "is not ${KERNEL_TEST_PACKAGE_VERSION}"
 
+  # +btf10 starts with +btf1: the version must end at the " (" delimiter.
+  run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION" \
+    FAKE_UNAME_V='#1 SMP PREEMPT Debian 1:6.18.50-1+rpt1+btf10 (2026-09-20)'
+  assert_failure
+  assert_output_contains "is not ${KERNEL_TEST_PACKAGE_VERSION}"
+
   run_kernel_verify FAKE_UNAME_R="$KERNEL_TEST_RELEASE" FAKE_DPKG_VERSION="$KERNEL_TEST_PACKAGE_VERSION" \
     FAKE_UNAME_V="#1 SMP PREEMPT Debian ${KERNEL_TEST_SOURCE_VERSION} (2026-09-11)"
   assert_failure
