@@ -224,23 +224,23 @@ url_api = "https://api.github.com/repos/jqlang/jq/releases/assets/453012783"
 provenance = "github-attestations"
 
 [[tools.jsonschema]]
-version = "16.11.0"
+version = "16.12.0"
 backend = "aqua:sourcemeta/jsonschema"
 
 [tools.jsonschema."platforms.linux-arm64"]
-checksum = "sha256:284124f9002f6cd63112c76430433d41d737f1a8cd3fc1ae28fbf549c2747551"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.11.0/jsonschema-16.11.0-linux-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/572935076"
+checksum = "sha256:1dd4856c46c346f9139e296461508ba00d319af7310ad24c9acf504750d9953b"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.12.0/jsonschema-16.12.0-linux-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/579538079"
 
 [tools.jsonschema."platforms.linux-x64"]
-checksum = "sha256:a64f6634c60ccb47fd6d0ef228c398927edb845a3c81c7d26b7cf5b6b0d47c14"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.11.0/jsonschema-16.11.0-linux-x86_64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/572935089"
+checksum = "sha256:9808618bc9579a11412154ab329f6db81bbd8e51e05167e3a6fab8e771f54183"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.12.0/jsonschema-16.12.0-linux-x86_64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/579538096"
 
 [tools.jsonschema."platforms.macos-arm64"]
-checksum = "sha256:f435eb6554a6febf8e81fbc317fe7c75e9901530dda2bdc67aac0ec64ec3ba50"
-url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.11.0/jsonschema-16.11.0-darwin-arm64.zip"
-url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/572935073"
+checksum = "sha256:3370d42567aa8aac7ffe714a6abaa7bc2b2226715d1251052c90a7309963cf78"
+url = "https://github.com/sourcemeta/jsonschema/releases/download/v16.12.0/jsonschema-16.12.0-darwin-arm64.zip"
+url_api = "https://api.github.com/repos/sourcemeta/jsonschema/releases/assets/579538074"
 
 [[tools.just]]
 version = "1.58.0"
