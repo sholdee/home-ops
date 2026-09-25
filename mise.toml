@@ -8,7 +8,7 @@ bats = "1.14.0"
 rush = "0.11.0"
 actionlint = "1.7.12"
 kubeconform = "0.8.0"
-jsonschema = "16.12.0"
+jsonschema = "17.0.0"
 zizmor = "1.30.1"
 gitleaks = "8.30.1"
 
