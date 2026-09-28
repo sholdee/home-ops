@@ -632,7 +632,7 @@ setup_kernel_node() {
   assert_output_contains 'running_matches=marker'
   assert_output_contains 'booted_via_fallback=no'
   assert_output_contains 'holds=4'
-  assert_output_contains 'fallback_present=no'
+  assert_output_contains 'fallback_copy=no'
   assert_output_contains 'tryboot_present=no'
   assert_output_contains 'reimage_staged=no'
   assert_output_contains 'trial_pending=no'
@@ -667,13 +667,19 @@ setup_kernel_node() {
   run_kernel_node prepare
   assert_failure
   assert_output_contains 'root-level boot set is not the running kernel'
+  # stage repeats the check: the host flow can reach it without prepare.
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains 'root-level boot set is not the running kernel'
+  [[ ! -d "$fallback" ]]
   cp "${node}/boot/vmlinuz-${KERNEL_TEST_RELEASE}" "${boot}/kernel_2712.img"
 
+  # need = kernel (4096) + initramfs (8192) + 4 MiB headroom.
   run_kernel_node FAKE_BOOT_FREE_BYTES=1000 prepare
   assert_failure
   assert_output_contains 'not enough space in'
   assert_output_contains 'free=1000'
-  assert_output_contains 'need=4206592'
+  assert_output_contains "need=$((4096 + 8192 + 4 * 1024 * 1024))"
 
   awk '$1 == "linux-base-rpi-2712" { $3 = "install" } { print }' "${node}/dpkg.state" >"${node}/dpkg.state.new"
   mv "${node}/dpkg.state.new" "${node}/dpkg.state"
@@ -682,22 +688,32 @@ setup_kernel_node() {
   assert_output_contains "the four kernel packages for ${KERNEL_TEST_RELEASE} are not all held"
 }
 
-@test "kernel update prepare appends missing cmdline args once" {
+@test "kernel update stage appends missing cmdline args to the trial line only" {
   setup_kernel_node
-  run_kernel_node prepare --cmdline-arg panic=30 --cmdline-arg cgroup_memory=1
+  run_kernel_node prepare --cmdline-arg panic=30
+  assert_failure
+  assert_output_contains 'unknown prepare argument: --cmdline-arg'
+
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node stage "$pkgdir" --cmdline-arg panic=30 --cmdline-arg cgroup_memory=1
   assert_success
   assert_output_contains 'cmdline_added=panic=30'
   assert_output_not_contains 'cmdline_added=cgroup_memory=1'
-  assert_output_contains 'prepare_state=S0'
-  assert_output_contains 'prepare=ok'
   [[ "$(sed -n '1p' "${boot}/cmdline.txt")" == "${KERNEL_TEST_NODE_CMDLINE} panic=30" ]]
   [[ "$(wc -l <"${boot}/cmdline.txt" | tr -d ' ')" == 1 ]]
+  # The fallback boots the pre-update line, so a newly requested argument must
+  # only ever reach the trial.
+  [[ "$(cat "${fallback}/cmdline.txt")" == "${KERNEL_TEST_NODE_CMDLINE} home_ops_kernel_fallback=1" ]]
+  assert_file_not_contains "${fallback}/cmdline.txt" 'panic=30'
+  cp "${fallback}/cmdline.txt" "${tmp}/fallback-cmdline"
 
-  run_kernel_node prepare --cmdline-arg panic=30 --cmdline-arg cgroup_memory=1
+  run_kernel_node stage "$pkgdir" --cmdline-arg panic=30
   assert_success
   assert_output_not_contains 'cmdline_added='
   [[ "$(sed -n '1p' "${boot}/cmdline.txt")" == "${KERNEL_TEST_NODE_CMDLINE} panic=30" ]]
   [[ "$(wc -l <"${boot}/cmdline.txt" | tr -d ' ')" == 1 ]]
+  cmp "${tmp}/fallback-cmdline" "${fallback}/cmdline.txt"
 }
 
 @test "kernel update stage creates the fallback, installs, and updates the marker" {
@@ -741,6 +757,8 @@ EOF
   [[ "$(wc -l <"${node}/apt-mark.log" | tr -d ' ')" == 2 ]]
   [[ "$(sed -n '1p' "${node}/apt-mark.log")" == "unhold linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE} linux-image-rpi-2712 linux-base-rpi-2712" ]]
   [[ "$(sed -n '2p' "${node}/apt-mark.log")" == "hold linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE} linux-image-rpi-2712 linux-base-rpi-2712" ]]
+  # The order is asserted deliberately: it catches a duplicated package and a
+  # dropped ./ prefix, both of which apt would otherwise resolve from the index.
   deb_args="$(grep -o -- '\./[^ ]*_arm64\.deb' "${node}/apt-get.log" | tr '\n' ' ')"
   expected_debs="./linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb "
   expected_debs+="./linux-base-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb "
@@ -762,7 +780,7 @@ EOF
   assert_output_contains 'running_matches=fallback'
   assert_output_contains 'booted_via_fallback=no'
   assert_output_contains 'trial_pending=yes'
-  assert_output_contains 'fallback_present=yes'
+  assert_output_contains 'fallback_copy=yes'
   assert_output_contains "fallback_build_id=${KERNEL_TEST_BUILD_ID}"
 
   fake_node_boot_trial "$node"
@@ -783,7 +801,7 @@ EOF
 }
 
 @test "kernel update stage refuses bad checksums, extra packages, and re-holds after an install failure" {
-  local retry_dir retry_version='1:6.18.50-1+rpt1+btf3' retry_id='6.18.50-1-rpt1-btf3'
+  local retry_dir decoy retry_version='1:6.18.50-1+rpt1+btf3' retry_id='6.18.50-1-rpt1-btf3'
   setup_kernel_node
   retry_dir="${tmp}/packages-retry"
   run_kernel_node prepare
@@ -812,6 +830,20 @@ EOF
   run_kernel_node stage "$pkgdir"
   assert_failure
   assert_output_contains "SHA256SUMS does not cover linux-base-rpi-2712_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb"
+  [[ ! -d "$fallback" ]]
+  [[ ! -f "${node}/apt-get.log" ]]
+
+  # A name that merely prefixes another listed name is not coverage.
+  create_fake_kernel_package_dir "$pkgdir" "$KERNEL_TEST_RELEASE" \
+    "$KERNEL_TEST_NEXT_PACKAGE_VERSION" "$KERNEL_TEST_NEXT_BUILD_ID"
+  decoy="linux-base-rpi-2712_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb"
+  printf 'signature\n' >"${pkgdir}/${decoy}.sig"
+  grep -v "  ${decoy}\$" "${pkgdir}/SHA256SUMS" >"${pkgdir}/SHA256SUMS.new"
+  printf '%s  %s.sig\n' "$(kernel_test_sha256 "${pkgdir}/${decoy}.sig")" "$decoy" >>"${pkgdir}/SHA256SUMS.new"
+  mv "${pkgdir}/SHA256SUMS.new" "${pkgdir}/SHA256SUMS"
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains "SHA256SUMS does not cover ${decoy}"
   [[ ! -d "$fallback" ]]
   [[ ! -f "${node}/apt-get.log" ]]
 
@@ -917,10 +949,14 @@ EOF
   assert_success
   fake_node_boot_trial "$bump_node"
   fake_node_set_running "$bump_release" "$bump_version"
-  run_kernel_node commit
-  assert_success
-  assert_output_contains 'commit=ok'
+  # Split streams: apt's purge chatter must not reach the tool's own stdout.
+  run_kernel_node_split commit
+  assert_file_contains "${tmp}/stdout" 'commit=ok'
+  assert_kernel_node_stdout_clean "${tmp}/stdout"
+  assert_file_contains "${tmp}/stderr" 'Removing linux-image'
   assert_file_contains "${bump_node}/apt-get.log" "purge linux-image-${KERNEL_TEST_RELEASE} linux-base-${KERNEL_TEST_RELEASE}"
+  # Install and purge alike must run non-interactively.
+  [[ "$(grep -c '^NEEDRESTART_MODE=l DEBIAN_FRONTEND=noninteractive$' "${bump_node}/apt-get.env.log")" == 2 ]]
   assert_file_not_contains "${bump_node}/dpkg.state" "linux-image-${KERNEL_TEST_RELEASE} "
   assert_file_not_contains "${bump_node}/dpkg.state" "linux-base-${KERNEL_TEST_RELEASE} "
   assert_file_contains "${bump_node}/dpkg.state" "linux-image-${bump_release} installed hold ${bump_version}"
@@ -1020,15 +1056,39 @@ EOF
   assert_failure
   assert_output_contains "fallback dir must be directly under ${other_boot}"
   assert_file_not_contains "${other_boot}/config.txt" 'home-ops kernel fallback'
+  [[ ! -e "${tmp}/outside-prev" ]]
 }
 
-@test "kernel update refuses an empty cmdline.txt" {
+@test "kernel update refuses missing or empty boot files before touching anything" {
   setup_kernel_node
+
   : >"${boot}/cmdline.txt"
-  run_kernel_node prepare --cmdline-arg panic=30
+  run_kernel_node prepare
   assert_failure
-  assert_output_contains "cmdline.txt is empty: ${boot}/cmdline.txt"
+  assert_output_contains "missing ${boot}/cmdline.txt; is ${boot} mounted?"
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains "missing ${boot}/cmdline.txt; is ${boot} mounted?"
+  [[ ! -d "$fallback" ]]
+  [[ ! -e "${boot}/tryboot.txt" ]]
+  [[ ! -f "${node}/apt-get.log" ]]
   [[ "$(kernel_test_size "${boot}/cmdline.txt")" == 0 ]]
+
+  printf '%s\n' "$KERNEL_TEST_NODE_CMDLINE" >"${boot}/cmdline.txt"
+  rm "${boot}/config.txt"
+  run_kernel_node prepare
+  assert_failure
+  assert_output_contains "missing ${boot}/config.txt; is ${boot} mounted?"
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains "missing ${boot}/config.txt; is ${boot} mounted?"
+  [[ ! -d "$fallback" ]]
+  [[ ! -e "${boot}/tryboot.txt" ]]
+  [[ ! -f "${node}/apt-get.log" ]]
+
+  run_kernel_node status
+  assert_success
+  assert_output_contains 'boot_files_present=no'
 }
 
 @test "kernel update commits a rollback to the build the fallback holds" {
@@ -1071,4 +1131,92 @@ EOF
   [[ ! -e "${boot}/tryboot.txt" ]]
   [[ ! -d "$fallback" ]]
   cmp "${tmp}/pre-config.txt" "${boot}/config.txt"
+}
+
+@test "kernel update fallback copy with a corrupted image is refused" {
+  setup_kernel_node
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node stage "$pkgdir"
+  assert_success
+
+  printf 'corrupt' >>"${fallback}/kernel_2712.img"
+  run_kernel_node status
+  assert_success
+  assert_output_contains 'fallback_copy=partial'
+  assert_output_contains 'state=S3'
+
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains 'node is in state S3'
+  run_kernel_node prepare
+  assert_failure
+  assert_output_contains 'node is in state S3 (tryboot_present=yes, reimage_staged=no)'
+  run_kernel_node commit
+  assert_failure
+  assert_output_contains 'node is in state S3; commit needs a booted, uncommitted trial (S1)'
+}
+
+@test "kernel update stage refuses a tryboot.txt that is not the fallback config" {
+  setup_kernel_node
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node stage "$pkgdir"
+  assert_success
+  cp "${boot}/config.txt" "${tmp}/config-after-stage"
+
+  printf 'kernel=somebody-elses-image.img\n' >"${boot}/tryboot.txt"
+  run_kernel_node stage "$pkgdir"
+  assert_failure
+  assert_output_contains 'tryboot.txt differs from the fallback copy'
+  cmp "${tmp}/config-after-stage" "${boot}/config.txt"
+}
+
+@test "kernel update commit does not flag a config.txt that ends in a blank line" {
+  setup_kernel_node
+  printf '\n' >>"${boot}/config.txt"
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node stage "$pkgdir"
+  assert_success
+  cp "${fallback}/config.txt.orig" "${tmp}/orig-snapshot"
+
+  fake_node_boot_trial "$node"
+  fake_node_set_running "$KERNEL_TEST_RELEASE" "$KERNEL_TEST_NEXT_PACKAGE_VERSION"
+  run_kernel_node commit
+  assert_success
+  assert_output_contains 'commit=ok'
+  assert_output_not_contains 'config_changed_during_update'
+  cmp "${tmp}/orig-snapshot" "${boot}/config.txt"
+  [[ "$(tail -c 2 "${boot}/config.txt" | od -An -tx1 | tr -d ' \n')" != '0a0a' ]]
+}
+
+@test "kernel update stage keeps stdout to key=value lines" {
+  setup_kernel_node
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node_split stage "$pkgdir" --cmdline-arg panic=30
+  assert_file_contains "${tmp}/stdout" 'stage=ok'
+  assert_file_contains "${tmp}/stdout" 'cmdline_added=panic=30'
+  # apt's progress belongs on stderr, so the host side can parse stdout.
+  assert_kernel_node_stdout_clean "${tmp}/stdout"
+  assert_file_contains "${tmp}/stderr" 'Selecting previously unselected package'
+  assert_file_contains "${tmp}/stderr" '[1,234 kB]'
+}
+
+@test "kernel update prepare refuses a pending trial" {
+  setup_kernel_node
+  run_kernel_node prepare
+  assert_success
+  run_kernel_node stage "$pkgdir"
+  assert_success
+  fake_node_boot_trial "$node"
+  fake_node_set_running "$KERNEL_TEST_RELEASE" "$KERNEL_TEST_NEXT_PACKAGE_VERSION"
+  run_kernel_node status
+  assert_success
+  assert_output_contains 'state=S1'
+
+  run_kernel_node prepare
+  assert_failure
+  assert_output_contains 'node is in state S1; a trial is pending: run the host flow with --resume to commit it, or reboot to fall back'
 }

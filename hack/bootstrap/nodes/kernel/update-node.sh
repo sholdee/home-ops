@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Installed on nodes as /usr/local/sbin/home-ops-kernel-update by
-# hack/bootstrap/nodes/kernel-update.sh, which copies it on every run.
+# hack/bootstrap/nodes/kernel-update.sh (added in the host-side flow, Task 3),
+# which copies it on every run.
 #
 # In-place home-ops kernel update with a firmware-level fallback. "stage"
 # copies the running boot set to a fallback directory, points config.txt at
@@ -11,6 +12,15 @@
 # kernel; every other boot uses config.txt and the previous kernel until
 # "commit". The fallback cmdline carries home_ops_kernel_fallback=1, so
 # /proc/cmdline tells a fallback boot from a trial boot.
+#
+# Two narrow crash windows land in S3 and need a hand: a crash after the
+# fallback dir is complete but before the block is appended to config.txt
+# (status shows fallback_copy=yes with config_fallback_block=no and
+# tryboot_present=no -- remove the fallback dir and start again), and a crash
+# in "commit" after the block is stripped but before the fallback dir is
+# removed (config_fallback_block=no, fallback_copy=yes, tryboot_present=no --
+# the update is already committed, so just remove the fallback dir). Any other
+# S3 wants an operator to read the same three fields before touching anything.
 set -euo pipefail
 
 boot="${HOME_OPS_KERNEL_BOOT_DIR:-/boot/firmware}"
@@ -85,6 +95,32 @@ write_atomic() {
   "$sync_bin"
 }
 
+first_missing_boot_file() {
+  # Prints the first required boot file that is missing -- or, for cmdline.txt,
+  # empty -- and returns 0; returns 1 when the boot dir holds them all. An
+  # unmounted /boot/firmware looks like an empty directory, so this is the
+  # cheapest way to tell that apart from a node that needs updating.
+  local f
+  for f in config.txt kernel_2712.img initramfs_2712; do
+    if [[ ! -f "${boot}/${f}" ]]; then
+      printf '%s\n' "${boot}/${f}"
+      return 0
+    fi
+  done
+  if [[ ! -s "$cmdline" ]]; then
+    printf '%s\n' "$cmdline"
+    return 0
+  fi
+  return 1
+}
+
+require_boot_files() {
+  local missing
+  if missing="$(first_missing_boot_file)"; then
+    die "missing ${missing}; is ${boot} mounted?"
+  fi
+}
+
 fallback_dir_name() {
   [[ "$(dirname "$fallback")" == "$boot" ]] || die "fallback dir must be directly under ${boot}: ${fallback}"
   basename "$fallback"
@@ -99,8 +135,8 @@ fallback_block() {
 
 config_has_block() {
   local b e
-  b="$(grep -nxF -- "$begin_mark" "$config" 2>/dev/null | head -1 | cut -d: -f1)"
-  e="$(grep -nxF -- "$end_mark" "$config" 2>/dev/null | head -1 | cut -d: -f1)"
+  b="$(grep -nxF -- "$begin_mark" "$config" 2>/dev/null | sed -n '1s/:.*//p' || true)"
+  e="$(grep -nxF -- "$end_mark" "$config" 2>/dev/null | sed -n '1s/:.*//p' || true)"
   [[ -n "$b" && -n "$e" && "$b" -lt "$e" ]]
 }
 
@@ -193,7 +229,7 @@ classify() {
 
 status_fields() {
   local m_present=no m_id="" m_ver="" m_rel="" block=no fb tb=no rs=no match=none via=no trial=no
-  local f_ver="" f_rel="" f_id="" size_k=0 size_i=0 installed=none holds=0
+  local f_ver="" f_rel="" f_id="" size_k=0 size_i=0 installed=none holds=0 bf=no
   uname -r >/dev/null || die "cannot read the running kernel release"
   if [[ -r "$marker" ]]; then
     m_present=yes
@@ -211,6 +247,7 @@ status_fields() {
   if [[ -f "$tryboot" ]]; then tb=yes; fi
   if [[ -d "$reimage_stage" ]]; then rs=yes; fi
   if booted_via_fallback; then via=yes; fi
+  if ! first_missing_boot_file >/dev/null; then bf=yes; fi
   if [[ -f "${fallback}/TRIAL" ]]; then trial=yes; fi
   # Which copy is running? booted_via_fallback is authoritative: the fallback
   # cmdline booted. Otherwise trial_pending decides, because the marker and
@@ -239,9 +276,10 @@ status_fields() {
   printf 'running_release=%s\n' "$(uname -r)"
   printf 'running_build=%s\n' "$(uname -v)"
   printf 'booted_via_fallback=%s\n' "$via"
+  printf 'boot_files_present=%s\n' "$bf"
   printf 'marker_present=%s\nmarker_build_id=%s\nmarker_version=%s\nmarker_release=%s\n' "$m_present" "$m_id" "$m_ver" "$m_rel"
   printf 'installed_version=%s\n' "$installed"
-  printf 'fallback_present=%s\nfallback_version=%s\nfallback_release=%s\nfallback_build_id=%s\n' "$fb" "$f_ver" "$f_rel" "$f_id"
+  printf 'fallback_copy=%s\nfallback_version=%s\nfallback_release=%s\nfallback_build_id=%s\n' "$fb" "$f_ver" "$f_rel" "$f_id"
   printf 'config_fallback_block=%s\ntryboot_present=%s\nreimage_staged=%s\ntrial_pending=%s\nrunning_matches=%s\n' "$block" "$tb" "$rs" "$trial" "$match"
   printf 'state=%s\n' "$(classify "$block" "$fb" "$tb" "$match" "$via")"
   printf 'boot_free_bytes=%s\nboot_set_bytes=%s\n' "$(boot_free_bytes)" "$((size_k + size_i))"
@@ -277,23 +315,16 @@ cmd_status() {
 }
 
 cmd_prepare() {
-  local state free need
-  local -a args=()
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --cmdline-arg)
-        args+=("${2:?missing value for --cmdline-arg}")
-        shift 2
-        ;;
-      *) die "unknown prepare argument: $1" ;;
-    esac
-  done
+  local state free need tb=no rs=no
+  (($# == 0)) || die "unknown prepare argument: $1"
+  require_boot_files
+  fallback_dir_name >/dev/null
   state="$(state_of)"
   case "$state" in
     S0)
       "$verify_bin" >/dev/null ||
         die "running kernel does not match the installed home-ops kernel; refusing to update from an unverified state"
-      [[ ! -e "$tryboot" && ! -d "$reimage_stage" ]] || die "a reimage or another kernel update is staged"
+      [[ ! -d "$reimage_stage" ]] || die "a reimage or another kernel update is staged"
       if ! { cmp -s "$kernel_img" "${vmlinuz_dir}/vmlinuz-$(uname -r)" &&
         cmp -s "$initramfs_img" "${vmlinuz_dir}/initrd.img-$(uname -r)"; }; then
         die "root-level boot set is not the running kernel"
@@ -305,24 +336,30 @@ cmd_prepare() {
       ;;
     S2) ;;
     S1) die "node is in state S1; a trial is pending: run the host flow with --resume to commit it, or reboot to fall back" ;;
-    *) die "node is in state ${state}; clean up ${boot} by hand before retrying" ;;
+    *)
+      [[ ! -f "$tryboot" ]] || tb=yes
+      [[ ! -d "$reimage_stage" ]] || rs=yes
+      die "node is in state ${state} (tryboot_present=${tb}, reimage_staged=${rs}); clean up ${boot} by hand before retrying"
+      ;;
   esac
-  if ((${#args[@]} > 0)); then
-    ensure_cmdline_args "${args[@]}"
-  fi
   printf 'prepare_state=%s\nprepare=ok\n' "$state"
 }
 
 create_fallback() {
   local id ver rel meta_content config_content tryboot_content cmdline_content
+  local k_sum i_sum c_sum
   id="$(kv "$marker" KERNEL_BUILD_ID)"
   ver="$(kv "$marker" KERNEL_PACKAGE_VERSION)"
   rel="$(kv "$marker" KERNEL_RELEASE)"
   [[ -n "$id" && -n "$ver" && -n "$rel" ]] || die "kernel build marker is incomplete: ${marker}"
+  # config.txt.orig is the materialised config, and config.txt below is that
+  # same content plus the block, so "commit" can strip the block and compare
+  # the two byte-for-byte however the live file was terminated.
+  config_content="$(cat "$config")" || die "cannot read ${config}"
   install -d -m 0755 "$fallback"
   cp "$kernel_img" "${fallback}/kernel_2712.img"
   cp "$initramfs_img" "${fallback}/initramfs_2712"
-  cp "$config" "${fallback}/config.txt.orig"
+  printf '%s\n' "$config_content" | write_atomic "${fallback}/config.txt.orig" 0644
   cmdline_content="$(sed -n '1p' "$cmdline")" || die "cannot read ${cmdline}"
   [[ -n "$cmdline_content" ]] || die "cmdline.txt is empty: ${cmdline}"
   case " ${cmdline_content} " in
@@ -330,19 +367,16 @@ create_fallback() {
     *) cmdline_content="${cmdline_content} ${fallback_arg}" ;;
   esac
   printf '%s\n' "$cmdline_content" | write_atomic "${fallback}/cmdline.txt" 0644
-  "$sync_bin"
-  meta_content="$(
-    printf 'KERNEL_BUILD_ID=%s\nKERNEL_PACKAGE_VERSION=%s\nKERNEL_RELEASE=%s\n' "$id" "$ver" "$rel"
-    printf 'KERNEL_SHA256=%s\n' "$(sha256_of "${fallback}/kernel_2712.img")"
-    printf 'INITRAMFS_SHA256=%s\n' "$(sha256_of "${fallback}/initramfs_2712")"
-    printf 'CONFIG_SHA256=%s\n' "$(sha256_of "${fallback}/config.txt.orig")"
-  )" || die "could not hash the fallback boot set"
+  k_sum="$(sha256_of "${fallback}/kernel_2712.img")" || die "could not hash the fallback kernel"
+  i_sum="$(sha256_of "${fallback}/initramfs_2712")" || die "could not hash the fallback initramfs"
+  c_sum="$(sha256_of "${fallback}/config.txt.orig")" || die "could not hash the fallback config"
+  meta_content="$(printf 'KERNEL_BUILD_ID=%s\nKERNEL_PACKAGE_VERSION=%s\nKERNEL_RELEASE=%s\nKERNEL_SHA256=%s\nINITRAMFS_SHA256=%s\nCONFIG_SHA256=%s' \
+    "$id" "$ver" "$rel" "$k_sum" "$i_sum" "$c_sum")"
   printf '%s\n' "$meta_content" | write_atomic "${fallback}/META" 0644
   if ! { cmp -s "$kernel_img" "${fallback}/kernel_2712.img" &&
     cmp -s "$initramfs_img" "${fallback}/initramfs_2712"; }; then
     die "fallback copy does not match the running boot set"
   fi
-  config_content="$(cat "$config")" || die "cannot read ${config}"
   config_content="${config_content}"$'\n'"$(fallback_block)"
   printf '%s\n' "$config_content" | write_atomic "$config" 0644
   tryboot_content="$(cat "${fallback}/config.txt.orig")" || die "cannot read ${fallback}/config.txt.orig"
@@ -356,7 +390,19 @@ rehold_target() {
 cmd_stage() {
   local dir="${1:?stage needs the package directory}" state env_file id ver rel delta name
   local deb_count tryboot_content marker_content
-  local -a debs=()
+  local -a debs=() cmdline_args=()
+  shift
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --cmdline-arg)
+        cmdline_args+=("${2:?missing value for --cmdline-arg}")
+        shift 2
+        ;;
+      *) die "unknown stage argument: $1" ;;
+    esac
+  done
+  require_boot_files
+  fallback_dir_name >/dev/null
   [[ -d "$dir" ]] || die "package directory not found: ${dir}"
   env_file="${dir}/kernel-build.env"
   [[ -f "$env_file" && -f "${dir}/SHA256SUMS" ]] || die "package directory lacks kernel-build.env or SHA256SUMS: ${dir}"
@@ -375,12 +421,16 @@ cmd_stage() {
     debs+=("./${name}_${ver#*:}_arm64.deb")
   done < <(package_names "$rel")
   for name in "${debs[@]}"; do
-    grep -qF -- "  ${name#./}" "${dir}/SHA256SUMS" ||
+    awk -v want="${name#./}" '$2 == want { found = 1 } END { exit !found }' "${dir}/SHA256SUMS" ||
       die "SHA256SUMS does not cover ${name#./}: ${dir}"
   done
   state="$(state_of)"
   case "$state" in
     S0)
+      if ! { cmp -s "$kernel_img" "${vmlinuz_dir}/vmlinuz-$(uname -r)" &&
+        cmp -s "$initramfs_img" "${vmlinuz_dir}/initrd.img-$(uname -r)"; }; then
+        die "root-level boot set is not the running kernel"
+      fi
       create_fallback
       ;;
     S2)
@@ -395,6 +445,11 @@ cmd_stage() {
     S1) die "a trial is pending; run the host flow with --resume to commit it, or reboot to fall back" ;;
     *) die "node is in state ${state}; clean up ${boot} by hand before retrying" ;;
   esac
+  # After the fallback is settled, so the fallback cmdline stays the pre-update
+  # line and only the trial boot sees a newly requested argument.
+  if ((${#cmdline_args[@]} > 0)); then
+    ensure_cmdline_args "${cmdline_args[@]}"
+  fi
   rm -f "${fallback}/TRIAL"
   package_names "$rel" | xargs "$apt_mark" unhold >/dev/null 2>&1 || true
   rehold_release="$rel"
@@ -404,7 +459,7 @@ cmd_stage() {
     DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
       "$apt_get" -y --allow-downgrades \
       -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
-      install "${debs[@]}"
+      install "${debs[@]}" >&2
   ) || die "kernel package install failed; the fallback kernel remains the default boot"
   package_names "$rel" | xargs "$apt_mark" hold >/dev/null
   trap - EXIT
@@ -440,7 +495,8 @@ cmd_commit() {
   "$sync_bin"
   if [[ -n "$old_rel" && "$old_rel" != "$new_rel" ]]; then
     "$apt_mark" unhold "linux-image-${old_rel}" "linux-base-${old_rel}" >/dev/null 2>&1 || true
-    if ! DEBIAN_FRONTEND=noninteractive "$apt_get" -y purge "linux-image-${old_rel}" "linux-base-${old_rel}"; then
+    if ! DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
+      "$apt_get" -y purge "linux-image-${old_rel}" "linux-base-${old_rel}" >&2; then
       printf 'purge_failed=linux-image-%s\n' "$old_rel"
     fi
   fi
@@ -464,5 +520,5 @@ case "${1:-}" in
     shift
     cmd_commit "$@"
     ;;
-  *) die "usage: home-ops-kernel-update status|prepare [--cmdline-arg ARG]...|stage DIR|commit" ;;
+  *) die "usage: home-ops-kernel-update status|prepare|stage DIR [--cmdline-arg ARG]...|commit" ;;
 esac

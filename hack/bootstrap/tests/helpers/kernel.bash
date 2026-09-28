@@ -188,6 +188,8 @@ EOF
 set -uo pipefail
 root="${FAKE_NODE_ROOT:?}"
 printf '%s\n' "$*" >>"${root}/apt-get.log"
+printf 'NEEDRESTART_MODE=%s DEBIAN_FRONTEND=%s\n' \
+  "${NEEDRESTART_MODE:-}" "${DEBIAN_FRONTEND:-}" >>"${root}/apt-get.env.log"
 op=""
 for arg in "$@"; do
   case "$arg" in
@@ -199,6 +201,9 @@ if [[ "$op" == install ]]; then
     printf 'E: simulated install failure\n' >&2
     exit 100
   fi
+  printf 'Reading package lists... Done\n'
+  printf 'Get:1 /var/tmp/home-ops-kernel linux-image arm64 [1,234 kB]\n'
+  printf 'Selecting previously unselected package linux-image.\n'
   for arg in "$@"; do
     [[ "$arg" == ./linux-image-*_arm64.deb ]] || continue
     stem="${arg#./linux-image-}"
@@ -226,6 +231,8 @@ elif [[ "$op" == purge ]]; then
     printf 'E: simulated purge failure\n' >&2
     exit 100
   fi
+  printf 'Reading package lists... Done\n'
+  printf 'Removing linux-image (1,234 kB) ...\n'
   for arg in "$@"; do
     [[ "$arg" == linux-* ]] || continue
     grep -v "^${arg} " "${root}/dpkg.state" >"${root}/dpkg.state.new" || true
@@ -284,9 +291,8 @@ EOF
 # create_fake_kernel_node NODE_ROOT RELEASE VERSION BUILD_ID builds a node that
 # boots the home-ops kernel: a firmware partition, the root-level boot set the
 # Debian kernel hooks keep in sync with it, the build marker, /proc/cmdline, a
-# dpkg state file with the four packages held, and the stubs above. Sets
-# fake_node_root and the kernel_node_env array, and exports FAKE_UNAME_R and
-# FAKE_UNAME_V.
+# dpkg state file with the four packages held, and the stubs above. Sets the
+# kernel_node_env array and exports FAKE_UNAME_R and FAKE_UNAME_V.
 create_fake_kernel_node() {
   local node_root="$1" release="$2" version="$3" build_id="$4"
   local name
@@ -322,7 +328,6 @@ EOF
     printf '%s installed hold %s\n' "$name" "$version" >>"${node_root}/dpkg.state"
   done
   write_fake_kernel_node_stubs "${node_root}/bin"
-  fake_node_root="$node_root"
   fake_node_set_running "$release" "$version"
   kernel_node_env=(
     "HOME_OPS_KERNEL_BOOT_DIR=${node_root}/boot/firmware"
@@ -381,6 +386,26 @@ fake_node_boot_fallback() {
 fake_node_boot_trial() {
   local node_root="$1"
   cp "${node_root}/boot/firmware/cmdline.txt" "${node_root}/proc/cmdline"
+}
+
+# assert_kernel_node_stdout_clean FILE fails unless every line of FILE is a
+# key=value line. A bare "! grep" cannot be used here: in Bats a negated
+# command does not fail the test.
+assert_kernel_node_stdout_clean() {
+  local file="$1"
+  if grep -qvE '^[a-z_]+=' "$file"; then
+    printf 'expected only key=value lines on stdout, got:\n' >&2
+    grep -vE '^[a-z_]+=' "$file" >&2
+    return 1
+  fi
+}
+
+# run_kernel_node_split ARGS... runs the tool with its streams captured
+# separately, in ${tmp}/stdout and ${tmp}/stderr, so a test can assert that the
+# tool's stdout carries nothing but key=value lines.
+run_kernel_node_split() {
+  env "${kernel_node_env[@]}" "${ROOT}/hack/bootstrap/nodes/kernel/update-node.sh" "$@" \
+    >"${tmp}/stdout" 2>"${tmp}/stderr"
 }
 
 # run_kernel_node [VAR=VALUE]... ARGS... runs the node-side kernel update tool
