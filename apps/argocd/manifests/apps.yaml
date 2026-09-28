@@ -172,7 +172,7 @@ spec:
   source:
     chart: dragonfly-operator
     repoURL: ghcr.io/dragonflydb/dragonfly-operator/helm
-    targetRevision: v1.6.1
+    targetRevision: v1.7.0
     helm:
       releaseName: dragonfly-operator
       valuesObject:
