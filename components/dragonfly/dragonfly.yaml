@@ -18,7 +18,6 @@ spec:
   # sets an operator-managed label ("failed to generate dragonfly resources"). The
   # operator still applies `app: dragonfly` to the owned StatefulSet/pods/objects,
   # so label selectors (incl. the topology spread below) keep working.
-  networkPolicyEnabled: false
   enableReplicationReadinessGate: true
   pdb:
     minAvailable: 1
