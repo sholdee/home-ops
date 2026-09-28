@@ -693,6 +693,10 @@ setup_kernel_node() {
   run_kernel_node prepare --cmdline-arg panic=30
   assert_failure
   assert_output_contains 'unknown prepare argument: --cmdline-arg'
+  run_kernel_node stage --cmdline-arg panic=30
+  assert_failure
+  assert_output_contains 'stage needs the package directory first, got: --cmdline-arg'
+  [[ ! -d "$fallback" ]]
 
   run_kernel_node prepare
   assert_success
@@ -1057,6 +1061,10 @@ EOF
   assert_output_contains "fallback dir must be directly under ${other_boot}"
   assert_file_not_contains "${other_boot}/config.txt" 'home-ops kernel fallback'
   [[ ! -e "${tmp}/outside-prev" ]]
+  # commit removes the fallback dir, so it validates it before anything else.
+  run_kernel_node "HOME_OPS_KERNEL_FALLBACK_DIR=${tmp}/outside-prev" commit
+  assert_failure
+  assert_output_contains "fallback dir must be directly under ${other_boot}"
 }
 
 @test "kernel update refuses missing or empty boot files before touching anything" {
@@ -1148,7 +1156,7 @@ EOF
 
   run_kernel_node stage "$pkgdir"
   assert_failure
-  assert_output_contains 'node is in state S3'
+  assert_output_contains 'node is in state S3 (tryboot_present=yes, reimage_staged=no)'
   run_kernel_node prepare
   assert_failure
   assert_output_contains 'node is in state S3 (tryboot_present=yes, reimage_staged=no)'

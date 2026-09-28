@@ -13,14 +13,18 @@
 # "commit". The fallback cmdline carries home_ops_kernel_fallback=1, so
 # /proc/cmdline tells a fallback boot from a trial boot.
 #
-# Two narrow crash windows land in S3 and need a hand: a crash after the
-# fallback dir is complete but before the block is appended to config.txt
-# (status shows fallback_copy=yes with config_fallback_block=no and
-# tryboot_present=no -- remove the fallback dir and start again), and a crash
-# in "commit" after the block is stripped but before the fallback dir is
-# removed (config_fallback_block=no, fallback_copy=yes, tryboot_present=no --
-# the update is already committed, so just remove the fallback dir). Any other
-# S3 wants an operator to read the same three fields before touching anything.
+# Two narrow crash windows land in S3 and need a hand. Both show
+# fallback_copy=yes, config_fallback_block=no and tryboot_present=no, and in
+# both the remedy is to remove the fallback dir; trial_pending is what says
+# which one happened and where removing it leaves the node.
+#   trial_pending=no (running_matches=fallback, marker_build_id ==
+#     fallback_build_id) is a "stage" that died before the block was appended:
+#     removing the dir returns the node to S0, still on the old kernel.
+#   trial_pending=yes (running_matches=marker, marker_build_id !=
+#     fallback_build_id) is a "commit" that died before the dir was removed:
+#     the update is already committed, and removing the dir just finishes it.
+# Any other S3 wants an operator to read those fields before touching
+# anything.
 set -euo pipefail
 
 boot="${HOME_OPS_KERNEL_BOOT_DIR:-/boot/firmware}"
@@ -388,9 +392,13 @@ rehold_target() {
 }
 
 cmd_stage() {
-  local dir="${1:?stage needs the package directory}" state env_file id ver rel delta name
+  local dir state env_file id ver rel delta name tb=no rs=no
   local deb_count tryboot_content marker_content
   local -a debs=() cmdline_args=()
+  dir="${1:?stage needs the package directory}"
+  case "$dir" in
+    --*) die "stage needs the package directory first, got: ${dir}" ;;
+  esac
   shift
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -443,7 +451,11 @@ cmd_stage() {
       fi
       ;;
     S1) die "a trial is pending; run the host flow with --resume to commit it, or reboot to fall back" ;;
-    *) die "node is in state ${state}; clean up ${boot} by hand before retrying" ;;
+    *)
+      [[ ! -f "$tryboot" ]] || tb=yes
+      [[ ! -d "$reimage_stage" ]] || rs=yes
+      die "node is in state ${state} (tryboot_present=${tb}, reimage_staged=${rs}); clean up ${boot} by hand before retrying"
+      ;;
   esac
   # After the fallback is settled, so the fallback cmdline stays the pre-update
   # line and only the trial boot sees a newly requested argument.
@@ -477,6 +489,7 @@ cmd_stage() {
 
 cmd_commit() {
   local state out id old_rel new_rel config_content
+  fallback_dir_name >/dev/null
   state="$(state_of)"
   [[ "$state" == S1 ]] || die "node is in state ${state}; commit needs a booted, uncommitted trial (S1)"
   out="$("$verify_bin")" || die "kernel verification failed; do not commit"
