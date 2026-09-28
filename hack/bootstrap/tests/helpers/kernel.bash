@@ -419,3 +419,35 @@ run_kernel_node() {
   cmd+=("${ROOT}/hack/bootstrap/nodes/kernel/update-node.sh")
   run "${cmd[@]}" "$@"
 }
+
+# write_fake_kernel_status FILE writes the status block of a clean node, the
+# shape the fake ansible hands back for "home-ops-kernel-update status". Tests
+# rewrite the file between phases, or drop a line from it to stand in for a
+# truncated read.
+write_fake_kernel_status() {
+  local file="$1"
+  cat >"$file" <<EOF
+running_release=${KERNEL_TEST_RELEASE}
+running_build=#1 SMP PREEMPT Debian ${KERNEL_TEST_PACKAGE_VERSION} (2026-09-28)
+booted_via_fallback=no
+boot_files_present=yes
+marker_present=yes
+marker_build_id=${KERNEL_TEST_BUILD_ID}
+marker_version=${KERNEL_TEST_PACKAGE_VERSION}
+marker_release=${KERNEL_TEST_RELEASE}
+installed_version=${KERNEL_TEST_PACKAGE_VERSION}
+fallback_copy=no
+fallback_version=
+fallback_release=
+fallback_build_id=
+config_fallback_block=no
+tryboot_present=no
+reimage_staged=no
+trial_pending=no
+running_matches=marker
+state=S0
+boot_free_bytes=60000000
+boot_set_bytes=12288
+holds=4
+EOF
+}

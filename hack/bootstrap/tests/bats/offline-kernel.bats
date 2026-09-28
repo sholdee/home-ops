@@ -1228,3 +1228,93 @@ EOF
   assert_failure
   assert_output_contains 'node is in state S1; a trial is pending: run the host flow with --resume to commit it, or reboot to fall back'
 }
+
+# --- kernel update host helpers ----------------------------------------------
+
+@test "kernel build lookup by id verifies any recorded build" {
+  local deb
+  create_fake_kernel_build
+
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_build '${KERNEL_TEST_BUILD_ID}'"
+  assert_success
+  assert_output_contains "${KERNEL_TEST_BUILD_ID}/state/kernel-build.json"
+
+  # A second build, and a lock that now pins it: the lookup is by id alone, so
+  # the build the lock no longer names still resolves.
+  yq -i '.buildSuffix = "+btf2"' "$kernel_test_lock"
+  NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
+    NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    NODE_KERNEL_BUILD_GUEST_SCRIPT="$fake_kernel_guest" \
+    FAKE_KERNEL_GUEST_ENV_FILE="${tmp}/kernel-guest.env" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-build.sh" --builder-mode local --jobs 1 >/dev/null
+
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_build '${KERNEL_TEST_NEXT_BUILD_ID}'"
+  assert_success
+  assert_output_contains "${KERNEL_TEST_NEXT_BUILD_ID}/state/kernel-build.json"
+
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_build '${KERNEL_TEST_BUILD_ID}'"
+  assert_success
+  assert_output_contains "${KERNEL_TEST_BUILD_ID}/state/kernel-build.json"
+
+  deb="${kernel_test_output_root}/${KERNEL_TEST_BUILD_ID}/packages/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+  printf 'tampered\n' >>"$deb"
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_build '${KERNEL_TEST_BUILD_ID}'"
+  assert_failure
+  assert_output_contains 'kernel package changed since build'
+
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_require_build 6.18.50-1-rpt1-btf9"
+  assert_failure
+  assert_output_contains 'no kernel build for 6.18.50-1-rpt1-btf9'
+}
+
+@test "kernel update status validator covers every key the node tool prints" {
+  local printed
+  setup_kernel_node
+
+  run_kernel_node status
+  assert_success
+  printed="$(sed -n 's/=.*//p' <<<"$output" | sort -u)"
+
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; printf '%s\n' \"\${NODE_KERNEL_UPDATE_STATUS_KEYS[@]}\" | sort -u"
+  assert_success
+  [[ "$output" == "$printed" ]]
+}
+
+@test "kernel update package dir carries SHA256SUMS and kernel-build.env that match the build state" {
+  local state package_dir sums
+  create_fake_kernel_build
+  state="${kernel_test_output_root}/${KERNEL_TEST_BUILD_ID}/state/kernel-build.json"
+  mkdir -p "${tmp}/kernel-update/packages/${KERNEL_TEST_BUILD_ID}"
+  printf 'stale\n' >"${tmp}/kernel-update/packages/${KERNEL_TEST_BUILD_ID}/linux-image-old_1_arm64.deb"
+  printf 'stale\n' >"${tmp}/kernel-update/packages/${KERNEL_TEST_BUILD_ID}/kernel-build.env.tmp"
+
+  run env NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_package_dir '${state}'"
+  assert_success
+  package_dir="$output"
+  [[ "$package_dir" == "${tmp}/kernel-update/packages/${KERNEL_TEST_BUILD_ID}" ]]
+  [[ ! -e "${package_dir}/linux-image-old_1_arm64.deb" ]]
+  [[ ! -e "${package_dir}/kernel-build.env.tmp" ]]
+
+  sums="$(sort "${package_dir}/SHA256SUMS")"
+  # shellcheck disable=SC2016
+  run env PACKAGE_DIR="$package_dir" bash -c \
+    'source "$1"; cd "$PACKAGE_DIR" || exit 1; for f in *.deb; do printf "%s  %s\n" "$(node_reimage_sha256_file "$f")" "$f"; done | sort' \
+    _ "${ROOT}/hack/bootstrap/nodes/lib.sh"
+  assert_success
+  [[ "$output" == "$sums" ]]
+  assert_output_contains "linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+
+  run jq -r '"KERNEL_BUILD_ID=" + .buildId,
+    "KERNEL_PACKAGE_VERSION=" + .packageVersion,
+    "KERNEL_RELEASE=" + .kernelRelease,
+    "KERNEL_CONFIG_DELTA_SHA256=" + .configDeltaSha256' "$state"
+  assert_success
+  [[ "$output" == "$(cat "${package_dir}/kernel-build.env")" ]]
+}

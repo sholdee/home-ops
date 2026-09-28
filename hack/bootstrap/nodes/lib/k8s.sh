@@ -293,3 +293,42 @@ node_assert_joining_taint() {
       ;;
   esac
 }
+
+# node_assert_no_cnpg_primary fails when a CloudNativePG cluster still has its
+# primary instance on the node. A reboot would fail that database over on its
+# own schedule; promoting a standby first keeps the switchover deliberate. A
+# cluster without CloudNativePG installed is not a finding.
+node_assert_no_cnpg_primary() {
+  local context="$1"
+  local node="$2"
+  local clusters_json pods_json primaries
+
+  if ! clusters_json="$(node_kubectl "$context" get clusters.postgresql.cnpg.io -A -o json 2>&1)"; then
+    case "$clusters_json" in
+      *"the server doesn't have a resource type"*) return 0 ;;
+    esac
+    node_die "CloudNativePG clusters are not readable in ${context}: ${clusters_json}"
+  fi
+  pods_json="$(node_kubectl "$context" get pods -A -l cnpg.io/cluster -o json 2>/dev/null)" ||
+    node_die "CloudNativePG instance pods are not readable in ${context}"
+
+  # shellcheck disable=SC2016
+  primaries="$("$NODE_JQ_BIN" -r --arg node "$node" --argjson pods "$pods_json" '
+    (
+      [$pods.items[]? | {key: (.metadata.namespace + "/" + .metadata.name), value: (.spec.nodeName // "")}]
+      | from_entries
+    ) as $instance_node |
+    .items[]?
+    | select((.status.currentPrimary // "") != "")
+    | select($instance_node[.metadata.namespace + "/" + .status.currentPrimary] == $node)
+    | "\(.metadata.namespace)/\(.metadata.name) (\(.status.currentPrimary))"
+  ' <<<"$clusters_json")" || node_die "could not read CloudNativePG primaries in ${context}"
+
+  if [[ -n "$primaries" ]]; then
+    {
+      printf 'cnpg_primaries:\n'
+      node_indent_block <<<"$primaries"
+    } >&2
+    node_die "CloudNativePG primary instances are on ${node}; promote a standby first: kubectl cnpg --context ${context} -n <ns> promote <cluster> <instance-on-another-node>"
+  fi
+}

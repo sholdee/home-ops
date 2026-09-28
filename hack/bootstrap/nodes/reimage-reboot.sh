@@ -98,32 +98,7 @@ node_reimage_assert_staged "$profile" "$inventory_node" "$kubernetes_node"
 node_confirm "$yes" "reboot ${inventory_node} into tryboot reimage"
 
 stage_dir="$(node_reimage_inventory_stage_dir "$profile" "$inventory_node")"
-printf -v stage_dir_q '%q' "$stage_dir"
-read -r -d '' remote_reboot <<'EOF' || true
-set -eu
-command -v systemd-run >/dev/null 2>&1
-command -v systemctl >/dev/null 2>&1
-cat >/run/home-ops-reimage-tryboot.sh <<'SCRIPT'
-#!/bin/sh
-set -eu
-stage_dir=__NODE_REIMAGE_STAGE_DIR__
-{
-  date -Is
-  printf 'tryboot_command=systemctl --reboot-argument=0 tryboot reboot\n'
-} >>"${stage_dir}/reboot.log"
-sync
-exec /usr/bin/systemctl --reboot-argument="0 tryboot" reboot
-SCRIPT
-chmod 0700 /run/home-ops-reimage-tryboot.sh
-systemd-run \
-  --unit=home-ops-reimage-tryboot \
-  --description="Home Ops one-shot tryboot reimage reboot" \
-  --on-active=2s \
-  --collect \
-  /bin/sh /run/home-ops-reimage-tryboot.sh
-EOF
-remote_reboot="${remote_reboot/__NODE_REIMAGE_STAGE_DIR__/$stage_dir_q}"
 
 node_log "rebooting ${inventory_node} with one-shot tryboot flag"
-node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_reboot" >/dev/null
+node_reimage_tryboot_reboot "$profile" "$inventory_node" "${stage_dir}/reboot.log" home-ops-reimage-tryboot
 node_log "tryboot reboot scheduled: ${inventory_node}"

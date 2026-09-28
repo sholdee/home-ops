@@ -1100,7 +1100,7 @@ true'" > "$script"
   write_reimage_kubectl
   write_fake_ansible
   add_reimage_identity k3s-worker-0 10000000deadbeef nvme-deadbeef
-  assert_file_contains "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" '--reboot-argument="0 tryboot"'
+  assert_file_contains "${ROOT}/hack/bootstrap/nodes/lib/reimage.sh" '--reboot-argument="0 tryboot"'
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" NODE_KUBECTL_BIN="$fake_reimage_kubectl" \
     "${ROOT}/hack/bootstrap/nodes/reimage-reboot.sh" --profile live --context test --yes k3s-worker-0
@@ -2114,6 +2114,131 @@ EOF
     bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_cleanup_pods_for_deleted_node test k3s-worker-0"
   assert_success
   [[ ! -e "$stale_pods_state" ]]
+}
+
+# --- kernel update host helpers ----------------------------------------------
+
+@test "cnpg primary assertion allows a standby, blocks a primary, and ignores an absent CRD" {
+  write_cnpg_kubectl
+
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_success
+
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_PRIMARY_NODE=k3s-worker-0 \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_failure
+  assert_output_contains 'db/pg (pg-1)'
+  assert_output_contains 'CloudNativePG primary instances are on k3s-worker-0'
+  assert_output_contains 'kubectl cnpg --context test -n <ns> promote <cluster> <instance-on-another-node>'
+  # A standby on the node, and a cluster with no primary at all, are not findings.
+  assert_output_not_contains 'pg-2'
+  assert_output_not_contains 'db/idle'
+
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_CRD=absent \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_success
+}
+
+@test "kernel update remote status rejects a truncated status block" {
+  local status_file key
+  write_fake_ansible
+  status_file="${tmp}/kernel-status"
+  write_fake_kernel_status "$status_file"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_STATUS_FILE="$status_file" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_remote_status live k3s-worker-0"
+  assert_success
+  assert_output_contains 'state=S0'
+  assert_output_contains 'trial_pending=no'
+  assert_output_contains 'boot_files_present=yes'
+  assert_output_contains 'fallback_copy=no'
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_STATUS_FILE="$status_file" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_status_value \"\$(node_kernel_update_remote_status live k3s-worker-0)\" marker_build_id"
+  assert_success
+  [[ "$output" == "$KERNEL_TEST_BUILD_ID" ]]
+
+  for key in trial_pending boot_files_present fallback_copy state; do
+    write_fake_kernel_status "$status_file"
+    grep -v "^${key}=" "$status_file" >"${status_file}.short"
+    mv "${status_file}.short" "$status_file"
+    run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_STATUS_FILE="$status_file" \
+      bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_remote_status live k3s-worker-0"
+    assert_failure
+    assert_output_contains "truncated kernel update status from k3s-worker-0: missing ${key}"
+  done
+}
+
+@test "kernel update ship recreates the remote build dir and runs the node tool" {
+  local package_dir copies calls remote_dir
+  write_fake_ansible
+  package_dir="${tmp}/packages/${KERNEL_TEST_NEXT_BUILD_ID}"
+  remote_dir="/var/tmp/home-ops-kernel/${KERNEL_TEST_NEXT_BUILD_ID}"
+  copies="${tmp}/copies"
+  calls="${tmp}/calls"
+  mkdir -p "$package_dir"
+  printf 'deb\n' >"${package_dir}/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb"
+  printf 'sums\n' >"${package_dir}/SHA256SUMS"
+  printf 'env\n' >"${package_dir}/kernel-build.env"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_COPIES="$copies" \
+    FAKE_KERNEL_CALLS="$calls" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_ship live k3s-worker-0 '${package_dir}'"
+  assert_success
+  [[ "$output" == "$remote_dir" ]]
+  # A deb from an aborted ship must not survive into this one.
+  assert_file_contains "$calls" "recreate ${remote_dir}"
+  assert_file_contains "$copies" "hack/bootstrap/nodes/kernel/update-node.sh /usr/local/sbin/home-ops-kernel-update"
+  assert_file_contains "$copies" "${package_dir}/SHA256SUMS ${remote_dir}/SHA256SUMS"
+  assert_file_contains "$copies" "${package_dir}/kernel-build.env ${remote_dir}/kernel-build.env"
+  assert_file_contains "$copies" "${package_dir}/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb ${remote_dir}/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb"
+
+  run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_CALLS="$calls" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_remote live k3s-worker-0 stage '${remote_dir}' --cmdline-arg panic=30"
+  assert_success
+  assert_output_contains '  stage=ok'
+  assert_file_contains "$calls" 'stage'
+
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cmdline_args | paste -sd' ' -"
+  assert_success
+  assert_output_contains '--cmdline-arg cgroup_enable=cpuset --cmdline-arg cgroup_memory=1'
+}
+
+@test "kernel update cni smoke passes on Succeeded and fails on a Failed pod" {
+  local state
+  write_smoke_kubectl
+  state="${tmp}/smoke-state"
+  mkdir -p "$state"
+  # A smoke pod left behind by an earlier run: the flow must wait for its
+  # delete before applying, and must leave nothing behind itself.
+  touch "${state}/pod"
+
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+  assert_success
+  assert_output_contains 'cni_smoke=ok'
+  [[ -f "${state}/namespace" ]]
+  [[ ! -f "${state}/pod" ]]
+
+  assert_file_contains "${state}/manifest" 'name: smoke-k3s-worker-0'
+  assert_file_contains "${state}/manifest" 'nodeName: k3s-worker-0'
+  assert_file_contains "${state}/manifest" 'restartPolicy: Never'
+  assert_file_contains "${state}/manifest" '- operator: Exists'
+  assert_file_contains "${state}/manifest" 'imagePullPolicy: IfNotPresent'
+  assert_file_contains "${state}/manifest" 'echo cni-smoke-ok'
+  run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; printf '%s\n' \"\$NODE_KERNEL_UPDATE_SMOKE_IMAGE\""
+  assert_success
+  assert_file_contains "${state}/manifest" "image: ${output}"
+
+  rm -rf "$state"
+  mkdir -p "$state"
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" FAKE_SMOKE_PHASE=Failed \
+    FAKE_SMOKE_LOG="nslookup: can't resolve 'kubernetes.default.svc.cluster.local'" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+  assert_failure
+  assert_output_contains 'CNI smoke pod failed on k3s-worker-0'
+  assert_output_contains "nslookup: can't resolve 'kubernetes.default.svc.cluster.local'"
 }
 
 @test "node lifecycle command help paths remain available" {

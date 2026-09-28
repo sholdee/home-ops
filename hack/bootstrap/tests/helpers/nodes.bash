@@ -609,6 +609,11 @@ if [[ "$joined_args" == *"systemctl disable --now k3s"* && "$joined_args" == *"k
 fi
 
 if [[ "$joined_args" == *"ansible.builtin.copy"* ]]; then
+  if [[ -n "${FAKE_KERNEL_COPIES:-}" ]]; then
+    printf '%s %s\n' \
+      "$(sed -n 's/.*src=\([^ ]*\).*/\1/p' <<<"$joined_args")" \
+      "$(sed -n 's/.*dest=\([^ ]*\).*/\1/p' <<<"$joined_args")" >>"$FAKE_KERNEL_COPIES"
+  fi
   printf '{"changed": true}\n'
   exit 0
 fi
@@ -701,6 +706,35 @@ if [[ "${!#}" == "/usr/local/sbin/home-ops-verify-kernel-build 2>&1" ]]; then
   fi
   printf 'home-ops-verify-kernel-build: linux-image-6.18.50+rpt-rpi-2712 is installed 1:6.18.50-1+rpt1, expected installed 1:6.18.50-1+rpt1+btf1\n'
   exit 2
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update status"* ]]; then
+  cat "${FAKE_KERNEL_STATUS_FILE:?}"
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update prepare"* ]]; then
+  printf '%s\n' "prepare" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'prepare=ok\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update stage"* ]]; then
+  printf '%s\n' "stage" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'stage=ok\nstaged_build_id=%s\n' "${FAKE_KERNEL_STAGED_ID:-6.18.50-1-rpt1-btf2}"
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update commit"* ]]; then
+  printf '%s\n' "commit" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'commit=ok\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"rm -rf /var/tmp/home-ops-kernel"* ]]; then
+  printf 'recreate %s\n' \
+    "$(sed -n 's/^rm -rf \(.*\)$/\1/p' <<<"$joined_args" | sed -n '1p')" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  exit 0
 fi
 
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
@@ -1468,4 +1502,172 @@ printf 'unexpected fake stale-pods kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
   chmod +x "$fake_stale_pods_kubectl"
+}
+
+# write_cnpg_kubectl answers the two reads node_assert_no_cnpg_primary makes.
+# FAKE_CNPG_CRD=absent makes the cluster CRD missing; FAKE_CNPG_PRIMARY_NODE
+# says which node the pg-1 instance pod runs on.
+write_cnpg_kubectl() {
+  fake_cnpg_kubectl="${tmp}/kubectl-cnpg"
+  cat > "$fake_cnpg_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "clusters.postgresql.cnpg.io" ]]; then
+  if [[ "${FAKE_CNPG_CRD:-present}" == absent ]]; then
+    printf 'error: the server doesn'"'"'t have a resource type "clusters"\n' >&2
+    exit 1
+  fi
+  cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "pg", "namespace": "db"},
+      "status": {"currentPrimary": "pg-1"}
+    },
+    {
+      "metadata": {"name": "idle", "namespace": "db"},
+      "status": {}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  cat <<JSON
+{
+  "items": [
+    {
+      "metadata": {"name": "pg-1", "namespace": "db"},
+      "spec": {"nodeName": "${FAKE_CNPG_PRIMARY_NODE:-k3s-worker-1}"}
+    },
+    {
+      "metadata": {"name": "pg-2", "namespace": "db"},
+      "spec": {"nodeName": "k3s-worker-0"}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+printf 'unexpected fake cnpg kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_cnpg_kubectl"
+}
+
+# write_smoke_kubectl backs node_kernel_update_cni_smoke with a pod that takes
+# two reads to disappear after a delete, so a flow that does not wait for the
+# delete meets the pod it just asked to remove. FAKE_SMOKE_STATE_DIR holds the
+# object state, FAKE_SMOKE_PHASE the phase reported, FAKE_SMOKE_LOG the log.
+write_smoke_kubectl() {
+  fake_smoke_kubectl="${tmp}/kubectl-smoke"
+  cat > "$fake_smoke_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+state="${FAKE_SMOKE_STATE_DIR:?}"
+verb=""
+target=""
+extra=""
+while (($# > 0)); do
+  case "$1" in
+    -n | --namespace)
+      shift 2
+      ;;
+    *)
+      if [[ -z "$verb" ]]; then
+        verb="$1"
+      elif [[ -z "$target" ]]; then
+        target="$1"
+      else
+        extra="${extra} $1"
+      fi
+      shift
+      ;;
+  esac
+done
+printf '%s %s\n' "$verb" "$target" >>"${state}/calls"
+
+case "${verb}" in
+  get)
+    case "$target" in
+      --raw=/readyz)
+        printf 'ok\n'
+        exit 0
+        ;;
+      namespace/*)
+        if [[ -f "${state}/namespace" ]]; then
+          printf '{"metadata":{"name":"%s"}}\n' "${target#namespace/}"
+          exit 0
+        fi
+        printf 'Error from server (NotFound): namespaces "%s" not found\n' "${target#namespace/}" >&2
+        exit 1
+        ;;
+      pod/*)
+        if [[ -f "${state}/deleting" ]]; then
+          linger="$(cat "${state}/linger" 2>/dev/null || printf '0')"
+          linger=$((linger - 1))
+          printf '%s' "$linger" >"${state}/linger"
+          if ((linger <= 0)); then
+            rm -f "${state}/pod" "${state}/deleting" "${state}/linger"
+          fi
+        fi
+        if [[ ! -f "${state}/pod" ]]; then
+          printf 'Error from server (NotFound): pods "%s" not found\n' "${target#pod/}" >&2
+          exit 1
+        fi
+        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s"}}\n' \
+          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}"
+        exit 0
+        ;;
+    esac
+    ;;
+  create)
+    if [[ "$target" == namespace ]]; then
+      touch "${state}/namespace"
+      printf 'namespace/%s created\n' "${extra# }"
+      exit 0
+    fi
+    ;;
+  delete)
+    if [[ -f "${state}/pod" ]]; then
+      touch "${state}/deleting"
+      printf '2' >"${state}/linger"
+    fi
+    printf 'pod "%s" deleted\n' "${target#pod/}"
+    exit 0
+    ;;
+  apply)
+    cat >"${state}/manifest"
+    if [[ -f "${state}/pod" ]]; then
+      printf 'Error from server: error when applying patch: Operation cannot be fulfilled on pods "smoke": object is being deleted\n' >&2
+      exit 1
+    fi
+    touch "${state}/pod"
+    rm -f "${state}/deleting" "${state}/linger"
+    printf 'pod/smoke created\n'
+    exit 0
+    ;;
+  logs)
+    printf '%s\n' "${FAKE_SMOKE_LOG:-cni-smoke-ok}"
+    exit 0
+    ;;
+esac
+
+printf 'unexpected fake smoke kubectl args: %s %s%s\n' "$verb" "$target" "$extra" >&2
+exit 1
+EOF
+  chmod +x "$fake_smoke_kubectl"
 }

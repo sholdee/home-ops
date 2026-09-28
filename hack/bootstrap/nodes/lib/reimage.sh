@@ -355,6 +355,49 @@ EOF
   node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_script" >/dev/null
 }
 
+# node_reimage_tryboot_reboot schedules the one-shot "0 tryboot" reboot in a
+# detached transient unit named UNIT_NAME, so the Ansible connection closes
+# before the node goes down. Only that one boot reads tryboot.txt; the reboot
+# after it is an ordinary one. The unit appends a line to LOG_PATH on its way
+# out, which is the only trace a node that never comes back leaves behind.
+node_reimage_tryboot_reboot() {
+  local profile="$1"
+  local inventory_node="$2"
+  local log_path="$3"
+  local unit_name="$4"
+  local log_path_q unit_name_q remote_reboot
+
+  printf -v log_path_q '%q' "$log_path"
+  printf -v unit_name_q '%q' "$unit_name"
+  read -r -d '' remote_reboot <<'EOF' || true
+set -eu
+command -v systemd-run >/dev/null 2>&1
+command -v systemctl >/dev/null 2>&1
+cat >/run/__NODE_TRYBOOT_UNIT__.sh <<'SCRIPT'
+#!/bin/sh
+set -eu
+log_path=__NODE_TRYBOOT_LOG_PATH__
+{
+  date -Is
+  printf 'tryboot_command=systemctl --reboot-argument=0 tryboot reboot\n'
+} >>"${log_path}"
+sync
+exec /usr/bin/systemctl --reboot-argument="0 tryboot" reboot
+SCRIPT
+chmod 0700 /run/__NODE_TRYBOOT_UNIT__.sh
+systemd-run \
+  --unit=__NODE_TRYBOOT_UNIT__ \
+  --description="Home Ops one-shot tryboot reboot" \
+  --on-active=2s \
+  --collect \
+  /bin/sh /run/__NODE_TRYBOOT_UNIT__.sh
+EOF
+  remote_reboot="${remote_reboot//__NODE_TRYBOOT_LOG_PATH__/$log_path_q}"
+  remote_reboot="${remote_reboot//__NODE_TRYBOOT_UNIT__/$unit_name_q}"
+
+  node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_reboot" >/dev/null
+}
+
 node_reimage_copy_payload_file() {
   local profile="$1"
   local inventory_node="$2"
