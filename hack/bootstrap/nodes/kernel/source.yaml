@@ -6,8 +6,8 @@
 # just node-kernel-source-lock --build-suffix with a new suffix.
 package: linux
 version: 1:6.18.50-1+rpt1
-buildSuffix: +btf1
-configDeltaSha256: 338734da6eeade2ee9d5da6d9fa03d1ce30b446d2c22fba3036b045cef3c5a99
+buildSuffix: +btf2
+configDeltaSha256: dad8586d3c58e9b61c3adca72cdb289953f98673d623fef60d947f45101500df
 kernelRelease: 6.18.50+rpt-rpi-2712
 archiveUrl: http://archive.raspberrypi.com/debian
 suite: trixie
