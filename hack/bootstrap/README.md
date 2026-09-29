@@ -270,6 +270,7 @@ explicit.
 | Render network reimage OS source  | `just node-reimage-image-source <node>`                  | n/a                                                    |
 | Pin the kernel source package     | `just node-kernel-source-lock`                           | n/a                                                    |
 | Build the BTF kernel packages     | `just node-kernel-build`                                 | n/a                                                    |
+| Update the kernel in place        | `just node-kernel-update <node>`                         | n/a                                                    |
 | Build network reimage OS artifact | `just node-reimage-build <node>`                         | n/a                                                    |
 | Plan additive-only joins          | `just node-converge-plan`                                | `just node-lima-converge-plan`                         |
 | Join missing inventory nodes      | `just node-converge`                                     | `just node-lima-converge`                              |
@@ -289,6 +290,10 @@ explicit.
 For maintenance work, use `drain`, `reboot` when needed, and `uncordon`.
 `longhorn-evict` is for node replacement and fails before mutating Longhorn if
 remaining storage nodes cannot hold the maximum configured replica count.
+
+`node-kernel-update` moves one node to another recorded kernel build in place,
+with the running kernel armed as a firmware-level fallback for the trial boot;
+see `reimage/README.md` (In-Place Kernel Updates).
 
 Node replacement also waits for global Longhorn quiescence. The lifecycle gates
 block while Longhorn has unhealthy volumes, active rebuilds, non-RW replicas,
