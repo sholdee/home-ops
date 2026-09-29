@@ -85,6 +85,9 @@ IFS=$'\t' read -r inventory_node inventory_role < <(
 kubernetes_node="$(node_expected_kubernetes_node_name "$profile" "$inventory_node" "$node_name")"
 
 lock_dir="$(node_reimage_image_output_root)/${profile}/.full.lock"
+# Only the run that created the lock may remove it: a run refused because the
+# lock is held must leave the other run's lock in place.
+lock_owned=false
 serve_started=false
 destructive_started=false
 cleanup_completed=false
@@ -98,7 +101,7 @@ on_exit() {
   elif [[ "$status" -ne 0 && "$serve_started" == true && "$cleanup_completed" == false ]]; then
     node_warn "image server may still be running; when safe, run: just node-reimage-cleanup ${inventory_node}"
   fi
-  if [[ -d "$lock_dir" ]]; then
+  if [[ "$lock_owned" == true ]]; then
     rm -f "${lock_dir}/info"
     rmdir "$lock_dir" 2>/dev/null || true
   fi
@@ -107,8 +110,13 @@ trap on_exit EXIT
 
 mkdir -p "$(dirname "$lock_dir")"
 if ! mkdir "$lock_dir" 2>/dev/null; then
-  node_die "another node-reimage-full appears to be running: ${lock_dir}"
+  if [[ -f "${lock_dir}/info" ]]; then
+    printf 'lock_info:\n' >&2
+    node_indent_block <"${lock_dir}/info" >&2
+  fi
+  node_die "another node-reimage-full appears to be running: ${lock_dir}; if no run is in progress, remove it with: rm -rf ${lock_dir}"
 fi
+lock_owned=true
 printf 'node=%s\ncontext=%s\nstarted_at=%s\n' \
   "$inventory_node" \
   "$context" \
