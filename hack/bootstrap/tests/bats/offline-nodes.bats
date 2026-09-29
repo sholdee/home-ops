@@ -484,6 +484,7 @@ run_reimage_full() {
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'cgroup_enable=cpuset'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'nvme_core.default_ps_max_latency_us=0'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'pcie_aspm=off'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'panic=30'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtparam=pciex1'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'dtoverlay=disable-wifi'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'ANSIBLE MANAGED BLOCK home-ops raspberry pi config'

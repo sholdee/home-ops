@@ -171,6 +171,12 @@ conflicting update back or the upgrade job fails, and the node keeps its kernel.
 An in-place kernel update would need `apt-mark unhold` on those packages first;
 reimaging installs a new build without it.
 
+Every node's cmdline now carries `panic=30`, so any kernel panic (this custom
+build or the stock kernel) self-reboots the node after 30 seconds instead of
+hanging; a node that panics on every boot boot-loops 30 seconds apart rather
+than staying down for inspection, and the panic trace survives only on the
+serial console (`console=serial0,115200`, `BOOT_UART=1`).
+
 List the kernel build on each node with:
 
 ```sh
