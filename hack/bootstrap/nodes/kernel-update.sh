@@ -433,6 +433,8 @@ commit_output="$(node_kernel_update_remote "$profile" "$inventory_node" commit)"
   node_die "kernel update commit did not report commit=ok on ${inventory_node}"
 # The fallback is gone and config.txt boots the new kernel: nothing after this
 # point may tell the operator a reboot returns the previous kernel.
+# (belt-and-braces; the trap's committed branch already returns before reading
+# staged)
 staged=false
 committed=true
 while IFS= read -r line; do

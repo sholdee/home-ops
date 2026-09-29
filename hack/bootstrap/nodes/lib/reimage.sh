@@ -399,9 +399,12 @@ systemd-run \
   --collect \
   /bin/sh /run/__NODE_TRYBOOT_UNIT__.sh
 EOF
-  remote_reboot="${remote_reboot//__NODE_TRYBOOT_LOG_PATH__/$log_path_q}"
-  remote_reboot="${remote_reboot//__NODE_TRYBOOT_UNIT__/$unit_name_q}"
+  # Description first, then unit, then log path: the description is the one
+  # value substituted unquoted, so doing it last could inject it into a value
+  # printf %q had already quoted.
   remote_reboot="${remote_reboot//__NODE_TRYBOOT_DESCRIPTION__/$description}"
+  remote_reboot="${remote_reboot//__NODE_TRYBOOT_UNIT__/$unit_name_q}"
+  remote_reboot="${remote_reboot//__NODE_TRYBOOT_LOG_PATH__/$log_path_q}"
 
   node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_reboot" >/dev/null
 }

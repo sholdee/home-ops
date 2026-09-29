@@ -151,6 +151,7 @@
       matchStrings: [
         'NODE_KERNEL_UPDATE_SMOKE_IMAGE="(?<depName>[\\w./-]+):(?<currentValue>[^@"]+)@(?<currentDigest>sha256:[a-f0-9]{64})"',
       ],
+      versioningTemplate: "docker",
       datasourceTemplate: "docker",
     },
     {

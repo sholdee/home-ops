@@ -463,9 +463,11 @@ cmd_stage() {
     ensure_cmdline_args "${cmdline_args[@]}"
   fi
   rm -f "${fallback}/TRIAL"
-  package_names "$rel" | xargs "$apt_mark" unhold >/dev/null 2>&1 || true
+  # Armed before the unhold, not after: a signal in between would otherwise
+  # leave the four packages unheld. rehold_target is idempotent.
   rehold_release="$rel"
   trap rehold_target EXIT
+  package_names "$rel" | xargs "$apt_mark" unhold >/dev/null 2>&1 || true
   (
     cd "$dir" || exit 1
     DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=l \
@@ -473,7 +475,8 @@ cmd_stage() {
       -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold \
       install "${debs[@]}" >&2
   ) || die "kernel package install failed; the fallback kernel remains the default boot"
-  package_names "$rel" | xargs "$apt_mark" hold >/dev/null
+  package_names "$rel" | xargs "$apt_mark" hold >/dev/null ||
+    die "could not re-hold the kernel packages for ${rel}"
   trap - EXIT
   [[ "$(installed_version "$rel")" == "$ver" ]] || die "linux-image-${rel} is not installed at ${ver} after install"
   if ! { cmp -s "$kernel_img" "${vmlinuz_dir}/vmlinuz-${rel}" &&

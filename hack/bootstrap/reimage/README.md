@@ -173,11 +173,12 @@ conflicting update back or the upgrade job fails, and the node keeps its kernel.
 them again afterwards, re-holding them even when the install fails; reimaging
 installs a new build without either step.
 
-Every node's cmdline now carries `panic=30`, so any kernel panic (this custom
-build or the stock kernel) self-reboots the node after 30 seconds instead of
-hanging; a node that panics on every boot boot-loops 30 seconds apart rather
-than staying down for inspection, and the panic trace survives only on the
-serial console (`console=serial0,115200`, `BOOT_UART=1`).
+Every node's cmdline carries `panic=30` once node-prep, an in-place kernel
+update, or a reimage has applied it, so any kernel panic (this custom build or
+the stock kernel) self-reboots the node after 30 seconds instead of hanging; a
+node that panics on every boot boot-loops 30 seconds apart rather than staying
+down for inspection, and the panic trace survives only on the serial console
+(`console=serial0,115200`, `BOOT_UART=1`).
 
 List the kernel build on each node with:
 
@@ -241,6 +242,11 @@ While a trial is staged or booted and not yet committed, the node holds
 
 The fallback `cmdline.txt` is frozen at stage time. It never gains an argument
 added to the node afterwards, which is what you want from a known-good kernel.
+On a node that has not been through node-prep since `panic=30` landed, that
+cuts both ways: `stage` adds the repo's cmdline args to the trial line, so the
+trial kernel has `panic=30`, while the fallback line does not. A fallback
+kernel that panics there still needs a power cycle, exactly as that node
+behaved before the update.
 
 `stage` appends exactly this block to `/boot/firmware/config.txt`:
 
@@ -264,12 +270,18 @@ Do not run node-prep against a node with a pending trial. `just ansible-run`,
 `just ansible-bootstrap`, and the join path behind `just node-join` and
 `just node-converge` rewrite `/boot/firmware/config.txt` and `cmdline.txt`;
 Ansible's `blockinfile` leaves the fallback block intact only because its own
-managed-block markers are already in the file.
+managed-block markers are already in the file. A boot-level change on an
+already-joined node then makes node-prep stop and tell you to drain and reboot
+that node through the node lifecycle flow. Doing that mid-trial reboots the
+node onto the previous kernel without saying so, because that is what
+`config.txt` boots.
 
 `home-ops-kernel-update status` classifies the node into one of four states,
 and every phase reads it:
 
-- `S0`, clean: no fallback copy, no fallback block, no `tryboot.txt`.
+- `S0`, clean: no fallback copy, no fallback block, no `tryboot.txt`. A run
+  whose target build the node already runs stops in preflight with
+  `already running kernel build <build-id>; nothing to do` and exits 0.
 - `S1`, a trial booted and uncommitted: rerun with `--resume` to verify and
   commit it, or reboot the node to fall back. A resumed run commits only the
   build it was asked for; when a different trial is booted it stops and names
@@ -333,7 +345,11 @@ recoverable, and a full rollback with `--build-id <previous-build-id>`
 reinstalls the previous packages over them. A release bump installs alongside
 the running kernel instead, and `commit` purges `linux-image-<old-release>` and
 `linux-base-<old-release>` once the trial is committed; when that purge fails
-the run warns and leaves them for you to remove.
+the run warns and leaves them for you to remove. `commit` also compares the
+stripped `config.txt` against the copy it took at stage time, and the run warns
+`config.txt on <node> changed during the update; review it before the next
+reboot` when the two differ. That is the automated signal for the node-prep
+hazard above: something rewrote the file while the trial was pending.
 
 One update runs at a time. The flow takes
 `hack/bootstrap/.out/kernel-update/.update.lock` and releases it on exit,
