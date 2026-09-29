@@ -394,3 +394,22 @@ node_kernel_require_current_build() {
   node_kernel_verify_build_state "$state"
   printf '%s\n' "$state"
 }
+
+# node_kernel_require_build ID prints the state file of the recorded kernel
+# build ID. Unlike node_kernel_require_current_build it binds nothing to the
+# committed source lock or config delta: an in-place update rolls a node
+# forward or back between builds the host still holds.
+node_kernel_require_build() {
+  local build_id="$1"
+  local state recorded
+
+  node_kernel_build_id_valid "$build_id" ||
+    node_die "invalid kernel build id: ${build_id:-<empty>}"
+  state="$(node_kernel_build_dir "$build_id")/state/kernel-build.json"
+  [[ -f "$state" ]] || node_die "no kernel build for ${build_id}; run: just node-kernel-build"
+  node_kernel_verify_build_state "$state"
+  recorded="$("$NODE_JQ_BIN" -r '.buildId // ""' "$state")"
+  [[ "$recorded" == "$build_id" ]] ||
+    node_die "kernel build state ${state} records buildId ${recorded:-<empty>}, expected ${build_id}"
+  printf '%s\n' "$state"
+}

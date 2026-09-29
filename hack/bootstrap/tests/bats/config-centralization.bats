@@ -82,3 +82,8 @@ assert_scan_has_no_matches() {
   printf '%s\n' "${ROOT}/hack/bootstrap/nodes/lib/reimage-image.sh" |
     assert_scan_has_no_matches 'pcie_port_pm=off|nvme_core\.default_ps_max_latency_us=0|dtparam=pciex1_gen=3|dtoverlay=cma,cma-96'
 }
+
+@test "committed Raspberry Pi cmdline defaults reboot on kernel panic" {
+  local defaults="${ROOT}/hack/bootstrap/ansible/home-ops/vars/defaults.yml"
+  [[ "$(yq -r '.home_ops_raspberry_pi_cmdline_args[]' "$defaults" | grep -Fxc 'panic=30')" -eq 1 ]]
+}

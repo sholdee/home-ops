@@ -20,3 +20,7 @@ CONFIG_IKCONFIG_PROC=y
 ## uprobe and fprobe tracing for BPF tools (pwru, bpftrace, Inspektor Gadget).
 CONFIG_UPROBE_EVENTS=y
 CONFIG_FPROBE=y
+## UDP socket diagnostics (INET_DIAG is already =m). Cilium's socket-LB
+## backend termination needs it to list UDP sockets (agent log:
+## "CONFIG_INET_UDP_DIAG" not supported by underlying kernel).
+CONFIG_INET_UDP_DIAG=m

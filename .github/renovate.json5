@@ -146,6 +146,16 @@
     },
     {
       customType: "regex",
+      description: ["Process the node kernel update smoke-test image"],
+      managerFilePatterns: ["/^hack/bootstrap/nodes/lib/config\\.sh$/"],
+      matchStrings: [
+        'NODE_KERNEL_UPDATE_SMOKE_IMAGE="(?<depName>[\\w./-]+):(?<currentValue>[^@"]+)@(?<currentDigest>sha256:[a-f0-9]{64})"',
+      ],
+      versioningTemplate: "docker",
+      datasourceTemplate: "docker",
+    },
+    {
+      customType: "regex",
       managerFilePatterns: ["/apps/system-upgrade/manifests/controller\\.ya?ml$/"],
       matchStrings: [
         "SYSTEM_UPGRADE_JOB_KUBECTL_IMAGE: (?<depName>[\\w/-]+):(?<currentValue>v?\\d+\\.\\d+\\.\\d+)",

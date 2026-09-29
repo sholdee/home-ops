@@ -476,6 +476,11 @@ node-drain node:
 node-reboot node:
     ./hack/bootstrap/nodes/reboot.sh --profile live --context default '{{ node }}'
 
+# Update the home-ops kernel on a live node in place with a fallback trial boot.
+[group('node-mutate')]
+node-kernel-update node +args='':
+    ./hack/bootstrap/nodes/kernel-update.sh --profile live --context default '{{ node }}' {{ args }}
+
 # Delete a drained live worker or control-plane node after Longhorn state has been evacuated.
 [group('node-mutate')]
 node-delete node:

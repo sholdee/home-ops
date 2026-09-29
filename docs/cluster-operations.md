@@ -135,6 +135,7 @@ Node lifecycle:
 | Build the home-ops BTF kernel packages               | `just node-kernel-build`                                 |
 | Build live node Raspberry Pi image                   | `just node-reimage-build <node>`                         |
 | Run full live node reimage through rejoin            | `just node-reimage-full <node>`                          |
+| Update the kernel on a live node in place            | `just node-kernel-update <node>`                         |
 | Reboot a drained live node                           | `just node-reboot <node>`                                |
 | Join one explicit live node                          | `just node-join <node>`                                  |
 | Finalize and uncordon one live node                  | `just node-uncordon <node>`                              |
@@ -723,7 +724,25 @@ just node-kernel-source-lock
 just node-kernel-build
 ```
 
-After reimaging, confirm the label and the running kernel:
+Move a node to that build in place instead of reimaging it, one node at a
+time:
+
+```sh
+just node-kernel-update k3s-worker-0
+just node-status k3s-worker-0
+just node-uncordon k3s-worker-0
+```
+
+`node-kernel-update` drains the node, stages the new packages with the running
+kernel copied aside as a firmware-level fallback, trial-boots the new kernel
+once through the Raspberry Pi tryboot flag, verifies it with a CNI smoke pod,
+commits, and labels the node; like `node-reimage-full` it leaves the final
+uncordon to you. Until it commits, any boot but the trial returns the previous
+kernel. Roll a node back with
+`just node-kernel-update <node> --build-id <previous-build-id>`.
+
+After a reimage or an in-place update, confirm the label and the running
+kernel:
 
 ```sh
 kubectl get nodes -L node.home-ops.sh/kernel-build
@@ -732,7 +751,9 @@ ssh <node> 'sudo /usr/local/sbin/home-ops-verify-kernel-build && ls /sys/kernel/
 
 See `hack/bootstrap/reimage/README.md` (Custom Kernel) for the design, the apt
 pin and package hold that keep OS updates from replacing the kernel, and backing
-up `hack/bootstrap/.out/kernel/` before reimaging.
+up `hack/bootstrap/.out/kernel/` before reimaging. In-Place Kernel Updates in
+the same file covers the update states, `--resume`, `--drill-fallback`, and
+what a pending trial leaves on the node.
 
 ## Live Validation
 

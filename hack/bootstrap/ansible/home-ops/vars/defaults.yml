@@ -100,6 +100,10 @@ home_ops_raspberry_pi_cmdline_args:
   - nvme_core.default_ps_max_latency_us=0
   - pcie_aspm=off
   - pcie_port_pm=off
+  # panic=30 reboots the kernel 30s after a panic instead of hanging; this is
+  # fleet-wide behaviour, and it's what lets a failed in-place kernel trial
+  # fall back on its own.
+  - panic=30
 home_ops_raspberry_pi_config_block: |
   dtparam=pciex1
   dtparam=nvme

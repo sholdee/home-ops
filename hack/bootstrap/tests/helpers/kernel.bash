@@ -68,14 +68,18 @@ create_kernel_test_archive() {
     -o "${suite_dir}/InRelease" "${suite_dir}/Release" >/dev/null
 }
 
+# write_kernel_test_lock FILE [BUILD_SUFFIX] writes a source lock. The suffix
+# picks which build the lock pins, which is how a test gets two recorded builds
+# from one fake source package.
 write_kernel_test_lock() {
   local lock="$1"
+  local build_suffix="${2:-+btf1}"
   mkdir -p "$(dirname "$lock")"
   cat >"$lock" <<EOF
 ---
 package: linux
 version: "${KERNEL_TEST_SOURCE_VERSION}"
-buildSuffix: "+btf1"
+buildSuffix: "${build_suffix}"
 configDeltaSha256: $(kernel_test_sha256 "${ROOT}/hack/bootstrap/nodes/kernel/config.2712.delta")
 kernelRelease: ${KERNEL_TEST_RELEASE}
 archiveUrl: http://archive.invalid/debian
@@ -111,16 +115,422 @@ EOF
   chmod +x "$fake_kernel_guest"
 }
 
-# create_fake_kernel_build builds a kernel build state from a test lock and the
-# fake guest. Sets kernel_test_lock and kernel_test_output_root.
+# create_fake_kernel_build [BUILD_SUFFIX] builds a kernel build state from a
+# test lock and the fake guest. Sets kernel_test_lock and
+# kernel_test_output_root. Called twice with different suffixes it records two
+# builds under one output root, and leaves the lock pinning the last one, which
+# is what a rollback test needs.
 create_fake_kernel_build() {
+  local build_suffix="${1:-+btf1}"
   kernel_test_lock="${tmp}/kernel/source.yaml"
   kernel_test_output_root="${tmp}/kernel-out"
-  write_kernel_test_lock "$kernel_test_lock"
+  write_kernel_test_lock "$kernel_test_lock" "$build_suffix"
   write_fake_kernel_guest
   NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
     NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
     NODE_KERNEL_BUILD_GUEST_SCRIPT="$fake_kernel_guest" \
     FAKE_KERNEL_GUEST_ENV_FILE="${tmp}/kernel-guest.env" \
     "${ROOT}/hack/bootstrap/nodes/kernel-build.sh" --builder-mode local --jobs 1 >/dev/null
+}
+
+KERNEL_TEST_NEXT_PACKAGE_VERSION='1:6.18.50-1+rpt1+btf2'
+KERNEL_TEST_NEXT_DEB_VERSION='6.18.50-1+rpt1+btf2'
+KERNEL_TEST_NEXT_BUILD_ID='6.18.50-1-rpt1-btf2'
+KERNEL_TEST_DELTA_SHA256='aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+KERNEL_TEST_NODE_CMDLINE='console=serial0,115200 console=tty1 root=/dev/disk/by-slot/system fsck.repair=yes rootwait cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory nvme_core.default_ps_max_latency_us=0 pcie_aspm=off pcie_port_pm=off'
+
+# write_fake_kernel_node_stubs BIN_DIR writes the node-side stubs the kernel
+# update tool shells out to. Every stub reads FAKE_NODE_ROOT, which
+# kernel_node_env passes, so they work whether they are reached through PATH or
+# through an explicit HOME_OPS_KERNEL_* override.
+write_fake_kernel_node_stubs() {
+  local bin="$1"
+  mkdir -p "$bin"
+
+  cat >"${bin}/uname" <<'EOF'
+#!/usr/bin/env bash
+case "${1:-}" in
+  -r) printf '%s\n' "${FAKE_UNAME_R:?}" ;;
+  -v) printf '%s\n' "${FAKE_UNAME_V:?}" ;;
+  *) exit 2 ;;
+esac
+EOF
+
+  # dpkg.state lines are "<name> <status> <want> <version>".
+  cat >"${bin}/dpkg-query" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+[[ "${1:-}" == -W ]] || exit 2
+fmt="${2:-}"
+name="${3:-}"
+line="$(grep "^${name} " "${FAKE_NODE_ROOT:?}/dpkg.state" || true)"
+[[ -n "$line" ]] || exit 1
+read -r _ pkg_status pkg_want pkg_version <<<"$line"
+case "$fmt" in
+  '-f=${db:Status-Status} ${Version}') printf '%s %s' "$pkg_status" "$pkg_version" ;;
+  '-f=${db:Status-Want}') printf '%s' "$pkg_want" ;;
+  *) exit 2 ;;
+esac
+EOF
+
+  cat >"${bin}/apt-mark" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+root="${FAKE_NODE_ROOT:?}"
+op="${1:?apt-mark needs an operation}"
+shift
+printf '%s %s\n' "$op" "$*" >>"${root}/apt-mark.log"
+want=install
+[[ "$op" != hold ]] || want=hold
+for name in "$@"; do
+  awk -v name="$name" -v want="$want" '$1 == name { $3 = want } { print }' \
+    "${root}/dpkg.state" >"${root}/dpkg.state.new"
+  mv "${root}/dpkg.state.new" "${root}/dpkg.state"
+done
+EOF
+
+  # apt-get install unpacks the root-level boot set and, standing in for the
+  # raspi-firmware kernel hooks, copies it into the firmware partition.
+  cat >"${bin}/apt-get" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+root="${FAKE_NODE_ROOT:?}"
+printf '%s\n' "$*" >>"${root}/apt-get.log"
+printf 'NEEDRESTART_MODE=%s DEBIAN_FRONTEND=%s\n' \
+  "${NEEDRESTART_MODE:-}" "${DEBIAN_FRONTEND:-}" >>"${root}/apt-get.env.log"
+op=""
+for arg in "$@"; do
+  case "$arg" in
+    install | purge) op="$arg" ;;
+  esac
+done
+if [[ "$op" == install ]]; then
+  if [[ "${FAKE_APT_FAIL:-}" == 1 ]]; then
+    printf 'E: simulated install failure\n' >&2
+    exit 100
+  fi
+  printf 'Reading package lists... Done\n'
+  printf 'Get:1 /var/tmp/home-ops-kernel linux-image arm64 [1,234 kB]\n'
+  printf 'Selecting previously unselected package linux-image.\n'
+  for arg in "$@"; do
+    [[ "$arg" == ./linux-image-*_arm64.deb ]] || continue
+    stem="${arg#./linux-image-}"
+    stem="${stem%_arm64.deb}"
+    release="${stem%%_*}"
+    version="${stem#*_}"
+    [[ "$release" != rpi-2712 ]] || continue
+    for name in "linux-image-${release}" "linux-base-${release}" linux-image-rpi-2712 linux-base-rpi-2712; do
+      grep -v "^${name} " "${root}/dpkg.state" >"${root}/dpkg.state.new" || true
+      # Every home-ops kernel package carries epoch 1, like the archive ones.
+      printf '%s installed install 1:%s\n' "$name" "$version" >>"${root}/dpkg.state.new"
+      mv "${root}/dpkg.state.new" "${root}/dpkg.state"
+    done
+    head -c 4096 /dev/urandom >"${root}/boot/vmlinuz-${release}"
+    head -c 8192 /dev/urandom >"${root}/boot/initrd.img-${release}"
+    # dpkg unpacks the root-level boot set; the raspi-firmware kernel hooks are
+    # what copy it into the firmware partition. FAKE_APT_SKIP_HOOKS=1 stops
+    # after the unpack, which is what a node with broken hooks looks like.
+    [[ "${FAKE_APT_SKIP_HOOKS:-}" != 1 ]] || continue
+    cp "${root}/boot/vmlinuz-${release}" "${root}/boot/firmware/kernel_2712.img"
+    cp "${root}/boot/initrd.img-${release}" "${root}/boot/firmware/initramfs_2712"
+  done
+elif [[ "$op" == purge ]]; then
+  if [[ "${FAKE_APT_PURGE_FAIL:-}" == 1 ]]; then
+    printf 'E: simulated purge failure\n' >&2
+    exit 100
+  fi
+  printf 'Reading package lists... Done\n'
+  printf 'Removing linux-image (1,234 kB) ...\n'
+  for arg in "$@"; do
+    [[ "$arg" == linux-* ]] || continue
+    grep -v "^${arg} " "${root}/dpkg.state" >"${root}/dpkg.state.new" || true
+    mv "${root}/dpkg.state.new" "${root}/dpkg.state"
+  done
+fi
+EOF
+
+  cat >"${bin}/df" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+free="${FAKE_BOOT_FREE_BYTES:-60000000}"
+block=1
+for arg in "$@"; do
+  case "$arg" in
+    -B1) block=1 ;;
+    -k | -Pk | -kP) block=1024 ;;
+  esac
+done
+printf 'Filesystem %s-blocks Used Available Capacity Mounted on\n' "$block"
+printf '/dev/fake %s %s %s 41%% /boot/firmware\n' "$((110100480 / block))" "$((45000000 / block))" "$((free / block))"
+EOF
+
+  cat >"${bin}/sync" <<'EOF'
+#!/usr/bin/env bash
+exit 0
+EOF
+
+  # Stands in for /usr/local/sbin/home-ops-verify-kernel-build: the real one
+  # needs /proc/config.gz and /sys/kernel/btf, which a fake node has not got.
+  cat >"${bin}/home-ops-verify-kernel-build" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+marker="${HOME_OPS_KERNEL_BUILD_MARKER:-${FAKE_NODE_ROOT:?}/etc/home-ops/kernel-build}"
+fail() {
+  printf 'home-ops-verify-kernel-build: %s\n' "$*" >&2
+  exit 1
+}
+[[ "${FAKE_VERIFY_FAIL:-}" != 1 ]] || fail 'forced verification failure'
+[[ -r "$marker" ]] || fail "kernel build marker is missing: ${marker}"
+marker_value() { sed -n "s/^$1=//p" "$marker" | sed -n '1p'; }
+build_id="$(marker_value KERNEL_BUILD_ID)"
+version="$(marker_value KERNEL_PACKAGE_VERSION)"
+release="$(marker_value KERNEL_RELEASE)"
+[[ -n "$build_id" && -n "$version" && -n "$release" ]] || fail "kernel build marker is incomplete: ${marker}"
+[[ "${FAKE_UNAME_R:?}" == "$release" ]] || fail "running kernel ${FAKE_UNAME_R} is not the home-ops kernel ${release}"
+[[ "${FAKE_UNAME_V:?}" == *" ${version} ("* ]] || fail "running kernel build '${FAKE_UNAME_V}' is not ${version}"
+grep -q "^linux-image-${release} installed [a-z]* ${version}\$" "${FAKE_NODE_ROOT:?}/dpkg.state" ||
+  fail "linux-image-${release} is not installed at ${version}"
+printf 'kernel_build_id=%s\n' "$build_id"
+EOF
+
+  chmod +x "${bin}"/*
+}
+
+# create_fake_kernel_node NODE_ROOT RELEASE VERSION BUILD_ID builds a node that
+# boots the home-ops kernel: a firmware partition, the root-level boot set the
+# Debian kernel hooks keep in sync with it, the build marker, /proc/cmdline, a
+# dpkg state file with the four packages held, and the stubs above. Sets the
+# kernel_node_env array and exports FAKE_UNAME_R and FAKE_UNAME_V.
+create_fake_kernel_node() {
+  local node_root="$1" release="$2" version="$3" build_id="$4"
+  local name
+  mkdir -p "${node_root}/boot/firmware" "${node_root}/etc/home-ops" "${node_root}/proc"
+  head -c 4096 /dev/urandom >"${node_root}/boot/vmlinuz-${release}"
+  head -c 8192 /dev/urandom >"${node_root}/boot/initrd.img-${release}"
+  cp "${node_root}/boot/vmlinuz-${release}" "${node_root}/boot/firmware/kernel_2712.img"
+  cp "${node_root}/boot/initrd.img-${release}" "${node_root}/boot/firmware/initramfs_2712"
+  cat >"${node_root}/boot/firmware/config.txt" <<'EOF'
+auto_initramfs=1
+disable_fw_kms_setup=1
+
+[pi5]
+arm_boost=1
+
+[all]
+# BEGIN ANSIBLE MANAGED BLOCK home-ops raspberry pi config
+dtparam=nvme
+dtparam=pciex1_gen=3
+dtoverlay=cma,cma-96
+# END ANSIBLE MANAGED BLOCK home-ops raspberry pi config
+EOF
+  printf '%s\n' "$KERNEL_TEST_NODE_CMDLINE" >"${node_root}/boot/firmware/cmdline.txt"
+  printf '%s\n' "$KERNEL_TEST_NODE_CMDLINE" >"${node_root}/proc/cmdline"
+  cat >"${node_root}/etc/home-ops/kernel-build" <<EOF
+KERNEL_BUILD_ID=${build_id}
+KERNEL_PACKAGE_VERSION=${version}
+KERNEL_RELEASE=${release}
+KERNEL_CONFIG_DELTA_SHA256=${KERNEL_TEST_DELTA_SHA256}
+EOF
+  : >"${node_root}/dpkg.state"
+  for name in "linux-image-${release}" "linux-base-${release}" linux-image-rpi-2712 linux-base-rpi-2712; do
+    printf '%s installed hold %s\n' "$name" "$version" >>"${node_root}/dpkg.state"
+  done
+  write_fake_kernel_node_stubs "${node_root}/bin"
+  fake_node_set_running "$release" "$version"
+  kernel_node_env=(
+    "HOME_OPS_KERNEL_BOOT_DIR=${node_root}/boot/firmware"
+    "HOME_OPS_KERNEL_VMLINUZ_DIR=${node_root}/boot"
+    "HOME_OPS_KERNEL_BUILD_MARKER=${node_root}/etc/home-ops/kernel-build"
+    "HOME_OPS_KERNEL_VERIFY_BIN=${node_root}/bin/home-ops-verify-kernel-build"
+    "HOME_OPS_KERNEL_PROC_CMDLINE=${node_root}/proc/cmdline"
+    "HOME_OPS_KERNEL_APT_GET=${node_root}/bin/apt-get"
+    "HOME_OPS_KERNEL_APT_MARK=${node_root}/bin/apt-mark"
+    "HOME_OPS_KERNEL_SYNC=${node_root}/bin/sync"
+    "FAKE_NODE_ROOT=${node_root}"
+    "PATH=${node_root}/bin:${PATH}"
+  )
+}
+
+# create_fake_kernel_package_dir DIR RELEASE VERSION BUILD_ID writes the four
+# shipped packages, their SHA256SUMS, and the build env the tool reads.
+create_fake_kernel_package_dir() {
+  local dir="$1" release="$2" version="$3" build_id="$4"
+  local deb_version="${version#*:}" name
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  for name in "linux-image-${release}" "linux-base-${release}" linux-image-rpi-2712 linux-base-rpi-2712; do
+    head -c 512 /dev/urandom >"${dir}/${name}_${deb_version}_arm64.deb"
+  done
+  (
+    cd "$dir" || exit 1
+    for name in *.deb; do
+      printf '%s  %s\n' "$(kernel_test_sha256 "$name")" "$name"
+    done >SHA256SUMS
+  )
+  cat >"${dir}/kernel-build.env" <<EOF
+KERNEL_BUILD_ID=${build_id}
+KERNEL_PACKAGE_VERSION=${version}
+KERNEL_RELEASE=${release}
+KERNEL_CONFIG_DELTA_SHA256=${KERNEL_TEST_DELTA_SHA256}
+EOF
+}
+
+# fake_node_set_running RELEASE VERSION points the uname stub at a build.
+fake_node_set_running() {
+  FAKE_UNAME_R="$1"
+  FAKE_UNAME_V="#1 SMP PREEMPT Debian ${2} (2026-09-28)"
+  export FAKE_UNAME_R FAKE_UNAME_V
+}
+
+# fake_node_boot_fallback NODE_ROOT [FALLBACK_DIR_NAME] simulates a plain
+# reboot, which the firmware serves from config.txt and so from the fallback.
+fake_node_boot_fallback() {
+  local node_root="$1" name="${2:-home-ops-kernel-prev}"
+  cp "${node_root}/boot/firmware/${name}/cmdline.txt" "${node_root}/proc/cmdline"
+}
+
+# fake_node_boot_trial NODE_ROOT simulates the one "0 tryboot" boot, which the
+# firmware serves from tryboot.txt and so from the root-level cmdline.
+fake_node_boot_trial() {
+  local node_root="$1"
+  cp "${node_root}/boot/firmware/cmdline.txt" "${node_root}/proc/cmdline"
+}
+
+# assert_kernel_node_stdout_clean FILE fails unless every line of FILE is a
+# key=value line. A bare "! grep" cannot be used here: in Bats a negated
+# command does not fail the test.
+assert_kernel_node_stdout_clean() {
+  local file="$1"
+  if grep -qvE '^[a-z_]+=' "$file"; then
+    printf 'expected only key=value lines on stdout, got:\n' >&2
+    grep -vE '^[a-z_]+=' "$file" >&2
+    return 1
+  fi
+}
+
+# run_kernel_node_split ARGS... runs the tool with its streams captured
+# separately, in ${tmp}/stdout and ${tmp}/stderr, so a test can assert that the
+# tool's stdout carries nothing but key=value lines.
+run_kernel_node_split() {
+  env "${kernel_node_env[@]}" "${ROOT}/hack/bootstrap/nodes/kernel/update-node.sh" "$@" \
+    >"${tmp}/stdout" 2>"${tmp}/stderr"
+}
+
+# run_kernel_node [VAR=VALUE]... ARGS... runs the node-side kernel update tool
+# against the fake node, with any leading assignments added to its environment.
+run_kernel_node() {
+  local -a cmd=(env "${kernel_node_env[@]}")
+  while (($# > 0)) && [[ "$1" == *=* ]]; do
+    cmd+=("$1")
+    shift
+  done
+  cmd+=("${ROOT}/hack/bootstrap/nodes/kernel/update-node.sh")
+  run "${cmd[@]}" "$@"
+}
+
+# The kernel build a node ran before the one under test: what "stage" copies
+# into the fallback directory, and what a fallback boot comes back on. No build
+# is recorded for it -- it only ever appears in a status block.
+KERNEL_TEST_PREVIOUS_PACKAGE_VERSION='1:6.18.42-1+rpt1+btf1'
+KERNEL_TEST_PREVIOUS_RELEASE='6.18.42+rpt-rpi-2712'
+KERNEL_TEST_PREVIOUS_BUILD_ID='6.18.42-1-rpt1-btf1'
+
+# write_fake_kernel_status FILE [KEY=VALUE]... writes the status block the fake
+# ansible hands back for "home-ops-kernel-update status". With no overrides it
+# is a clean S0 node.
+#
+# "state=S0|S1|S2|S3" sets the fields the node-side tool derives from that
+# state -- fallback_copy, config_fallback_block, tryboot_present,
+# trial_pending, running_matches, booted_via_fallback, and the running and
+# fallback versions -- so a test names the state and only what else it cares
+# about. Every other KEY=VALUE then overrides one line, "via=" as a shorthand
+# for booted_via_fallback, which is how a test builds a deliberately
+# inconsistent block (a staged-not-rebooted S2 is "state=S2 via=no"). An
+# unknown key is an error, not a silently dropped argument.
+#
+# The fake ansible re-reads this file on every status call, and its stage,
+# tryboot and plain-reboot branches copy FAKE_KERNEL_STATUS_AFTER_STAGE,
+# FAKE_KERNEL_STATUS_AFTER_TRYBOOT and FAKE_KERNEL_STATUS_AFTER_REBOOT over it
+# when those are set: that is how one test expresses a node whose state changes
+# between phases (S0, then S2 once staged, then S1 once trial-booted).
+write_fake_kernel_status() {
+  local file="$1"
+  shift
+  local state=S0 override key value block
+  local marker_id="$KERNEL_TEST_BUILD_ID"
+  local marker_version="$KERNEL_TEST_PACKAGE_VERSION"
+  local marker_release="$KERNEL_TEST_RELEASE"
+  local fallback_copy=no fallback_block=no tryboot=no trial=no matches=marker via=no
+  local fallback_id="" fallback_version="" fallback_release=""
+  local running_release running_version
+
+  for override in "$@"; do
+    [[ "$override" == state=* ]] || continue
+    state="${override#state=}"
+  done
+  case "$state" in
+    S0) ;;
+    S1) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=marker via=no ;;
+    S2) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=fallback via=yes ;;
+    # S3 is every other combination; this one is the firmware that honoured
+    # cmdline= but not kernel=, which is the one a flow has to name.
+    S3) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=marker via=yes ;;
+    *)
+      printf 'unknown fake kernel status state: %s\n' "$state" >&2
+      return 1
+      ;;
+  esac
+  if [[ "$fallback_copy" == yes ]]; then
+    fallback_id="$KERNEL_TEST_PREVIOUS_BUILD_ID"
+    fallback_version="$KERNEL_TEST_PREVIOUS_PACKAGE_VERSION"
+    fallback_release="$KERNEL_TEST_PREVIOUS_RELEASE"
+  fi
+  running_release="$marker_release"
+  running_version="$marker_version"
+  if [[ "$matches" == fallback ]]; then
+    running_release="$fallback_release"
+    running_version="$fallback_version"
+  fi
+
+  block="$(
+    cat <<EOF
+running_release=${running_release}
+running_build=#1 SMP PREEMPT Debian ${running_version} (2026-09-28)
+booted_via_fallback=${via}
+boot_files_present=yes
+marker_present=yes
+marker_build_id=${marker_id}
+marker_version=${marker_version}
+marker_release=${marker_release}
+installed_version=${marker_version}
+fallback_copy=${fallback_copy}
+fallback_version=${fallback_version}
+fallback_release=${fallback_release}
+fallback_build_id=${fallback_id}
+config_fallback_block=${fallback_block}
+tryboot_present=${tryboot}
+reimage_staged=no
+trial_pending=${trial}
+running_matches=${matches}
+state=${state}
+boot_free_bytes=60000000
+boot_set_bytes=12288
+holds=4
+EOF
+  )"
+
+  for override in "$@"; do
+    key="${override%%=*}"
+    value="${override#*=}"
+    [[ "$key" != via ]] || key=booted_via_fallback
+    grep -q "^${key}=" <<<"$block" || {
+      printf 'unknown fake kernel status key: %s\n' "$key" >&2
+      return 1
+    }
+    block="$(awk -v key="$key" -v value="$value" '
+      index($0, key "=") == 1 { print key "=" value; next }
+      { print }
+    ' <<<"$block")"
+  done
+  printf '%s\n' "$block" >"$file"
 }

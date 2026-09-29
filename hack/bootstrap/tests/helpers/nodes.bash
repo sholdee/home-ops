@@ -609,6 +609,11 @@ if [[ "$joined_args" == *"systemctl disable --now k3s"* && "$joined_args" == *"k
 fi
 
 if [[ "$joined_args" == *"ansible.builtin.copy"* ]]; then
+  if [[ -n "${FAKE_KERNEL_COPIES:-}" ]]; then
+    printf '%s %s\n' \
+      "$(sed -n 's/.*src=\([^ ]*\).*/\1/p' <<<"$joined_args")" \
+      "$(sed -n 's/.*dest=\([^ ]*\).*/\1/p' <<<"$joined_args")" >>"$FAKE_KERNEL_COPIES"
+  fi
   printf '{"changed": true}\n'
   exit 0
 fi
@@ -679,7 +684,15 @@ if [[ "$joined_args" == *"0 tryboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
     touch "${FAKE_REBOOT_STATE_DIR}/tryboot-rebooted-${target}"
+    {
+      sed -n 's/^ *--unit=\(.*\) \\$/unit=\1/p' <<<"$joined_args"
+      sed -n 's/^ *--description="\(.*\)" \\$/description=\1/p' <<<"$joined_args"
+    } >"${FAKE_REBOOT_STATE_DIR}/tryboot-unit-${target}"
   fi
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_TRYBOOT:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_TRYBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
+  fi
+  printf '%s\n' "tryboot" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   printf 'tryboot_reboot_scheduled=true\n'
   exit 0
 fi
@@ -703,11 +716,53 @@ if [[ "${!#}" == "/usr/local/sbin/home-ops-verify-kernel-build 2>&1" ]]; then
   exit 2
 fi
 
+if [[ "$joined_args" == *"home-ops-kernel-update status"* ]]; then
+  printf '%s\n' "status" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  cat "${FAKE_KERNEL_STATUS_FILE:?}"
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update prepare"* ]]; then
+  printf '%s\n' "prepare" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  if [[ "${FAKE_KERNEL_PREPARE_FAILS:-0}" == 1 ]]; then
+    printf 'home-ops-kernel-update: not enough space in /boot/firmware for the fallback copy\n' >&2
+    exit 1
+  fi
+  printf 'prepare=ok\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update stage"* ]]; then
+  printf '%s\n' "stage" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'stage=ok\nstaged_build_id=%s\n' "${FAKE_KERNEL_STAGED_ID:-6.18.50-1-rpt1-btf2}"
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_STAGE:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_STAGE" "${FAKE_KERNEL_STATUS_FILE:?}"
+  fi
+  exit 0
+fi
+
+if [[ "$joined_args" == *"home-ops-kernel-update commit"* ]]; then
+  printf '%s\n' "commit" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'commit=ok\n'
+  exit 0
+fi
+
+if [[ "$joined_args" == *"rm -rf /var/tmp/home-ops-kernel"* ]]; then
+  recreated="$(sed -n 's/^rm -rf \(.*\)$/\1/p' <<<"$joined_args" | sed -n '1p')"
+  printf 'recreate %s\n' "$recreated" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'recreate %s\n' "$recreated" >>"${FAKE_KERNEL_COPIES:-/dev/null}"
+  exit 0
+fi
+
 if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
     touch "${FAKE_REBOOT_STATE_DIR}/rebooted-${target}"
   fi
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_REBOOT:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_REBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
+  fi
+  printf '%s\n' "reboot" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   printf 'reboot_scheduled=true\n'
   exit 0
 fi
@@ -930,6 +985,14 @@ EOF
   chmod +x "$fake_reimage_full_kubectl"
 }
 
+# write_reboot_kubectl backs a reboot flow. The node's bootID is "boot-N" for
+# the N reboots the fake ansible has recorded in FAKE_REBOOT_STATE_DIR, plain
+# and tryboot alike, so a flow that reboots twice sees two distinct new boot
+# IDs; the tryboot branch touches one fixed name per node, so two tryboots of
+# the same node cannot be told apart and no test may rely on that.
+# FAKE_BOOT_ID_FROZEN=1 pins it to boot-0, a node that never comes back;
+# FAKE_NODE_CORDONED=false makes the node schedulable, and
+# FAKE_NODE_ORDINARY_PODS=1 leaves one ReplicaSet-owned pod bound to it.
 write_reboot_kubectl() {
   fake_reboot_kubectl="${tmp}/kubectl-reboot"
   cat > "$fake_reboot_kubectl" <<'EOF'
@@ -968,18 +1031,22 @@ if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
-  boot_id="boot-before"
-  if [[ -f "${state_dir}/rebooted-k3s-worker-0" ]]; then
-    boot_id="boot-after"
+  boot_count=0
+  if [[ "${FAKE_BOOT_ID_FROZEN:-0}" != 1 ]]; then
+    for marker in "${state_dir}"/rebooted-* "${state_dir}"/tryboot-rebooted-*; do
+      [[ -e "$marker" ]] || continue
+      boot_count=$((boot_count + 1))
+    done
   fi
-  sed -e "s/__BOOT_ID__/${boot_id}/g" <<'JSON'
+  sed -e "s/__BOOT_ID__/boot-${boot_count}/g" \
+    -e "s/__UNSCHEDULABLE__/${FAKE_NODE_CORDONED:-true}/g" <<'JSON'
 {
   "metadata": {
     "name": "k3s-worker-0",
     "labels": {}
   },
   "spec": {
-    "unschedulable": true
+    "unschedulable": __UNSCHEDULABLE__
   },
   "status": {
     "conditions": [
@@ -995,6 +1062,24 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  if [[ "${FAKE_NODE_ORDINARY_PODS:-0}" == 1 ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "app-7d9f4b6c8-x2k9p",
+        "namespace": "default",
+        "ownerReferences": [{"kind": "ReplicaSet", "name": "app-7d9f4b6c8"}]
+      },
+      "spec": {"nodeName": "k3s-worker-0"},
+      "status": {"phase": "Running"}
+    }
+  ]
+}
+JSON
+    exit 0
+  fi
   printf '{"items":[]}\n'
   exit 0
 fi
@@ -1468,4 +1553,432 @@ printf 'unexpected fake stale-pods kubectl args: %s\n' "$*" >&2
 exit 1
 EOF
   chmod +x "$fake_stale_pods_kubectl"
+}
+
+# write_cnpg_kubectl answers the readiness check, the CRD probe and the two
+# reads node_assert_no_cnpg_primary makes. FAKE_CNPG_CRD=absent removes the
+# cluster CRD; FAKE_CNPG_PRIMARY_NODE and FAKE_CNPG_OTHER_PRIMARY_NODE place
+# the pg-1 instance pod of db/pg and of the same-named db2/pg; FAKE_CNPG_WARN=1
+# adds the kind of deprecation warning kubectl writes to stderr beside valid
+# JSON; FAKE_CNPG_DOWN=1 fails every call, as an unreachable API server does.
+write_cnpg_kubectl() {
+  fake_cnpg_kubectl="${tmp}/kubectl-cnpg"
+  cat > "$fake_cnpg_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+warn() {
+  [[ "${FAKE_CNPG_WARN:-0}" == 1 ]] || return 0
+  printf 'W0928 09:14:02.118201   1234 warnings.go:70] postgresql.cnpg.io/v1 Cluster is deprecated\n' >&2
+}
+
+if [[ "${FAKE_CNPG_DOWN:-0}" == 1 ]]; then
+  printf 'Unable to connect to the server: dial tcp 192.168.99.77:6443: i/o timeout\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd/clusters.postgresql.cnpg.io" ]]; then
+  if [[ "${FAKE_CNPG_CRD:-present}" == absent ]]; then
+    printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "clusters.postgresql.cnpg.io" not found\n' >&2
+    exit 1
+  fi
+  printf '{"metadata":{"name":"clusters.postgresql.cnpg.io"}}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "clusters.postgresql.cnpg.io" ]]; then
+  warn
+  cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {"name": "pg", "namespace": "db"},
+      "status": {"currentPrimary": "pg-1"}
+    },
+    {
+      "metadata": {"name": "pg", "namespace": "db2"},
+      "status": {"currentPrimary": "pg-1"}
+    },
+    {
+      "metadata": {"name": "idle", "namespace": "db"},
+      "status": {}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  warn
+  cat <<JSON
+{
+  "items": [
+    {
+      "metadata": {"name": "pg-1", "namespace": "db"},
+      "spec": {"nodeName": "${FAKE_CNPG_PRIMARY_NODE:-k3s-worker-1}"}
+    },
+    {
+      "metadata": {"name": "pg-2", "namespace": "db"},
+      "spec": {"nodeName": "k3s-worker-0"}
+    },
+    {
+      "metadata": {"name": "pg-1", "namespace": "db2"},
+      "spec": {"nodeName": "${FAKE_CNPG_OTHER_PRIMARY_NODE:-k3s-worker-2}"}
+    }
+  ]
+}
+JSON
+  exit 0
+fi
+
+printf 'unexpected fake cnpg kubectl args: %s\n' "$*" >&2
+exit 1
+EOF
+  chmod +x "$fake_cnpg_kubectl"
+}
+
+# write_smoke_kubectl backs node_kernel_update_cni_smoke with a pod that takes
+# two reads to disappear after a delete, so a flow that does not wait for the
+# delete meets the pod it just asked to remove. FAKE_SMOKE_STATE_DIR holds the
+# object state, FAKE_SMOKE_PHASE the phase reported, FAKE_SMOKE_LOG the log,
+# FAKE_SMOKE_WAITING_REASON a container waiting reason to report with it.
+# FAKE_SMOKE_STATUS_REASON a pod-level failure reason, the shape a fired
+# activeDeadlineSeconds leaves. FAKE_SMOKE_GET_FAIL_ONCE=1 fails the first
+# phase read and FAKE_SMOKE_LOGS_FAIL=1 every log read, the two API blips the
+# flow has to tell apart.
+write_smoke_kubectl() {
+  fake_smoke_kubectl="${tmp}/kubectl-smoke"
+  cat > "$fake_smoke_kubectl" <<'EOF'
+#!/usr/bin/env bash
+set -uo pipefail
+
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+
+state="${FAKE_SMOKE_STATE_DIR:?}"
+verb=""
+target=""
+extra=""
+while (($# > 0)); do
+  case "$1" in
+    -n | --namespace)
+      shift 2
+      ;;
+    *)
+      if [[ -z "$verb" ]]; then
+        verb="$1"
+      elif [[ -z "$target" ]]; then
+        target="$1"
+      else
+        extra="${extra} $1"
+      fi
+      shift
+      ;;
+  esac
+done
+printf '%s %s\n' "$verb" "$target" >>"${state}/calls"
+
+case "${verb}" in
+  get)
+    case "$target" in
+      --raw=/readyz)
+        printf 'ok\n'
+        exit 0
+        ;;
+      namespace/*)
+        if [[ -f "${state}/namespace" ]]; then
+          printf '{"metadata":{"name":"%s"}}\n' "${target#namespace/}"
+          exit 0
+        fi
+        printf 'Error from server (NotFound): namespaces "%s" not found\n' "${target#namespace/}" >&2
+        exit 1
+        ;;
+      pod/*)
+        if [[ "${FAKE_SMOKE_GET_FAIL_ONCE:-0}" == 1 && "$extra" == *"-o json"* && ! -f "${state}/get-failed" ]]; then
+          touch "${state}/get-failed"
+          printf 'error: Get "https://10.0.0.1:6443/api/v1/...": dial tcp: connect: connection refused\n' >&2
+          exit 1
+        fi
+        if [[ -f "${state}/deleting" ]]; then
+          linger="$(cat "${state}/linger" 2>/dev/null || printf '0')"
+          linger=$((linger - 1))
+          printf '%s' "$linger" >"${state}/linger"
+          if ((linger <= 0)); then
+            rm -f "${state}/pod" "${state}/deleting" "${state}/linger"
+          fi
+        fi
+        if [[ ! -f "${state}/pod" ]]; then
+          printf 'Error from server (NotFound): pods "%s" not found\n' "${target#pod/}" >&2
+          exit 1
+        fi
+        waiting='null'
+        if [[ -n "${FAKE_SMOKE_WAITING_REASON:-}" ]]; then
+          waiting="{\"reason\":\"${FAKE_SMOKE_WAITING_REASON}\",\"message\":\"back-off pulling image\"}"
+        fi
+        status_reason=""
+        if [[ -n "${FAKE_SMOKE_STATUS_REASON:-}" ]]; then
+          status_reason=",\"reason\":\"${FAKE_SMOKE_STATUS_REASON}\",\"message\":\"Pod was active on the node longer than the specified deadline\""
+        fi
+        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s"%s,"containerStatuses":[{"state":{"waiting":%s}}]}}\n' \
+          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}" "$status_reason" "$waiting"
+        exit 0
+        ;;
+    esac
+    ;;
+  create)
+    if [[ "$target" == namespace ]]; then
+      touch "${state}/namespace"
+      printf 'namespace/%s created\n' "${extra# }"
+      exit 0
+    fi
+    ;;
+  delete)
+    if [[ -f "${state}/pod" ]]; then
+      touch "${state}/deleting"
+      printf '2' >"${state}/linger"
+    fi
+    printf 'pod "%s" deleted\n' "${target#pod/}"
+    exit 0
+    ;;
+  apply)
+    cat >"${state}/manifest"
+    if [[ -f "${state}/pod" ]]; then
+      printf 'Error from server: error when applying patch: Operation cannot be fulfilled on pods "smoke": object is being deleted\n' >&2
+      exit 1
+    fi
+    touch "${state}/pod"
+    rm -f "${state}/deleting" "${state}/linger"
+    printf 'pod/smoke created\n'
+    exit 0
+    ;;
+  logs)
+    if [[ "${FAKE_SMOKE_LOGS_FAIL:-0}" == 1 ]]; then
+      printf 'Error from server (BadRequest): container "smoke" in pod is waiting to start\n' >&2
+      exit 1
+    fi
+    printf '%s\n' "${FAKE_SMOKE_LOG:-cni-smoke-ok}"
+    exit 0
+    ;;
+esac
+
+printf 'unexpected fake smoke kubectl args: %s %s%s\n' "$verb" "$target" "$extra" >&2
+exit 1
+EOF
+  chmod +x "$fake_smoke_kubectl"
+}
+
+# write_kernel_update_kubectl backs the whole kernel-update flow with one fake
+# kubectl by wrapping the three that already exist: the reboot fake answers the
+# node JSON (counted bootID, cordon state), its ordinary pods, Cilium and an
+# absent Longhorn; the CNPG fake answers the CRD probe, the clusters and the
+# instance pods; the smoke fake answers everything in the smoke namespace. The
+# kernel-build label is answered here and recorded to CALLS_FILE, and every node
+# read is appended to FAKE_KERNEL_CALLS as "get-node" so the ordered stream shows
+# reads and node-tool calls together. Every FAKE_* switch of the wrapped fakes
+# still applies.
+write_kernel_update_kubectl() {
+  write_reboot_kubectl
+  write_cnpg_kubectl
+  write_smoke_kubectl
+  fake_kernel_update_kubectl="${tmp}/kubectl-kernel-update"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'set -uo pipefail\n'
+    printf 'reboot_kubectl=%q\n' "$fake_reboot_kubectl"
+    printf 'cnpg_kubectl=%q\n' "$fake_cnpg_kubectl"
+    printf 'smoke_kubectl=%q\n' "$fake_smoke_kubectl"
+    cat <<'EOF'
+args=("$@")
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+joined="$*"
+
+case "$joined" in
+  *clusters.postgresql.cnpg.io* | *"cnpg.io/cluster"*)
+    exec "$cnpg_kubectl" "${args[@]}"
+    ;;
+  *home-ops-kernel-smoke*)
+    exec "$smoke_kubectl" "${args[@]}"
+    ;;
+esac
+
+if [[ "${1:-}" == "label" && "${2:-}" == node/* && "${4:-}" == "--overwrite" ]]; then
+  printf 'kubectl %s\n' "$joined" >>"${CALLS_FILE:?}"
+  printf '%s labeled\n' "$2"
+  exit 0
+fi
+
+# Node reads join the node-tool calls in one ordered stream, so a test can say
+# which of them happened between two node calls.
+if [[ "${1:-}" == "get" && "${2:-}" == node/* ]]; then
+  printf 'get-node\n' >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+fi
+
+exec "$reboot_kubectl" "${args[@]}"
+EOF
+  } >"$fake_kernel_update_kubectl"
+  chmod +x "$fake_kernel_update_kubectl"
+}
+
+# write_kernel_update_kernel_status_files writes the four status blocks the fake
+# ansible hands back as one flow progresses: the node before the update, once
+# "stage" has run, once the trial boot has landed, and what a plain reboot lands
+# on. A test overwrites whichever of them it wants to change.
+write_kernel_update_kernel_status_files() {
+  # Before: an older build, clean. Staged: the new marker, still running the
+  # copy the fallback now holds, not yet rebooted. Trial: the trial boot is up.
+  # Plain reboot: the fallback served from config.txt, which is what the drill
+  # demands.
+  write_fake_kernel_status "$kernel_status_file" state=S0 \
+    "marker_build_id=${KERNEL_TEST_PREVIOUS_BUILD_ID}" \
+    "marker_version=${KERNEL_TEST_PREVIOUS_PACKAGE_VERSION}" \
+    "marker_release=${KERNEL_TEST_PREVIOUS_RELEASE}"
+  write_fake_kernel_status "$status_after_stage" state=S2 via=no
+  write_fake_kernel_status "$status_after_tryboot" state=S1
+  write_fake_kernel_status "$status_after_reboot" state=S2 via=yes
+}
+
+# write_kernel_update_fakes builds everything the kernel-update flow talks to:
+# one fake kernel build, the fake ansible (node tool and both reboots), the
+# composed fake kubectl, a drain stub that records its arguments instead of
+# draining, and the status blocks above.
+write_kernel_update_fakes() {
+  write_fake_ansible
+  write_kernel_update_kubectl
+  create_fake_kernel_build
+  label_calls="${tmp}/calls"
+  kernel_calls="${tmp}/kernel-calls"
+  kernel_copies="${tmp}/kernel-copies"
+  drain_calls="${tmp}/drain-calls"
+  kernel_status_file="${tmp}/kernel-status"
+  status_after_stage="${tmp}/kernel-status-staged"
+  status_after_tryboot="${tmp}/kernel-status-trial"
+  status_after_reboot="${tmp}/kernel-status-plain-reboot"
+  reboot_state="${tmp}/reboot-state"
+  smoke_state="${tmp}/smoke-state"
+  fake_drain="${tmp}/drain-stub"
+  cat > "$fake_drain" <<'EOF'
+#!/usr/bin/env bash
+printf 'drain %s\n' "$*" >>"${FAKE_DRAIN_CALLS:?}"
+EOF
+  chmod +x "$fake_drain"
+  reset_kernel_update_state
+}
+
+# reset_kernel_update_state clears everything one run leaves behind -- boot
+# markers, smoke objects, recorded calls, and the status file the fake ansible
+# swapped -- so a test can run the flow more than once. The boot markers matter
+# most: bootIDs are counted from them, and a second run that inherits the first
+# run's markers would never see a new one.
+reset_kernel_update_state() {
+  rm -rf "$reboot_state" "$smoke_state"
+  mkdir -p "$reboot_state" "$smoke_state"
+  : >"$label_calls"
+  : >"$kernel_calls"
+  : >"$kernel_copies"
+  : >"$drain_calls"
+  write_kernel_update_kernel_status_files
+}
+
+# set_kernel_update_env fills kernel_update_env with the assignments every
+# kernel-update run shares. A caller appends its own VAR=value arguments after
+# them, and env applies the last assignment of a name, so those win.
+set_kernel_update_env() {
+  kernel_update_env=(
+    "PATH=${tmp}:${PATH}"
+    "NODE_LIVE_INVENTORY_DIR=${inventory}"
+    "NODE_KUBECTL_BIN=${fake_kernel_update_kubectl}"
+    "NODE_KERNEL_SOURCE_LOCK=${kernel_test_lock}"
+    "NODE_KERNEL_OUTPUT_ROOT=${kernel_test_output_root}"
+    "NODE_KERNEL_UPDATE_OUTPUT_ROOT=${tmp}/kernel-update"
+    "NODE_DRAIN_BIN=${fake_drain}"
+    "FAKE_REBOOT_STATE_DIR=${reboot_state}"
+    "FAKE_SMOKE_STATE_DIR=${smoke_state}"
+    "FAKE_KERNEL_STATUS_FILE=${kernel_status_file}"
+    "FAKE_KERNEL_STATUS_AFTER_STAGE=${status_after_stage}"
+    "FAKE_KERNEL_STATUS_AFTER_TRYBOOT=${status_after_tryboot}"
+    "FAKE_KERNEL_STATUS_AFTER_REBOOT=${status_after_reboot}"
+    "FAKE_KERNEL_CALLS=${kernel_calls}"
+    "FAKE_KERNEL_COPIES=${kernel_copies}"
+    "FAKE_DRAIN_CALLS=${drain_calls}"
+    "FAKE_KERNEL_STAGED_ID=${KERNEL_TEST_BUILD_ID}"
+    FAKE_NODE_CORDONED=false
+    "CALLS_FILE=${label_calls}"
+  )
+}
+
+# run_kernel_update runs kernel-update.sh against those fakes with --yes.
+# Leading VAR=value arguments are passed to env and win over the defaults; the
+# rest go to the script.
+run_kernel_update() {
+  local -a env_args=()
+  while (($# > 0)) && [[ "$1" == *=* ]]; do
+    env_args+=("$1")
+    shift
+  done
+  set_kernel_update_env
+  run env "${kernel_update_env[@]}" "${env_args[@]}" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-update.sh" \
+      --profile live --context test --yes "$@"
+}
+
+# run_kernel_update_confirm ANSWER [VAR=VALUE]... ARGS... runs the flow without
+# --yes and answers the confirmation prompt with ANSWER.
+run_kernel_update_confirm() {
+  local answer="$1"
+  shift
+  local -a env_args=()
+  while (($# > 0)) && [[ "$1" == *=* ]]; do
+    env_args+=("$1")
+    shift
+  done
+  set_kernel_update_env
+  run env "${kernel_update_env[@]}" "${env_args[@]}" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-update.sh" \
+      --profile live --context test "$@" <<<"$answer"
+}
+
+# kernel_node_calls prints just the node-tool mutations in order: what actually
+# ran on the node, without the reads, reboots or the remote-dir recreate.
+kernel_node_calls() {
+  grep -E '^(prepare|stage|commit)$' "$kernel_calls" | paste -sd' ' -
+}
+
+# kernel_call_sequence prints every recorded interaction in order -- node-tool
+# calls, status reads, both kinds of reboot, and node reads -- so a test can
+# assert what did or did not happen between two of them.
+kernel_call_sequence() {
+  paste -sd' ' - <"$kernel_calls"
+}
+
+# assert_phase_order NAME... fails unless those phase lines are in $output in
+# that order.
+assert_phase_order() {
+  local phase line previous=0
+  for phase in "$@"; do
+    line="$(grep -n -m1 "phase: ${phase}\$" <<<"$output" | cut -d: -f1)"
+    if [[ -z "$line" ]]; then
+      printf 'expected output to contain phase: %s\n' "$phase" >&2
+      printf '%s\n' "$output" >&2
+      return 1
+    fi
+    if ((line <= previous)); then
+      printf 'phase out of order: %s\n' "$phase" >&2
+      printf '%s\n' "$output" >&2
+      return 1
+    fi
+    previous="$line"
+  done
 }

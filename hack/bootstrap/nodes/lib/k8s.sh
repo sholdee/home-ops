@@ -293,3 +293,45 @@ node_assert_joining_taint() {
       ;;
   esac
 }
+
+# node_assert_no_cnpg_primary fails when a CloudNativePG cluster still has its
+# primary instance on the node. A reboot would fail that database over on its
+# own schedule; promoting a standby first keeps the switchover deliberate. A
+# cluster without CloudNativePG installed is not a finding.
+node_assert_no_cnpg_primary() {
+  local context="$1"
+  local node="$2"
+  local clusters_json pods_json primaries
+
+  # Probe the CRD rather than reading kubectl's error text: a cluster without
+  # CloudNativePG is not a finding, and stderr must stay out of the JSON --
+  # one deprecation warning merged into it would break jq and block the update.
+  # The probe swallows every error, so the API has to be proven reachable
+  # first: an unreachable server or a denied read must not read as "no CNPG".
+  node_assert_api_reachable "$context"
+  node_has_resource "$context" crd/clusters.postgresql.cnpg.io || return 0
+  clusters_json="$(node_get_json "$context" clusters.postgresql.cnpg.io -A 2>/dev/null)" ||
+    node_die "CloudNativePG clusters are not readable in ${context}"
+  pods_json="$(node_get_json "$context" pods -A -l cnpg.io/cluster 2>/dev/null)" ||
+    node_die "CloudNativePG instance pods are not readable in ${context}"
+
+  # shellcheck disable=SC2016
+  primaries="$("$NODE_JQ_BIN" -r --arg node "$node" --argjson pods "$pods_json" '
+    (
+      [$pods.items[]? | {key: (.metadata.namespace + "/" + .metadata.name), value: (.spec.nodeName // "")}]
+      | from_entries
+    ) as $instance_node |
+    .items[]?
+    | select((.status.currentPrimary // "") != "")
+    | select($instance_node[.metadata.namespace + "/" + .status.currentPrimary] == $node)
+    | "\(.metadata.namespace)/\(.metadata.name) (\(.status.currentPrimary))"
+  ' <<<"$clusters_json")" || node_die "could not read CloudNativePG primaries in ${context}"
+
+  if [[ -n "$primaries" ]]; then
+    {
+      printf 'cnpg_primaries:\n'
+      node_indent_block <<<"$primaries"
+    } >&2
+    node_die "CloudNativePG primary instances are on ${node}; promote a standby first: kubectl cnpg --context ${context} -n <ns> promote <cluster> <instance-on-another-node>"
+  fi
+}
