@@ -1509,11 +1509,12 @@ EOF
   chmod +x "$fake_stale_pods_kubectl"
 }
 
-# write_cnpg_kubectl answers the CRD probe and the two reads
-# node_assert_no_cnpg_primary makes. FAKE_CNPG_CRD=absent removes the cluster
-# CRD; FAKE_CNPG_PRIMARY_NODE and FAKE_CNPG_OTHER_PRIMARY_NODE place the pg-1
-# instance pod of db/pg and of the same-named db2/pg; FAKE_CNPG_WARN=1 adds the
-# kind of deprecation warning kubectl writes to stderr beside valid JSON.
+# write_cnpg_kubectl answers the readiness check, the CRD probe and the two
+# reads node_assert_no_cnpg_primary makes. FAKE_CNPG_CRD=absent removes the
+# cluster CRD; FAKE_CNPG_PRIMARY_NODE and FAKE_CNPG_OTHER_PRIMARY_NODE place
+# the pg-1 instance pod of db/pg and of the same-named db2/pg; FAKE_CNPG_WARN=1
+# adds the kind of deprecation warning kubectl writes to stderr beside valid
+# JSON; FAKE_CNPG_DOWN=1 fails every call, as an unreachable API server does.
 write_cnpg_kubectl() {
   fake_cnpg_kubectl="${tmp}/kubectl-cnpg"
   cat > "$fake_cnpg_kubectl" <<'EOF'
@@ -1528,6 +1529,16 @@ warn() {
   [[ "${FAKE_CNPG_WARN:-0}" == 1 ]] || return 0
   printf 'W0928 09:14:02.118201   1234 warnings.go:70] postgresql.cnpg.io/v1 Cluster is deprecated\n' >&2
 }
+
+if [[ "${FAKE_CNPG_DOWN:-0}" == 1 ]]; then
+  printf 'Unable to connect to the server: dial tcp 192.168.99.77:6443: i/o timeout\n' >&2
+  exit 1
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
+  printf 'ok\n'
+  exit 0
+fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "crd/clusters.postgresql.cnpg.io" ]]; then
   if [[ "${FAKE_CNPG_CRD:-present}" == absent ]]; then
@@ -1595,9 +1606,10 @@ EOF
 # delete meets the pod it just asked to remove. FAKE_SMOKE_STATE_DIR holds the
 # object state, FAKE_SMOKE_PHASE the phase reported, FAKE_SMOKE_LOG the log,
 # FAKE_SMOKE_WAITING_REASON a container waiting reason to report with it.
-# FAKE_SMOKE_GET_FAIL_ONCE=1 fails the first phase read and
-# FAKE_SMOKE_LOGS_FAIL=1 every log read, the two API blips the flow has to
-# tell apart.
+# FAKE_SMOKE_STATUS_REASON a pod-level failure reason, the shape a fired
+# activeDeadlineSeconds leaves. FAKE_SMOKE_GET_FAIL_ONCE=1 fails the first
+# phase read and FAKE_SMOKE_LOGS_FAIL=1 every log read, the two API blips the
+# flow has to tell apart.
 write_smoke_kubectl() {
   fake_smoke_kubectl="${tmp}/kubectl-smoke"
   cat > "$fake_smoke_kubectl" <<'EOF'
@@ -1668,8 +1680,12 @@ case "${verb}" in
         if [[ -n "${FAKE_SMOKE_WAITING_REASON:-}" ]]; then
           waiting="{\"reason\":\"${FAKE_SMOKE_WAITING_REASON}\",\"message\":\"back-off pulling image\"}"
         fi
-        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s","containerStatuses":[{"state":{"waiting":%s}}]}}\n' \
-          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}" "$waiting"
+        status_reason=""
+        if [[ -n "${FAKE_SMOKE_STATUS_REASON:-}" ]]; then
+          status_reason=",\"reason\":\"${FAKE_SMOKE_STATUS_REASON}\",\"message\":\"Pod was active on the node longer than the specified deadline\""
+        fi
+        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s"%s,"containerStatuses":[{"state":{"waiting":%s}}]}}\n' \
+          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}" "$status_reason" "$waiting"
         exit 0
         ;;
     esac

@@ -264,9 +264,11 @@ node_kernel_update_smoke_log() {
 }
 
 # node_kernel_update_smoke_detail prints why the smoke pod is not running --
-# the container's waiting reason, or the first false pod condition -- with its
-# last log line. A pod stuck on an image pull has no logs at all, and that is
-# exactly the case the log line alone cannot explain.
+# the container's waiting reason, the pod-level failure reason, or the first
+# false condition -- with its last log line. A pod stuck on an image pull has
+# no logs at all, and once activeDeadlineSeconds fires the kubelet replaces
+# its container state with a bare DeadlineExceeded: both are cases the log
+# line alone cannot explain.
 node_kernel_update_smoke_detail() {
   local context="$1"
   local namespace="$2"
@@ -279,6 +281,7 @@ node_kernel_update_smoke_detail() {
     waiting="$("$NODE_JQ_BIN" -r '
       [
         (.status.containerStatuses[]? | .state.waiting | select(. != null) | "\(.reason // "Waiting"): \(.message // "")"),
+        (select(.status.reason != null) | "\(.status.reason): \(.status.message // "")"),
         (.status.conditions[]? | select(.status == "False") | .message // "")
       ]
       | map(select(. != null and (. | length) > 0))

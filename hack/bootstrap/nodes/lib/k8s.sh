@@ -306,6 +306,9 @@ node_assert_no_cnpg_primary() {
   # Probe the CRD rather than reading kubectl's error text: a cluster without
   # CloudNativePG is not a finding, and stderr must stay out of the JSON --
   # one deprecation warning merged into it would break jq and block the update.
+  # The probe swallows every error, so the API has to be proven reachable
+  # first: an unreachable server or a denied read must not read as "no CNPG".
+  node_assert_api_reachable "$context"
   node_has_resource "$context" crd/clusters.postgresql.cnpg.io || return 0
   clusters_json="$(node_get_json "$context" clusters.postgresql.cnpg.io -A 2>/dev/null)" ||
     node_die "CloudNativePG clusters are not readable in ${context}"

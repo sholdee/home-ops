@@ -2156,6 +2156,13 @@ EOF
   run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_CRD=absent \
     bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
   assert_success
+
+  # The CRD probe swallows every error, so an unreachable API server must not
+  # read as "CloudNativePG is not installed".
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_DOWN=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_failure
+  assert_output_contains 'Kubernetes context is not reachable: test'
 }
 
 @test "kernel update remote status rejects a truncated status block" {
@@ -2316,12 +2323,57 @@ EOF
   state="${tmp}/smoke-state"
   mkdir -p "$state"
 
+  # Held Pending past the deadline: one poll, then the timeout.
   run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
     FAKE_SMOKE_PHASE=Pending FAKE_SMOKE_WAITING_REASON=ImagePullBackOff FAKE_SMOKE_LOGS_FAIL=1 \
-    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 0"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 1"
   assert_failure
   assert_output_contains 'timed out waiting for the CNI smoke pod on k3s-worker-0 (phase=Pending)'
   assert_output_contains 'ImagePullBackOff'
+
+  # Once activeDeadlineSeconds fires, the kubelet leaves a pod-level reason
+  # and no container state at all.
+  rm -rf "$state"
+  mkdir -p "$state"
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
+    FAKE_SMOKE_PHASE=Failed FAKE_SMOKE_STATUS_REASON=DeadlineExceeded FAKE_SMOKE_LOGS_FAIL=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+  assert_failure
+  assert_output_contains 'CNI smoke pod failed on k3s-worker-0'
+  assert_output_contains 'DeadlineExceeded'
+}
+
+@test "kernel update state file is written atomically" {
+  local state_file state_dir
+  state_dir="${tmp}/kernel-update/live/k3s-worker-0/state"
+
+  run env NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_write_state live k3s-worker-0 test node ${KERNEL_TEST_BUILD_ID} ${KERNEL_TEST_NEXT_BUILD_ID} updated false"
+  assert_success
+  state_file="$output"
+  [[ "$state_file" == "${state_dir}/update.json" ]]
+  run ls "$state_dir"
+  assert_success
+  [[ "$output" == "update.json" ]]
+  run jq -r '[.schemaVersion, .profile, .node, .context, .role, .fromBuildId, .toBuildId, .status, (.fallbackDrill | tostring)] | join("|")' "$state_file"
+  assert_success
+  assert_output_contains "home-ops.node-kernel-update/v1|live|k3s-worker-0|test|node|${KERNEL_TEST_BUILD_ID}|${KERNEL_TEST_NEXT_BUILD_ID}|updated|false"
+
+  # A render that dies half way must leave the recorded state, and no scratch
+  # file, behind.
+  run env NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" NODE_JQ_BIN=false \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_write_state live k3s-worker-0 test node ${KERNEL_TEST_BUILD_ID} ${KERNEL_TEST_NEXT_BUILD_ID} rolled-back true"
+  assert_failure
+  assert_output_contains "could not write ${state_file}"
+  [[ ! -e "${state_file}.tmp" ]]
+  run jq -r '.status' "$state_file"
+  assert_success
+  [[ "$output" == "updated" ]]
+
+  run env NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_write_state live k3s-worker-0 test node a b done maybe"
+  assert_failure
+  assert_output_contains 'fallbackDrill must be true or false: maybe'
 }
 
 @test "node lifecycle command help paths remain available" {
