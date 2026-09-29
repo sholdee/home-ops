@@ -429,6 +429,26 @@ run_reimage_full() {
   assert_file_not_contains "$calls" 'drain '
 }
 
+@test "node reimage full refuses to run while another run holds the lock and leaves it in place" {
+  local calls fake_plan fake_preflight fake_build fake_serve fake_drain fake_evict fake_delete fake_apply fake_join fake_host_services fake_cleanup fake_ssh
+  write_reimage_full_fakes
+  mkdir -p "${tmp}/reimage-out/live/.full.lock"
+  printf 'node=k3s-worker-1\ncontext=test\nstarted_at=2026-09-29T10:00:00Z\n' \
+    >"${tmp}/reimage-out/live/.full.lock/info"
+
+  run_reimage_full
+  assert_failure
+  assert_output_contains "another node-reimage-full appears to be running: ${tmp}/reimage-out/live/.full.lock"
+  # Whose lock it is decides whether to wait or to clear it, so say both.
+  assert_output_contains 'lock_info:'
+  assert_output_contains '  node=k3s-worker-1'
+  assert_output_contains '  started_at=2026-09-29T10:00:00Z'
+  assert_output_contains "if no run is in progress, remove it with: rm -rf ${tmp}/reimage-out/live/.full.lock"
+  # The other run still owns its lock: a refused run must not clear it.
+  [[ -f "${tmp}/reimage-out/live/.full.lock/info" ]]
+  [[ ! -e "$calls" ]]
+}
+
 @test "node reimage metadata renders stage-compatible image metadata" {
   local sha
   sha="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
