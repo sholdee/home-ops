@@ -692,6 +692,7 @@ if [[ "$joined_args" == *"0 tryboot"* ]]; then
   if [[ -n "${FAKE_KERNEL_STATUS_AFTER_TRYBOOT:-}" ]]; then
     cp "$FAKE_KERNEL_STATUS_AFTER_TRYBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
   fi
+  printf '%s\n' "tryboot" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   printf 'tryboot_reboot_scheduled=true\n'
   exit 0
 fi
@@ -716,12 +717,17 @@ if [[ "${!#}" == "/usr/local/sbin/home-ops-verify-kernel-build 2>&1" ]]; then
 fi
 
 if [[ "$joined_args" == *"home-ops-kernel-update status"* ]]; then
+  printf '%s\n' "status" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   cat "${FAKE_KERNEL_STATUS_FILE:?}"
   exit 0
 fi
 
 if [[ "$joined_args" == *"home-ops-kernel-update prepare"* ]]; then
   printf '%s\n' "prepare" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  if [[ "${FAKE_KERNEL_PREPARE_FAILS:-0}" == 1 ]]; then
+    printf 'home-ops-kernel-update: not enough space in /boot/firmware for the fallback copy\n' >&2
+    exit 1
+  fi
   printf 'prepare=ok\n'
   exit 0
 fi
@@ -756,6 +762,7 @@ if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_KERNEL_STATUS_AFTER_REBOOT:-}" ]]; then
     cp "$FAKE_KERNEL_STATUS_AFTER_REBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
   fi
+  printf '%s\n' "reboot" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   printf 'reboot_scheduled=true\n'
   exit 0
 fi
@@ -983,8 +990,9 @@ EOF
 # and tryboot alike, so a flow that reboots twice sees two distinct new boot
 # IDs; the tryboot branch touches one fixed name per node, so two tryboots of
 # the same node cannot be told apart and no test may rely on that.
-# FAKE_BOOT_ID_FROZEN=1 pins it to boot-0, a node that never comes back, and
-# FAKE_NODE_CORDONED=false makes the node schedulable.
+# FAKE_BOOT_ID_FROZEN=1 pins it to boot-0, a node that never comes back;
+# FAKE_NODE_CORDONED=false makes the node schedulable, and
+# FAKE_NODE_ORDINARY_PODS=1 leaves one ReplicaSet-owned pod bound to it.
 write_reboot_kubectl() {
   fake_reboot_kubectl="${tmp}/kubectl-reboot"
   cat > "$fake_reboot_kubectl" <<'EOF'
@@ -1054,6 +1062,24 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  if [[ "${FAKE_NODE_ORDINARY_PODS:-0}" == 1 ]]; then
+    cat <<'JSON'
+{
+  "items": [
+    {
+      "metadata": {
+        "name": "app-7d9f4b6c8-x2k9p",
+        "namespace": "default",
+        "ownerReferences": [{"kind": "ReplicaSet", "name": "app-7d9f4b6c8"}]
+      },
+      "spec": {"nodeName": "k3s-worker-0"},
+      "status": {"phase": "Running"}
+    }
+  ]
+}
+JSON
+    exit 0
+  fi
   printf '{"items":[]}\n'
   exit 0
 fi
@@ -1757,8 +1783,10 @@ EOF
 # node JSON (counted bootID, cordon state), its ordinary pods, Cilium and an
 # absent Longhorn; the CNPG fake answers the CRD probe, the clusters and the
 # instance pods; the smoke fake answers everything in the smoke namespace. The
-# kernel-build label is answered here and recorded to CALLS_FILE. Every FAKE_*
-# switch of the wrapped fakes still applies.
+# kernel-build label is answered here and recorded to CALLS_FILE, and every node
+# read is appended to FAKE_KERNEL_CALLS as "get-node" so the ordered stream shows
+# reads and node-tool calls together. Every FAKE_* switch of the wrapped fakes
+# still applies.
 write_kernel_update_kubectl() {
   write_reboot_kubectl
   write_cnpg_kubectl
@@ -1790,6 +1818,12 @@ if [[ "${1:-}" == "label" && "${2:-}" == node/* && "${4:-}" == "--overwrite" ]];
   printf 'kubectl %s\n' "$joined" >>"${CALLS_FILE:?}"
   printf '%s labeled\n' "$2"
   exit 0
+fi
+
+# Node reads join the node-tool calls in one ordered stream, so a test can say
+# which of them happened between two node calls.
+if [[ "${1:-}" == "get" && "${2:-}" == node/* ]]; then
+  printf 'get-node\n' >>"${FAKE_KERNEL_CALLS:-/dev/null}"
 fi
 
 exec "$reboot_kubectl" "${args[@]}"
@@ -1858,43 +1892,75 @@ reset_kernel_update_state() {
   write_kernel_update_kernel_status_files
 }
 
-# run_kernel_update runs kernel-update.sh against those fakes. Leading
-# VAR=value arguments are passed to env, and win over the defaults here; the
-# rest go to the script after --profile/--context/--yes.
+# set_kernel_update_env fills kernel_update_env with the assignments every
+# kernel-update run shares. A caller appends its own VAR=value arguments after
+# them, and env applies the last assignment of a name, so those win.
+set_kernel_update_env() {
+  kernel_update_env=(
+    "PATH=${tmp}:${PATH}"
+    "NODE_LIVE_INVENTORY_DIR=${inventory}"
+    "NODE_KUBECTL_BIN=${fake_kernel_update_kubectl}"
+    "NODE_KERNEL_SOURCE_LOCK=${kernel_test_lock}"
+    "NODE_KERNEL_OUTPUT_ROOT=${kernel_test_output_root}"
+    "NODE_KERNEL_UPDATE_OUTPUT_ROOT=${tmp}/kernel-update"
+    "NODE_DRAIN_BIN=${fake_drain}"
+    "FAKE_REBOOT_STATE_DIR=${reboot_state}"
+    "FAKE_SMOKE_STATE_DIR=${smoke_state}"
+    "FAKE_KERNEL_STATUS_FILE=${kernel_status_file}"
+    "FAKE_KERNEL_STATUS_AFTER_STAGE=${status_after_stage}"
+    "FAKE_KERNEL_STATUS_AFTER_TRYBOOT=${status_after_tryboot}"
+    "FAKE_KERNEL_STATUS_AFTER_REBOOT=${status_after_reboot}"
+    "FAKE_KERNEL_CALLS=${kernel_calls}"
+    "FAKE_KERNEL_COPIES=${kernel_copies}"
+    "FAKE_DRAIN_CALLS=${drain_calls}"
+    "FAKE_KERNEL_STAGED_ID=${KERNEL_TEST_BUILD_ID}"
+    FAKE_NODE_CORDONED=false
+    "CALLS_FILE=${label_calls}"
+  )
+}
+
+# run_kernel_update runs kernel-update.sh against those fakes with --yes.
+# Leading VAR=value arguments are passed to env and win over the defaults; the
+# rest go to the script.
 run_kernel_update() {
   local -a env_args=()
   while (($# > 0)) && [[ "$1" == *=* ]]; do
     env_args+=("$1")
     shift
   done
-  run env PATH="${tmp}:${PATH}" \
-    NODE_LIVE_INVENTORY_DIR="$inventory" \
-    NODE_KUBECTL_BIN="$fake_kernel_update_kubectl" \
-    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
-    NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
-    NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" \
-    NODE_DRAIN_BIN="$fake_drain" \
-    FAKE_REBOOT_STATE_DIR="$reboot_state" \
-    FAKE_SMOKE_STATE_DIR="$smoke_state" \
-    FAKE_KERNEL_STATUS_FILE="$kernel_status_file" \
-    FAKE_KERNEL_STATUS_AFTER_STAGE="$status_after_stage" \
-    FAKE_KERNEL_STATUS_AFTER_TRYBOOT="$status_after_tryboot" \
-    FAKE_KERNEL_STATUS_AFTER_REBOOT="$status_after_reboot" \
-    FAKE_KERNEL_CALLS="$kernel_calls" \
-    FAKE_KERNEL_COPIES="$kernel_copies" \
-    FAKE_DRAIN_CALLS="$drain_calls" \
-    FAKE_KERNEL_STAGED_ID="$KERNEL_TEST_BUILD_ID" \
-    FAKE_NODE_CORDONED=false \
-    CALLS_FILE="$label_calls" \
-    "${env_args[@]}" \
+  set_kernel_update_env
+  run env "${kernel_update_env[@]}" "${env_args[@]}" \
     "${ROOT}/hack/bootstrap/nodes/kernel-update.sh" \
       --profile live --context test --yes "$@"
 }
 
-# kernel_node_calls prints the node-tool calls in order, without the remote
-# directory recreate that the ship does first.
+# run_kernel_update_confirm ANSWER [VAR=VALUE]... ARGS... runs the flow without
+# --yes and answers the confirmation prompt with ANSWER.
+run_kernel_update_confirm() {
+  local answer="$1"
+  shift
+  local -a env_args=()
+  while (($# > 0)) && [[ "$1" == *=* ]]; do
+    env_args+=("$1")
+    shift
+  done
+  set_kernel_update_env
+  run env "${kernel_update_env[@]}" "${env_args[@]}" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-update.sh" \
+      --profile live --context test "$@" <<<"$answer"
+}
+
+# kernel_node_calls prints just the node-tool mutations in order: what actually
+# ran on the node, without the reads, reboots or the remote-dir recreate.
 kernel_node_calls() {
-  grep -v '^recreate ' "$kernel_calls" | paste -sd' ' -
+  grep -E '^(prepare|stage|commit)$' "$kernel_calls" | paste -sd' ' -
+}
+
+# kernel_call_sequence prints every recorded interaction in order -- node-tool
+# calls, status reads, both kinds of reboot, and node reads -- so a test can
+# assert what did or did not happen between two of them.
+kernel_call_sequence() {
+  paste -sd' ' - <"$kernel_calls"
 }
 
 # assert_phase_order NAME... fails unless those phase lines are in $output in

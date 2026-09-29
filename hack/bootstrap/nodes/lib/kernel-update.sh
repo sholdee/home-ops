@@ -178,10 +178,12 @@ node_kernel_update_remote() {
 # as "--cmdline-arg X" pairs, one token per line. They go to stage, which adds
 # them to the trial line only, and never to prepare. Read it through a plain
 # command substitution, never process substitution, which would swallow the
-# node_die and stage a node with no cmdline args at all:
+# node_die and stage a node with no cmdline args at all. Guard the string and
+# not the array: mapfile of an empty string yields one empty element, so an
+# element count can never catch an empty read.
 #   cmdline="$(node_kernel_update_cmdline_args)" || exit 1
+#   [[ -n "$cmdline" ]] || node_die "no Raspberry Pi cmdline args to stage"
 #   mapfile -t cmdline_args <<<"$cmdline"
-#   ((${#cmdline_args[@]} > 0)) || node_die "no Raspberry Pi cmdline args to stage"
 node_kernel_update_cmdline_args() {
   local args arg
   local -a tokens=()
