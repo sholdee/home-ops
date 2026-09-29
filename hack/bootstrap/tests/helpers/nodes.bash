@@ -689,6 +689,9 @@ if [[ "$joined_args" == *"0 tryboot"* ]]; then
       sed -n 's/^ *--description="\(.*\)" \\$/description=\1/p' <<<"$joined_args"
     } >"${FAKE_REBOOT_STATE_DIR}/tryboot-unit-${target}"
   fi
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_TRYBOOT:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_TRYBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
+  fi
   printf 'tryboot_reboot_scheduled=true\n'
   exit 0
 fi
@@ -726,6 +729,9 @@ fi
 if [[ "$joined_args" == *"home-ops-kernel-update stage"* ]]; then
   printf '%s\n' "stage" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
   printf 'stage=ok\nstaged_build_id=%s\n' "${FAKE_KERNEL_STAGED_ID:-6.18.50-1-rpt1-btf2}"
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_STAGE:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_STAGE" "${FAKE_KERNEL_STATUS_FILE:?}"
+  fi
   exit 0
 fi
 
@@ -746,6 +752,9 @@ if [[ "$joined_args" == *"systemctl reboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
     touch "${FAKE_REBOOT_STATE_DIR}/rebooted-${target}"
+  fi
+  if [[ -n "${FAKE_KERNEL_STATUS_AFTER_REBOOT:-}" ]]; then
+    cp "$FAKE_KERNEL_STATUS_AFTER_REBOOT" "${FAKE_KERNEL_STATUS_FILE:?}"
   fi
   printf 'reboot_scheduled=true\n'
   exit 0
@@ -969,6 +978,13 @@ EOF
   chmod +x "$fake_reimage_full_kubectl"
 }
 
+# write_reboot_kubectl backs a reboot flow. The node's bootID is "boot-N" for
+# the N reboots the fake ansible has recorded in FAKE_REBOOT_STATE_DIR, plain
+# and tryboot alike, so a flow that reboots twice sees two distinct new boot
+# IDs; the tryboot branch touches one fixed name per node, so two tryboots of
+# the same node cannot be told apart and no test may rely on that.
+# FAKE_BOOT_ID_FROZEN=1 pins it to boot-0, a node that never comes back, and
+# FAKE_NODE_CORDONED=false makes the node schedulable.
 write_reboot_kubectl() {
   fake_reboot_kubectl="${tmp}/kubectl-reboot"
   cat > "$fake_reboot_kubectl" <<'EOF'
@@ -1007,18 +1023,22 @@ if [[ "${1:-}" == "get" && "${2:-}" == "--raw=/readyz" ]]; then
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "node/k3s-worker-0" ]]; then
-  boot_id="boot-before"
-  if [[ -f "${state_dir}/rebooted-k3s-worker-0" ]]; then
-    boot_id="boot-after"
+  boot_count=0
+  if [[ "${FAKE_BOOT_ID_FROZEN:-0}" != 1 ]]; then
+    for marker in "${state_dir}"/rebooted-* "${state_dir}"/tryboot-rebooted-*; do
+      [[ -e "$marker" ]] || continue
+      boot_count=$((boot_count + 1))
+    done
   fi
-  sed -e "s/__BOOT_ID__/${boot_id}/g" <<'JSON'
+  sed -e "s/__BOOT_ID__/boot-${boot_count}/g" \
+    -e "s/__UNSCHEDULABLE__/${FAKE_NODE_CORDONED:-true}/g" <<'JSON'
 {
   "metadata": {
     "name": "k3s-worker-0",
     "labels": {}
   },
   "spec": {
-    "unschedulable": true
+    "unschedulable": __UNSCHEDULABLE__
   },
   "status": {
     "conditions": [
@@ -1730,4 +1750,169 @@ printf 'unexpected fake smoke kubectl args: %s %s%s\n' "$verb" "$target" "$extra
 exit 1
 EOF
   chmod +x "$fake_smoke_kubectl"
+}
+
+# write_kernel_update_kubectl backs the whole kernel-update flow with one fake
+# kubectl by wrapping the three that already exist: the reboot fake answers the
+# node JSON (counted bootID, cordon state), its ordinary pods, Cilium and an
+# absent Longhorn; the CNPG fake answers the CRD probe, the clusters and the
+# instance pods; the smoke fake answers everything in the smoke namespace. The
+# kernel-build label is answered here and recorded to CALLS_FILE. Every FAKE_*
+# switch of the wrapped fakes still applies.
+write_kernel_update_kubectl() {
+  write_reboot_kubectl
+  write_cnpg_kubectl
+  write_smoke_kubectl
+  fake_kernel_update_kubectl="${tmp}/kubectl-kernel-update"
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf 'set -uo pipefail\n'
+    printf 'reboot_kubectl=%q\n' "$fake_reboot_kubectl"
+    printf 'cnpg_kubectl=%q\n' "$fake_cnpg_kubectl"
+    printf 'smoke_kubectl=%q\n' "$fake_smoke_kubectl"
+    cat <<'EOF'
+args=("$@")
+if [[ "${1:-}" == "--context" ]]; then
+  shift 2
+fi
+joined="$*"
+
+case "$joined" in
+  *clusters.postgresql.cnpg.io* | *"cnpg.io/cluster"*)
+    exec "$cnpg_kubectl" "${args[@]}"
+    ;;
+  *home-ops-kernel-smoke*)
+    exec "$smoke_kubectl" "${args[@]}"
+    ;;
+esac
+
+if [[ "${1:-}" == "label" && "${2:-}" == node/* && "${4:-}" == "--overwrite" ]]; then
+  printf 'kubectl %s\n' "$joined" >>"${CALLS_FILE:?}"
+  printf '%s labeled\n' "$2"
+  exit 0
+fi
+
+exec "$reboot_kubectl" "${args[@]}"
+EOF
+  } >"$fake_kernel_update_kubectl"
+  chmod +x "$fake_kernel_update_kubectl"
+}
+
+# write_kernel_update_kernel_status_files writes the four status blocks the fake
+# ansible hands back as one flow progresses: the node before the update, once
+# "stage" has run, once the trial boot has landed, and what a plain reboot lands
+# on. A test overwrites whichever of them it wants to change.
+write_kernel_update_kernel_status_files() {
+  # Before: an older build, clean. Staged: the new marker, still running the
+  # copy the fallback now holds, not yet rebooted. Trial: the trial boot is up.
+  # Plain reboot: the fallback served from config.txt, which is what the drill
+  # demands.
+  write_fake_kernel_status "$kernel_status_file" state=S0 \
+    "marker_build_id=${KERNEL_TEST_PREVIOUS_BUILD_ID}" \
+    "marker_version=${KERNEL_TEST_PREVIOUS_PACKAGE_VERSION}" \
+    "marker_release=${KERNEL_TEST_PREVIOUS_RELEASE}"
+  write_fake_kernel_status "$status_after_stage" state=S2 via=no
+  write_fake_kernel_status "$status_after_tryboot" state=S1
+  write_fake_kernel_status "$status_after_reboot" state=S2 via=yes
+}
+
+# write_kernel_update_fakes builds everything the kernel-update flow talks to:
+# one fake kernel build, the fake ansible (node tool and both reboots), the
+# composed fake kubectl, a drain stub that records its arguments instead of
+# draining, and the status blocks above.
+write_kernel_update_fakes() {
+  write_fake_ansible
+  write_kernel_update_kubectl
+  create_fake_kernel_build
+  label_calls="${tmp}/calls"
+  kernel_calls="${tmp}/kernel-calls"
+  kernel_copies="${tmp}/kernel-copies"
+  drain_calls="${tmp}/drain-calls"
+  kernel_status_file="${tmp}/kernel-status"
+  status_after_stage="${tmp}/kernel-status-staged"
+  status_after_tryboot="${tmp}/kernel-status-trial"
+  status_after_reboot="${tmp}/kernel-status-plain-reboot"
+  reboot_state="${tmp}/reboot-state"
+  smoke_state="${tmp}/smoke-state"
+  fake_drain="${tmp}/drain-stub"
+  cat > "$fake_drain" <<'EOF'
+#!/usr/bin/env bash
+printf 'drain %s\n' "$*" >>"${FAKE_DRAIN_CALLS:?}"
+EOF
+  chmod +x "$fake_drain"
+  reset_kernel_update_state
+}
+
+# reset_kernel_update_state clears everything one run leaves behind -- boot
+# markers, smoke objects, recorded calls, and the status file the fake ansible
+# swapped -- so a test can run the flow more than once. The boot markers matter
+# most: bootIDs are counted from them, and a second run that inherits the first
+# run's markers would never see a new one.
+reset_kernel_update_state() {
+  rm -rf "$reboot_state" "$smoke_state"
+  mkdir -p "$reboot_state" "$smoke_state"
+  : >"$label_calls"
+  : >"$kernel_calls"
+  : >"$kernel_copies"
+  : >"$drain_calls"
+  write_kernel_update_kernel_status_files
+}
+
+# run_kernel_update runs kernel-update.sh against those fakes. Leading
+# VAR=value arguments are passed to env, and win over the defaults here; the
+# rest go to the script after --profile/--context/--yes.
+run_kernel_update() {
+  local -a env_args=()
+  while (($# > 0)) && [[ "$1" == *=* ]]; do
+    env_args+=("$1")
+    shift
+  done
+  run env PATH="${tmp}:${PATH}" \
+    NODE_LIVE_INVENTORY_DIR="$inventory" \
+    NODE_KUBECTL_BIN="$fake_kernel_update_kubectl" \
+    NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
+    NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
+    NODE_KERNEL_UPDATE_OUTPUT_ROOT="${tmp}/kernel-update" \
+    NODE_DRAIN_BIN="$fake_drain" \
+    FAKE_REBOOT_STATE_DIR="$reboot_state" \
+    FAKE_SMOKE_STATE_DIR="$smoke_state" \
+    FAKE_KERNEL_STATUS_FILE="$kernel_status_file" \
+    FAKE_KERNEL_STATUS_AFTER_STAGE="$status_after_stage" \
+    FAKE_KERNEL_STATUS_AFTER_TRYBOOT="$status_after_tryboot" \
+    FAKE_KERNEL_STATUS_AFTER_REBOOT="$status_after_reboot" \
+    FAKE_KERNEL_CALLS="$kernel_calls" \
+    FAKE_KERNEL_COPIES="$kernel_copies" \
+    FAKE_DRAIN_CALLS="$drain_calls" \
+    FAKE_KERNEL_STAGED_ID="$KERNEL_TEST_BUILD_ID" \
+    FAKE_NODE_CORDONED=false \
+    CALLS_FILE="$label_calls" \
+    "${env_args[@]}" \
+    "${ROOT}/hack/bootstrap/nodes/kernel-update.sh" \
+      --profile live --context test --yes "$@"
+}
+
+# kernel_node_calls prints the node-tool calls in order, without the remote
+# directory recreate that the ship does first.
+kernel_node_calls() {
+  grep -v '^recreate ' "$kernel_calls" | paste -sd' ' -
+}
+
+# assert_phase_order NAME... fails unless those phase lines are in $output in
+# that order.
+assert_phase_order() {
+  local phase line previous=0
+  for phase in "$@"; do
+    line="$(grep -n -m1 "phase: ${phase}\$" <<<"$output" | cut -d: -f1)"
+    if [[ -z "$line" ]]; then
+      printf 'expected output to contain phase: %s\n' "$phase" >&2
+      printf '%s\n' "$output" >&2
+      return 1
+    fi
+    if ((line <= previous)); then
+      printf 'phase out of order: %s\n' "$phase" >&2
+      printf '%s\n' "$output" >&2
+      return 1
+    fi
+    previous="$line"
+  done
 }

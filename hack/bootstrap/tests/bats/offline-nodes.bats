@@ -172,6 +172,10 @@ EOF
   run just --dry-run node-kernel-build --jobs 4
   assert_success
   assert_output_contains "./hack/bootstrap/nodes/kernel-build.sh --jobs 4"
+
+  run just --dry-run node-kernel-update k3s-worker-0 --drill-fallback
+  assert_success
+  assert_output_contains "./hack/bootstrap/nodes/kernel-update.sh --profile live --context default 'k3s-worker-0' --drill-fallback"
 }
 
 @test "node cmd helper tolerates an accidental extra separator before the remote command" {
@@ -2376,6 +2380,221 @@ EOF
   assert_output_contains 'fallbackDrill must be true or false: maybe'
 }
 
+@test "kernel update happy path drains, stages, trials, commits, and labels" {
+  local name
+  local update_state remote_dir
+  write_kernel_update_fakes
+  remote_dir="/var/tmp/home-ops-kernel/${KERNEL_TEST_BUILD_ID}"
+  update_state="${tmp}/kernel-update/live/k3s-worker-0/state/update.json"
+
+  run_kernel_update k3s-worker-0
+  assert_success
+  assert_phase_order preflight drain stage tryboot verify commit kernel-build-label
+  assert_output_not_contains 'phase: fallback-drill'
+  assert_output_contains 'installed /usr/local/sbin/home-ops-kernel-update on k3s-worker-0'
+  assert_output_contains "from_build: ${KERNEL_TEST_PREVIOUS_BUILD_ID}"
+  assert_output_contains "to_build: ${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains 'node_state: S0'
+  assert_output_contains 'fallback_drill: false'
+  assert_output_contains 'final_uncordon: operator-run'
+  assert_output_contains '  prepare=ok'
+  assert_output_contains '  stage=ok'
+  assert_output_contains "  staged_build_id=${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains 'cni_smoke=ok'
+  assert_output_contains '  commit=ok'
+  # The label value comes from the node's own verifier, so the expected id
+  # appearing here is what proves the verifier ran and agreed.
+  assert_output_contains "labeling k3s-worker-0 with node.home-ops.sh/kernel-build=${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains "update_state=${update_state}"
+  assert_output_contains 'next=just node-status k3s-worker-0 && just node-uncordon k3s-worker-0'
+  assert_output_not_contains 'kernel update did not finish'
+
+  [[ "$(kernel_node_calls)" == "prepare stage commit" ]]
+  assert_file_contains "$kernel_calls" "recreate ${remote_dir}"
+  assert_file_contains "$drain_calls" 'drain --profile live --context test --yes k3s-worker-0'
+  assert_file_contains "$label_calls" "kubectl label node/k3s-worker-0 node.home-ops.sh/kernel-build=${KERNEL_TEST_BUILD_ID} --overwrite"
+  assert_file_contains "$kernel_copies" 'hack/bootstrap/nodes/kernel/update-node.sh /usr/local/sbin/home-ops-kernel-update'
+  assert_file_contains "$kernel_copies" "SHA256SUMS ${remote_dir}/SHA256SUMS"
+  assert_file_contains "$kernel_copies" "kernel-build.env ${remote_dir}/kernel-build.env"
+  for name in "linux-image-${KERNEL_TEST_RELEASE}" "linux-base-${KERNEL_TEST_RELEASE}" linux-image-rpi-2712 linux-base-rpi-2712; do
+    assert_file_contains "$kernel_copies" "${remote_dir}/${name}_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+  done
+  [[ -f "${reboot_state}/tryboot-rebooted-k3s-worker-0" ]]
+  [[ ! -f "${reboot_state}/rebooted-k3s-worker-0" ]]
+  assert_file_contains "${reboot_state}/tryboot-unit-k3s-worker-0" 'unit=home-ops-kernel-tryboot'
+  assert_file_contains "${reboot_state}/tryboot-unit-k3s-worker-0" 'description=Home Ops one-shot tryboot reboot'
+
+  run jq -r '[.status, .fromBuildId, .toBuildId, .role, (.fallbackDrill | tostring)] | join("|")' "$update_state"
+  assert_success
+  assert_output_contains "complete|${KERNEL_TEST_PREVIOUS_BUILD_ID}|${KERNEL_TEST_BUILD_ID}|node|false"
+}
+
+@test "kernel update exits early when the node already runs the target build" {
+  write_kernel_update_fakes
+  write_fake_kernel_status "$kernel_status_file" state=S0
+
+  run_kernel_update k3s-worker-0
+  assert_success
+  assert_output_contains "already running kernel build ${KERNEL_TEST_BUILD_ID}; nothing to do"
+  assert_output_not_contains 'node-kernel-update summary'
+  assert_output_not_contains 'phase: drain'
+  assert_output_not_contains 'phase: stage'
+  [[ ! -s "$drain_calls" ]]
+  [[ ! -s "$kernel_calls" ]]
+  assert_file_not_contains "$kernel_copies" 'SHA256SUMS'
+  # Installing the tool is the one mutation even a no-op run makes: nothing can
+  # read the node's state without it.
+  assert_file_contains "$kernel_copies" '/usr/local/sbin/home-ops-kernel-update'
+}
+
+@test "kernel update refuses a CNPG primary on the node" {
+  write_kernel_update_fakes
+
+  run_kernel_update FAKE_CNPG_PRIMARY_NODE=k3s-worker-0 k3s-worker-0
+  assert_failure
+  assert_output_contains 'CloudNativePG primary instances are on k3s-worker-0'
+  assert_output_contains 'db/pg (pg-1)'
+  assert_output_not_contains 'node-kernel-update summary'
+  assert_output_not_contains 'phase: drain'
+  [[ ! -s "$drain_calls" ]]
+  [[ ! -s "$kernel_calls" ]]
+}
+
+@test "kernel update requires --resume for a pending trial and then only verifies and commits" {
+  write_kernel_update_fakes
+  write_fake_kernel_status "$kernel_status_file" state=S1
+
+  run_kernel_update FAKE_NODE_CORDONED=true k3s-worker-0
+  assert_failure
+  assert_output_contains "a trial of ${KERNEL_TEST_BUILD_ID} is booted but not committed; rerun with --resume, or reboot the node to fall back"
+  [[ ! -s "$kernel_calls" ]]
+  [[ ! -s "$drain_calls" ]]
+
+  reset_kernel_update_state
+  write_fake_kernel_status "$kernel_status_file" state=S1
+  run_kernel_update FAKE_NODE_CORDONED=true k3s-worker-0 --resume
+  assert_success
+  assert_output_contains 'node_state: S1'
+  assert_phase_order preflight verify commit kernel-build-label
+  assert_output_not_contains 'phase: drain'
+  assert_output_not_contains 'phase: stage'
+  assert_output_not_contains 'phase: tryboot'
+  assert_output_contains 'cni_smoke=ok'
+  [[ "$(kernel_node_calls)" == "commit" ]]
+  [[ ! -s "$drain_calls" ]]
+  assert_file_contains "$label_calls" "kubectl label node/k3s-worker-0 node.home-ops.sh/kernel-build=${KERNEL_TEST_BUILD_ID} --overwrite"
+}
+
+@test "kernel update reports a trial that fell back and leaves the node on the previous kernel" {
+  write_kernel_update_fakes
+  write_fake_kernel_status "$status_after_tryboot" state=S2 via=yes
+
+  run_kernel_update k3s-worker-0 --skip-smoke
+  assert_failure
+  assert_output_contains "trial boot of ${KERNEL_TEST_BUILD_ID} fell back to ${KERNEL_TEST_PREVIOUS_PACKAGE_VERSION}; the node is on the previous kernel. Inspect it, then rerun to retry or rerun with --build-id ${KERNEL_TEST_PREVIOUS_BUILD_ID} to roll back"
+  assert_output_not_contains 'phase: commit'
+  [[ "$(kernel_node_calls)" == "prepare stage" ]]
+  assert_file_not_contains "$label_calls" 'node.home-ops.sh/kernel-build'
+  # The trap has to say whether a fallback is armed without being asked.
+  assert_output_contains 'kernel update did not finish; last known state of k3s-worker-0'
+  assert_output_contains '  state=S2'
+  assert_output_contains '  running_matches=fallback'
+  assert_output_contains '  booted_via_fallback=yes'
+}
+
+@test "kernel update fallback drill distinguishes an ignored block from an ignored kernel line" {
+  write_kernel_update_fakes
+
+  # The firmware honoured cmdline= from the fallback block but booted the trial
+  # kernel anyway: the node is up on the new build and nothing is armed.
+  write_fake_kernel_status "$status_after_reboot" state=S3
+  run_kernel_update k3s-worker-0 --drill-fallback --skip-smoke
+  assert_failure
+  assert_output_contains 'phase: fallback-drill'
+  assert_output_contains "fallback drill failed: the firmware honoured cmdline= but not kernel=home-ops-kernel-prev/kernel_2712.img — the node came back on ${KERNEL_TEST_BUILD_ID} (state=S3). The fallback is NOT armed on this hardware; do not proceed to the fleet. The node is running the new kernel: verify it by hand and commit, or reimage."
+  assert_output_not_contains 'phase: tryboot'
+  assert_output_not_contains 'phase: commit'
+
+  # The firmware ignored the block: the node came back on the trial kernel from
+  # the root-level boot set, with no fallback cmdline at all.
+  reset_kernel_update_state
+  write_fake_kernel_status "$status_after_reboot" state=S1
+  run_kernel_update k3s-worker-0 --drill-fallback --skip-smoke
+  assert_failure
+  assert_output_contains "fallback drill failed: the firmware ignored the fallback block (state=S1, running #1 SMP PREEMPT Debian ${KERNEL_TEST_PACKAGE_VERSION} (2026-09-28)). Do not proceed to the fleet; inspect /boot/firmware/config.txt on the node."
+  assert_output_not_contains 'phase: tryboot'
+
+  # The fallback booted, which is the drill passing; the trial follows it.
+  reset_kernel_update_state
+  run_kernel_update k3s-worker-0 --drill-fallback --skip-smoke
+  assert_success
+  assert_output_contains 'fallback_drill: true'
+  assert_output_contains "fallback drill ok: node booted ${KERNEL_TEST_PREVIOUS_PACKAGE_VERSION} from the fallback copy"
+  assert_phase_order preflight drain stage fallback-drill tryboot verify commit
+  # Two reboots, two new boot IDs: the plain one and the tryboot.
+  [[ -f "${reboot_state}/rebooted-k3s-worker-0" ]]
+  [[ -f "${reboot_state}/tryboot-rebooted-k3s-worker-0" ]]
+
+  run jq -r '.fallbackDrill | tostring' "${tmp}/kernel-update/live/k3s-worker-0/state/update.json"
+  assert_success
+  [[ "$output" == "true" ]]
+}
+
+@test "kernel update rollback installs an older recorded build" {
+  local remote_dir
+  write_kernel_update_fakes
+  # Two recorded builds, the lock pinning the newer one; the node runs it and
+  # the rollback reaches for the older one by id.
+  create_fake_kernel_build '+btf2'
+  remote_dir="/var/tmp/home-ops-kernel/${KERNEL_TEST_BUILD_ID}"
+  write_fake_kernel_status "$kernel_status_file" state=S0 \
+    "marker_build_id=${KERNEL_TEST_NEXT_BUILD_ID}" \
+    "marker_version=${KERNEL_TEST_NEXT_PACKAGE_VERSION}"
+  write_fake_kernel_status "$status_after_stage" state=S2 via=no \
+    "fallback_build_id=${KERNEL_TEST_NEXT_BUILD_ID}" \
+    "fallback_version=${KERNEL_TEST_NEXT_PACKAGE_VERSION}"
+
+  run_kernel_update k3s-worker-0 --build-id "$KERNEL_TEST_BUILD_ID" --skip-smoke
+  assert_success
+  assert_output_contains "from_build: ${KERNEL_TEST_NEXT_BUILD_ID}"
+  assert_output_contains "to_build: ${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains "  staged_build_id=${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains "labeling k3s-worker-0 with node.home-ops.sh/kernel-build=${KERNEL_TEST_BUILD_ID}"
+  assert_file_contains "$kernel_copies" "packages/${KERNEL_TEST_BUILD_ID}/SHA256SUMS ${remote_dir}/SHA256SUMS"
+  assert_file_contains "$kernel_copies" "${remote_dir}/linux-image-${KERNEL_TEST_RELEASE}_${KERNEL_TEST_DEB_VERSION}_arm64.deb"
+  assert_file_not_contains "$kernel_copies" "${KERNEL_TEST_NEXT_DEB_VERSION}_arm64.deb"
+  assert_file_not_contains "$kernel_copies" "${KERNEL_TEST_NEXT_BUILD_ID}/SHA256SUMS"
+
+  run jq -r '[.fromBuildId, .toBuildId] | join("|")' "${tmp}/kernel-update/live/k3s-worker-0/state/update.json"
+  assert_success
+  assert_output_contains "${KERNEL_TEST_NEXT_BUILD_ID}|${KERNEL_TEST_BUILD_ID}"
+}
+
+@test "kernel update reboot timeout prints power-cycle guidance" {
+  write_kernel_update_fakes
+
+  run_kernel_update NODE_KERNEL_UPDATE_REBOOT_TIMEOUT=1 FAKE_BOOT_ID_FROZEN=1 \
+    k3s-worker-0 --skip-smoke
+  assert_failure
+  assert_output_contains "the trial boot of ${KERNEL_TEST_BUILD_ID} did not report Ready within 1s; power-cycle k3s-worker-0: config.txt boots the previous kernel (${KERNEL_TEST_PREVIOUS_PACKAGE_VERSION}). Then rerun to retry, or rerun with --build-id ${KERNEL_TEST_PREVIOUS_BUILD_ID} to roll back"
+  assert_output_not_contains 'phase: verify'
+  assert_output_not_contains 'phase: commit'
+  [[ "$(kernel_node_calls)" == "prepare stage" ]]
+}
+
+@test "kernel update prepare runs on a retry from S2 without re-draining" {
+  write_kernel_update_fakes
+  write_fake_kernel_status "$kernel_status_file" state=S2
+
+  run_kernel_update FAKE_NODE_CORDONED=true k3s-worker-0 --skip-smoke
+  assert_success
+  assert_output_contains "WARN: the last trial of ${KERNEL_TEST_BUILD_ID} fell back to ${KERNEL_TEST_PREVIOUS_BUILD_ID}; this run re-stages ${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains 'node_state: S2'
+  assert_output_contains 'node already drained: k3s-worker-0'
+  [[ ! -s "$drain_calls" ]]
+  [[ "$(kernel_node_calls)" == "prepare stage commit" ]]
+}
+
 @test "node lifecycle command help paths remain available" {
   local script
   for script in \
@@ -2397,6 +2616,7 @@ EOF
     hack/bootstrap/nodes/reimage-stage.sh \
     hack/bootstrap/nodes/reimage-reboot.sh \
     hack/bootstrap/nodes/reimage-full.sh \
+    hack/bootstrap/nodes/kernel-update.sh \
     hack/bootstrap/nodes/refresh-ssh-host-key.sh \
     hack/bootstrap/ansible/node-control-plane.sh; do
     run "${ROOT}/${script}" --help

@@ -68,14 +68,18 @@ create_kernel_test_archive() {
     -o "${suite_dir}/InRelease" "${suite_dir}/Release" >/dev/null
 }
 
+# write_kernel_test_lock FILE [BUILD_SUFFIX] writes a source lock. The suffix
+# picks which build the lock pins, which is how a test gets two recorded builds
+# from one fake source package.
 write_kernel_test_lock() {
   local lock="$1"
+  local build_suffix="${2:-+btf1}"
   mkdir -p "$(dirname "$lock")"
   cat >"$lock" <<EOF
 ---
 package: linux
 version: "${KERNEL_TEST_SOURCE_VERSION}"
-buildSuffix: "+btf1"
+buildSuffix: "${build_suffix}"
 configDeltaSha256: $(kernel_test_sha256 "${ROOT}/hack/bootstrap/nodes/kernel/config.2712.delta")
 kernelRelease: ${KERNEL_TEST_RELEASE}
 archiveUrl: http://archive.invalid/debian
@@ -111,12 +115,16 @@ EOF
   chmod +x "$fake_kernel_guest"
 }
 
-# create_fake_kernel_build builds a kernel build state from a test lock and the
-# fake guest. Sets kernel_test_lock and kernel_test_output_root.
+# create_fake_kernel_build [BUILD_SUFFIX] builds a kernel build state from a
+# test lock and the fake guest. Sets kernel_test_lock and
+# kernel_test_output_root. Called twice with different suffixes it records two
+# builds under one output root, and leaves the lock pinning the last one, which
+# is what a rollback test needs.
 create_fake_kernel_build() {
+  local build_suffix="${1:-+btf1}"
   kernel_test_lock="${tmp}/kernel/source.yaml"
   kernel_test_output_root="${tmp}/kernel-out"
-  write_kernel_test_lock "$kernel_test_lock"
+  write_kernel_test_lock "$kernel_test_lock" "$build_suffix"
   write_fake_kernel_guest
   NODE_KERNEL_SOURCE_LOCK="$kernel_test_lock" \
     NODE_KERNEL_OUTPUT_ROOT="$kernel_test_output_root" \
@@ -420,34 +428,109 @@ run_kernel_node() {
   run "${cmd[@]}" "$@"
 }
 
-# write_fake_kernel_status FILE writes the status block of a clean node, the
-# shape the fake ansible hands back for "home-ops-kernel-update status". Tests
-# rewrite the file between phases, or drop a line from it to stand in for a
-# truncated read.
+# The kernel build a node ran before the one under test: what "stage" copies
+# into the fallback directory, and what a fallback boot comes back on. No build
+# is recorded for it -- it only ever appears in a status block.
+KERNEL_TEST_PREVIOUS_PACKAGE_VERSION='1:6.18.42-1+rpt1+btf1'
+KERNEL_TEST_PREVIOUS_RELEASE='6.18.42+rpt-rpi-2712'
+KERNEL_TEST_PREVIOUS_BUILD_ID='6.18.42-1-rpt1-btf1'
+
+# write_fake_kernel_status FILE [KEY=VALUE]... writes the status block the fake
+# ansible hands back for "home-ops-kernel-update status". With no overrides it
+# is a clean S0 node.
+#
+# "state=S0|S1|S2|S3" sets the fields the node-side tool derives from that
+# state -- fallback_copy, config_fallback_block, tryboot_present,
+# trial_pending, running_matches, booted_via_fallback, and the running and
+# fallback versions -- so a test names the state and only what else it cares
+# about. Every other KEY=VALUE then overrides one line, "via=" as a shorthand
+# for booted_via_fallback, which is how a test builds a deliberately
+# inconsistent block (a staged-not-rebooted S2 is "state=S2 via=no"). An
+# unknown key is an error, not a silently dropped argument.
+#
+# The fake ansible re-reads this file on every status call, and its stage,
+# tryboot and plain-reboot branches copy FAKE_KERNEL_STATUS_AFTER_STAGE,
+# FAKE_KERNEL_STATUS_AFTER_TRYBOOT and FAKE_KERNEL_STATUS_AFTER_REBOOT over it
+# when those are set: that is how one test expresses a node whose state changes
+# between phases (S0, then S2 once staged, then S1 once trial-booted).
 write_fake_kernel_status() {
   local file="$1"
-  cat >"$file" <<EOF
-running_release=${KERNEL_TEST_RELEASE}
-running_build=#1 SMP PREEMPT Debian ${KERNEL_TEST_PACKAGE_VERSION} (2026-09-28)
-booted_via_fallback=no
+  shift
+  local state=S0 override key value block
+  local marker_id="$KERNEL_TEST_BUILD_ID"
+  local marker_version="$KERNEL_TEST_PACKAGE_VERSION"
+  local marker_release="$KERNEL_TEST_RELEASE"
+  local fallback_copy=no fallback_block=no tryboot=no trial=no matches=marker via=no
+  local fallback_id="" fallback_version="" fallback_release=""
+  local running_release running_version
+
+  for override in "$@"; do
+    [[ "$override" == state=* ]] || continue
+    state="${override#state=}"
+  done
+  case "$state" in
+    S0) ;;
+    S1) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=marker via=no ;;
+    S2) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=fallback via=yes ;;
+    # S3 is every other combination; this one is the firmware that honoured
+    # cmdline= but not kernel=, which is the one a flow has to name.
+    S3) fallback_copy=yes fallback_block=yes tryboot=yes trial=yes matches=marker via=yes ;;
+    *)
+      printf 'unknown fake kernel status state: %s\n' "$state" >&2
+      return 1
+      ;;
+  esac
+  if [[ "$fallback_copy" == yes ]]; then
+    fallback_id="$KERNEL_TEST_PREVIOUS_BUILD_ID"
+    fallback_version="$KERNEL_TEST_PREVIOUS_PACKAGE_VERSION"
+    fallback_release="$KERNEL_TEST_PREVIOUS_RELEASE"
+  fi
+  running_release="$marker_release"
+  running_version="$marker_version"
+  if [[ "$matches" == fallback ]]; then
+    running_release="$fallback_release"
+    running_version="$fallback_version"
+  fi
+
+  block="$(
+    cat <<EOF
+running_release=${running_release}
+running_build=#1 SMP PREEMPT Debian ${running_version} (2026-09-28)
+booted_via_fallback=${via}
 boot_files_present=yes
 marker_present=yes
-marker_build_id=${KERNEL_TEST_BUILD_ID}
-marker_version=${KERNEL_TEST_PACKAGE_VERSION}
-marker_release=${KERNEL_TEST_RELEASE}
-installed_version=${KERNEL_TEST_PACKAGE_VERSION}
-fallback_copy=no
-fallback_version=
-fallback_release=
-fallback_build_id=
-config_fallback_block=no
-tryboot_present=no
+marker_build_id=${marker_id}
+marker_version=${marker_version}
+marker_release=${marker_release}
+installed_version=${marker_version}
+fallback_copy=${fallback_copy}
+fallback_version=${fallback_version}
+fallback_release=${fallback_release}
+fallback_build_id=${fallback_id}
+config_fallback_block=${fallback_block}
+tryboot_present=${tryboot}
 reimage_staged=no
-trial_pending=no
-running_matches=marker
-state=S0
+trial_pending=${trial}
+running_matches=${matches}
+state=${state}
 boot_free_bytes=60000000
 boot_set_bytes=12288
 holds=4
 EOF
+  )"
+
+  for override in "$@"; do
+    key="${override%%=*}"
+    value="${override#*=}"
+    [[ "$key" != via ]] || key=booted_via_fallback
+    grep -q "^${key}=" <<<"$block" || {
+      printf 'unknown fake kernel status key: %s\n' "$key" >&2
+      return 1
+    }
+    block="$(awk -v key="$key" -v value="$value" '
+      index($0, key "=") == 1 { print key "=" value; next }
+      { print }
+    ' <<<"$block")"
+  done
+  printf '%s\n' "$block" >"$file"
 }
