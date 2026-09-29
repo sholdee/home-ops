@@ -2752,14 +2752,39 @@ EOF
   [[ "$(kernel_node_calls)" == "commit" ]]
 }
 
+@test "kernel update that labels but cannot record state points at the next command" {
+  write_kernel_update_fakes
+  # The state directory cannot be created because a file already sits where it
+  # belongs: the flow reaches the state write with everything else done.
+  mkdir -p "${tmp}/kernel-update/live/k3s-worker-0"
+  printf 'not a directory\n' >"${tmp}/kernel-update/live/k3s-worker-0/state"
+
+  run_kernel_update k3s-worker-0 --skip-smoke
+  assert_failure
+  assert_output_contains "labeling k3s-worker-0 with node.home-ops.sh/kernel-build=${KERNEL_TEST_BUILD_ID}"
+  assert_output_contains 'could not create'
+  assert_output_contains 'the kernel update completed on k3s-worker-0 but its state file was not recorded.'
+  assert_output_contains 'next=just node-status k3s-worker-0 && just node-uncordon k3s-worker-0'
+  # The label is already on the node; telling the operator to apply it again is
+  # the same false guidance as promising an armed fallback.
+  assert_output_not_contains 'label it with'
+  assert_output_not_contains 'config.txt boots the previous kernel'
+}
+
 @test "kernel update refuses to run while another update holds the lock" {
   write_kernel_update_fakes
   mkdir -p "${tmp}/kernel-update/.update.lock"
-  printf 'node=k3s-worker-1\n' >"${tmp}/kernel-update/.update.lock/info"
+  printf 'node=k3s-worker-1\ncontext=test\nstarted_at=2026-09-28T09:14:02Z\n' \
+    >"${tmp}/kernel-update/.update.lock/info"
 
   run_kernel_update k3s-worker-0 --skip-smoke
   assert_failure
   assert_output_contains "another node-kernel-update appears to be running: ${tmp}/kernel-update/.update.lock"
+  # Whose lock it is decides whether to wait or to clear it, so say both.
+  assert_output_contains 'lock_info:'
+  assert_output_contains '  node=k3s-worker-1'
+  assert_output_contains '  started_at=2026-09-28T09:14:02Z'
+  assert_output_contains "if no run is in progress, remove it with: rm -rf ${tmp}/kernel-update/.update.lock"
   # The other run still owns its lock: a refused run must not clear it.
   [[ -f "${tmp}/kernel-update/.update.lock/info" ]]
   [[ "$(kernel_node_calls)" == "" ]]

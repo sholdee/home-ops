@@ -108,6 +108,7 @@ to_id=""
 # the moment the commit succeeds.
 staged=false
 committed=false
+labeled=false
 # One kernel update at a time: every node stages through the same per-build
 # package directory under the output root, so two runs would rebuild it under
 # each other. The lock sits above the profile because that directory does.
@@ -147,8 +148,15 @@ on_exit() {
   fi
   ((status != 0)) || return 0
   if [[ "$committed" == true ]]; then
-    printf 'commit completed on %s; label it with: kubectl --context %s label node/%s %s=%s --overwrite\n' \
-      "$kubernetes_node" "$context" "$kubernetes_node" "$NODE_KERNEL_BUILD_LABEL_KEY" "$to_id" >&2
+    if [[ "$labeled" == true ]]; then
+      {
+        printf 'the kernel update completed on %s but its state file was not recorded.\n' "$kubernetes_node"
+        printf 'next=%s\n' "just node-status ${inventory_node} && just node-uncordon ${inventory_node}"
+      } >&2
+    else
+      printf 'commit completed on %s; label it with: kubectl --context %s label node/%s %s=%s --overwrite\n' \
+        "$kubernetes_node" "$context" "$kubernetes_node" "$NODE_KERNEL_BUILD_LABEL_KEY" "$to_id" >&2
+    fi
     return 0
   fi
   [[ "$staged" == true ]] || return 0
@@ -175,7 +183,14 @@ trap on_exit EXIT
 
 mkdir -p "$(dirname "$lock_dir")" || node_die "could not create $(dirname "$lock_dir")"
 if ! mkdir "$lock_dir" 2>/dev/null; then
-  node_die "another node-kernel-update appears to be running: ${lock_dir}"
+  # Who holds it and since when decides whether it is a live run or a crash.
+  if [[ -f "${lock_dir}/info" ]]; then
+    {
+      printf 'lock_info:\n'
+      node_indent_block <"${lock_dir}/info"
+    } >&2
+  fi
+  node_die "another node-kernel-update appears to be running: ${lock_dir}; if no run is in progress, remove it with: rm -rf ${lock_dir}"
 fi
 lock_owned=true
 printf 'node=%s\ncontext=%s\nstarted_at=%s\n' \
@@ -433,6 +448,7 @@ done <<<"$commit_output"
 
 node_log "phase: kernel-build-label"
 node_reimage_label_kernel_build "$profile" "$context" "$inventory_node" "$kubernetes_node" "$to_id"
+labeled=true
 
 update_state="$(node_kernel_update_write_state \
   "$profile" \
