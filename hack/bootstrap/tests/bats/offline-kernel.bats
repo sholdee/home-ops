@@ -1282,7 +1282,11 @@ EOF
 
   run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; printf '%s\n' \"\${NODE_KERNEL_UPDATE_STATUS_KEYS[@]}\" | sort -u"
   assert_success
-  [[ "$output" == "$printed" ]]
+  if [[ "$output" != "$printed" ]]; then
+    printf 'status key drift (< node tool, > validator):\n' >&2
+    diff <(printf '%s\n' "$printed") <(printf '%s\n' "$output") >&2 || true
+    return 1
+  fi
 }
 
 @test "kernel update package dir carries SHA256SUMS and kernel-build.env that match the build state" {

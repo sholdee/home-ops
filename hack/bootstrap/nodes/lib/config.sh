@@ -49,6 +49,7 @@ NODE_KERNEL_UPDATE_BIN="/usr/local/sbin/home-ops-kernel-update"
 NODE_KERNEL_UPDATE_REMOTE_DIR="/var/tmp/home-ops-kernel"
 # shellcheck disable=SC2034
 NODE_KERNEL_UPDATE_SCHEMA="home-ops.node-kernel-update/v1"
+NODE_KERNEL_UPDATE_SMOKE_NAMESPACE="${NODE_KERNEL_UPDATE_SMOKE_NAMESPACE:-home-ops-kernel-smoke}"
 # shellcheck disable=SC2034
 NODE_KERNEL_UPDATE_SMOKE_IMAGE="busybox:1.38.0@sha256:fd7dc98638c8e305f4dc34e979f1c0fdfdcaeb0fbf8fcff77ae834b6da3d7e6e"
 NODE_CURL_BIN="${NODE_CURL_BIN:-curl}"

@@ -100,5 +100,6 @@ node_confirm "$yes" "reboot ${inventory_node} into tryboot reimage"
 stage_dir="$(node_reimage_inventory_stage_dir "$profile" "$inventory_node")"
 
 node_log "rebooting ${inventory_node} with one-shot tryboot flag"
-node_reimage_tryboot_reboot "$profile" "$inventory_node" "${stage_dir}/reboot.log" home-ops-reimage-tryboot
+node_reimage_tryboot_reboot "$profile" "$inventory_node" "${stage_dir}/reboot.log" \
+  home-ops-reimage-tryboot "Home Ops one-shot tryboot reimage reboot"
 node_log "tryboot reboot scheduled: ${inventory_node}"

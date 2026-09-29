@@ -684,6 +684,10 @@ if [[ "$joined_args" == *"0 tryboot"* ]]; then
   if [[ -n "${FAKE_REBOOT_STATE_DIR:-}" ]]; then
     mkdir -p "$FAKE_REBOOT_STATE_DIR"
     touch "${FAKE_REBOOT_STATE_DIR}/tryboot-rebooted-${target}"
+    {
+      sed -n 's/^ *--unit=\(.*\) \\$/unit=\1/p' <<<"$joined_args"
+      sed -n 's/^ *--description="\(.*\)" \\$/description=\1/p' <<<"$joined_args"
+    } >"${FAKE_REBOOT_STATE_DIR}/tryboot-unit-${target}"
   fi
   printf 'tryboot_reboot_scheduled=true\n'
   exit 0
@@ -732,8 +736,9 @@ if [[ "$joined_args" == *"home-ops-kernel-update commit"* ]]; then
 fi
 
 if [[ "$joined_args" == *"rm -rf /var/tmp/home-ops-kernel"* ]]; then
-  printf 'recreate %s\n' \
-    "$(sed -n 's/^rm -rf \(.*\)$/\1/p' <<<"$joined_args" | sed -n '1p')" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  recreated="$(sed -n 's/^rm -rf \(.*\)$/\1/p' <<<"$joined_args" | sed -n '1p')"
+  printf 'recreate %s\n' "$recreated" >>"${FAKE_KERNEL_CALLS:-/dev/null}"
+  printf 'recreate %s\n' "$recreated" >>"${FAKE_KERNEL_COPIES:-/dev/null}"
   exit 0
 fi
 
@@ -1504,9 +1509,11 @@ EOF
   chmod +x "$fake_stale_pods_kubectl"
 }
 
-# write_cnpg_kubectl answers the two reads node_assert_no_cnpg_primary makes.
-# FAKE_CNPG_CRD=absent makes the cluster CRD missing; FAKE_CNPG_PRIMARY_NODE
-# says which node the pg-1 instance pod runs on.
+# write_cnpg_kubectl answers the CRD probe and the two reads
+# node_assert_no_cnpg_primary makes. FAKE_CNPG_CRD=absent removes the cluster
+# CRD; FAKE_CNPG_PRIMARY_NODE and FAKE_CNPG_OTHER_PRIMARY_NODE place the pg-1
+# instance pod of db/pg and of the same-named db2/pg; FAKE_CNPG_WARN=1 adds the
+# kind of deprecation warning kubectl writes to stderr beside valid JSON.
 write_cnpg_kubectl() {
   fake_cnpg_kubectl="${tmp}/kubectl-cnpg"
   cat > "$fake_cnpg_kubectl" <<'EOF'
@@ -1517,16 +1524,31 @@ if [[ "${1:-}" == "--context" ]]; then
   shift 2
 fi
 
-if [[ "${1:-}" == "get" && "${2:-}" == "clusters.postgresql.cnpg.io" ]]; then
+warn() {
+  [[ "${FAKE_CNPG_WARN:-0}" == 1 ]] || return 0
+  printf 'W0928 09:14:02.118201   1234 warnings.go:70] postgresql.cnpg.io/v1 Cluster is deprecated\n' >&2
+}
+
+if [[ "${1:-}" == "get" && "${2:-}" == "crd/clusters.postgresql.cnpg.io" ]]; then
   if [[ "${FAKE_CNPG_CRD:-present}" == absent ]]; then
-    printf 'error: the server doesn'"'"'t have a resource type "clusters"\n' >&2
+    printf 'Error from server (NotFound): customresourcedefinitions.apiextensions.k8s.io "clusters.postgresql.cnpg.io" not found\n' >&2
     exit 1
   fi
+  printf '{"metadata":{"name":"clusters.postgresql.cnpg.io"}}\n'
+  exit 0
+fi
+
+if [[ "${1:-}" == "get" && "${2:-}" == "clusters.postgresql.cnpg.io" ]]; then
+  warn
   cat <<'JSON'
 {
   "items": [
     {
       "metadata": {"name": "pg", "namespace": "db"},
+      "status": {"currentPrimary": "pg-1"}
+    },
+    {
+      "metadata": {"name": "pg", "namespace": "db2"},
       "status": {"currentPrimary": "pg-1"}
     },
     {
@@ -1540,6 +1562,7 @@ JSON
 fi
 
 if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
+  warn
   cat <<JSON
 {
   "items": [
@@ -1550,6 +1573,10 @@ if [[ "${1:-}" == "get" && "${2:-}" == "pods" ]]; then
     {
       "metadata": {"name": "pg-2", "namespace": "db"},
       "spec": {"nodeName": "k3s-worker-0"}
+    },
+    {
+      "metadata": {"name": "pg-1", "namespace": "db2"},
+      "spec": {"nodeName": "${FAKE_CNPG_OTHER_PRIMARY_NODE:-k3s-worker-2}"}
     }
   ]
 }
@@ -1566,7 +1593,11 @@ EOF
 # write_smoke_kubectl backs node_kernel_update_cni_smoke with a pod that takes
 # two reads to disappear after a delete, so a flow that does not wait for the
 # delete meets the pod it just asked to remove. FAKE_SMOKE_STATE_DIR holds the
-# object state, FAKE_SMOKE_PHASE the phase reported, FAKE_SMOKE_LOG the log.
+# object state, FAKE_SMOKE_PHASE the phase reported, FAKE_SMOKE_LOG the log,
+# FAKE_SMOKE_WAITING_REASON a container waiting reason to report with it.
+# FAKE_SMOKE_GET_FAIL_ONCE=1 fails the first phase read and
+# FAKE_SMOKE_LOGS_FAIL=1 every log read, the two API blips the flow has to
+# tell apart.
 write_smoke_kubectl() {
   fake_smoke_kubectl="${tmp}/kubectl-smoke"
   cat > "$fake_smoke_kubectl" <<'EOF'
@@ -1616,6 +1647,11 @@ case "${verb}" in
         exit 1
         ;;
       pod/*)
+        if [[ "${FAKE_SMOKE_GET_FAIL_ONCE:-0}" == 1 && "$extra" == *"-o json"* && ! -f "${state}/get-failed" ]]; then
+          touch "${state}/get-failed"
+          printf 'error: Get "https://10.0.0.1:6443/api/v1/...": dial tcp: connect: connection refused\n' >&2
+          exit 1
+        fi
         if [[ -f "${state}/deleting" ]]; then
           linger="$(cat "${state}/linger" 2>/dev/null || printf '0')"
           linger=$((linger - 1))
@@ -1628,8 +1664,12 @@ case "${verb}" in
           printf 'Error from server (NotFound): pods "%s" not found\n' "${target#pod/}" >&2
           exit 1
         fi
-        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s"}}\n' \
-          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}"
+        waiting='null'
+        if [[ -n "${FAKE_SMOKE_WAITING_REASON:-}" ]]; then
+          waiting="{\"reason\":\"${FAKE_SMOKE_WAITING_REASON}\",\"message\":\"back-off pulling image\"}"
+        fi
+        printf '{"metadata":{"name":"%s"},"status":{"phase":"%s","containerStatuses":[{"state":{"waiting":%s}}]}}\n' \
+          "${target#pod/}" "${FAKE_SMOKE_PHASE:-Succeeded}" "$waiting"
         exit 0
         ;;
     esac
@@ -1661,6 +1701,10 @@ case "${verb}" in
     exit 0
     ;;
   logs)
+    if [[ "${FAKE_SMOKE_LOGS_FAIL:-0}" == 1 ]]; then
+      printf 'Error from server (BadRequest): container "smoke" in pod is waiting to start\n' >&2
+      exit 1
+    fi
     printf '%s\n' "${FAKE_SMOKE_LOG:-cni-smoke-ok}"
     exit 0
     ;;

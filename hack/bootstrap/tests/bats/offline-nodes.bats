@@ -1114,6 +1114,9 @@ true'" > "$script"
   assert_output_contains 'force enabled; skipping Kubernetes node-absent check'
   assert_output_contains 'tryboot reboot scheduled: k3s-worker-0'
   [[ -f "${tmp}/reimage-reboot-state/tryboot-rebooted-k3s-worker-0" ]]
+  assert_file_contains "${tmp}/reimage-reboot-state/tryboot-unit-k3s-worker-0" 'unit=home-ops-reimage-tryboot'
+  assert_file_contains "${tmp}/reimage-reboot-state/tryboot-unit-k3s-worker-0" \
+    'description=Home Ops one-shot tryboot reimage reboot'
 }
 
 @test "node reimage reboot rejects stale staged manifest identity" {
@@ -2122,21 +2125,36 @@ EOF
   write_cnpg_kubectl
 
   run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
   assert_success
 
+  # kubectl writes deprecation warnings to stderr beside the JSON it returns.
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_WARN=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_success
+
+  # db/pg and db2/pg share a name and an instance name: only the one whose
+  # instance pod is on this node is a finding.
   run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_PRIMARY_NODE=k3s-worker-0 \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
   assert_failure
   assert_output_contains 'db/pg (pg-1)'
   assert_output_contains 'CloudNativePG primary instances are on k3s-worker-0'
   assert_output_contains 'kubectl cnpg --context test -n <ns> promote <cluster> <instance-on-another-node>'
-  # A standby on the node, and a cluster with no primary at all, are not findings.
+  # A standby on the node, a cluster with no primary, and a same-named cluster
+  # whose primary is elsewhere are not findings.
   assert_output_not_contains 'pg-2'
   assert_output_not_contains 'db/idle'
+  assert_output_not_contains 'db2/pg'
+
+  run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_OTHER_PRIMARY_NODE=k3s-worker-0 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+  assert_failure
+  assert_output_contains 'db2/pg (pg-1)'
+  assert_output_not_contains 'db/pg (pg-1)'
 
   run env NODE_KUBECTL_BIN="$fake_cnpg_kubectl" FAKE_CNPG_CRD=absent \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_assert_no_cnpg_primary test k3s-worker-0"
   assert_success
 }
 
@@ -2184,11 +2202,15 @@ EOF
 
   run env PATH="${tmp}:${PATH}" NODE_LIVE_INVENTORY_DIR="$inventory" FAKE_KERNEL_COPIES="$copies" \
     FAKE_KERNEL_CALLS="$calls" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_ship live k3s-worker-0 '${package_dir}'"
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_ship live k3s-worker-0 '${package_dir}' 2>'${tmp}/ship.err'"
   assert_success
+  # stdout is the remote directory and nothing else; progress goes to stderr.
   [[ "$output" == "$remote_dir" ]]
-  # A deb from an aborted ship must not survive into this one.
+  assert_file_contains "${tmp}/ship.err" "shipping kernel build ${KERNEL_TEST_NEXT_BUILD_ID} to k3s-worker-0"
+  # A deb from an aborted ship must not survive into this one: the recreate
+  # has to come before every copy, not merely happen.
   assert_file_contains "$calls" "recreate ${remote_dir}"
+  [[ "$(head -1 "$copies")" == "recreate ${remote_dir}" ]]
   assert_file_contains "$copies" "hack/bootstrap/nodes/kernel/update-node.sh /usr/local/sbin/home-ops-kernel-update"
   assert_file_contains "$copies" "${package_dir}/SHA256SUMS ${remote_dir}/SHA256SUMS"
   assert_file_contains "$copies" "${package_dir}/kernel-build.env ${remote_dir}/kernel-build.env"
@@ -2203,6 +2225,11 @@ EOF
   run bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cmdline_args | paste -sd' ' -"
   assert_success
   assert_output_contains '--cmdline-arg cgroup_enable=cpuset --cmdline-arg cgroup_memory=1'
+
+  run env NODE_REIMAGE_ANSIBLE_DEFAULTS_FILE="${tmp}/no-such-defaults.yml" \
+    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cmdline_args"
+  assert_failure
+  assert_output_contains 'Ansible defaults file not found'
 }
 
 @test "kernel update cni smoke passes on Succeeded and fails on a Failed pod" {
@@ -2215,7 +2242,7 @@ EOF
   touch "${state}/pod"
 
   run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
   assert_success
   assert_output_contains 'cni_smoke=ok'
   [[ -f "${state}/namespace" ]]
@@ -2224,6 +2251,7 @@ EOF
   assert_file_contains "${state}/manifest" 'name: smoke-k3s-worker-0'
   assert_file_contains "${state}/manifest" 'nodeName: k3s-worker-0'
   assert_file_contains "${state}/manifest" 'restartPolicy: Never'
+  assert_file_contains "${state}/manifest" 'activeDeadlineSeconds: 120'
   assert_file_contains "${state}/manifest" '- operator: Exists'
   assert_file_contains "${state}/manifest" 'imagePullPolicy: IfNotPresent'
   assert_file_contains "${state}/manifest" 'echo cni-smoke-ok'
@@ -2235,10 +2263,65 @@ EOF
   mkdir -p "$state"
   run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" FAKE_SMOKE_PHASE=Failed \
     FAKE_SMOKE_LOG="nslookup: can't resolve 'kubernetes.default.svc.cluster.local'" \
-    bash -c "source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
   assert_failure
   assert_output_contains 'CNI smoke pod failed on k3s-worker-0'
   assert_output_contains "nslookup: can't resolve 'kubernetes.default.svc.cluster.local'"
+
+  # A pod that succeeded without saying so is still a failed smoke.
+  rm -rf "$state"
+  mkdir -p "$state"
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" FAKE_SMOKE_LOG=hello \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+  assert_failure
+  assert_output_contains 'did not report cni-smoke-ok'
+}
+
+@test "kernel update cni smoke rides out an API blip and cleans up after a lost log read" {
+  local state
+  write_smoke_kubectl
+  state="${tmp}/smoke-state"
+  mkdir -p "$state"
+
+  # One unreadable poll is the API server reconnecting, not a verdict.
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
+    FAKE_SMOKE_GET_FAIL_ONCE=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 60"
+  assert_success
+  assert_output_contains 'cni_smoke=ok'
+  [[ -f "${state}/get-failed" ]]
+  [[ ! -f "${state}/pod" ]]
+
+  # Read as a statement rather than in a substitution, the log helper must not
+  # abort a set -e caller: a pod that never ran has no logs to read.
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" FAKE_SMOKE_LOGS_FAIL=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_smoke_log test ns pod-x; printf 'reached_caller\n'"
+  assert_success
+  assert_output_contains '<no output>'
+  assert_output_contains 'reached_caller'
+
+  # A lost log read is an explicit verdict, and still leaves nothing behind.
+  rm -rf "$state"
+  mkdir -p "$state"
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" FAKE_SMOKE_LOGS_FAIL=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 30"
+  assert_failure
+  assert_output_contains 'did not report cni-smoke-ok'
+  [[ ! -f "${state}/pod" ]]
+}
+
+@test "kernel update cni smoke names the container waiting reason when it never runs" {
+  local state
+  write_smoke_kubectl
+  state="${tmp}/smoke-state"
+  mkdir -p "$state"
+
+  run env FAKE_SMOKE_STATE_DIR="$state" NODE_KUBECTL_BIN="$fake_smoke_kubectl" \
+    FAKE_SMOKE_PHASE=Pending FAKE_SMOKE_WAITING_REASON=ImagePullBackOff FAKE_SMOKE_LOGS_FAIL=1 \
+    bash -c "set -euo pipefail; source '${ROOT}/hack/bootstrap/nodes/lib.sh'; node_kernel_update_cni_smoke test k3s-worker-0 0"
+  assert_failure
+  assert_output_contains 'timed out waiting for the CNI smoke pod on k3s-worker-0 (phase=Pending)'
+  assert_output_contains 'ImagePullBackOff'
 }
 
 @test "node lifecycle command help paths remain available" {

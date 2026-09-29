@@ -303,13 +303,13 @@ node_assert_no_cnpg_primary() {
   local node="$2"
   local clusters_json pods_json primaries
 
-  if ! clusters_json="$(node_kubectl "$context" get clusters.postgresql.cnpg.io -A -o json 2>&1)"; then
-    case "$clusters_json" in
-      *"the server doesn't have a resource type"*) return 0 ;;
-    esac
-    node_die "CloudNativePG clusters are not readable in ${context}: ${clusters_json}"
-  fi
-  pods_json="$(node_kubectl "$context" get pods -A -l cnpg.io/cluster -o json 2>/dev/null)" ||
+  # Probe the CRD rather than reading kubectl's error text: a cluster without
+  # CloudNativePG is not a finding, and stderr must stay out of the JSON --
+  # one deprecation warning merged into it would break jq and block the update.
+  node_has_resource "$context" crd/clusters.postgresql.cnpg.io || return 0
+  clusters_json="$(node_get_json "$context" clusters.postgresql.cnpg.io -A 2>/dev/null)" ||
+    node_die "CloudNativePG clusters are not readable in ${context}"
+  pods_json="$(node_get_json "$context" pods -A -l cnpg.io/cluster 2>/dev/null)" ||
     node_die "CloudNativePG instance pods are not readable in ${context}"
 
   # shellcheck disable=SC2016

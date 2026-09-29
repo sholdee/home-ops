@@ -5,8 +5,6 @@
 # run; these helpers pick the build, stage its packages, ship both, read the
 # node's status back, and drive the Kubernetes side of the trial reboot.
 
-NODE_KERNEL_UPDATE_SMOKE_NAMESPACE="home-ops-kernel-smoke"
-
 # Every key nodes/kernel/update-node.sh status_fields prints. A status block
 # missing one of them is a truncated read -- a half-written line or a filtered
 # transport -- and not a node in a strange state, so the flow must stop rather
@@ -112,6 +110,8 @@ EOF
   node_run_remote_shell "$(node_ansible_inventory_file "$profile")" "$inventory_node" "$remote_script" >/dev/null ||
     node_die "could not prepare ${remote_dir} on ${inventory_node}"
 
+  # Progress goes to stderr: this function's stdout is the remote directory.
+  node_log "shipping kernel build ${build_id} to ${inventory_node}" >&2
   node_reimage_ansible_copy "$profile" "$inventory_node" \
     "$NODE_KERNEL_UPDATE_SCRIPT" "$NODE_KERNEL_UPDATE_BIN" 0755 ||
     node_die "could not install ${NODE_KERNEL_UPDATE_BIN} on ${inventory_node}"
@@ -119,7 +119,7 @@ EOF
     [[ -f "$file" ]] || continue
     node_reimage_ansible_copy "$profile" "$inventory_node" \
       "$file" "${remote_dir}/$(basename "$file")" 0644 ||
-      node_die "could not ship $(basename "$file") to ${inventory_node}"
+      node_die "could not ship $(basename "$file") to ${inventory_node}:${remote_dir} (check free space on /var/tmp)"
   done
 
   printf '%s\n' "$remote_dir"
@@ -176,7 +176,12 @@ node_kernel_update_remote() {
 
 # node_kernel_update_cmdline_args prints the repo's Raspberry Pi cmdline args
 # as "--cmdline-arg X" pairs, one token per line. They go to stage, which adds
-# them to the trial line only, and never to prepare.
+# them to the trial line only, and never to prepare. Read it through a plain
+# command substitution, never process substitution, which would swallow the
+# node_die and stage a node with no cmdline args at all:
+#   cmdline="$(node_kernel_update_cmdline_args)" || exit 1
+#   mapfile -t cmdline_args <<<"$cmdline"
+#   ((${#cmdline_args[@]} > 0)) || node_die "no Raspberry Pi cmdline args to stage"
 node_kernel_update_cmdline_args() {
   local args arg
   local -a tokens=()
@@ -215,6 +220,7 @@ metadata:
 spec:
   nodeName: ${node}
   restartPolicy: Never
+  activeDeadlineSeconds: 120
   tolerations:
     - operator: Exists
   containers:
@@ -243,15 +249,48 @@ node_kernel_update_wait_for_pod_absent() {
   done
 }
 
-# node_kernel_update_smoke_log prints the smoke pod's last log line.
+# node_kernel_update_smoke_log prints the smoke pod's last log line. A pod that
+# never ran has no logs, so a failed read is an empty line and not a fatal
+# error: the caller decides what a missing cni-smoke-ok means.
 node_kernel_update_smoke_log() {
   local context="$1"
   local namespace="$2"
   local pod="$3"
   local logs
 
-  logs="$(node_kubectl "$context" -n "$namespace" logs "pod/${pod}" --tail=1 2>/dev/null | sed -n '$p')"
+  logs="$(node_kubectl "$context" -n "$namespace" logs "pod/${pod}" --tail=1 2>/dev/null | sed -n '$p')" ||
+    logs=""
   printf '%s\n' "${logs:-<no output>}"
+}
+
+# node_kernel_update_smoke_detail prints why the smoke pod is not running --
+# the container's waiting reason, or the first false pod condition -- with its
+# last log line. A pod stuck on an image pull has no logs at all, and that is
+# exactly the case the log line alone cannot explain.
+node_kernel_update_smoke_detail() {
+  local context="$1"
+  local namespace="$2"
+  local pod="$3"
+  local pod_json waiting logs
+
+  pod_json="$(node_get_json "$context" -n "$namespace" "pod/${pod}" 2>/dev/null)" || pod_json=""
+  waiting=""
+  if [[ -n "$pod_json" ]]; then
+    waiting="$("$NODE_JQ_BIN" -r '
+      [
+        (.status.containerStatuses[]? | .state.waiting | select(. != null) | "\(.reason // "Waiting"): \(.message // "")"),
+        (.status.conditions[]? | select(.status == "False") | .message // "")
+      ]
+      | map(select(. != null and (. | length) > 0))
+      | first // ""
+    ' <<<"$pod_json" 2>/dev/null)" || waiting=""
+  fi
+  logs="$(node_kernel_update_smoke_log "$context" "$namespace" "$pod")"
+  if [[ -n "$waiting" ]]; then
+    printf '%s; last log: %s\n' "$waiting" "$logs"
+  else
+    printf 'last log: %s\n' "$logs"
+  fi
 }
 
 # node_kernel_update_cni_smoke proves a rebooted node can still resolve
@@ -280,26 +319,30 @@ node_kernel_update_cni_smoke() {
 
   deadline=$((SECONDS + timeout))
   while true; do
+    # An unreadable pod is one more poll, not the end of the run: the API
+    # server is exactly what a just-rebooted node is still reconnecting to.
     phase="$(node_get_json "$context" -n "$namespace" "pod/${pod}" 2>/dev/null |
-      "$NODE_JQ_BIN" -r '.status.phase // ""' 2>/dev/null)"
+      "$NODE_JQ_BIN" -r '.status.phase // ""' 2>/dev/null)" || phase=""
     case "$phase" in
       Succeeded) break ;;
       Failed)
-        node_die "CNI smoke pod failed on ${node}: $(node_kernel_update_smoke_log "$context" "$namespace" "$pod")"
+        node_die "CNI smoke pod failed on ${node}: $(node_kernel_update_smoke_detail "$context" "$namespace" "$pod")"
         ;;
     esac
     ((SECONDS < deadline)) ||
-      node_die "timed out waiting for the CNI smoke pod on ${node} (phase=${phase:-unknown}): $(node_kernel_update_smoke_log "$context" "$namespace" "$pod")"
+      node_die "timed out waiting for the CNI smoke pod on ${node} (phase=${phase:-unknown}): $(node_kernel_update_smoke_detail "$context" "$namespace" "$pod")"
     sleep 5
   done
 
+  # Read the log, then remove the pod, then judge: a lost log read must still
+  # leave the node clean for the drained check that follows.
   logs="$(node_kernel_update_smoke_log "$context" "$namespace" "$pod")"
-  [[ "$logs" == *cni-smoke-ok* ]] ||
-    node_die "CNI smoke pod on ${node} did not report cni-smoke-ok: ${logs}"
-
   node_kubectl "$context" -n "$namespace" delete "pod/${pod}" --ignore-not-found --wait=false >/dev/null ||
     node_die "could not delete the CNI smoke pod: ${namespace}/${pod}"
   node_kernel_update_wait_for_pod_absent "$context" "$namespace" "$pod" "$timeout"
+
+  [[ "$logs" == *cni-smoke-ok* ]] ||
+    node_die "CNI smoke pod on ${node} did not report cni-smoke-ok: ${logs}"
   printf 'cni_smoke=ok\n'
 }
 
@@ -313,12 +356,13 @@ node_kernel_update_write_state() {
   local to_build_id="$6"
   local status="$7"
   local fallback_drill="$8"
-  local state_file
+  local state_file state_dir
 
   [[ "$fallback_drill" == true || "$fallback_drill" == false ]] ||
     node_die "fallbackDrill must be true or false: ${fallback_drill}"
   state_file="$(node_kernel_update_state_file "$profile" "$inventory_node")"
-  mkdir -p "$(dirname "$state_file")" || node_die "could not create $(dirname "$state_file")"
+  state_dir="$(dirname "$state_file")"
+  mkdir -p "$state_dir" || node_die "could not create ${state_dir}"
   # shellcheck disable=SC2016
   "$NODE_JQ_BIN" -n \
     --arg schema "$NODE_KERNEL_UPDATE_SCHEMA" \
@@ -342,6 +386,10 @@ node_kernel_update_write_state() {
       toBuildId: $toBuildId,
       status: $status,
       fallbackDrill: $fallbackDrill
-    }' >"$state_file" || node_die "could not write ${state_file}"
+    }' >"${state_file}.tmp" || {
+    rm -f "${state_file}.tmp"
+    node_die "could not write ${state_file}"
+  }
+  mv "${state_file}.tmp" "$state_file" || node_die "could not write ${state_file}"
   printf '%s\n' "$state_file"
 }
