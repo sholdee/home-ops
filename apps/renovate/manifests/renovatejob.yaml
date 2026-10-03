@@ -46,7 +46,7 @@ spec:
       value: "true"
   provider:
     name: github
-  image: renovate/renovate:44.126.0@sha256:b07b6fe34bd80fe2ce035e2053d63a0205e5f99ba3ee799447e0439f2c728002
+  image: renovate/renovate:44.131.2@sha256:372cf5a8d7e497cab4b54946040137e55094d90133cc783d6e18d561014b0ffd
   parallelism: 3
   schedule: "0 * * * *"
   secretRef: renovate-secret
