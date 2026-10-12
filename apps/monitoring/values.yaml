@@ -14,11 +14,11 @@ prometheus:
   prometheusSpec:
     replicas: 2
     image:
-      # renovate: datasource=docker depName=ghcr.io/deckhouse/prompp digest=sha256:7409826c1c85f36c00a1839f59a6849f9a654d4c036a21b93d18fadd6fe215ef
+      # renovate: datasource=docker depName=ghcr.io/deckhouse/prompp digest=sha256:6da22f4c812c3423eb326b2112eeb8885b3fc957fb0ba8c3bac31702988306b0
       registry: ghcr.io
       repository: deckhouse/prompp
-      tag: "0.8.15"
-      sha: 7409826c1c85f36c00a1839f59a6849f9a654d4c036a21b93d18fadd6fe215ef
+      tag: "0.8.16"
+      sha: 6da22f4c812c3423eb326b2112eeb8885b3fc957fb0ba8c3bac31702988306b0
       pullPolicy: IfNotPresent
     # Keep < 3.11.0: at >= 3.11.0 prometheus-operator writes storage.tsdb.retention into
     # the config file, but prompp 0.8.0's parser has no such field (err: "field retention
