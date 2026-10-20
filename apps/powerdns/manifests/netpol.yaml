@@ -128,6 +128,8 @@ spec:
         - matchLabels:
             cnpg.io/jobRole: join
             cnpg.io/cluster: powerdns-db
+        - matchLabels:
+            app: poweradmin-db-migrate
       toPorts:
         - ports:
             - port: "5432"

@@ -1,0 +1,97 @@
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/core/Job_batch_v1.json
+# ArgoCD sync hook: applies pending Poweradmin schema migrations
+# (apps/powerdns/poweradmin-migrations/) before the Poweradmin Deployment in
+# wave 0 is updated. Wave -1 runs after the CNPG Cluster (-3), Database and
+# Pooler (-2) report healthy. BeforeHookCreation replaces the previous run's
+# Job on each sync, so a finished run's logs stay until the next sync.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: poweradmin-db-migrate
+  namespace: powerdns
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 900
+  template:
+    metadata:
+      labels:
+        app: poweradmin-db-migrate
+    spec:
+      restartPolicy: Never
+      enableServiceLinks: false
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 82
+        runAsGroup: 82
+        fsGroup: 82
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          # Same image as the Poweradmin Deployment: it ships psql, so the
+          # client always matches the release whose migration is applied.
+          image: ghcr.io/poweradmin/poweradmin:4.5.0@sha256:bd17de9900e98b62a9a519520bb194e5670f25aa7d026dbeb4139f9174afbdf4
+          command:
+            - /bin/bash
+            - /opt/poweradmin-migrations/migrate.sh
+          env:
+            - name: HOME
+              value: /tmp
+            - name: MIGRATIONS_DIR
+              value: /opt/poweradmin-migrations
+            - name: DB_WAIT_TIMEOUT
+              value: "120"
+            # Direct to the CNPG rw service, not the transaction-mode pooler:
+            # DDL and the tracking row must share one session.
+            - name: PGHOST
+              value: powerdns-db-rw
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              value: powerdns
+            - name: PGCONNECT_TIMEOUT
+              value: "10"
+            # CNPG always applies superuserSecret to the postgres role, so the
+            # user is fixed here and only the password is read from the Secret.
+            - name: PGUSER
+              value: postgres
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns-db-superuser
+                  key: password
+            - name: PA_DB_APP_ROLE
+              valueFrom:
+                secretKeyRef:
+                  name: powerdns-db-app-user
+                  key: username
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: migrations
+              mountPath: /opt/poweradmin-migrations
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: migrations
+          configMap:
+            name: poweradmin-db-migrations
+        - name: tmp
+          emptyDir: {}
