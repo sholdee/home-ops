@@ -17,6 +17,10 @@ spec:
     major: 18
   primaryUpdateMethod: switchover
   primaryUpdateStrategy: unsupervised
+  # The poweradmin-db-migrate sync hook runs schema migrations as postgres
+  # (the tables are owned by postgres). CNPG blanks the postgres password
+  # unless this is enabled, so the 1Password-backed superuser Secret is live.
+  enableSuperuserAccess: true
   superuserSecret:
     name: powerdns-db-superuser
   storage:
@@ -34,6 +38,11 @@ spec:
         name: &pdns-secret powerdns-db-app-user
       dataChecksums: true
       encoding: "UTF8"
+      # Baseline schema for a fresh initdb bootstrap: PowerDNS gpgsql plus the
+      # Poweradmin schema as of v4.4.0 (#3470). Keep it frozen there. Every
+      # Poweradmin schema change since 4.4.0 lives in
+      # apps/powerdns/poweradmin-migrations/ and is applied by the
+      # poweradmin-db-migrate sync hook on both fresh and restored clusters.
       postInitApplicationSQL:
         - CREATE TABLE IF NOT EXISTS domains (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL, master VARCHAR(128) DEFAULT NULL, last_check INT DEFAULT NULL, type TEXT NOT NULL, notified_serial BIGINT DEFAULT NULL, account VARCHAR(40) DEFAULT NULL, options TEXT DEFAULT NULL, catalog TEXT DEFAULT NULL, CONSTRAINT c_lowercase_name CHECK (((name)::TEXT = LOWER((name)::TEXT))))
         - CREATE UNIQUE INDEX IF NOT EXISTS name_index ON domains(name)

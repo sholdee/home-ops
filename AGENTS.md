@@ -149,6 +149,28 @@ just bootstrap-phase argocd
   revert back to `quay.io/prometheus/prometheus` after Prom++ starts; use the
   documented reverse conversion or restore the pre-migration snapshot
 
+## PowerDNS and Poweradmin
+
+Poweradmin shares the `powerdns` CNPG database with PowerDNS and does not
+migrate its own PostgreSQL schema. Schema changes are GitOps-managed:
+
+- `apps/powerdns/poweradmin-migrations/` holds the Poweradmin PostgreSQL
+  migrations as `NNNN-poweradmin-<version>.sql`, copied from upstream
+  `sql/poweradmin-pgsql-update-to-<version>.sql`, plus `migrate.sh`
+- `Job/poweradmin-db-migrate` is an ArgoCD `Sync` hook in wave -1 that applies
+  unrecorded migrations once each, in a single transaction, as the CNPG
+  superuser, and records them in `poweradmin_schema_migrations`; it is a no-op
+  when nothing is pending
+- For a Poweradmin release that needs a schema update, add the upstream SQL as
+  the next migration file, list it in the `configMapGenerator` in
+  `apps/powerdns/kustomization.yaml`, and bump the image in the same PR; make
+  `ADD COLUMN` statements `IF NOT EXISTS` so a hand-migrated database still syncs
+- Keep `postInitApplicationSQL` in `apps/powerdns/manifests/cnpg-cluster.yaml`
+  frozen at the v4.4.0 Poweradmin baseline; the hook brings fresh and restored
+  clusters forward from there
+- `enableSuperuserAccess: true` on `powerdns-db` exists for this hook; the
+  `powerdns-db-superuser` Secret comes from 1Password
+
 ## Grafana
 
 Grafana is managed by Grafana Operator in `apps/monitoring/grafana`; the

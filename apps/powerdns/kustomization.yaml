@@ -15,10 +15,23 @@ resources:
   - manifests/cnpg-rbac.yaml
   - manifests/deployment.yaml
   - manifests/deployment-admin.yaml
+  - manifests/job-poweradmin-migrate.yaml
   - manifests/deployment-dnsdist.yaml
   - manifests/service.yaml
   - manifests/httproute.yaml
   - manifests/netpol.yaml
+# Poweradmin schema migrations applied by the poweradmin-db-migrate sync hook.
+# The name hash changes with the content, so every new migration file yields a
+# fresh ConfigMap and a fresh hook run.
+configMapGenerator:
+  - name: poweradmin-db-migrations
+    files:
+      - poweradmin-migrations/migrate.sh
+      - poweradmin-migrations/0001-poweradmin-4.5.0.sql
+    options:
+      annotations:
+        # Must exist before the wave -1 hook Job mounts it.
+        argocd.argoproj.io/sync-wave: "-2"
 patches:
   - target:
       group: postgresql.cnpg.io

@@ -94,7 +94,7 @@
       automerge: false,
     },
     {
-      description: "Exclude poweradmin from automerge - releases can require manual DB migrations (no auto-migrate on pgsql)",
+      description: "Exclude poweradmin from automerge - releases can require DB migrations; add the upstream pgsql update SQL to apps/powerdns/poweradmin-migrations/ in the same PR",
       matchDatasources: ["docker"],
       matchPackageNames: ["/poweradmin/"],
       automerge: false,
