@@ -47,7 +47,7 @@
     },
     {
       matchDatasources: ["docker"],
-      allowedVersions: "<2.40",
+      allowedVersions: "<2.46",
       matchPackageNames: ["/portainer-ee/"],
     },
     {
