@@ -401,7 +401,7 @@ spec:
         metrics:
           disableAuth: true
     repoURL: https://backube.github.io/helm-charts/
-    targetRevision: 0.16.0
+    targetRevision: 0.17.0
   syncPolicy:
     automated:
       prune: true
