@@ -36,7 +36,7 @@ spec:
         - name: migrate
           # Same image as the Poweradmin Deployment: it ships psql, so the
           # client always matches the release whose migration is applied.
-          image: ghcr.io/poweradmin/poweradmin:4.5.0@sha256:bd17de9900e98b62a9a519520bb194e5670f25aa7d026dbeb4139f9174afbdf4
+          image: ghcr.io/poweradmin/poweradmin:4.5.1@sha256:44559b65f876a1253ab70a33b76a04c416dcdd298c92609122f1694854878a64
           command:
             - /bin/bash
             - /opt/poweradmin-migrations/migrate.sh
