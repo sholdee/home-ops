@@ -85,6 +85,31 @@ runs:
         experimental: true
         github_token: ${{ github.token }}
 
+    # A prefix-restored cache (or a persistent runner) can carry pipx venvs
+    # built on a previous Python. mise keys them by tool version only, so it
+    # reports them installed and runs them on the old interpreter.
+    - name: Drop pipx venvs built on another Python
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        installs="${MISE_DATA_DIR:-${HOME}/.local/share/mise}/installs"
+        [[ -d "${installs}" ]] || exit 0
+        want="$(mise current python)"
+
+        while IFS= read -r -d '' cfg; do
+          # A version dir can hold several venvs; it may already be removed.
+          [[ -f "${cfg}" ]] || continue
+          have="$(sed -nE 's/^version(_info)? = ([0-9]+\.[0-9]+\.[0-9]+).*/\2/p' "${cfg}" | head -n 1)"
+          [[ "${have}" == "${want}" ]] && continue
+          rel="${cfg#"${installs}/"}"
+          tool="${rel%%/*}"
+          rest="${rel#*/}"
+          version_dir="${installs}/${tool}/${rest%%/*}"
+          echo "removing ${version_dir}: venv Python ${have:-unknown}, want ${want}"
+          rm -rf "${version_dir}"
+        done < <(find "${installs}" -path "${installs}/python" -prune -o -name pyvenv.cfg -print0)
+
     - name: Install locked toolchain
       shell: bash
       env:
