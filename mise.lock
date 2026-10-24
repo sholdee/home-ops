@@ -72,14 +72,17 @@ version = "1.14.0"
 backend = "aqua:bats-core/bats-core"
 
 [tools.bats."platforms.linux-arm64"]
+checksum = "sha256:bb537b70b15b732f6d8827dd6578e3d8ce166636ce1f18ea9a074184fcce9177"
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
 url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
 [tools.bats."platforms.linux-x64"]
+checksum = "sha256:bb537b70b15b732f6d8827dd6578e3d8ce166636ce1f18ea9a074184fcce9177"
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
 url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
 [tools.bats."platforms.macos-arm64"]
+checksum = "sha256:bb537b70b15b732f6d8827dd6578e3d8ce166636ce1f18ea9a074184fcce9177"
 url = "https://github.com/bats-core/bats-core/archive/refs/tags/v1.14.0.tar.gz"
 url_api = "https://api.github.com/repos/bats-core/bats-core/tarball/v1.14.0"
 
@@ -363,12 +366,15 @@ version = "2.34.0"
 backend = "aqua:1password/cli"
 
 [tools.op."platforms.linux-arm64"]
+checksum = "sha256:7b5c361a23e738a3969cf676960f4843af4aa9aa68dbec23d18a9134da428ba3"
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_arm64_v2.34.0.zip"
 
 [tools.op."platforms.linux-x64"]
+checksum = "sha256:198b05dcf9a0972778ce5a4e262c459979b0c837257b5da65e2fba6187734226"
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_linux_amd64_v2.34.0.zip"
 
 [tools.op."platforms.macos-arm64"]
+checksum = "sha256:a9c93d45ad62665c6350ed8958f281a94034a79c94e88077e530f6d129699a5d"
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_darwin_arm64_v2.34.0.zip"
 
 [[tools.oxfmt]]
