@@ -378,7 +378,7 @@ checksum = "sha256:a9c93d45ad62665c6350ed8958f281a94034a79c94e88077e530f6d129699
 url = "https://cache.agilebits.com/dist/1P/op2/pkg/v2.34.0/op_darwin_arm64_v2.34.0.zip"
 
 [[tools.oxfmt]]
-version = "0.74.0"
+version = "0.75.0"
 backend = "npm:oxfmt"
 
 [[tools.pipx]]
