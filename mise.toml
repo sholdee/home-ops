@@ -26,7 +26,7 @@ jq = "1.8.2"
 # Bootstrap, node lifecycle, and operator workflow CLIs.
 # ansible-core 2.21 supports Python up to 3.14; its dataclasses patch crashes on 3.15.
 python = "3.14.9"
-pipx = "1.18.9"
+pipx = "1.18.10"
 ansible-core = "2.21.5"
 "pipx:ansible-lint" = "26.10.1"
 kind = "0.33.0"
