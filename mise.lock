@@ -430,23 +430,26 @@ url = "https://github.com/astral-sh/python-build-standalone/releases/download/20
 provenance = "github-attestations"
 
 [[tools.rush]]
-version = "0.11.0"
+version = "0.11.1"
 backend = "aqua:shenwei356/rush"
 
 [tools.rush."platforms.linux-arm64"]
-checksum = "sha256:466931db70732296b98bfe1a1aec4a6a79c226e4aa5bc690283bb39560e708de"
-url = "https://github.com/shenwei356/rush/releases/download/v0.11.0/rush_linux_arm64.tar.gz"
-url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/579426242"
+checksum = "sha256:5008abfafa8c2e7c69c0f8714c06ebd08899b0a082e95db14bae50495f695efc"
+checksum_source = "mise-versions"
+url = "https://github.com/shenwei356/rush/releases/download/v0.11.1/rush_linux_arm64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/700065148"
 
 [tools.rush."platforms.linux-x64"]
-checksum = "sha256:7a22bbc7122acd5bd23e2dfde49f84bb856944a1860057bc89921b3dce45d056"
-url = "https://github.com/shenwei356/rush/releases/download/v0.11.0/rush_linux_amd64.tar.gz"
-url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/579426098"
+checksum = "sha256:1a08baa9f2751c8581f0655fe1aa40a15595ffe70d5f3377d113060329c58fc4"
+checksum_source = "mise-versions"
+url = "https://github.com/shenwei356/rush/releases/download/v0.11.1/rush_linux_amd64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/700065006"
 
 [tools.rush."platforms.macos-arm64"]
-checksum = "sha256:87f811032b727806158111856b77be076d2c923cc013de20d744405eb4dfe455"
-url = "https://github.com/shenwei356/rush/releases/download/v0.11.0/rush_darwin_arm64.tar.gz"
-url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/579424349"
+checksum = "sha256:bbcbf882da03ab06f17f6c5c8ee29dc50cd9515937dc8373d5b6cc25de19dcd9"
+checksum_source = "mise-versions"
+url = "https://github.com/shenwei356/rush/releases/download/v0.11.1/rush_darwin_arm64.tar.gz"
+url_api = "https://api.github.com/repos/shenwei356/rush/releases/assets/700064344"
 
 [[tools.shellcheck]]
 version = "0.11.0"
