@@ -86,6 +86,10 @@ assert_file_contains_before() {
   [[ "$(yq -r '.cilium_tag' "$home_ops_vars")" == "$cilium_tag" ]]
   [[ "$(yq -r '.cluster_cidr' "$home_ops_vars")" == "$expected_cluster_cidr" ]]
   [[ "$(yq -r '.k3s_token' "$home_ops_vars")" == "{{ lookup('ansible.builtin.env', 'K3S_TOKEN') }}" ]]
+  # K3s >= v1.37 packages standard-channel Gateway API CRDs that would overwrite
+  # Envoy Gateway's experimental-channel CRDs.
+  run bash -c "yq -r '.extra_server_args' '$home_ops_vars' | grep -q -- '--disable gateway-api-crd'"
+  assert_success
   [[ "$(yq -r '.home_ops_etcdctl_version_override' "$home_ops_vars")" == "" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_enabled' "$home_ops_vars")" == "true" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_supplementary_groups | join(",")' "$home_ops_vars")" == "video" ]]

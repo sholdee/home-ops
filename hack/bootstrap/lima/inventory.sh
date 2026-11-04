@@ -95,6 +95,7 @@ extra_server_args: >-
   --tls-san {{ apiserver_endpoint }}
   --disable servicelb
   --disable traefik
+  --disable gateway-api-crd
 extra_agent_args: >-
   {{ extra_args }}
 EOF
