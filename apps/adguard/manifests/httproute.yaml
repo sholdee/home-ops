@@ -15,6 +15,24 @@ spec:
     - backendRefs:
         - name: adguard-http
           port: 80
-      sessionPersistence:
-        sessionName: route
-        type: Cookie
+---
+# yaml-language-server: $schema=https://kube-schemas.shold.io/gateway.envoyproxy.io/backendtrafficpolicy_v1alpha1.json
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: adguard-lb-policy
+  namespace: adguard
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: adguard
+  # AdGuard Home login sessions are local to each replica, so pin each browser
+  # to one pod with a gateway-issued cookie.
+  loadBalancer:
+    type: ConsistentHash
+    consistentHash:
+      type: Cookie
+      cookie:
+        name: route
+        ttl: 24h
