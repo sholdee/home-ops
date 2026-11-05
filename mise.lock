@@ -410,7 +410,7 @@ url = "https://github.com/pypa/pipx/releases/download/1.18.13/pipx.pyz"
 url_api = "https://api.github.com/repos/pypa/pipx/releases/assets/708316313"
 
 [[tools."pipx:ansible-lint"]]
-version = "26.10.1"
+version = "26.11.0"
 backend = "pipx:ansible-lint"
 
 [[tools.python]]
