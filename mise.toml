@@ -30,7 +30,7 @@ pipx = "1.18.14"
 ansible-core = "2.22.0"
 "pipx:ansible-lint" = "26.11.0"
 kind = "0.33.0"
-lima = "2.2.1"
+lima = "2.3.0"
 op = "2.34.0"
 gh = "2.103.3"
 
