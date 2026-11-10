@@ -21,7 +21,7 @@ helm = "3.22.1"
 yq = "4.54.3"
 jq = "1.8.2"
 "aqua:sholdee/crd-schema-publisher" = "2026.1104.230219"
-"github:sholdee/drydock" = "v0.3.8"
+"github:sholdee/drydock" = "v0.4.0"
 
 # Bootstrap, node lifecycle, and operator workflow CLIs.
 # ansible-core 2.21 supports Python up to 3.14; its dataclasses patch crashes on 3.15.
