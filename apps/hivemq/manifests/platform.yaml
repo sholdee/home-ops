@@ -41,6 +41,8 @@ spec:
                 requests:
                   cpu: 100m
                   memory: 768Mi
+                limits:
+                  memory: 3Gi
               ports:
                 - name: mqtt-1883
                   containerPort: 1883
