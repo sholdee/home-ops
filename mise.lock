@@ -49,26 +49,26 @@ url_api = "https://api.github.com/repos/sholdee/crd-schema-publisher/releases/as
 provenance = "github-attestations"
 
 [[tools.argocd]]
-version = "3.6.1"
+version = "3.6.2"
 backend = "aqua:argoproj/argo-cd"
 
 [tools.argocd."platforms.linux-arm64"]
-checksum = "sha256:6636e9183de7dba666b673a417986e7ff54dbadd948b2f9f6c83bcf7d33ebb94"
+checksum = "sha256:578e87773bfb0fe5047250f16f914d0362fbfce0b5b2b7ed7204776925dcdff9"
 checksum_source = "mise-versions"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.1/argocd-linux-arm64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/709772974"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.2/argocd-linux-arm64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/764780647"
 
 [tools.argocd."platforms.linux-x64"]
-checksum = "sha256:46d2fc941071f0a0c36326a67a431d34b1479e1a24737f7b367abc93968beadc"
+checksum = "sha256:80cc51ce8eb39d5601d54fd14225ed15a04ccf4baa3427f5c1e72a4e342aa0b2"
 checksum_source = "mise-versions"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.1/argocd-linux-amd64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/709772491"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.2/argocd-linux-amd64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/764781273"
 
 [tools.argocd."platforms.macos-arm64"]
-checksum = "sha256:2e4a88082bfcb25dd56369ed9fe807d941ce1d916efb5a080eea6ac00347dfdf"
+checksum = "sha256:188d11670ba0160214d37e6df8a507f9dafd96234bf040d6e82ae1b733660a5a"
 checksum_source = "mise-versions"
-url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.1/argocd-darwin-arm64"
-url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/709773168"
+url = "https://github.com/argoproj/argo-cd/releases/download/v3.6.2/argocd-darwin-arm64"
+url_api = "https://api.github.com/repos/argoproj/argo-cd/releases/assets/764781299"
 
 [[tools.bats]]
 version = "1.14.0"
