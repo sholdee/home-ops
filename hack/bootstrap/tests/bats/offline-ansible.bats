@@ -105,6 +105,8 @@ assert_file_contains_before() {
   [[ "$(yq -r '.home_ops_k3s_etcd_expose_metrics' "$home_ops_vars")" == "true" ]]
   assert_file_contains "$home_ops_vars" '--embedded-registry'
   assert_file_contains "$home_ops_vars" '--etcd-expose-metrics'
+  [[ "$(yq -r '.home_ops_k3s_etcd_backend_batch_interval_ns' "$home_ops_vars")" == "1000000000" ]]
+  assert_file_contains "$home_ops_vars" '--etcd-arg=backend-batch-interval='
   [[ "$(yq -r '.home_ops_rpi_reporter_update_existing' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_restart_on_change' "$home_ops_vars")" == "false" ]]
   [[ "$(yq -r '.home_ops_rpi_reporter_interval_in_minutes' "$home_ops_vars")" == "2" ]]
