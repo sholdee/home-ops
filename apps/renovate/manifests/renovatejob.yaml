@@ -47,7 +47,24 @@ spec:
   provider:
     name: github
   image: renovate/renovate:44.247.1@sha256:f7bad0becd5f97275e0b1161a60b5dd25dfb0576f4d8c7701c8b60bfd63f3ee2
-  parallelism: 3
+  # Keep Renovate pods off the control-plane nodes. Their disk writes at the start
+  # of each hour slow etcd. Two pods at a time fit the memory of the two workers.
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: node-role.kubernetes.io/control-plane
+                operator: DoesNotExist
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: kubernetes.io/hostname
+            labelSelector:
+              matchLabels:
+                renovate-operator.mogenius.com/renovatejob: renovate
+  parallelism: 2
   schedule: "0 * * * *"
   secretRef: renovate-secret
   resources:
@@ -55,7 +72,7 @@ spec:
       cpu: 500m
       memory: 2048Mi
     limits:
-      cpu: 500m
+      cpu: "1"
       memory: 2048Mi
   webhook:
     enabled: true
