@@ -7,6 +7,9 @@ topologySpreadConstraints:
         app.kubernetes.io/name: external-secrets
 replicaCount: 2
 leaderElect: true
+# The leader renews its Lease once per retry period (default 2s). Each renewal is
+# one etcd write. The lease duration (15s) and the renew deadline (10s) stay.
+leaderElectionRetryPeriod: 5s
 serviceMonitor:
   enabled: true
 grafanaDashboard:

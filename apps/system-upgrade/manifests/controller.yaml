@@ -202,6 +202,9 @@ data:
   SYSTEM_UPGRADE_CONTROLLER_DEBUG: "false"
   SYSTEM_UPGRADE_CONTROLLER_THREADS: "2"
   SYSTEM_UPGRADE_CONTROLLER_LEADER_ELECT: "true"
+  # The leader renews its Lease once per retry period (default 2s). Each renewal is
+  # one etcd write. The lease duration (45s) and the renew deadline (30s) stay.
+  CATTLE_ELECTION_RETRY_PERIOD: "10s"
   SYSTEM_UPGRADE_JOB_ACTIVE_DEADLINE_SECONDS: "900"
   SYSTEM_UPGRADE_JOB_BACKOFF_LIMIT: "99"
   SYSTEM_UPGRADE_JOB_IMAGE_PULL_POLICY: "Always"
@@ -215,6 +218,8 @@ kind: Deployment
 metadata:
   name: system-upgrade-controller
   namespace: system-upgrade
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   replicas: 2
   strategy:
