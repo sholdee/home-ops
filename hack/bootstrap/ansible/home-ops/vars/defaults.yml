@@ -17,6 +17,7 @@ home_ops_supported_architectures:
   - amd64
 
 home_ops_debian_packages:
+  - bpftrace
   - btop
   - ca-certificates
   - conntrack
@@ -25,11 +26,14 @@ home_ops_debian_packages:
   - dnsutils
   - dmsetup
   - ethtool
+  - fio
   - htop
+  - iotop-c
   - iproute2
   - iptables
   - jq
   - kmod
+  - less
   - lsof
   - nano
   - nfs-common
@@ -38,7 +42,9 @@ home_ops_debian_packages:
   - socat
   - smartmontools
   - strace
+  - sysstat
   - tcpdump
+  - tmux
 
 home_ops_kernel_modules:
   - br_netfilter

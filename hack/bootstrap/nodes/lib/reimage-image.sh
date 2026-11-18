@@ -484,6 +484,7 @@ ${verify_script}
   packages:
     - bash
     - bpftool
+    - bpftrace
     - btop
     - busybox-static
     - ca-certificates
@@ -494,13 +495,16 @@ ${verify_script}
     - dmsetup
     - e2fsprogs
     - ethtool
+    - fio
     - git
     - htop
     - initramfs-tools
+    - iotop-c
     - iproute2
     - iptables
     - jq
     - kmod
+    - less
     - lsof
     - nano
     - nfs-common
@@ -511,7 +515,9 @@ ${verify_script}
     - socat
     - smartmontools
     - strace
+    - sysstat
     - tcpdump
+    - tmux
     - xz-utils
     - zstd
 EOF
