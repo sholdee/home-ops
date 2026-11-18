@@ -348,6 +348,7 @@ EOF
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/node-prep/main.yml" 'boot-cmdline.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" '../node-prep/raspberry-pi.yml'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/tasks/host-services/main.yml" 'home_ops_raspberry_pi | default(false) | bool'
+  assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'btop'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'conntrack'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'cryptsetup'
   assert_file_contains "$ROOT/hack/bootstrap/ansible/home-ops/vars/defaults.yml" 'dnsutils'

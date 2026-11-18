@@ -513,6 +513,7 @@ run_reimage_full() {
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'resize2fs'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'update-initramfs -u -k all'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'firstboot-complete'
+  assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'btop'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'busybox-static'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'conntrack'
   assert_file_contains "${output_dir}/layer/home-ops-node-bootstrap.yaml" 'cryptsetup'

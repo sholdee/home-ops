@@ -484,6 +484,7 @@ ${verify_script}
   packages:
     - bash
     - bpftool
+    - btop
     - busybox-static
     - ca-certificates
     - conntrack

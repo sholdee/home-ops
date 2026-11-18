@@ -17,6 +17,7 @@ home_ops_supported_architectures:
   - amd64
 
 home_ops_debian_packages:
+  - btop
   - ca-certificates
   - conntrack
   - cryptsetup
