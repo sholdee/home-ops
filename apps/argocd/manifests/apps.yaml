@@ -78,6 +78,11 @@ spec:
         operator:
           replicas: 3
           rollOutPods: true
+          # The leader renews its Lease once per retry period (default 2s). Each
+          # renewal is one etcd write. The lease duration (15s) and the renew
+          # deadline (10s) stay.
+          extraArgs:
+            - --leader-election-retry-period=5s
           prometheus:
             enabled: true
             serviceMonitor:

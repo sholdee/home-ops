@@ -1,6 +1,8 @@
 podDisruptionBudget:
   minAvailable: 1
 deployment:
+  annotations:
+    reloader.stakater.com/auto: "true"
   replicas: 3
   envoyGateway:
     resources:
@@ -18,3 +20,12 @@ deployment:
         labelSelector:
           matchLabels:
             control-plane: envoy-gateway
+config:
+  envoyGateway:
+    provider:
+      kubernetes:
+        # The leader renews its Lease once per retry period (default 2s). Each
+        # renewal is one etcd write. The lease duration (15s) and the renew
+        # deadline (10s) stay.
+        leaderElection:
+          retryPeriod: 5s
