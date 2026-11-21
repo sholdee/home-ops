@@ -20,7 +20,7 @@ kustomize = "5.8.3"
 helm = "3.22.1"
 yq = "4.54.3"
 jq = "1.8.2"
-"aqua:sholdee/crd-schema-publisher" = "2026.1104.230219"
+"aqua:sholdee/crd-schema-publisher" = "2026.1121.63640"
 "github:sholdee/drydock" = "v0.4.3"
 
 # Bootstrap, node lifecycle, and operator workflow CLIs.
