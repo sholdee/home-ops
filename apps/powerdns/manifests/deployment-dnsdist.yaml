@@ -33,7 +33,7 @@ spec:
               app: dnsdist
       containers:
         - name: dnsdist
-          image: powerdns/dnsdist-20:2.0.11@sha256:3d6acb148dccf2f11c43ded2cd8b231f4a3a24cd05f2c6d586179faec6b414ae
+          image: powerdns/dnsdist-20:2.0.12@sha256:f77615179b015637b8736d550343c99235c01539ac60dcfa4a6e02f4ffc46d05
           ports:
             - containerPort: 53
               name: dns
