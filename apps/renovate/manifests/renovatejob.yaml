@@ -46,7 +46,7 @@ spec:
       value: "true"
   provider:
     name: github
-  image: renovate/renovate:44.263.5@sha256:9806d1b444f2b0b57d7c3b882d453b99c7494db07689c2e1abed8e6ae502b271
+  image: renovate/renovate:44.264.1@sha256:35777dd4aa87beee05ba64c7728a2c5e3c70687fdb654909710bac93c697efd1
   # Keep Renovate pods off the control-plane nodes. Their disk writes at the start
   # of each hour slow etcd. Two pods at a time fit the memory of the two workers.
   affinity:
